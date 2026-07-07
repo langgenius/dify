@@ -2,25 +2,19 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import {
-  RiDeleteBinLine,
-  RiEqualizer2Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 
-type Props = {
+type Props = Readonly<{
   icon?: string | { content?: string, background?: string }
   providerName?: string
   isMCPTool?: boolean
@@ -39,7 +33,7 @@ type Props = {
   versionMismatch?: boolean
   open: boolean
   authRemoved?: boolean
-}
+}>
 
 const ToolItem = ({
   open,
@@ -89,7 +83,7 @@ const ToolItem = ({
         )}
         >
           <div className="flex size-5 items-center justify-center opacity-35">
-            <Group className="text-text-tertiary" />
+            <span className="i-custom-vender-other-group text-text-tertiary" />
           </div>
         </div>
       )}
@@ -100,7 +94,7 @@ const ToolItem = ({
       <div className="hidden items-center gap-1 group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
-            <RiEqualizer2Line className="size-4" />
+            <span className="i-ri-equalizer-2-line size-4" />
           </ActionButton>
         )}
         <div
@@ -112,7 +106,7 @@ const ToolItem = ({
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
-          <RiDeleteBinLine className="size-4" />
+          <span className="i-ri-delete-bin-line size-4" />
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
@@ -128,13 +122,13 @@ const ToolItem = ({
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
           {t('notAuthorized', { ns: 'tools' })}
-          <Indicator className="ml-2" color="orange" />
+          <StatusDot className="ml-2" status="warning" />
         </Button>
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
         <Button variant="secondary" size="small">
           {t('auth.authRemoved', { ns: 'plugin' })}
-          <Indicator className="ml-2" color="red" />
+          <StatusDot className="ml-2" status="error" />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (
@@ -143,7 +137,7 @@ const ToolItem = ({
             className="-mt-1"
             uniqueIdentifier={installInfo}
             tooltip={(
-              <div className="w-[180px]" data-testid="tooltip-content">
+              <div className="w-45" data-testid="tooltip-content">
                 <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">
                   {t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
                 </div>
@@ -175,7 +169,7 @@ const ToolItem = ({
             aria-label={typeof errorTip === 'string' ? errorTip : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
             className="inline-flex border-0 bg-transparent p-0"
           >
-            <RiErrorWarningFill className="size-4 text-text-destructive" />
+            <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
           </PopoverTrigger>
           <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
             {errorTip}

@@ -88,7 +88,7 @@ class SystemConfiguration(BaseModel):
     enabled: bool
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] | None = Field(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -113,7 +113,7 @@ class CustomModelConfiguration(BaseModel):
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
-    unadded_to_model_list: bool | None = False
+    unadded_to_model_list: bool = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -165,34 +165,35 @@ class ModelSettings(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class ProviderConfigType(StrEnum):
+    SECRET_INPUT = CommonParameterType.SECRET_INPUT
+    TEXT_INPUT = CommonParameterType.TEXT_INPUT
+    SELECT = CommonParameterType.SELECT
+    BOOLEAN = CommonParameterType.BOOLEAN
+    APP_SELECTOR = CommonParameterType.APP_SELECTOR
+    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+
+    @classmethod
+    def value_of(cls, value: str) -> ProviderConfigType:
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f"invalid mode value {value}")
+
+
 class BasicProviderConfig(BaseModel):
     """
     Base model class for common provider settings like credentials
     """
 
-    class Type(StrEnum):
-        SECRET_INPUT = CommonParameterType.SECRET_INPUT
-        TEXT_INPUT = CommonParameterType.TEXT_INPUT
-        SELECT = CommonParameterType.SELECT
-        BOOLEAN = CommonParameterType.BOOLEAN
-        APP_SELECTOR = CommonParameterType.APP_SELECTOR
-        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
-        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
-
-        @classmethod
-        def value_of(cls, value: str) -> ProviderConfig.Type:
-            """
-            Get value of given mode.
-
-            :param value: mode value
-            :return: mode
-            """
-            for mode in cls:
-                if mode.value == value:
-                    return mode
-            raise ValueError(f"invalid mode value {value}")
-
-    type: Type = Field(..., description="The type of the credentials")
+    type: ProviderConfigType = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
 
 
@@ -209,7 +210,7 @@ class ProviderConfig(BasicProviderConfig):
     required: bool = False
     default: Union[int, str, float, bool] | None = None
     options: list[Option] | None = None
-    multiple: bool | None = False
+    multiple: bool = False
     label: I18nObject | None = None
     help: I18nObject | None = None
     url: str | None = None

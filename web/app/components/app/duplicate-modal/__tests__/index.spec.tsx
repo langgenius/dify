@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DuplicateAppModal from '../index'
 
@@ -33,12 +33,34 @@ vi.mock('@/app/components/base/app-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (payload: Record<string, unknown>) => void, onClose: () => void }) => (
-    <div data-testid="app-icon-picker">
-      <button type="button" onClick={() => onSelect({ type: 'image', fileId: 'file-1', url: 'https://example.com/icon.png' })}>select-icon</button>
-      <button type="button" onClick={onClose}>close-icon-picker</button>
-    </div>
-  ),
+  default: ({
+    onOpenChange,
+    onSelect,
+  }: {
+    onOpenChange: (open: boolean) => void
+    onSelect: (payload: { type: 'emoji', icon: string, background: string }) => void
+  }) => {
+    let selectedBackground = '#FFEAD5'
+    return (
+      <div>
+        <input placeholder="Search emojis..." />
+        <button type="button" onClick={() => {}}>
+          <em-emoji />
+        </button>
+        <button type="button" aria-label="#E4FBCC" onClick={() => { selectedBackground = '#E4FBCC' }} />
+        <button
+          type="button"
+          onClick={() => {
+            onSelect({ type: 'emoji', icon: '🤖', background: selectedBackground })
+            onOpenChange(false)
+          }}
+        >
+          iconPicker.ok
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>iconPicker.cancel</button>
+      </div>
+    )
+  },
 }))
 
 describe('DuplicateAppModal', () => {
@@ -94,14 +116,21 @@ describe('DuplicateAppModal', () => {
     )
 
     await user.click(screen.getByText('open-icon-picker'))
-    await user.click(screen.getByText('select-icon'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))
+    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/, hidden: true }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
     await user.click(screen.getByRole('button', { name: 'duplicate' }))
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: 'Demo App',
-      icon_type: 'image',
-      icon: 'file-1',
-      icon_background: undefined,
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#E4FBCC',
     })
     expect(onHide).toHaveBeenCalled()
   })
@@ -127,7 +156,7 @@ describe('DuplicateAppModal', () => {
     expect(onHide).toHaveBeenCalledTimes(1)
   })
 
-  it('should restore the original image icon when the picker closes without selecting', async () => {
+  it('should preserve the current image icon when the picker closes without selecting', async () => {
     const onConfirm = vi.fn()
     const user = userEvent.setup()
 
@@ -144,16 +173,32 @@ describe('DuplicateAppModal', () => {
     )
 
     await user.click(screen.getByText('open-icon-picker'))
-    await user.click(screen.getByText('select-icon'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
+    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    expect(emojiButton).toBeTruthy()
+    await user.click(emojiButton!)
+    await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))
+    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/, hidden: true }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
     await user.click(screen.getByText('open-icon-picker'))
-    await user.click(screen.getByText('close-icon-picker'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/, hidden: true }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
     await user.click(screen.getByRole('button', { name: 'duplicate' }))
 
-    expect(onConfirm).toHaveBeenCalledWith({
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Image App',
-      icon_type: 'image',
-      icon: 'original-file',
-      icon_background: undefined,
-    })
+      icon_type: 'emoji',
+      icon: expect.any(String),
+      icon_background: '#E4FBCC',
+    }))
   })
 })

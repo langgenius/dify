@@ -2,23 +2,23 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
-import Textarea from '@/app/components/base/textarea'
 
 export enum EditItemType {
   Query = 'query',
   Answer = 'answer',
 }
-type Props = {
+type Props = Readonly<{
   type: EditItemType
   content: string
   readonly?: boolean
   onSave: (content: string) => Promise<void>
-}
+}>
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
   <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
@@ -130,8 +130,9 @@ const EditItem: FC<Props> = ({
               <div className="mt-3">
                 <EditTitle title={editTitle} />
                 <Textarea
+                  aria-label={editTitle}
                   value={newContent}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewContent(e.target.value)}
+                  onValueChange={value => setNewContent(value)}
                   placeholder={placeholder}
                   autoFocus
                 />

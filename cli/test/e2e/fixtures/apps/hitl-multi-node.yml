@@ -1,0 +1,203 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: DIFY_E2E_HITL_MULTI_NODE
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
+      allowed_file_types:
+        - image
+      allowed_file_upload_methods:
+        - local_file
+        - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: human-input
+        id: 1780469920434-source-1780469926552-target
+        source: '1780469920434'
+        sourceHandle: source
+        target: '1780469926552'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: human-input
+          targetType: human-input
+        id: 1780469926552-action_1-1780469934902-target
+        source: '1780469926552'
+        sourceHandle: action_1
+        target: '1780469934902'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: human-input
+          targetType: end
+        id: 1780469934902-action_1-1780469952268-target
+        source: '1780469934902'
+        sourceHandle: action_1
+        target: '1780469952268'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          selected: false
+          title: 用户输入
+          type: start
+          variables: []
+        height: 73
+        id: '1780469920434'
+        position:
+          x: 80
+          y: 282
+        positionAbsolute:
+          x: 80
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          delivery_methods:
+            - enabled: true
+              id: bc4c7145-a3df-4d15-835f-4e2ebd7a8c16
+              type: webapp
+          form_content: ''
+          inputs: []
+          selected: false
+          timeout: 3
+          timeout_unit: day
+          title: 人工介入
+          type: human-input
+          user_actions:
+            - button_style: default
+              id: action_1
+              title: Button Text 1
+        height: 164
+        id: '1780469926552'
+        position:
+          x: 382
+          y: 282
+        positionAbsolute:
+          x: 382
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          delivery_methods:
+            - enabled: true
+              id: d6e91d88-30bb-4397-a5a2-21c7c76382ea
+              type: webapp
+          form_content: ''
+          inputs: []
+          selected: false
+          timeout: 3
+          timeout_unit: day
+          title: 人工介入 2
+          type: human-input
+          user_actions:
+            - button_style: default
+              id: action_1
+              title: Button Text 1
+        height: 164
+        id: '1780469934902'
+        position:
+          x: 684
+          y: 282
+        positionAbsolute:
+          x: 684
+          y: 282
+        selected: true
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          outputs:
+            - value_selector:
+                - '1780469934902'
+                - __action_id
+              value_type: string
+              variable: x
+          selected: true
+          title: 输出
+          type: end
+        height: 88
+        id: '1780469952268'
+        position:
+          x: 986
+          y: 282
+        positionAbsolute:
+          x: 986
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []

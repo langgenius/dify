@@ -7,7 +7,7 @@ import * as React from 'react'
 import { memo } from 'react'
 import Card from '@/app/components/plugins/card'
 
-type Props = {
+type Props = Readonly<{
   plugin: Plugin
   onCancel: () => void
   mutation: Pick<UseMutationResult, 'isSuccess' | 'isPending'>
@@ -18,7 +18,7 @@ type Props = {
   description: ReactNode
   cardTitleLeft: ReactNode
   modalBottomLeft?: ReactNode
-}
+}>
 
 const PluginMutationModal: FC<Props> = ({
   plugin,

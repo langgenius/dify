@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import { ViewType } from '../../view-type-select'
 import Tool from '../tool'
 
-type Props = {
+type Props = Readonly<{
   payload: ToolWithProvider[]
   previewCardHandle: ToolActionPreviewCardHandle
   isShowLetterIndex: boolean
@@ -20,7 +20,7 @@ type Props = {
   letters: string[]
   toolRefs: RefObject<Record<string, HTMLDivElement | null>>
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolViewFlatView: FC<Props> = ({
   letters,

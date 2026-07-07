@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from core.entities.provider_entities import BasicProviderConfig
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
 from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.tools.utils.encryption import create_tool_provider_encrypter
 
@@ -31,7 +31,7 @@ def secret_field() -> BasicProviderConfig:
     """A SECRET_INPUT field named 'password'."""
     return BasicProviderConfig(
         name="password",
-        type=BasicProviderConfig.Type.SECRET_INPUT,
+        type=ProviderConfigType.SECRET_INPUT,
     )
 
 
@@ -40,7 +40,7 @@ def normal_field() -> BasicProviderConfig:
     """A TEXT_INPUT field named 'username'."""
     return BasicProviderConfig(
         name="username",
-        type=BasicProviderConfig.Type.TEXT_INPUT,
+        type=ProviderConfigType.TEXT_INPUT,
     )
 
 
@@ -185,7 +185,7 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
 
 
 def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
-    basic_config = BasicProviderConfig(name="key", type=BasicProviderConfig.Type.TEXT_INPUT)
+    basic_config = BasicProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)
     credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
     controller = SimpleNamespace(
         provider_type=SimpleNamespace(value="builtin"),

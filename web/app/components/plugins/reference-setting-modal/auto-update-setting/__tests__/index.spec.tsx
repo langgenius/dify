@@ -1,15 +1,16 @@
 import type { AutoUpdateConfig } from '../types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
-import { defaultValue } from '../config'
 import AutoUpdateSetting from '../index'
 import NoDataPlaceholder from '../no-data-placeholder'
 import NoPluginSelected from '../no-plugin-selected'
@@ -51,6 +52,32 @@ vi.mock('@/context/modal-context', () => ({
 // Mock i18n context
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (defaultNs?: string) => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const ns = (options?.ns as string | undefined) ?? defaultNs
+      const params = { ...options }
+      delete params.ns
+      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+      return `${ns ? `${ns}.` : ''}${key}${suffix}`
+    },
+    i18n: {
+      language: 'en',
+      changeLanguage: vi.fn(),
+    },
+  }),
+  Trans: ({ i18nKey, components }: {
+    i18nKey: string
+    components?: Record<string, React.ReactElement>
+  }) => {
+    const setTimezone = components?.setTimezone
+    if (setTimezone)
+      return React.cloneElement(setTimezone, undefined, i18nKey)
+
+    return <span>{i18nKey}</span>
+  },
 }))
 
 // Mock plugins service
@@ -291,21 +318,22 @@ const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): 
 // Helper Functions
 // ================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-})
+const createQueryClient = () => createAccountProfileQueryClient({ timezone: mockTimezone })
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createQueryClient()
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper })
+}
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 // ================================
@@ -348,39 +376,6 @@ describe('auto-update-setting', () => {
       it('should contain exactly 3 modes', () => {
         const values = Object.values(AUTO_UPDATE_MODE)
         expect(values).toHaveLength(3)
-      })
-    })
-  })
-
-  describe('config.ts', () => {
-    describe('defaultValue', () => {
-      it('should have disabled strategy by default', () => {
-        expect(defaultValue.strategy_setting).toBe(AUTO_UPDATE_STRATEGY.disabled)
-      })
-
-      it('should have upgrade_time_of_day as 0', () => {
-        expect(defaultValue.upgrade_time_of_day).toBe(0)
-      })
-
-      it('should have update_all mode by default', () => {
-        expect(defaultValue.upgrade_mode).toBe(AUTO_UPDATE_MODE.update_all)
-      })
-
-      it('should have empty exclude_plugins array', () => {
-        expect(defaultValue.exclude_plugins).toEqual([])
-      })
-
-      it('should have empty include_plugins array', () => {
-        expect(defaultValue.include_plugins).toEqual([])
-      })
-
-      it('should be a complete AutoUpdateConfig object', () => {
-        const keys = Object.keys(defaultValue)
-        expect(keys).toContain('strategy_setting')
-        expect(keys).toContain('upgrade_time_of_day')
-        expect(keys).toContain('upgrade_mode')
-        expect(keys).toContain('exclude_plugins')
-        expect(keys).toContain('include_plugins')
       })
     })
   })
@@ -640,8 +635,7 @@ describe('auto-update-setting', () => {
 
         // Assert - all 14 icons are displayed
         expect(screen.getAllByTestId('plugin-icon')).toHaveLength(14)
-        // Note: Component shows "+0" when exactly at limit due to < vs <= comparison
-        // This is the actual behavior (isShowAll = plugins.length < MAX_DISPLAY_COUNT)
+        expect(screen.queryByText('+0')).not.toBeInTheDocument()
       })
 
       it('should handle MAX_DISPLAY_COUNT + 1 plugins showing overflow', () => {
@@ -766,8 +760,8 @@ describe('auto-update-setting', () => {
     const triggerName = (strategy: AUTO_UPDATE_STRATEGY) =>
       new RegExp(`plugin\\.autoUpdate\\.strategy\\.${i18nKeyByStrategy[strategy]}\\.name`, 'i')
 
-    const findOption = async (key: 'disabled' | 'fixOnly' | 'latest') => {
-      const options = await screen.findAllByRole('menuitemradio')
+    const findOption = (key: 'disabled' | 'fixOnly' | 'latest') => {
+      const options = screen.getAllByRole('button')
       const option = options.find(item =>
         item.textContent?.includes(`plugin.autoUpdate.strategy.${key}.name`),
       )
@@ -777,25 +771,12 @@ describe('auto-update-setting', () => {
     }
 
     describe('Rendering', () => {
-      it('should render trigger button with current strategy label', () => {
+      it('should render the segmented control with all strategies', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
+        expect(screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })).toBeInTheDocument()
-      })
-
-      it('should not render dropdown content when closed', () => {
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      })
-
-      it('should render all strategy options when open', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) }))
-
-        const options = await screen.findAllByRole('menuitemradio')
+        const options = screen.getAllByRole('button')
         expect(options).toHaveLength(3)
         expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name'))).toBe(true)
         expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name'))).toBe(true)
@@ -804,17 +785,6 @@ describe('auto-update-setting', () => {
     })
 
     describe('User Interactions', () => {
-      it('should open and close the menu when the trigger is clicked', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        const trigger = screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-
-        await user.click(trigger)
-        expect(await screen.findByRole('menu')).toBeInTheDocument()
-      })
-
       it.each<[AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest', AUTO_UPDATE_STRATEGY]>([
         [AUTO_UPDATE_STRATEGY.disabled, 'fixOnly', AUTO_UPDATE_STRATEGY.fixOnly],
         [AUTO_UPDATE_STRATEGY.disabled, 'latest', AUTO_UPDATE_STRATEGY.latest],
@@ -824,36 +794,19 @@ describe('auto-update-setting', () => {
         const onChange = vi.fn()
         render(<StrategyPicker value={initial} onChange={onChange} />)
 
-        await user.click(screen.getByRole('button', { name: triggerName(initial) }))
-        await user.click(await findOption(optionKey))
+        await user.click(findOption(optionKey))
 
         expect(onChange).toHaveBeenCalledWith(expected)
       })
 
-      it('should mark only the currently selected option with aria-checked', async () => {
-        const user = userEvent.setup()
+      it('should mark only the currently selected option with aria-pressed', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
 
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
-
-        const options = await screen.findAllByRole('menuitemradio')
-        const checked = options.filter(o => o.getAttribute('aria-checked') === 'true')
+        const options = screen.getAllByRole('button')
+        const checked = options.filter(o => o.getAttribute('aria-pressed') === 'true')
 
         expect(checked).toHaveLength(1)
         expect(checked[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
-      })
-
-      it('should render the check indicator inside the selected option only', async () => {
-        const user = userEvent.setup()
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
-
-        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
-
-        const fixOnlyOption = await findOption('fixOnly')
-        const latestOption = await findOption('latest')
-
-        expect(fixOnlyOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
-        expect(latestOption.querySelector('.i-ri-check-line')).toBeNull()
       })
     })
   })
@@ -1086,7 +1039,7 @@ describe('auto-update-setting', () => {
         render(<PluginsPicker {...defaultProps} value={['plugin-1', 'plugin-2']} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' })).toBeInTheDocument()
       })
 
@@ -1109,7 +1062,7 @@ describe('auto-update-setting', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1280,7 +1233,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
       })
 
       it('should show exclude_plugins when mode is exclude', () => {
@@ -1296,7 +1249,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":3}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":3,"num":3}')).toBeInTheDocument()
       })
     })
 
@@ -1311,12 +1264,8 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         await user.click(
-          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.fixOnly\.name/i }),
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.latest\.name/i }),
         )
-        const latestOption = (await screen.findAllByRole('menuitemradio')).find(item =>
-          item.textContent?.includes('plugin.autoUpdate.strategy.latest.name'),
-        )!
-        await user.click(latestOption)
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(
@@ -1408,8 +1357,10 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
+        fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
-        expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+        // Assert
+        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
       })
     })
 
@@ -1495,7 +1446,7 @@ describe('auto-update-setting', () => {
         const { rerender } = render(<AutoUpdateSetting {...defaultProps} payload={partialPayload} />)
 
         // Assert - partial mode shows include_plugins count
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
 
         // Act - change to exclude mode
         const excludePayload = createMockAutoUpdateConfig({
@@ -1507,7 +1458,7 @@ describe('auto-update-setting', () => {
         rerender(<AutoUpdateSetting {...defaultProps} payload={excludePayload} />)
 
         // Assert - exclude mode shows exclude_plugins count
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1582,10 +1533,10 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
-        // Assert - OptionCard component will be rendered for each mode
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.all')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.exclude')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.partial')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.all' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.exclude' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.partial' })).toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should call onChange when upgrade mode is changed', () => {
@@ -1599,7 +1550,7 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
-        // Click on partial mode - find the option card for partial
+        // Click on partial mode
         const partialOption = screen.getByText('plugin.autoUpdate.upgradeMode.partial')
         fireEvent.click(partialOption)
 
@@ -1656,7 +1607,7 @@ describe('auto-update-setting', () => {
       render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
       // Assert - partial mode shows include_plugins
-      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":1}')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":1,"num":1}')).toBeInTheDocument()
     })
   })
 })

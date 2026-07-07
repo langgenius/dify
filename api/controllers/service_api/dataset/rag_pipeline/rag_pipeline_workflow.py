@@ -1,21 +1,33 @@
 from collections.abc import Generator
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import GeneratedAppResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_model,
+)
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
-from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
+from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.base import ResponseModel
 from libs import helper
+from libs.helper import dump_response
 from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
@@ -24,6 +36,7 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
+    DatasourceType,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -31,77 +44,148 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    datasource_type: str
-    credential_id: str | None = None
-    is_published: bool
+    inputs: dict[str, Any] = Field(description="Input variables for the datasource node.")
+    datasource_type: DatasourceType = Field(description="Type of the datasource.")
+    credential_id: str | None = Field(
+        default=None, description="Datasource credential ID. Uses the default if omitted."
+    )
+    is_published: bool = Field(
+        description=(
+            "Whether to run the published or draft version of the node. `true` runs the published version, "
+            "`false` runs the draft."
+        )
+    )
+
+
+class DatasourcePluginsQuery(BaseModel):
+    is_published: bool = Field(
+        default=True,
+        description=(
+            "Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published "
+            "version, `false` returns nodes from the draft."
+        ),
+    )
+
+
+class DatasourceCredentialInfoResponse(ResponseModel):
+    id: str | None = None
+    name: str | None = None
+    type: str | None = None
+    is_default: bool | None = None
+
+
+class DatasourcePluginResponse(ResponseModel):
+    node_id: str | None = None
+    plugin_id: str | None = None
+    provider_name: str | None = None
+    datasource_type: str | None = None
+    title: str | None = None
+    user_input_variables: list[dict[str, Any]] = Field(default_factory=list)
+    credentials: list[DatasourceCredentialInfoResponse] = Field(default_factory=list)
+
+
+class DatasourcePluginListResponse(RootModel[list[DatasourcePluginResponse]]):
+    pass
+
+
+class PipelineUploadFileResponse(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str | None = None
+    created_by: str
+    created_at: str | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | str | None) -> str | None:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
 
 
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)
+register_schema_model(service_api_ns, DatasourcePluginsQuery)
 register_schema_model(service_api_ns, PipelineRunApiEntity)
+register_response_schema_models(
+    service_api_ns,
+    DatasourceCredentialInfoResponse,
+    DatasourcePluginResponse,
+    DatasourcePluginListResponse,
+    PipelineUploadFileResponse,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource-plugins")
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
+    @service_api_ns.doc(
+        summary="List Datasource Plugins",
+        description=(
+            "List the datasource nodes configured in the knowledge pipeline. Each node includes the plugin it uses "
+            "plus the metadata needed to run it."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "List of datasource nodes configured in the pipeline.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @service_api_ns.doc(shortcut="list_rag_pipeline_datasource_plugins")
     @service_api_ns.doc(description="List all datasource plugins for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
-    @service_api_ns.doc(
-        params={
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)"
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
+    @service_api_ns.doc(params=query_params_from_model(DatasourcePluginsQuery))
     @service_api_ns.doc(
         responses={
             200: "Datasource plugins retrieved successfully",
             401: "Unauthorized - invalid API token",
         }
     )
-    def get(self, tenant_id: str, dataset_id: str):
+    @service_api_ns.response(
+        200,
+        "Datasource plugins retrieved successfully",
+        service_api_ns.models[DatasourcePluginListResponse.__name__],
+    )
+    def get(self, tenant_id: str, dataset_id: UUID):
         """Resource for getting datasource plugins."""
+        dataset_id_str = str(dataset_id)
         # Verify dataset ownership
-        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        # Get query parameter to determine published or draft
-        is_published: bool = request.args.get("is_published", default=True, type=bool)
+        query = query_params_from_request(DatasourcePluginsQuery)
 
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
-            tenant_id=tenant_id, dataset_id=dataset_id, is_published=is_published
+            tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=query.is_published
         )
-        return datasource_plugins, 200
+        return dump_response(DatasourcePluginListResponse, datasource_plugins), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource/nodes/<string:node_id>/run")
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Datasource Node",
+        description=(
+            "Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the "
+            "node execution results."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "Streaming response with node execution events.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
-    @service_api_ns.doc(
-        body={
-            "inputs": "User input variables",
-            "datasource_type": "Datasource type, e.g. online_document",
-            "credential_id": "Credential ID",
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "node_id": "ID of the datasource node to execute."})
     @service_api_ns.doc(
         responses={
             200: "Datasource node run successfully",
@@ -109,10 +193,11 @@ class DatasourceNodeRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
-    def post(self, tenant_id: str, dataset_id: str, node_id: str):
+    def post(self, tenant_id: str, dataset_id: UUID, node_id: str):
         """Resource for getting datasource plugins."""
+        dataset_id_str = str(dataset_id)
         # Verify dataset ownership
-        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -120,14 +205,15 @@ class DatasourceNodeRunApi(DatasetApiResource):
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
-        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id)
+        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(
             {
                 **payload.model_dump(exclude_none=True),
-                "pipeline_id": str(pipeline.id),
+                "pipeline_id": pipeline.id,
                 "node_id": node_id,
             }
         )
+        # response-contract:ignore compact_generate_response
         return helper.compact_generate_response(
             PipelineGenerator.convert_to_event_stream(
                 rag_pipeline_service.run_datasource_workflow_node(
@@ -147,24 +233,27 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Pipeline",
+        description=(
+            "Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response "
+            "modes."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: (
+                "Pipeline execution result. Format depends on `response_mode`: streaming returns a "
+                "`text/event-stream`, blocking returns a JSON object."
+            ),
+            403: "`forbidden` : Forbidden.",
+            404: "`not_found` : Dataset not found.",
+            500: "`pipeline_run_error` : Pipeline execution failed.",
+        },
+    )
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
-    @service_api_ns.doc(
-        body={
-            "inputs": "User input variables",
-            "datasource_type": "Datasource type, e.g. online_document",
-            "datasource_info_list": "Datasource info list",
-            "start_node_id": "Start node ID",
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)",
-            "streaming": "Whether to stream the response(streaming or blocking), default: streaming",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Pipeline run successfully",
@@ -172,10 +261,17 @@ class PipelineRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
-    def post(self, tenant_id: str, dataset_id: str):
+    @service_api_ns.response(
+        200,
+        "Pipeline run successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
+    @with_session
+    def post(self, session: Session, tenant_id: str, dataset_id: UUID):
         """Resource for running a rag pipeline."""
+        dataset_id_str = str(dataset_id)
         # Verify dataset ownership
-        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -186,9 +282,10 @@ class PipelineRunApi(DatasetApiResource):
             raise Forbidden()
 
         rag_pipeline_service: RagPipelineService = RagPipelineService()
-        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id)
+        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=payload.model_dump(),
@@ -196,6 +293,7 @@ class PipelineRunApi(DatasetApiResource):
                 streaming=payload.response_mode == "streaming",
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except Exception as ex:
             raise PipelineRunError(description=str(ex))
@@ -205,8 +303,24 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
+    @service_api_ns.doc(
+        summary="Upload Pipeline File",
+        description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",
+        tags=["Knowledge Pipeline"],
+        responses={
+            201: "File uploaded successfully.",
+            400: (
+                "- `no_file_uploaded` : Please upload your file.\n"
+                "- `filename_not_exists_error` : The specified filename does not exist.\n"
+                "- `too_many_files` : Only one file is allowed."
+            ),
+            413: "`file_too_large` : File size exceeded.",
+            415: "`unsupported_file_type` : File type not allowed.",
+        },
+    )
     @service_api_ns.doc(shortcut="knowledgebase_pipeline_file_upload")
     @service_api_ns.doc(description="Upload a file to a knowledgebase pipeline")
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=False))
     @service_api_ns.doc(
         responses={
             201: "File uploaded successfully",
@@ -215,6 +329,11 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             413: "File too large",
             415: "Unsupported file type",
         }
+    )
+    @service_api_ns.response(
+        201,
+        "File uploaded successfully",
+        service_api_ns.models[PipelineUploadFileResponse.__name__],
     )
     def post(self, tenant_id: str):
         """Upload a file for use in conversations.
@@ -250,4 +369,4 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return serialize_upload_file(upload_file), 201
+        return dump_response(PipelineUploadFileResponse, upload_file), 201

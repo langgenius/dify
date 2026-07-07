@@ -14,6 +14,7 @@ import pytest
 from flask import Flask
 
 from controllers.inner_api.plugin.plugin import (
+    PluginDownloadFileRequestApi,
     PluginFetchAppInfoApi,
     PluginInvokeAppApi,
     PluginInvokeEncryptApi,
@@ -30,6 +31,7 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTTSApi,
     PluginUploadFileRequestApi,
 )
+from core.workflow.file_reference import build_file_reference
 
 
 def _extract_raw_post(cls):
@@ -270,6 +272,7 @@ class TestPluginUploadFileRequestApi:
         mock_payload = MagicMock()
         mock_payload.filename = "test.pdf"
         mock_payload.mimetype = "application/pdf"
+        mock_payload.conversation_id = "conversation-id"
 
         # Act
         raw_post = _extract_raw_post(PluginUploadFileRequestApi)
@@ -277,9 +280,66 @@ class TestPluginUploadFileRequestApi:
 
         # Assert
         mock_get_url.assert_called_once_with(
-            filename="test.pdf", mimetype="application/pdf", tenant_id="tenant-id", user_id="user-id"
+            filename="test.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            conversation_id="conversation-id",
         )
         assert result["data"]["url"] == "https://storage.example.com/signed-upload-url"
+
+
+class TestPluginDownloadFileRequestApi:
+    """Test PluginDownloadFileRequestApi endpoint structure and handler logic"""
+
+    @pytest.fixture
+    def api_instance(self):
+        return PluginDownloadFileRequestApi()
+
+    def test_has_post_method(self, api_instance):
+        assert hasattr(api_instance, "post")
+        assert callable(api_instance.post)
+
+    @patch("controllers.inner_api.plugin.plugin.FileRequestService")
+    @patch("controllers.inner_api.plugin.plugin.db")
+    def test_post_returns_signed_download_url(self, mock_db, mock_service_cls, api_instance, app: Flask):
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-id"
+        mock_db.session.get.return_value = mock_tenant
+        mock_service = mock_service_cls.return_value
+        mock_service.request_download_url.return_value = MagicMock(
+            filename="report.pdf",
+            mime_type="application/pdf",
+            size=123,
+            download_url="https://files.example.com/download",
+        )
+        mock_payload = MagicMock()
+        mock_payload.tenant_id = "tenant-id"
+        mock_payload.user_id = "user-id"
+        mock_payload.user_from = "account"
+        mock_payload.invoke_from = "debugger"
+        reference = build_file_reference(record_id="tool-file-1")
+        mock_payload.file.model_dump.return_value = {
+            "transfer_method": "tool_file",
+            "reference": reference,
+        }
+
+        raw_post = _extract_raw_post(PluginDownloadFileRequestApi)
+        result = raw_post(api_instance, payload=mock_payload)
+
+        mock_service.request_download_url.assert_called_once_with(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            user_from="account",
+            invoke_from="debugger",
+            file_mapping={"transfer_method": "tool_file", "reference": reference},
+        )
+        assert result["data"] == {
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "size": 123,
+            "download_url": "https://files.example.com/download",
+        }
 
 
 class TestPluginFetchAppInfoApi:

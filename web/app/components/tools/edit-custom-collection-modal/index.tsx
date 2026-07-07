@@ -13,6 +13,8 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
@@ -22,8 +24,6 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { parseParamsSchema } from '@/service/tools'
 import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
@@ -32,7 +32,7 @@ import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
 import TestApi from './test-api'
 
-type Props = {
+type Props = Readonly<{
   positionLeft?: boolean
   dialogClassName?: string
   payload: any
@@ -40,7 +40,7 @@ type Props = {
   onAdd?: (payload: CustomCollectionBackend) => void
   onRemove?: () => void
   onEdit?: (payload: CustomCollectionBackend) => void
-}
+}>
 // Add and Edit
 const EditCustomCollectionModal: FC<Props> = ({
   positionLeft,
@@ -280,9 +280,10 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                         </div>
                         <Textarea
+                          aria-label={t('createTool.schema', { ns: 'tools' })}
                           className="h-[240px] resize-none"
                           value={schema}
-                          onChange={e => setSchema(e.target.value)}
+                          onValueChange={value => setSchema(value)}
                           placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
                         />
                       </div>
@@ -386,12 +387,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                     </div>
                     {showEmojiPicker && (
                       <EmojiPicker
+                        open={showEmojiPicker}
+                        onOpenChange={setShowEmojiPicker}
                         onSelect={(icon, icon_background) => {
                           setEmoji({ content: icon, background: icon_background })
-                          setShowEmojiPicker(false)
-                        }}
-                        onClose={() => {
-                          setShowEmojiPicker(false)
                         }}
                       />
                     )}

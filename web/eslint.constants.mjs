@@ -1,6 +1,7 @@
 export const GENERATED_IGNORES = [
   'storybook-static/',
   '.next/',
+  '.vinext/',
   'next/',
   'next-env.d.ts',
   'dist/',
@@ -58,11 +59,65 @@ const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const LEGACY_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@/service/base',
+      '@/service/base/*',
+      '**/service/base',
+      '**/service/base/*',
+    ],
+    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+const LEGACY_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@/service/fetch',
+      '@/service/fetch/*',
+      '**/service/fetch',
+      '**/service/fetch/*',
+    ],
+    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+export const WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      './base',
+      './base/*',
+      '../base',
+      '../base/*',
+      '../../base',
+      '../../base/*',
+    ],
+    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
+export const WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      './fetch',
+      './fetch/*',
+      '../fetch',
+      '../fetch/*',
+      '../../fetch',
+      '../../fetch/*',
+    ],
+    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+  },
+]
+
 export const WEB_RESTRICTED_IMPORT_PATTERNS = [
   ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
   ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
   ...LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+  ...LEGACY_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {

@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState, useTransition } from 'react'
+import * as React from 'react'
+import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
+import {
+  FieldDescription,
+  FieldLabel,
+  FieldRoot,
+} from '../field'
 
 const meta = {
   title: 'Base/Form/Switch',
@@ -10,7 +15,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggle switch built on Base UI with CVA variants, Figma-aligned design tokens, loading spinner, and skeleton placeholder. Import `Switch` and `SwitchSkeleton` from `@langgenius/dify-ui/switch`.',
+        component: 'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder.',
       },
     },
   },
@@ -42,20 +47,27 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const SwitchDemo = (args: Partial<ComponentProps<typeof Switch>>) => {
-  const [enabled, setEnabled] = useState(args.checked ?? false)
+type SwitchDemoProps = Partial<Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>> & {
+  checked?: boolean
+}
+
+const SwitchDemo = (args: SwitchDemoProps) => {
+  const [enabled, setEnabled] = React.useState(args.checked ?? false)
 
   return (
-    <div className="flex items-center justify-center gap-3">
-      <Switch
-        {...args}
-        checked={enabled}
-        onCheckedChange={setEnabled}
-      />
-      <span className="text-sm text-gray-700">
-        {enabled ? 'On' : 'Off'}
-      </span>
-    </div>
+    <FieldRoot name="autoRetry" className="w-72">
+      <FieldLabel className="flex items-center justify-between gap-3">
+        <span>Enable auto retry</span>
+        <Switch
+          {...args}
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+      </FieldLabel>
+      <FieldDescription>
+        {enabled ? 'Failures will retry automatically.' : 'Failures require manual retry.'}
+      </FieldDescription>
+    </FieldRoot>
   )
 }
 
@@ -65,6 +77,17 @@ export const Default: Story = {
     size: 'md',
     checked: false,
     disabled: false,
+  },
+  play: async ({ canvas, userEvent }) => {
+    const switchControl = canvas.getByRole('switch', { name: 'Enable auto retry' })
+
+    await expect(switchControl).toHaveAttribute('aria-checked', 'false')
+    await expect(canvas.getByText('Failures require manual retry.')).toBeVisible()
+
+    await userEvent.click(switchControl)
+
+    await expect(switchControl).toHaveAttribute('aria-checked', 'true')
+    await expect(canvas.getByText('Failures will retry automatically.')).toBeVisible()
   },
 }
 
@@ -116,24 +139,24 @@ const AllStatesDemo = () => {
               <td className="py-3 font-medium text-gray-900">{size}</td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} onCheckedChange={() => {}} />
-                  <Switch size={size} checked={true} onCheckedChange={() => {}} />
+                  <Switch size={size} checked={false} onCheckedChange={() => {}} aria-label={`${size} unchecked switch`} />
+                  <Switch size={size} checked={true} onCheckedChange={() => {}} aria-label={`${size} checked switch`} />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} disabled />
-                  <Switch size={size} checked={true} disabled />
+                  <Switch size={size} checked={false} disabled aria-label={`${size} disabled unchecked switch`} />
+                  <Switch size={size} checked={true} disabled aria-label={`${size} disabled checked switch`} />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} loading />
-                  <Switch size={size} checked={true} loading />
+                  <Switch size={size} checked={false} loading aria-label={`${size} loading unchecked switch`} />
+                  <Switch size={size} checked={true} loading aria-label={`${size} loading checked switch`} />
                 </div>
               </td>
               <td className="py-3">
-                <SwitchSkeleton size={size} />
+                <SwitchSkeleton size={size} aria-hidden="true" />
               </td>
             </tr>
           ))}
@@ -148,14 +171,14 @@ export const AllStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Complete variant matrix: all sizes × all states, matching Figma design spec (node 2144:1210).',
+        story: 'Variant matrix for switch sizes and states.',
       },
     },
   },
 }
 
 const SizeComparisonDemo = () => {
-  const [states, setStates] = useState({
+  const [states, setStates] = React.useState({
     xs: false,
     sm: false,
     md: true,
@@ -164,22 +187,30 @@ const SizeComparisonDemo = () => {
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      <div className="flex items-center gap-3">
-        <Switch size="xs" checked={states.xs} onCheckedChange={v => setStates({ ...states, xs: v })} />
-        <span className="text-sm text-gray-700">Extra Small (xs) — 14×10</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch size="sm" checked={states.sm} onCheckedChange={v => setStates({ ...states, sm: v })} />
-        <span className="text-sm text-gray-700">Small (sm) — 20×12</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch size="md" checked={states.md} onCheckedChange={v => setStates({ ...states, md: v })} />
-        <span className="text-sm text-gray-700">Regular (md) — 28×16</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch size="lg" checked={states.lg} onCheckedChange={v => setStates({ ...states, lg: v })} />
-        <span className="text-sm text-gray-700">Large (lg) — 36×20</span>
-      </div>
+      <FieldRoot name="extraSmallSwitch">
+        <FieldLabel className="flex items-center gap-3">
+          <Switch size="xs" checked={states.xs} onCheckedChange={v => setStates({ ...states, xs: v })} />
+          Extra Small (xs) - 14x10
+        </FieldLabel>
+      </FieldRoot>
+      <FieldRoot name="smallSwitch">
+        <FieldLabel className="flex items-center gap-3">
+          <Switch size="sm" checked={states.sm} onCheckedChange={v => setStates({ ...states, sm: v })} />
+          Small (sm) - 20x12
+        </FieldLabel>
+      </FieldRoot>
+      <FieldRoot name="regularSwitch">
+        <FieldLabel className="flex items-center gap-3">
+          <Switch size="md" checked={states.md} onCheckedChange={v => setStates({ ...states, md: v })} />
+          Regular (md) - 28x16
+        </FieldLabel>
+      </FieldRoot>
+      <FieldRoot name="largeSwitch">
+        <FieldLabel className="flex items-center gap-3">
+          <Switch size="lg" checked={states.lg} onCheckedChange={v => setStates({ ...states, lg: v })} />
+          Large (lg) - 36x20
+        </FieldLabel>
+      </FieldRoot>
     </div>
   )
 }
@@ -189,41 +220,53 @@ export const SizeComparison: Story = {
 }
 
 const LoadingDemo = () => {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = React.useState(true)
 
   return (
     <div className="flex flex-col items-center space-y-4">
       <button
-        className="rounded-sm border px-2 py-1 text-xs"
+        className="rounded-sm border px-2 py-1 text-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={() => setLoading(!loading)}
       >
         {loading ? 'Stop Loading' : 'Start Loading'}
       </button>
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Switch size="lg" checked={false} loading={loading} />
-          <span className="text-sm text-gray-700">Large unchecked</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch size="lg" checked={true} loading={loading} />
-          <span className="text-sm text-gray-700">Large checked</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch size="md" checked={false} loading={loading} />
-          <span className="text-sm text-gray-700">Regular unchecked</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch size="md" checked={true} loading={loading} />
-          <span className="text-sm text-gray-700">Regular checked</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch size="sm" checked={false} loading={loading} />
-          <span className="text-sm text-gray-700">Small (no spinner)</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch size="xs" checked={false} loading={loading} />
-          <span className="text-sm text-gray-700">Extra Small (no spinner)</span>
-        </div>
+        <FieldRoot name="largeUncheckedLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="lg" checked={false} loading={loading} />
+            Large unchecked
+          </FieldLabel>
+        </FieldRoot>
+        <FieldRoot name="largeCheckedLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="lg" checked={true} loading={loading} />
+            Large checked
+          </FieldLabel>
+        </FieldRoot>
+        <FieldRoot name="regularUncheckedLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="md" checked={false} loading={loading} />
+            Regular unchecked
+          </FieldLabel>
+        </FieldRoot>
+        <FieldRoot name="regularCheckedLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="md" checked={true} loading={loading} />
+            Regular checked
+          </FieldLabel>
+        </FieldRoot>
+        <FieldRoot name="smallLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="sm" checked={false} loading={loading} />
+            Small
+          </FieldLabel>
+        </FieldRoot>
+        <FieldRoot name="extraSmallLoading">
+          <FieldLabel className="flex items-center gap-3">
+            <Switch size="xs" checked={false} loading={loading} />
+            Extra Small
+          </FieldLabel>
+        </FieldRoot>
       </div>
     </div>
   )
@@ -234,7 +277,7 @@ export const Loading: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Loading state disables interaction and shows a spinning icon (i-ri-loader-2-line) for md/lg sizes. Spinner position mirrors the knob: appears on the opposite side of the checked state.',
+        story: 'Loading state disables interaction and shows a spinner for md and lg sizes.',
       },
     },
   },
@@ -242,61 +285,76 @@ export const Loading: Story = {
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-const MutationLoadingDemo = () => {
-  const [enabled, setEnabled] = useState(false)
-  const [requestCount, setRequestCount] = useState(0)
-  const [isPending, startTransition] = useTransition()
+function useMockAutoRetrySettingQuery() {
+  const [enabled, setEnabled] = React.useState(false)
 
-  const handleChange = (nextValue: boolean) => {
+  return {
+    data: {
+      enabled,
+    },
+    setData: setEnabled,
+  }
+}
+
+function useMockUpdateAutoRetrySettingMutation({
+  onSuccess,
+}: {
+  onSuccess: (enabled: boolean) => void
+}) {
+  const [requestCount, setRequestCount] = React.useState(0)
+  const [isPending, startTransition] = React.useTransition()
+
+  const mutate = (nextValue: boolean) => {
     if (isPending)
       return
 
     startTransition(async () => {
       setRequestCount(current => current + 1)
       await wait(1200)
-      setEnabled(nextValue)
+      onSuccess(nextValue)
     })
   }
 
+  return {
+    requestCount,
+    isPending,
+    mutate,
+  }
+}
+
+const MutationLoadingDemo = () => {
+  const autoRetrySetting = useMockAutoRetrySettingQuery()
+  const updateAutoRetrySetting = useMockUpdateAutoRetrySettingMutation({
+    onSuccess: autoRetrySetting.setData,
+  })
+  const statusText = updateAutoRetrySetting.isPending
+    ? 'Saving changes...'
+    : autoRetrySetting.data.enabled
+      ? 'Auto retry is enabled.'
+      : 'Auto retry is disabled.'
+
   return (
-    <div className="w-[340px] space-y-4 rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-sm">
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-text-primary">Mutation Loading Guard</p>
-        <p className="text-xs text-text-tertiary">
-          Click once to start a simulated mutate call. While the request is pending, the switch enters
-          {' '}
-          <code className="rounded-sm bg-state-base-hover px-1 py-0.5 text-[11px]">loading</code>
-          {' '}
-          and rejects duplicate clicks.
-        </p>
-      </div>
+    <div className="grid w-90 gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg p-4 shadow-sm">
+      <FieldRoot name="autoRetry">
+        <FieldLabel className="flex items-center justify-between gap-4">
+          <span className="system-sm-medium text-text-secondary">Enable auto retry</span>
+          <Switch
+            size="lg"
+            checked={autoRetrySetting.data.enabled}
+            loading={updateAutoRetrySetting.isPending}
+            onCheckedChange={updateAutoRetrySetting.mutate}
+          />
+        </FieldLabel>
+        <FieldDescription>Retry failed workflow runs without manual intervention.</FieldDescription>
+      </FieldRoot>
 
-      <div className="flex items-center justify-between rounded-xl border border-components-panel-border-subtle bg-background-default-dodge px-3 py-2 shadow-sm">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-text-primary">Enable Auto Retry</p>
-          <p className="text-xs text-text-tertiary">
-            {isPending ? 'Saving…' : enabled ? 'Saved as on' : 'Saved as off'}
-          </p>
-        </div>
-        <Switch
-          size="lg"
-          checked={enabled}
-          loading={isPending}
-          onCheckedChange={handleChange}
-          aria-label="Enable Auto Retry"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-xs text-text-tertiary">
-        <div className="rounded-lg bg-state-base-hover px-3 py-2">
-          <div className="font-medium text-text-secondary">Committed Value</div>
-          <div>{enabled ? 'On' : 'Off'}</div>
-        </div>
-        <div className="rounded-lg bg-state-base-hover px-3 py-2">
-          <div className="font-medium text-text-secondary">Mutate Count</div>
-          <div>{requestCount}</div>
-        </div>
-      </div>
+      <span className="text-xs text-text-tertiary" aria-live="polite">
+        {statusText}
+        {' '}
+        Save attempts:
+        {' '}
+        {updateAutoRetrySetting.requestCount}
+      </span>
     </div>
   )
 }
@@ -306,7 +364,7 @@ export const MutationLoadingGuard: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Simulates a controlled switch backed by an async mutate call. The component keeps its previous committed value, sets `loading` during the request, and blocks duplicate clicks until the mutation resolves.',
+        story: 'Controlled switch that enters loading while the change is saved.',
       },
     },
   },
@@ -315,19 +373,19 @@ export const MutationLoadingGuard: Story = {
 const SkeletonDemo = () => (
   <div className="flex flex-col items-center space-y-4">
     <div className="flex items-center gap-3">
-      <SwitchSkeleton size="xs" />
+      <SwitchSkeleton size="xs" aria-hidden="true" />
       <span className="text-sm text-gray-700">Extra Small skeleton</span>
     </div>
     <div className="flex items-center gap-3">
-      <SwitchSkeleton size="sm" />
+      <SwitchSkeleton size="sm" aria-hidden="true" />
       <span className="text-sm text-gray-700">Small skeleton</span>
     </div>
     <div className="flex items-center gap-3">
-      <SwitchSkeleton size="md" />
+      <SwitchSkeleton size="md" aria-hidden="true" />
       <span className="text-sm text-gray-700">Regular skeleton</span>
     </div>
     <div className="flex items-center gap-3">
-      <SwitchSkeleton size="lg" />
+      <SwitchSkeleton size="lg" aria-hidden="true" />
       <span className="text-sm text-gray-700">Large skeleton</span>
     </div>
   </div>
@@ -338,7 +396,7 @@ export const Skeleton: Story = {
   parameters: {
     docs: {
       description: {
-        story: '`SwitchSkeleton` renders a non-interactive placeholder with `bg-text-quaternary opacity-20`. Exported from `@langgenius/dify-ui/switch` alongside `Switch`.',
+        story: 'Non-interactive placeholders for switch loading layouts.',
       },
     },
   },

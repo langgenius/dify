@@ -3,13 +3,13 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type PublishAsKnowledgePipelineModalProps = {
@@ -51,17 +51,7 @@ const PublishAsKnowledgePipelineModal = ({
         icon_url: '',
       })
     }
-    setShowAppIconPicker(false)
   }, [])
-  const handleCloseIconPicker = useCallback(() => {
-    setPipelineIcon({
-      icon_type: pipelineIcon.icon_type,
-      icon: pipelineIcon.icon,
-      icon_background: pipelineIcon.icon_background,
-      icon_url: pipelineIcon.icon_url,
-    })
-    setShowAppIconPicker(false)
-  }, [pipelineIcon])
 
   const handleConfirm = () => {
     if (confirmDisabled)
@@ -118,9 +108,10 @@ const PublishAsKnowledgePipelineModal = ({
               </div>
               <Textarea
                 className="resize-none"
+                aria-label={t('common.publishAsPipeline.description', { ns: 'pipeline' })}
                 placeholder={t('common.publishAsPipeline.descriptionPlaceholder', { ns: 'pipeline' }) || ''}
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onValueChange={value => setDescription(value)}
               />
             </div>
           </div>
@@ -141,8 +132,12 @@ const PublishAsKnowledgePipelineModal = ({
           </div>
           {showAppIconPicker && (
             <AppIconPicker
+              open={showAppIconPicker}
+              initialEmoji={pipelineIcon.icon_type === 'emoji'
+                ? { icon: pipelineIcon.icon, background: pipelineIcon.icon_background }
+                : undefined}
+              onOpenChange={setShowAppIconPicker}
               onSelect={handleSelectIcon}
-              onClose={handleCloseIconPicker}
             />
           )}
         </DialogContent>

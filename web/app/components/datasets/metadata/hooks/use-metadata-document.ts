@@ -10,11 +10,11 @@ import { useBatchUpdateDocMetadata, useCreateMetaData, useDatasetMetaData, useDo
 import { DataType } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentId: string
   docDetail: FullDocumentDetail
-}
+}>
 const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const { t } = useTranslation()
   const { dataset } = useDatasetDetailContext()

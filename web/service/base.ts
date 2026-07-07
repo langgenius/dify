@@ -21,6 +21,7 @@ import type {
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
   ParallelBranchStartedResponse,
+  ReasoningChunkResponse,
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
@@ -31,6 +32,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { asyncRunSafe } from '@/utils'
+import { isClient } from '@/utils/client'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
@@ -53,6 +55,13 @@ type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
+type UnhandledEventError = {
+  conversationId?: string
+  errorCode?: string
+  errorMessage: string
+  messageId?: string
+}
+type IOnUnhandledEvent = (event: Record<string, unknown>) => UnhandledEventError | void
 
 type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
 type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
@@ -65,6 +74,7 @@ type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => voi
 type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
 type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
+type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
@@ -94,11 +104,13 @@ export type IOtherOptions = {
   request?: Request
 
   onData?: IOnData // for stream
+  onReasoning?: IOnReasoning
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
 
@@ -132,22 +144,22 @@ export type IOtherOptions = {
 }
 
 function jumpTo(url: string) {
-  if (!url)
+  if (!url || !isClient)
     return
-  const targetPath = new URL(url, globalThis.location.origin).pathname
-  if (targetPath === globalThis.location.pathname)
+  const targetPath = new URL(url, window.location.origin).pathname
+  if (targetPath === window.location.pathname)
     return
-  globalThis.location.href = url
+  window.location.href = url
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
 
 export const buildSigninUrlWithRedirect = (): string => {
-  const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+  const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
 
   // Only preserve redirect URL for OAuth authorize pages
-  if (globalThis.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
-    const currentUrl = globalThis.location.href
+  if (isClient && window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+    const currentUrl = window.location.href
     return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
   }
 
@@ -165,17 +177,20 @@ function unicodeToChar(text: string) {
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
-  const params = new URLSearchParams()
-  // prevent redirect loop
-  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+  if (!isClient)
     return
 
-  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
+  const params = new URLSearchParams()
+  // prevent redirect loop
+  if (window.location.pathname === WBB_APP_LOGIN_PATH)
+    return
+
+  params.append('redirect_url', encodeURIComponent(`${window.location.pathname}${window.location.search}`))
   if (message)
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+  window.location.href = `${window.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
@@ -219,6 +234,8 @@ export const handleStream = (
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
+  onReasoning?: IOnReasoning,
+  onUnhandledEvent?: IOnUnhandledEvent,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -228,6 +245,16 @@ export const handleStream = (
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
+  const completeWithError = (errorMessage: string, errorCode?: string) => {
+    onData('', false, {
+      conversationId: bufferObj?.conversation_id,
+      messageId: bufferObj?.message_id ?? '',
+      errorMessage,
+      errorCode,
+    })
+    onCompleted?.(true, errorMessage)
+  }
+
   function read() {
     let hasError = false
     reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
@@ -336,6 +363,9 @@ export const handleStream = (
             else if (bufferObj.event === 'text_chunk') {
               onTextChunk?.(bufferObj as TextChunkResponse)
             }
+            else if (bufferObj.event === 'reasoning_chunk') {
+              onReasoning?.(bufferObj as ReasoningChunkResponse)
+            }
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
             }
@@ -370,6 +400,18 @@ export const handleStream = (
               onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
             }
             else {
+              const unhandledEventError = onUnhandledEvent?.(bufferObj)
+              if (unhandledEventError) {
+                onData('', false, {
+                  conversationId: unhandledEventError.conversationId,
+                  messageId: unhandledEventError.messageId ?? '',
+                  errorMessage: unhandledEventError.errorMessage,
+                  errorCode: unhandledEventError.errorCode,
+                })
+                hasError = true
+                onCompleted?.(true, unhandledEventError.errorMessage)
+                return
+              }
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
             }
           }
@@ -388,6 +430,8 @@ export const handleStream = (
       }
       if (!hasError)
         read()
+    }, (e: unknown) => {
+      completeWithError(String(e), 'stream_read_error')
     })
   }
   read()
@@ -457,6 +501,7 @@ export const ssePost = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -489,6 +534,7 @@ export const ssePost = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -505,6 +551,7 @@ export const ssePost = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
@@ -540,7 +587,9 @@ export const ssePost = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               ssePost(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }
@@ -594,12 +643,15 @@ export const ssePost = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
 }
 
@@ -611,6 +663,7 @@ export const sseGet = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -643,6 +696,7 @@ export const sseGet = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -656,6 +710,7 @@ export const sseGet = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
@@ -687,7 +742,9 @@ export const sseGet = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               sseGet(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }
@@ -741,13 +798,113 @@ export const sseGet = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
+}
+
+export type GeneratorStreamCallbacks = {
+  /** Fired once when the planner stage finishes — carries the high-level plan. */
+  onPlan?: (data: Record<string, unknown>) => void
+  /** Fired once when the builder + validation finish — carries the final graph envelope. */
+  onResult?: (data: Record<string, unknown>) => void
+  onError?: (message: string) => void
+  onCompleted?: () => void
+  getAbortController?: (abortController: AbortController) => void
+}
+
+/**
+ * Dedicated SSE consumer for the workflow generator's plan-first stream
+ * (`/workflow-generate/stream`). Kept separate from ``ssePost`` /
+ * ``handleStream`` on purpose: those are wired to the chat / workflow-run event
+ * vocabulary (``message``, ``node_finished``, …) and threading two more
+ * positional callbacks through that shared, high-blast-radius path isn't worth
+ * it. This helper reuses the same cookie-auth + CSRF + abort setup but
+ * only understands the generator's two events: ``plan`` then ``result``.
+ */
+export const sseGeneratorPost = (
+  url: string,
+  body: unknown,
+  { onPlan, onResult, onError, onCompleted, getAbortController }: GeneratorStreamCallbacks,
+) => {
+  const abortController = new AbortController()
+  const baseOptions = getBaseOptions()
+  const options = Object.assign({}, baseOptions, {
+    method: 'POST',
+    signal: abortController.signal,
+    headers: new Headers({
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+      'Content-Type': ContentType.json,
+    }),
+    body: JSON.stringify(body),
+  } as RequestInit)
+
+  getAbortController?.(abortController)
+
+  const urlWithPrefix = formatURL(url, false)
+
+  const fail = (e: unknown) => {
+    // Aborts are intentional (modal close / regenerate) — never surface them.
+    if (e instanceof Error && e.name === 'AbortError')
+      return
+    onError?.(`${e}`)
+  }
+
+  globalThis.fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (res.status === 401) {
+          refreshAccessTokenOrReLogin(TIME_OUT)
+            .then(() => sseGeneratorPost(url, body, { onPlan, onResult, onError, onCompleted, getAbortController }))
+            .catch(() => onError?.('Unauthorized'))
+          return
+        }
+        res.json().then((data: { message?: string }) => onError?.(data?.message || 'Server Error')).catch(() => onError?.('Server Error'))
+        return
+      }
+
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      const read = () => {
+        reader?.read().then(({ done, value }) => {
+          if (done) {
+            onCompleted?.()
+            return
+          }
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          // Process every complete line; keep the trailing partial in the buffer.
+          lines.slice(0, -1).forEach((message) => {
+            if (!message.startsWith('data: '))
+              return
+            let obj: Record<string, unknown>
+            try {
+              obj = JSON.parse(message.slice(6))
+            }
+            catch {
+              // A chunk boundary split the JSON — it'll re-arrive intact next read.
+              return
+            }
+            if (obj.event === 'plan')
+              onPlan?.(obj)
+            else if (obj.event === 'result')
+              onResult?.(obj)
+          })
+          buffer = lines[lines.length - 1] || ''
+          read()
+        }).catch(fail)
+      }
+      read()
+    })
+    .catch(fail)
 }
 
 // base request
@@ -759,10 +916,13 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
+      if (!isClient)
+        return Promise.reject(err)
+
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+      const loginUrl = `${window.location.origin}${basePath}/signin`
       if (parseErr) {
-        globalThis.location.href = loginUrl
+        window.location.href = loginUrl
         return Promise.reject(err)
       }
       if (/\/login/.test(url))
@@ -780,7 +940,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
-        globalThis.location.reload()
+        window.location.reload()
         return Promise.reject(err)
       }
       const {
@@ -796,11 +956,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/init`)
+        jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        jumpTo(`${globalThis.location.origin}${basePath}/install`)
+        jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
 
@@ -808,7 +968,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (window.location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
+      if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }

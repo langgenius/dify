@@ -100,6 +100,6 @@ describe('Slider', () => {
     )
 
     await expect.element(screen.getByRole('slider', { name: 'Temperature' })).toHaveAttribute('aria-valuenow', '50')
-    await expect.element(screen.getByText('Temperature')).toHaveClass('py-1', 'system-sm-medium', 'text-text-secondary')
+    await expect.element(screen.getByText('Temperature')).toBeInTheDocument()
   })
 })

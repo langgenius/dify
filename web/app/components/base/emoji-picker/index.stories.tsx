@@ -47,20 +47,20 @@ const EmojiPickerDemo = () => {
         </pre>
       </div>
 
-      {open && (
-        <EmojiPicker
-          onSelect={(emoji, background) => {
-            setSelection({ emoji, background })
-            setOpen(false)
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      <EmojiPicker
+        open={open}
+        onOpenChange={setOpen}
+        onSelect={(emoji, background) => setSelection({ emoji, background })}
+      />
     </div>
   )
 }
 
 export const Playground: Story = {
+  args: {
+    open: false,
+    onOpenChange: () => {},
+  },
   render: () => <EmojiPickerDemo />,
   parameters: {
     docs: {
@@ -73,15 +73,11 @@ const [selection, setSelection] = useState<{ emoji: string; background: string }
 return (
   <>
     <button onClick={() => setOpen(true)}>Open emoji picker…</button>
-    {open && (
-      <EmojiPicker
-        onSelect={(emoji, background) => {
-          setSelection({ emoji, background })
-          setOpen(false)
-        }}
-        onClose={() => setOpen(false)}
-      />
-    )}
+    <EmojiPicker
+      open={open}
+      onOpenChange={setOpen}
+      onSelect={(emoji, background) => setSelection({ emoji, background })}
+    />
   </>
 )
         `.trim(),

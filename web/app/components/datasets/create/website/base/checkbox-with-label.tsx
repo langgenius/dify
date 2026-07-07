@@ -3,14 +3,14 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   isChecked: boolean
   onChange: (isChecked: boolean) => void
   label: string
   labelClassName?: string
   tooltip?: string
-}
+}>
 
 export default function CheckboxWithLabel({
   className = '',

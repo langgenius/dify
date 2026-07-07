@@ -1,17 +1,20 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
 import type { ComponentProps } from 'react'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
-import { TagPanel } from './tag-panel'
+import { TagSearchContent } from './tag-search-content'
 import { TagTrigger } from './tag-trigger'
 
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxRootProps<TagComboboxItem, true>['filter']> = (tag, query) => tag.name.includes(query)
@@ -43,6 +46,7 @@ type TagSelectorProps = TagSelectorRootProps & TagSelectorContentProps & {
   targetId: string
   type: TagType
   value: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
 }
@@ -51,6 +55,7 @@ export const TagSelector = ({
   targetId,
   type,
   value,
+  canBindOrUnbindTags,
   onOpenTagManagement = () => {},
   onTagsChange,
   placement = 'bottom-start',
@@ -66,12 +71,15 @@ export const TagSelector = ({
   const [open, setOpen] = useState(false)
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const {
     isPending: isCreatingTag,
     mutate: createTag,
-  } = useMutation(consoleQuery.tags.create.mutationOptions())
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  } = useMutation(consoleQuery.tags.post.mutationOptions())
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
@@ -90,7 +98,10 @@ export const TagSelector = ({
       return tagName ? [tagName] : []
     })
   }, [tagList, value])
-  const triggerLabel = tagNames.length ? tagNames.join(', ') : t('tag.addTag', { ns: 'common' })
+  const emptyTriggerLabel = canBindOrUnbindTags
+    ? t('tag.addTag', { ns: 'common' })
+    : t('tag.noTag', { ns: 'common' })
+  const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
@@ -109,18 +120,18 @@ export const TagSelector = ({
         nextItems.push(tag)
     }
 
-    if (inputValue && nextItems.every(tag => tag.name !== inputValue)) {
+    if (canManageTags && inputValue && nextItems.every(tag => tag.name !== inputValue)) {
       nextItems.push({
         id: `__create_tag__:${inputValue}`,
         name: inputValue,
         type,
-        binding_count: 0,
+        binding_count: '0',
         isCreateOption: true,
       })
     }
 
     return nextItems
-  }, [inputValue, tagList, type, value])
+  }, [canManageTags, inputValue, tagList, type, value])
 
   const applyTagBindings = useCallback(() => {
     const draftTagIds = draftTags.map(tag => tag.id)
@@ -167,7 +178,7 @@ export const TagSelector = ({
   }, [applyTagBindings, value])
 
   const createNewTag = useCallback((name: string) => {
-    if (!name || isCreatingTag)
+    if (!canManageTags || !name || isCreatingTag)
       return
 
     createTag({
@@ -184,7 +195,7 @@ export const TagSelector = ({
         toast.error(t('tag.failed', { ns: 'common' }))
       },
     })
-  }, [createTag, isCreatingTag, t, type])
+  }, [canManageTags, createTag, isCreatingTag, t, type])
 
   const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
     const createOption = nextTags.find(isCreateTagOption)
@@ -212,13 +223,17 @@ export const TagSelector = ({
       isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
+        disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >
-        <TagTrigger tags={tagNames} />
+        <TagTrigger
+          tags={tagNames}
+          canBindOrUnbindTags={canBindOrUnbindTags}
+        />
       </ComboboxTrigger>
       <ComboboxContent
         placement={placement}
@@ -229,10 +244,11 @@ export const TagSelector = ({
         popupProps={popupProps}
         popupClassName={cn('w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]', popupClassName)}
       >
-        <TagPanel
+        <TagSearchContent
           type={type}
           inputValue={inputValue}
           onInputValueChange={setInputValue}
+          canBindOrUnbindTags={canBindOrUnbindTags}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />

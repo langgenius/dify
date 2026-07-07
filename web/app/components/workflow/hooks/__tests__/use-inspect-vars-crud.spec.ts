@@ -61,7 +61,22 @@ describe('useInspectVarsCrud', () => {
     })
   })
 
-  it('appends query/files system vars to start-node inspect vars and filters them from the system list', () => {
+  it('should pass the flow id to shared variable queries for app flows', () => {
+    renderWorkflowHook(() => useInspectVarsCrud(), {
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
+  })
+
+  it('should append query and files vars to the start node and keep other system vars separate', () => {
     const hasNodeInspectVars = vi.fn(() => true)
     const deleteAllInspectorVars = vi.fn()
     const fetchInspectVarValue = vi.fn()
@@ -118,11 +133,11 @@ describe('useInspectVarsCrud', () => {
     expect(result.current.deleteAllInspectorVars).toBe(deleteAllInspectorVars)
   })
 
-  it('uses an empty flow id for rag pipeline conversation and system value queries', () => {
+  it('should use an empty flow id for shared variable queries in rag pipelines', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
       hooksStoreProps: {
         configsMap: {
-          flowId: 'rag-flow',
+          flowId: 'pipeline-1',
           flowType: FlowType.ragPipeline,
           fileSettings: {} as never,
         },
@@ -131,5 +146,20 @@ describe('useInspectVarsCrud', () => {
 
     expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
     expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
+  })
+
+  it('should use an empty flow id for shared variable queries in snippets', () => {
+    renderWorkflowHook(() => useInspectVarsCrud(), {
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'snippet-1',
+          flowType: FlowType.snippet,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
   })
 })

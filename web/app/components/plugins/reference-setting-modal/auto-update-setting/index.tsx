@@ -3,16 +3,17 @@ import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { RiTimeLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Label from '../label'
 import PluginsPicker from './plugins-picker'
 import StrategyPicker from './strategy-picker'
@@ -21,10 +22,10 @@ import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds,
 
 const i18nPrefix = 'autoUpdate'
 
-type Props = {
+type Props = Readonly<{
   payload: AutoUpdateConfig
   onChange: (payload: AutoUpdateConfig) => void
-}
+}>
 
 const SettingTimeZone: FC<{
   children?: React.ReactNode
@@ -36,7 +37,7 @@ const SettingTimeZone: FC<{
     <button
       type="button"
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
     >
       {children}
     </button>
@@ -47,7 +48,10 @@ const AutoUpdateSetting: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const {
     strategy_setting,
@@ -84,6 +88,20 @@ const AutoUpdateSetting: FC<Props> = ({
         return []
     }
   }, [upgrade_mode, exclude_plugins, include_plugins])
+  const scopeOptions = useMemo(() => [
+    {
+      value: AUTO_UPDATE_MODE.update_all,
+      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.update_all}`, { ns: 'plugin' }),
+    },
+    {
+      value: AUTO_UPDATE_MODE.exclude,
+      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.exclude}`, { ns: 'plugin' }),
+    },
+    {
+      value: AUTO_UPDATE_MODE.partial,
+      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.partial}`, { ns: 'plugin' }),
+    },
+  ], [t])
 
   const handlePluginsChange = useCallback((newPlugins: string[]) => {
     if (upgrade_mode === AUTO_UPDATE_MODE.partial) {
@@ -168,17 +186,26 @@ const AutoUpdateSetting: FC<Props> = ({
             </div>
             <div>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })} />
-              <div className="mt-1 flex w-full items-start justify-between gap-2">
-                {[AUTO_UPDATE_MODE.update_all, AUTO_UPDATE_MODE.exclude, AUTO_UPDATE_MODE.partial].map(option => (
-                  <OptionCard
-                    key={option}
-                    title={t(`${i18nPrefix}.upgradeMode.${option}`, { ns: 'plugin' })}
-                    onSelect={() => handleChange('upgrade_mode')(option)}
-                    selected={upgrade_mode === option}
-                    className="flex-1"
-                  />
+              <SegmentedControl<AUTO_UPDATE_MODE>
+                aria-label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })}
+                className="mt-1 flex w-full"
+                value={[upgrade_mode]}
+                onValueChange={(nextValue) => {
+                  const selectedValue = nextValue[0]
+                  if (selectedValue)
+                    handleChange('upgrade_mode')(selectedValue)
+                }}
+              >
+                {scopeOptions.map(option => (
+                  <SegmentedControlItem<AUTO_UPDATE_MODE>
+                    key={option.value}
+                    value={option.value}
+                    className="flex-1 hover:bg-state-base-hover-alt data-pressed:text-text-accent-light-mode-only data-pressed:hover:bg-components-segmented-control-item-active-bg"
+                  >
+                    <span className="p-0.5 whitespace-nowrap">{option.label}</span>
+                  </SegmentedControlItem>
                 ))}
-              </div>
+              </SegmentedControl>
 
               {upgrade_mode !== AUTO_UPDATE_MODE.update_all && (
                 <PluginsPicker

@@ -4,19 +4,20 @@ import {
   RiCalendarLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label?: string
   value?: number
   onChange: (date: number | null) => void
-}
+}>
 const WrappedDatePicker = ({
   className,
   label,
@@ -24,7 +25,10 @@ const WrappedDatePicker = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {

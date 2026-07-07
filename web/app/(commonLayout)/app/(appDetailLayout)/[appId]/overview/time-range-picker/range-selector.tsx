@@ -17,11 +17,11 @@ type TimePeriodOption = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   isCustomRange: boolean
   ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParamsWithTimeRange) => void
-}
+}>
 
 const RangeSelector: FC<Props> = ({
   isCustomRange,
@@ -36,9 +36,9 @@ const RangeSelector: FC<Props> = ({
       name: t(`filter.period.${range.name}`, { ns: 'appLog' }),
     }))
   }, [ranges, t])
-  const [value, setValue] = useState('0')
+  const [value, setValue] = useState(0)
   const selectedItem = useMemo(() => {
-    return items.find(item => String(item.value) === value) ?? null
+    return items.find(item => item.value === value) ?? null
   }, [items, value])
 
   const handleSelectRange = useCallback((item: TimePeriodOption) => {
@@ -50,20 +50,20 @@ const RangeSelector: FC<Props> = ({
       period = { start: startOfToday, end: endOfToday }
     }
     else {
-      period = { start: today.subtract(item.value as number, 'day').startOf('day'), end: today.endOf('day') }
+      period = { start: today.subtract(item.value, 'day').startOf('day'), end: today.endOf('day') }
     }
     onSelect({ query: period!, name })
   }, [onSelect])
 
   return (
-    <Select
-      value={selectedItem ? String(selectedItem.value) : null}
+    <Select<number>
+      value={selectedItem?.value ?? null}
       open={open}
       onOpenChange={setOpen}
       onValueChange={(nextValue) => {
-        if (!nextValue)
+        if (nextValue == null)
           return
-        const nextItem = items.find(item => String(item.value) === nextValue)
+        const nextItem = items.find(item => item.value === nextValue)
         if (!nextItem)
           return
         setValue(nextValue)
@@ -80,7 +80,7 @@ const RangeSelector: FC<Props> = ({
       </SelectTrigger>
       <SelectContent className="translate-x-[-24px]" popupClassName="w-[200px]" listClassName="p-1">
         {items.map(item => (
-          <SelectItem key={item.value} value={String(item.value)} className="h-8 py-0 pr-2 pl-7 system-md-regular">
+          <SelectItem key={item.value} value={item.value} className="h-8 py-0 pr-2 pl-7 system-md-regular">
             <SelectItemText className="px-0">{item.name}</SelectItemText>
             <SelectItemIndicator className="absolute top-[8px] left-2 ml-0" />
           </SelectItem>

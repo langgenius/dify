@@ -1,8 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { RiAlertFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AgentLogItem from './agent-log-item'
-import AgentLogNav from './agent-log-nav'
+import { AgentLogNav } from './agent-log-nav'
 
 type AgentResultPanelProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]
@@ -45,7 +44,7 @@ const AgentResultPanel = ({
               }}
             >
             </div>
-            <RiAlertFill className="mr-1.5 size-4 text-text-warning-secondary" />
+            <span aria-hidden className="mr-1.5 i-ri-alert-fill size-4 text-text-warning-secondary" />
             <div className="system-xs-medium text-text-primary">
               {t('circularInvocationTip', { ns: 'runLog' })}
             </div>

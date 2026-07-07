@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -34,6 +34,16 @@ import { UserActionButtonType } from './types'
 
 const i18nPrefix = 'nodes.humanInput'
 
+const getOutputVarType = (input: FormInputItem): VarType => {
+  if (input.type === 'file')
+    return VarType.file
+
+  if (input.type === 'file-list')
+    return VarType.arrayFile
+
+  return VarType.string
+}
+
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   id,
   data,
@@ -59,7 +69,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(varPayload.type)
     },
   })
 
@@ -226,7 +236,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             <VarItem
               key={input.output_variable_name}
               name={input.output_variable_name}
-              type={VarType.string}
+              type={getOutputVarType(input)}
               description="Form input value"
             />
           ))

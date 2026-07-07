@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -18,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import Indicator from '@/app/components/header/indicator'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
@@ -31,11 +31,11 @@ import { NAME_FIELD } from './utils'
 
 type EndpointModalFormSchemas = ComponentProps<typeof EndpointModal>['formSchemas']
 
-type Props = {
+type Props = Readonly<{
   pluginDetail: PluginDetail
   data: EndpointListItem
   handleChange: () => void
-}
+}>
 
 const EndpointCard = ({
   pluginDetail,
@@ -169,11 +169,11 @@ const EndpointCard = ({
             </ActionButton>
           </div>
         </div>
-        {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
+        {(data.declaration.endpoints ?? []).filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
           <div key={index} className="flex h-6 items-center">
             <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">{endpoint.method}</div>
             <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
-              <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
+              <div className="truncate">{`${data.url}${endpoint.path}`}</div>
               <Tooltip>
                 <TooltipTrigger
                   render={(
@@ -199,13 +199,13 @@ const EndpointCard = ({
       <div className="flex items-center justify-between p-2 pl-3">
         {active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
-            <Indicator color="green" />
+            <StatusDot status="success" />
             {t('detailPanel.serviceOk', { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
-            <Indicator color="gray" />
+            <StatusDot status="disabled" />
             {t('detailPanel.disabled', { ns: 'plugin' })}
           </div>
         )}
@@ -220,7 +220,7 @@ const EndpointCard = ({
         open={isShowDisableConfirm}
         onOpenChange={handleDisableConfirmOpenChange}
       >
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
@@ -240,7 +240,7 @@ const EndpointCard = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}

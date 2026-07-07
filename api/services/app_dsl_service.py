@@ -11,13 +11,13 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -39,8 +39,10 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -50,7 +52,6 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
@@ -59,6 +60,7 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
+    permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -97,6 +99,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         app_id: str | None = None,
+        import_app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -126,17 +129,18 @@ class AppDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
 
+                content = raw_content.decode("utf-8")
                 if not content:
                     return Import(
                         id=import_id,
@@ -157,6 +161,12 @@ class AppDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
+            if dsl_content_size(content) > DSL_MAX_SIZE:
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
 
         # Process YAML content
         try:
@@ -262,6 +272,7 @@ class AppDslService:
                 icon=icon,
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
+                import_app_id=import_app_id,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -385,6 +396,7 @@ class AppDslService:
         icon: str | None = None,
         icon_background: str | None = None,
         dependencies: list[PluginDependency] | None = None,
+        import_app_id: str | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -417,7 +429,7 @@ class AppDslService:
 
             # Create new app
             app = App()
-            app.id = str(uuid4())
+            app.id = import_app_id or str(uuid4())
             app.tenant_id = account.current_tenant_id
             app.mode = app_mode
             app.name = name or app_data.get("name", "")
@@ -429,6 +441,7 @@ class AppDslService:
             app.enable_api = True
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
+            app.maintainer = account.id
             app.updated_by = account.id
 
             self._session.add(app)
@@ -554,7 +567,7 @@ class AppDslService:
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # TODO: refactor: we need a better way to filter workspace related data from nodes

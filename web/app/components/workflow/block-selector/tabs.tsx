@@ -1,4 +1,4 @@
-import type { Dispatch, FC, SetStateAction } from 'react'
+import type { Dispatch, FC, ReactNode, SetStateAction } from 'react'
 import type {
   BlockEnum,
   NodeDefault,
@@ -10,7 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { useDocLink } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
@@ -35,12 +36,17 @@ type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: ReactNode
+    disabledTipLinkKey?: 'startNodesDocs'
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  hasUserInputNode?: boolean
+  hasTriggerNode?: boolean
+  snippetsElem?: React.ReactNode
 }
 
 const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
@@ -105,11 +111,15 @@ const TabHeaderItem = ({
   activeTab,
   onActiveTabChange,
   disabledTip,
+  disabledTipLinkHref,
+  disabledTipLinkLabel,
 }: {
   tab: TabsProps['tabs'][number]
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
-  disabledTip: string
+  disabledTip: ReactNode
+  disabledTipLinkHref?: string
+  disabledTipLinkLabel?: string
 }) => {
   const className = cn(
     'relative mr-0.5 flex h-8 items-center rounded-t-lg px-3 system-sm-medium',
@@ -142,8 +152,21 @@ const TabHeaderItem = ({
             </button>
           )}
         />
-        <TooltipContent placement="top" className="max-w-[200px]">
-          {disabledTip}
+        <TooltipContent placement="top" className="max-w-[230px] rounded-xl px-4 py-3.5">
+          <div className="flex flex-col items-start gap-1 system-xs-regular text-text-secondary">
+            <p>{disabledTip}</p>
+            {disabledTipLinkHref && disabledTipLinkLabel && (
+              <a
+                className="text-text-accent hover:underline"
+                href={disabledTipLinkHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+              >
+                {disabledTipLinkLabel}
+              </a>
+            )}
+          </div>
         </TooltipContent>
       </Tooltip>
     )
@@ -177,8 +200,12 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  hasUserInputNode = false,
+  hasTriggerNode = false,
+  snippetsElem,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -219,10 +246,10 @@ const Tabs: FC<TabsProps> = ({
   }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
 
   return (
-    <div onClick={e => e.stopPropagation()}>
+    <div className="w-full min-w-0" onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className="relative flex bg-background-section-burn pt-1 pl-1">
+          <div className="relative flex w-full min-w-0 bg-background-section-burn pt-1 pl-1">
             {
               tabs.map(tab => (
                 <TabHeaderItem
@@ -230,7 +257,9 @@ const Tabs: FC<TabsProps> = ({
                   tab={tab}
                   activeTab={activeTab}
                   onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
+                  disabledTip={tab.disabledTip || disabledTip}
+                  disabledTipLinkHref={tab.disabledTipLinkKey === 'startNodesDocs' ? docLink('/use-dify/nodes/trigger/overview') : undefined}
+                  disabledTipLinkLabel={tab.disabledTipLinkKey === 'startNodesDocs' ? t('tabs.startDisabledTipLearnMore', { ns: 'workflow' }) : undefined}
                 />
               ))
             }
@@ -243,6 +272,8 @@ const Tabs: FC<TabsProps> = ({
           <div className="border-t border-divider-subtle">
             <AllStartBlocks
               allowUserInputSelection={allowStartNodeSelection}
+              hasUserInputNode={hasUserInputNode}
+              hasTriggerNode={hasTriggerNode}
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
@@ -295,6 +326,15 @@ const Tabs: FC<TabsProps> = ({
             }}
           />
         )
+      }
+      {
+        activeTab === TabsEnum.Snippets && Boolean(snippetsElem)
+          ? (
+              <div className="border-t border-divider-subtle">
+                {snippetsElem}
+              </div>
+            )
+          : null
       }
     </div>
   )

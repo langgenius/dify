@@ -15,8 +15,19 @@
 # Agents
 /.agents/skills/ @hyoban
 
+# Packages
+/packages/ @lyzno1
+/packages/contracts/ @crazywoola @laipz8200
+
 # Docs
 /docs/ @crazywoola
+
+# CLI
+/cli/ @GareArc
+/.github/workflows/cli-tests.yml @GareArc
+
+# E2E
+/e2e/ @lyzno1
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost
@@ -139,6 +150,14 @@
 # Frontend
 /web/ @iamjoel
 
+# Frontend - Platform and Features
+/web/config/ @lyzno1
+/web/contract/ @lyzno1
+/web/env.ts @lyzno1
+/web/features/ @lyzno1
+/web/hooks/ @lyzno1
+/web/scripts/gen-icons.mjs @lyzno1
+
 # Frontend - Web Tests
 /.github/workflows/web-tests.yml @iamjoel
 
@@ -162,6 +181,7 @@
 
 # Frontend - App - API Documentation
 /web/app/components/develop/ @JzoNgKVO @iamjoel
+/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
@@ -248,7 +268,6 @@
 /web/utils/time.ts @iamjoel @zxhlyh
 /web/utils/format.ts @iamjoel @zxhlyh
 /web/utils/clipboard.ts @iamjoel @zxhlyh
-/web/hooks/use-document-title.ts @iamjoel @zxhlyh
 
 # Frontend - Billing and Education
 /web/app/components/billing/ @iamjoel @zxhlyh

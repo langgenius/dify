@@ -1,12 +1,16 @@
 import logging
 from typing import Literal
+from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import GeneratedAppResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -26,7 +30,7 @@ from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfinite
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.enums import FeedbackRating
-from models.model import AppMode
+from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -47,29 +51,20 @@ class MessageMoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
-register_response_schema_models(web_ns, ResultResponse, SuggestedQuestionsResponse)
+register_response_schema_models(
+    web_ns,
+    GeneratedAppResponse,
+    ResultResponse,
+    SuggestedQuestionsResponse,
+    WebMessageInfiniteScrollPagination,
+)
 
 
 @web_ns.route("/messages")
 class MessageListApi(WebApiResource):
     @web_ns.doc("Get Message List")
     @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
-    @web_ns.doc(
-        params={
-            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": True},
-            "first_id": {
-                "description": "First message ID for pagination",
-                "type": "string",
-                "required": False,
-            },
-            "limit": {
-                "description": "Number of messages to return (1-100)",
-                "type": "integer",
-                "required": False,
-                "default": 20,
-            },
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(MessageListQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -80,9 +75,10 @@ class MessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user):
+    @web_ns.response(200, "Success", web_ns.models[WebMessageInfiniteScrollPagination.__name__])
+    def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         raw_args = request.args.to_dict()
@@ -132,15 +128,16 @@ class MessageFeedbackApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
-    def post(self, app_model, end_user, message_id):
-        message_id = str(message_id)
+    @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
+    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+        message_id_str = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(web_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id,
+                message_id=message_id_str,
                 user=end_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
@@ -155,7 +152,7 @@ class MessageFeedbackApi(WebApiResource):
 class MessageMoreLikeThisApi(WebApiResource):
     @web_ns.doc("Generate More Like This")
     @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
-    @web_ns.expect(web_ns.models[MessageMoreLikeThisQuery.__name__])
+    @web_ns.doc(params=query_params_from_model(MessageMoreLikeThisQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -166,11 +163,13 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @with_session
+    def get(self, session: Session, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         raw_args = request.args.to_dict()
         query = MessageMoreLikeThisQuery.model_validate(raw_args)
@@ -179,9 +178,10 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 user=end_user,
-                message_id=message_id,
+                message_id=message_id_str,
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=streaming,
             )
@@ -222,16 +222,16 @@ class MessageSuggestedQuestionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model, end_user, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        message_id = str(message_id)
+        message_id_str = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.WEB_APP
+                app_model=app_model, user=end_user, message_id=message_id_str, invoke_from=InvokeFrom.WEB_APP
             )
             # questions is a list of strings, not a list of Message objects
         except MessageNotExistsError:

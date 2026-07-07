@@ -1,5 +1,7 @@
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
+from libs.exception import BaseHTTPException
+
 
 class AgentNotFoundError(NotFound):
     description = "Agent not found."
@@ -15,6 +17,16 @@ class AgentNameConflictError(Conflict):
 
 class AgentArchivedError(Conflict):
     description = "Archived agent cannot be modified."
+
+
+class AgentVersionConflictError(Conflict):
+    description = "Agent config version changed. Please reload and try again."
+
+
+class AgentModelNotConfiguredError(BaseHTTPException):
+    error_code = "agent_model_not_configured"
+    description = "Agent App requires the Agent Soul model to be configured."
+    code = 400
 
 
 class AgentSoulLockedError(BadRequest):

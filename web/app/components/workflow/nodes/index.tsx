@@ -46,7 +46,7 @@ export const Panel = memo((props: PanelProps) => {
   if (nodeClass === CUSTOM_NODE) {
     return (
       <BasePanel
-        key={props.id}
+        key={`${props.id}-${nodeData.type}`}
         id={props.id}
         data={props.data}
       >

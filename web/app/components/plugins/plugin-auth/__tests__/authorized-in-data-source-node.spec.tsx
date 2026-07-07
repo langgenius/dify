@@ -2,8 +2,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthorizedInDataSourceNode from '../authorized-in-data-source-node'
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <span data-testid="indicator" data-color={color} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <span data-testid="indicator" data-status={status} />,
 }))
 
 describe('AuthorizedInDataSourceNode', () => {
@@ -19,7 +19,7 @@ describe('AuthorizedInDataSourceNode', () => {
 
   it('renders with green indicator', () => {
     render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByTestId('indicator')).toHaveAttribute('data-color', 'green')
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('renders singular text for 1 authorization', () => {

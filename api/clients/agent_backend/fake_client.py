@@ -17,6 +17,7 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    DeferredToolCallPayload,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -30,10 +31,15 @@ _FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class FakeAgentBackendScenario(StrEnum):
-    """Deterministic fake scenarios for API-side integration tests."""
+    """Deterministic fake scenarios for API-side integration tests.
+
+    ``PAUSED`` represents the API workflow effect. On the Dify Agent wire
+    protocol it is a succeeded run carrying a deferred external tool call.
+    """
 
     SUCCESS = "success"
     FAILED = "failed"
+    PAUSED = "paused"
 
 
 class FakeAgentBackendRunClient:
@@ -89,6 +95,13 @@ class FakeAgentBackendRunClient:
                     updated_at=_FIXED_TIME,
                     error="fake failure",
                 )
+            case FakeAgentBackendScenario.PAUSED:
+                return RunStatusResponse(
+                    run_id=run_id,
+                    status="succeeded",
+                    created_at=_FIXED_TIME,
+                    updated_at=_FIXED_TIME,
+                )
 
     def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         match self.scenario:
@@ -113,5 +126,23 @@ class FakeAgentBackendRunClient:
                         run_id=run_id,
                         created_at=_FIXED_TIME,
                         data=RunFailedEventData(error="fake failure", reason="unit_test"),
+                    ),
+                )
+            case FakeAgentBackendScenario.PAUSED:
+                return (
+                    RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+                    RunSucceededEvent(
+                        id="2-0",
+                        run_id=run_id,
+                        created_at=_FIXED_TIME,
+                        data=RunSucceededEventData(
+                            deferred_tool_call=DeferredToolCallPayload(
+                                tool_call_id="fake-ask-human-1",
+                                tool_name="ask_human",
+                                args={"question": "Agent requested human input."},
+                                metadata={"layer_type": "dify.ask_human", "schema_version": 1},
+                            ),
+                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        ),
                     ),
                 )

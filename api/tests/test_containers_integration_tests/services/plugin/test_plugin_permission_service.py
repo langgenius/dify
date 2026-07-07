@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from models.account import TenantPluginPermission
+from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService
 
 
@@ -27,12 +28,12 @@ def _count_permissions(session: Session, tenant_id: str) -> int:
 class TestGetPermission:
     """Integration tests for PluginPermissionService.get_permission using testcontainers."""
 
-    def test_returns_permission_when_found(self, db_session_with_containers: Session):
+    def test_returns_permission_when_found(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
         permission = TenantPluginPermission(
             tenant_id=tenant_id,
-            install_permission=TenantPluginPermission.InstallPermission.ADMINS,
-            debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
+            install_permission=TenantPluginInstallPermission.ADMINS,
+            debug_permission=TenantPluginDebugPermission.EVERYONE,
         )
         db_session_with_containers.add(permission)
         db_session_with_containers.commit()
@@ -42,10 +43,11 @@ class TestGetPermission:
         assert result is not None
         assert result.id == permission.id
         assert result.tenant_id == tenant_id
-        assert result.install_permission == TenantPluginPermission.InstallPermission.ADMINS
-        assert result.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
+        assert result.install_permission == TenantPluginInstallPermission.ADMINS
+        assert result.debug_permission == TenantPluginDebugPermission.EVERYONE
 
-    def test_returns_none_when_not_found(self, db_session_with_containers: Session):
+    @pytest.mark.usefixtures("flask_app_with_containers")
+    def test_returns_none_when_not_found(self) -> None:
         result = PluginPermissionService.get_permission(_tenant_id())
 
         assert result is None
@@ -54,41 +56,41 @@ class TestGetPermission:
 class TestChangePermission:
     """Integration tests for PluginPermissionService.change_permission using testcontainers."""
 
-    def test_creates_new_permission_when_not_exists(self, db_session_with_containers: Session):
+    def test_creates_new_permission_when_not_exists(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
 
         result = PluginPermissionService.change_permission(
             tenant_id,
-            TenantPluginPermission.InstallPermission.EVERYONE,
-            TenantPluginPermission.DebugPermission.EVERYONE,
+            TenantPluginInstallPermission.EVERYONE,
+            TenantPluginDebugPermission.EVERYONE,
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)
         assert result is True
         assert permission is not None
-        assert permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE
-        assert permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
+        assert permission.install_permission == TenantPluginInstallPermission.EVERYONE
+        assert permission.debug_permission == TenantPluginDebugPermission.EVERYONE
 
-    def test_updates_existing_permission(self, db_session_with_containers: Session):
+    def test_updates_existing_permission(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
         existing = TenantPluginPermission(
             tenant_id=tenant_id,
-            install_permission=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug_permission=TenantPluginPermission.DebugPermission.EVERYONE,
+            install_permission=TenantPluginInstallPermission.EVERYONE,
+            debug_permission=TenantPluginDebugPermission.EVERYONE,
         )
         db_session_with_containers.add(existing)
         db_session_with_containers.commit()
 
         result = PluginPermissionService.change_permission(
             tenant_id,
-            TenantPluginPermission.InstallPermission.ADMINS,
-            TenantPluginPermission.DebugPermission.ADMINS,
+            TenantPluginInstallPermission.ADMINS,
+            TenantPluginDebugPermission.ADMINS,
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)
         assert result is True
         assert permission is not None
         assert permission.id == existing.id
-        assert permission.install_permission == TenantPluginPermission.InstallPermission.ADMINS
-        assert permission.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
+        assert permission.install_permission == TenantPluginInstallPermission.ADMINS
+        assert permission.debug_permission == TenantPluginDebugPermission.ADMINS
         assert _count_permissions(db_session_with_containers, tenant_id) == 1

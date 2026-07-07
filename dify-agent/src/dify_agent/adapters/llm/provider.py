@@ -8,7 +8,6 @@ this provider.
 
 from __future__ import annotations
 
-import json
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import NoReturn
@@ -21,6 +20,12 @@ from typing_extensions import override
 
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.providers import Provider
+
+from dify_agent.plugin_daemon_transport import (
+    decode_plugin_daemon_error_payload,
+    to_plugin_daemon_jsonable,
+    unwrap_plugin_daemon_error,
+)
 
 _DEFAULT_DAEMON_TIMEOUT: float | httpx.Timeout | None = 600.0
 
@@ -83,7 +88,7 @@ class DifyPluginDaemonLLMClient:
         request_data: Mapping[str, object],
         response_model: type[T],
     ) -> AsyncIterator[T]:
-        payload: dict[str, object] = {"data": _to_jsonable(request_data)}
+        payload: dict[str, object] = {"data": to_plugin_daemon_jsonable(request_data)}
         if self.user_id is not None:
             payload["user_id"] = self.user_id
 
@@ -97,14 +102,18 @@ class DifyPluginDaemonLLMClient:
         async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
             if response.is_error:
                 body = (await response.aread()).decode("utf-8", errors="replace")
-                error = _decode_plugin_daemon_error_payload(body)
+                error = decode_plugin_daemon_error_payload(body)
                 if error is not None:
-                    _raise_plugin_daemon_error(
-                        model_name=model_name,
+                    resolved_error = unwrap_plugin_daemon_error(
                         error_type=error["error_type"],
                         message=error["message"],
+                    )
+                    _raise_plugin_daemon_error(
+                        model_name=model_name,
+                        error_type=resolved_error["error_type"],
+                        message=resolved_error["message"],
                         status_code=response.status_code,
-                        body=error,
+                        body=resolved_error,
                     )
                 raise ModelHTTPError(response.status_code, model_name, body or None)
 
@@ -117,13 +126,17 @@ class DifyPluginDaemonLLMClient:
 
                 wrapped = PluginDaemonBasicResponse.model_validate_json(line)
                 if wrapped.code != 0:
-                    error = _decode_plugin_daemon_error_payload(wrapped.message)
+                    error = decode_plugin_daemon_error_payload(wrapped.message)
                     if error is not None:
-                        _raise_plugin_daemon_error(
-                            model_name=model_name,
+                        resolved_error = unwrap_plugin_daemon_error(
                             error_type=error["error_type"],
                             message=error["message"],
-                            body=error,
+                        )
+                        _raise_plugin_daemon_error(
+                            model_name=model_name,
+                            error_type=resolved_error["error_type"],
+                            message=resolved_error["message"],
+                            body=resolved_error,
                         )
                     raise ModelAPIError(
                         model_name,
@@ -199,32 +212,6 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
         return self._client
 
 
-def _to_jsonable(value: object) -> object:
-    if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
-    if isinstance(value, dict):
-        return {key: _to_jsonable(item) for key, item in value.items()}
-    if isinstance(value, list | tuple):
-        return [_to_jsonable(item) for item in value]
-    return value
-
-
-def _decode_plugin_daemon_error_payload(raw_message: str) -> dict[str, str] | None:
-    try:
-        parsed = json.loads(raw_message)
-    except json.JSONDecodeError:
-        return None
-
-    if not isinstance(parsed, dict):
-        return None
-
-    error_type = parsed.get("error_type")
-    message = parsed.get("message")
-    if not isinstance(error_type, str) or not isinstance(message, str):
-        return None
-    return {"error_type": error_type, "message": message}
-
-
 def _raise_plugin_daemon_error(
     *,
     model_name: str,
@@ -236,17 +223,6 @@ def _raise_plugin_daemon_error(
     http_error_body = body or {"error_type": error_type, "message": message}
 
     match error_type:
-        case "PluginInvokeError":
-            nested_error = _decode_plugin_daemon_error_payload(message)
-            if nested_error is not None:
-                _raise_plugin_daemon_error(
-                    model_name=model_name,
-                    error_type=nested_error["error_type"],
-                    message=nested_error["message"],
-                    status_code=status_code,
-                    body=nested_error,
-                )
-            raise ModelAPIError(model_name, message)
         case "PluginDaemonUnauthorizedError" | "InvokeAuthorizationError":
             raise ModelHTTPError(status_code or 401, model_name, http_error_body)
         case "PluginPermissionDeniedError":

@@ -203,18 +203,22 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr data-testid="divider" />,
 }))
 
-vi.mock('@/app/components/base/pagination', () => ({
-  default: ({ current, total, onChange, onLimitChange }: {
-    current: number
-    total: number
-    onChange: (page: number) => void
-    onLimitChange: (limit: number) => void
+vi.mock('@langgenius/dify-ui/pagination', () => ({
+  Pagination: ({ page, totalPages, onPageChange, pageSize }: {
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    pageSize?: {
+      onValueChange: (limit: number) => void
+    }
   }) => (
     <div data-testid="pagination">
-      <span data-testid="current-page">{current}</span>
-      <span data-testid="total-items">{total}</span>
-      <button data-testid="next-page" onClick={() => onChange(current + 1)}>Next</button>
-      <button data-testid="change-limit" onClick={() => onLimitChange(20)}>Change Limit</button>
+      <span data-testid="current-page">{page - 1}</span>
+      <span data-testid="total-pages">{totalPages}</span>
+      <button data-testid="next-page" onClick={() => onPageChange(page + 1)}>Next</button>
+      {pageSize && (
+        <button data-testid="change-limit" onClick={() => pageSize.onValueChange(20)}>Change Limit</button>
+      )}
     </div>
   ),
 }))
@@ -1180,15 +1184,14 @@ describe('Inline callback and hook initialization coverage', () => {
     })
   })
 
-  // Covers paginationTotal in full-doc mode
-  it('should compute pagination total from child chunk data in full-doc mode', () => {
+  it('should compute pagination pages from child chunk data in full-doc mode', () => {
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
     mockChildSegmentListData.total = 42
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('total-items'))!.toHaveTextContent('42')
+    expect(screen.getByTestId('total-pages'))!.toHaveTextContent('5')
   })
 
   // Covers search input change

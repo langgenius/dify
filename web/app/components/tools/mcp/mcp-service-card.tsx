@@ -16,15 +16,14 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
@@ -40,7 +39,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-1">
-      <Indicator color={serverActivated ? 'green' : 'yellow'} />
+      <StatusDot status={serverActivated ? 'success' : 'warning'} />
       <div className={cn('system-xs-semibold-uppercase', serverActivated ? 'text-text-success' : 'text-text-warning')}>
         {serverActivated
           ? t('overview.status.running', { ns: 'appOverview' })
@@ -53,7 +52,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
 type ServerURLSectionProps = {
   serverURL: string
   serverPublished: boolean
-  isCurrentWorkspaceManager: boolean
+  canManageMCP: boolean
   genLoading: boolean
   onRegenerate: () => void
 }
@@ -61,7 +60,7 @@ type ServerURLSectionProps = {
 const ServerURLSection: FC<ServerURLSectionProps> = ({
   serverURL,
   serverPublished,
-  isCurrentWorkspaceManager,
+  canManageMCP,
   genLoading,
   onRegenerate,
 }) => {
@@ -81,25 +80,29 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
           <>
             <CopyFeedback content={serverURL} className="size-6!" />
             <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
-            {isCurrentWorkspaceManager && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <button
-                      type="button"
-                      className="cursor-pointer rounded-md p-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-                      aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
-                      onClick={onRegenerate}
-                    >
-                      <RiLoopLeftLine className={cn('size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
-                    </button>
-                  )}
-                />
-                <TooltipContent>
-                  {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-                </TooltipContent>
-              </Tooltip>
-            )}
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    className={cn(
+                      'rounded-md p-1 outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+                      canManageMCP
+                        ? 'cursor-pointer hover:bg-state-base-hover'
+                        : 'cursor-not-allowed',
+                    )}
+                    aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
+                    disabled={!canManageMCP}
+                    onClick={onRegenerate}
+                  >
+                    <span className={cn('i-ri-loop-left-line', 'size-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                  </button>
+                )}
+              />
+              <TooltipContent>
+                {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+              </TooltipContent>
+            </Tooltip>
           </>
         )}
       </div>
@@ -205,7 +208,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     serverActivated,
     serverURL,
     detail,
-    isCurrentWorkspaceManager,
+    canManageMCP,
     toggleDisabled,
     isMinimalState,
     appUnpublished,
@@ -363,7 +366,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
               <ServerURLSection
                 serverURL={serverURL}
                 serverPublished={serverPublished}
-                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+                canManageMCP={canManageMCP}
                 genLoading={genLoading}
                 onRegenerate={openConfirmDelete}
               />
@@ -378,7 +381,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 onClick={openServerModal}
               >
                 <div className="flex items-center justify-center gap-px">
-                  <RiEditLine className="size-3.5" />
+                  <span className="i-ri-edit-line size-3.5" />
                   <div className="px-[3px] system-xs-medium text-text-tertiary">
                     {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}
                   </div>

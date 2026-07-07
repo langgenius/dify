@@ -72,11 +72,15 @@ def extract_csrf_token_from_cookie(request: Request) -> str | None:
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN))
 
 
-def extract_access_token(request: Request) -> str | None:
-    def _try_extract_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
+def extract_console_cookie_token(request: Request) -> str | None:
+    """Cookie-only console session token. Used by /openapi/v1/oauth/device/*
+    approval routes, which must not fall through to the Authorization header
+    (that's where dfoa_/dfoe_ bearers live — they aren't JWTs)."""
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
-    return _try_extract_from_cookie(request) or _try_extract_from_header(request)
+
+def extract_access_token(request: Request) -> str | None:
+    return extract_console_cookie_token(request) or _try_extract_from_header(request)
 
 
 def extract_webapp_access_token(request: Request) -> str | None:

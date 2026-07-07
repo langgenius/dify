@@ -6,7 +6,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusPanel from '@/app/components/workflow/run/status'
 import useTimestamp from '@/hooks/use-timestamp'
 
-type ResultPanelProps = {
+type ResultPanelProps = Readonly<{
   status: string
   elapsed_time?: number
   total_tokens?: number
@@ -18,7 +18,7 @@ type ResultPanelProps = {
   agentMode?: string
   tools?: string[]
   iterations?: number
-}
+}>
 
 const ResultPanel: FC<ResultPanelProps> = ({
   elapsed_time,

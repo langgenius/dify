@@ -3,20 +3,20 @@ import type { FC } from 'react'
 import type { HttpNodeType } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import { parseCurl } from './curl-parser'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   isShow: boolean
   onHide: () => void
   handleCurlImport: (node: HttpNodeType) => void
-}
+}>
 
 const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
   const [inputString, setInputString] = useState('')
@@ -56,9 +56,10 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
 
         <div>
           <Textarea
+            aria-label={t('nodes.http.curl.title', { ns: 'workflow' })}
             value={inputString}
             className="my-3 h-40 w-full grow"
-            onChange={e => setInputString(e.target.value)}
+            onValueChange={value => setInputString(value)}
             placeholder={t('nodes.http.curl.placeholder', { ns: 'workflow' })!}
           />
         </div>

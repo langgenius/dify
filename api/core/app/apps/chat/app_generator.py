@@ -7,6 +7,7 @@ from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -20,6 +21,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
@@ -35,6 +37,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -45,6 +48,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -55,6 +59,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -64,6 +69,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -89,7 +95,10 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_trace_session_id_from_args(args),
+        }
 
         # get conversation
         conversation = None
@@ -161,7 +170,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 invoke_from=invoke_from,
                 extras=extras,
@@ -189,6 +202,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
@@ -215,6 +229,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         application_generate_entity: ChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation_id: str,
@@ -238,6 +253,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = ChatAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,

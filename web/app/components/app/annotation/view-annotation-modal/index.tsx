@@ -20,12 +20,12 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import Pagination from '@/app/components/base/pagination'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -33,14 +33,14 @@ import { fetchHitHistoryList } from '@/service/annotation'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import HitHistoryNoData from './hit-history-no-data'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
   item: AnnotationItem
   onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
-}
+}>
 
 enum TabType {
   annotation = 'annotation',
@@ -62,6 +62,7 @@ const ViewAnnotationModal: FC<Props> = ({
   const { formatTime } = useTimestamp()
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
+  const totalPages = total ? Math.max(Math.ceil(total / APP_PAGE_LIMIT), 1) : 1
   const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
 
   // Update local state when item prop changes (e.g., when modal is reopened with updated data)
@@ -197,10 +198,15 @@ const ViewAnnotationModal: FC<Props> = ({
           {(total && total > APP_PAGE_LIMIT)
             ? (
                 <Pagination
-                  className="px-0"
-                  current={currPage}
-                  onChange={setCurrPage}
-                  total={total}
+                  page={currPage + 1}
+                  totalPages={totalPages}
+                  onPageChange={page => setCurrPage(page - 1)}
+                  labels={{
+                    previous: t('pagination.previous', { ns: 'common' }),
+                    next: t('pagination.next', { ns: 'common' }),
+                    editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                    pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                  }}
                 />
               )
             : null}

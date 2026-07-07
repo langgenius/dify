@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from typing import Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -8,12 +9,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from controllers.common.errors import NotFoundError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.web.error import NotFoundError
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
@@ -24,13 +34,12 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
-from libs.login import current_user, login_required
-from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from libs.login import login_required
+from models import Account, App, AppMode, WorkflowArchiveLog, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
@@ -149,6 +158,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def get(self, app_model: App):
         """
@@ -187,10 +197,11 @@ class WorkflowRunExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model()
-    def get(self, app_model: App, run_id: str):
-        tenant_id = str(app_model.tenant_id)
-        app_id = str(app_model.id)
+    def get(self, app_model: App, run_id: UUID):
+        tenant_id = app_model.tenant_id
+        app_id = app_model.id
         run_id_str = str(run_id)
 
         run_created_at = db.session.scalar(
@@ -245,6 +256,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def get(self, app_model: App):
         """
@@ -285,6 +297,7 @@ class WorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -326,6 +339,7 @@ class WorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -366,15 +380,16 @@ class WorkflowRunDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id):
+    def get(self, app_model: App, run_id: UUID):
         """
         Get workflow run detail
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         workflow_run_service = WorkflowRunService()
-        workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id)
+        workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id_str)
         if workflow_run is None:
             raise NotFoundError("Workflow run not found")
 
@@ -395,19 +410,20 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, run_id):
+    def get(self, current_user: Account, app_model: App, run_id: UUID):
         """
         Get workflow run node execution list
         """
-        run_id = str(run_id)
+        run_id_str = str(run_id)
 
         workflow_run_service = WorkflowRunService()
-        user = cast("Account | EndUser", current_user)
         node_executions = workflow_run_service.get_workflow_run_node_executions(
             app_model=app_model,
-            run_id=run_id,
-            user=user,
+            run_id=run_id_str,
+            user=current_user,
         )
 
         return WorkflowRunNodeExecutionListResponse.model_validate(
@@ -431,7 +447,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, workflow_run_id: str):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, workflow_run_id: str):
         """
         Get workflow pause details.
 
@@ -448,7 +465,7 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         if not workflow_run:
             raise NotFoundError("Workflow run not found")
 
-        if workflow_run.tenant_id != current_user.current_tenant_id:
+        if workflow_run.tenant_id != current_tenant_id:
             raise NotFoundError("Workflow run not found")
 
         # Check if workflow is suspended

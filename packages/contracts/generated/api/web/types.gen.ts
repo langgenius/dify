@@ -17,9 +17,81 @@ export type AccessTokenResultResponse = {
   result: string
 }
 
+export type AgentThought = {
+  chain_id?: string | null
+  created_at?: number | null
+  files: Array<string>
+  id: string
+  message_id: string
+  observation?: string | null
+  position: number
+  thought?: string | null
+  tool?: string | null
+  tool_input?: string | null
+  tool_labels: JsonValue
+}
+
 export type AppAccessModeQuery = {
   appCode?: string | null
   appId?: string | null
+}
+
+export type AppMetaResponse = {
+  tool_icons?: {
+    [key: string]: unknown
+  }
+}
+
+export type AppPermissionQuery = {
+  appId: string
+}
+
+export type AppSiteInfoResponse = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: {
+    [key: string]: unknown
+  } | null
+  enable_site: boolean
+  end_user_id?: string | null
+  model_config?: AppSiteModelConfigResponse | null
+  plan?: string | null
+  site: AppSiteResponse
+}
+
+export type AppSiteModelConfigResponse = {
+  model: unknown
+  more_like_this: unknown
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions: unknown
+  suggested_questions_after_answer: unknown
+  user_input_form: unknown
+}
+
+export type AppSiteResponse = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean | null
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type AudioBinaryResponse = Blob | File
+
+export type AudioTranscriptResponse = {
+  text: string
 }
 
 export type BooleanResultResponse = {
@@ -33,6 +105,8 @@ export type BrandingModel = {
   login_page_logo: string
   workspace_logo: string
 }
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
   conversation_id?: string | null
@@ -60,6 +134,12 @@ export type CompletionMessagePayload = {
   retriever_from?: string
 }
 
+export type ConversationInfiniteScrollPagination = {
+  data: Array<SimpleConversation>
+  has_more: boolean
+  limit: number
+}
+
 export type ConversationListQuery = {
   last_id?: string | null
   limit?: number
@@ -67,7 +147,16 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }
@@ -83,6 +172,27 @@ export type EmailCodeLoginVerifyPayload = {
   token: string
 }
 
+export type EventStreamResponse = string
+
+export type ExecutionContentType = 'human_input'
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -94,11 +204,16 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
   user_id?: string | null
 }
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileWithSignedUrl = {
   created_at: number | null
@@ -128,6 +243,108 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
+export type FormInputConfig
+  = | ({
+    type: 'paragraph'
+  } & ParagraphInputConfig)
+  | ({
+    type: 'select'
+  } & SelectInputConfig)
+  | ({
+    type: 'file'
+  } & FileInputConfig)
+  | ({
+    type: 'file-list'
+  } & FileListInputConfig)
+
+export type GeneratedAppResponse = JsonValue
+
+export type HumanInputContent = {
+  form_definition?: HumanInputFormDefinition | null
+  form_submission_data?: HumanInputFormSubmissionData | null
+  submitted: boolean
+  type?: ExecutionContentType
+  workflow_run_id: string
+}
+
+export type HumanInputFileUploadFormPayload = {
+  url?: string | null
+}
+
+export type HumanInputFormDefinition = {
+  actions?: Array<UserActionConfig>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type HumanInputFormDefinitionResponse = {
+  expiration_time: number
+  form_content: unknown
+  inputs: unknown
+  resolved_default_values: {
+    [key: string]: string
+  }
+  site?: {
+    [key: string]: unknown
+  } | null
+  user_actions: unknown
+}
+
+export type HumanInputFormSubmissionData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue2
+  } | null
+}
+
+export type HumanInputFormSubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue2
+  }
+}
+
+export type HumanInputFormSubmitResponse = {
+  [key: string]: never
+}
+
+export type HumanInputUploadTokenResponse = {
+  expires_at: number
+  upload_token: string
+}
+
+export type JsonObject = {
+  [key: string]: unknown
+}
+
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
+export type JsonValueType = unknown
+
+export type JsonValue2 = unknown
+
 export type LicenseLimitationModel = {
   enabled: boolean
   limit: number
@@ -147,6 +364,11 @@ export type LoginPayload = {
   password: string
 }
 
+export type LoginStatusQuery = {
+  app_code?: string | null
+  user_id?: string | null
+}
+
 export type LoginStatusResponse = {
   app_logged_in: boolean
   logged_in: boolean
@@ -157,6 +379,18 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFile = {
+  belongs_to?: string | null
+  filename: string
+  id: string
+  mime_type?: string | null
+  size?: number | null
+  transfer_method: string
+  type: string
+  upload_file_id?: string | null
+  url?: string | null
+}
+
 export type MessageListQuery = {
   conversation_id: string
   first_id?: string | null
@@ -165,6 +399,35 @@ export type MessageListQuery = {
 
 export type MessageMoreLikeThisQuery = {
   response_mode: 'blocking' | 'streaming'
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type Parameters = {
+  annotation_reply: JsonObject
+  file_upload: JsonObject
+  more_like_this: JsonObject
+  opening_statement?: string | null
+  retriever_resource: JsonObject
+  sensitive_word_avoidance: JsonObject
+  speech_to_text: JsonObject
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: JsonObject
+  system_parameters: SystemParameters
+  text_to_speech: JsonObject
+  user_input_form: Array<JsonObject>
+}
+
+export type PassportAccessTokenResponse = {
+  access_token: string
+}
+
+export type PassportQuery = {
+  user_id?: string | null
 }
 
 export type PluginInstallationPermissionModel = {
@@ -195,13 +458,73 @@ export type ResultResponse = {
   result: string
 }
 
+export type RetrieverResource = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  hit_count?: number | null
+  id?: string
+  index_node_hash?: string | null
+  message_id?: string
+  position: number
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  word_count?: number | null
+}
+
 export type SavedMessageCreatePayload = {
   message_id: string
+}
+
+export type SavedMessageInfiniteScrollPagination = {
+  data: Array<SavedMessageItem>
+  has_more: boolean
+  limit: number
+}
+
+export type SavedMessageItem = {
+  answer: string
+  created_at?: number | null
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  query: string
 }
 
 export type SavedMessageListQuery = {
   last_id?: string | null
   limit?: number
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type SimpleConversation = {
+  created_at?: number | null
+  id: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+  introduction?: string | null
+  name: string
+  status: string
+  updated_at?: number | null
+}
+
+export type SimpleFeedback = {
+  rating?: string | null
 }
 
 export type SimpleResultDataResponse = {
@@ -213,19 +536,32 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version: string
   branding: BrandingModel
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
@@ -236,10 +572,18 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
-  trial_models: Array<string>
   webapp_auth: WebAppAuthModel
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
 }
 
 export type TextToAudioPayload = {
@@ -248,6 +592,14 @@ export type TextToAudioPayload = {
   text?: string | null
   voice?: string | null
 }
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type VerificationTokenResponse = {
   email: string
@@ -267,9 +619,38 @@ export type WebAppAuthSsoModel = {
   protocol: string
 }
 
+export type WebMessageInfiniteScrollPagination = {
+  data: Array<WebMessageListItem>
+  has_more: boolean
+  limit: number
+}
+
+export type WebMessageListItem = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  conversation_id: string
+  created_at?: number | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+}
+
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
@@ -284,32 +665,16 @@ export type PostAudioToTextData = {
 }
 
 export type PostAudioToTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  413: unknown
+  415: unknown
+  500: unknown
 }
 
-export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
-
 export type PostAudioToTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioTranscriptResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
@@ -322,29 +687,15 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
-
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -359,25 +710,12 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostChatMessagesByTaskIdStopError
-  = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -394,30 +732,15 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type PostCompletionMessagesError
-  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
-
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostCompletionMessagesResponse
@@ -433,25 +756,12 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostCompletionMessagesByTaskIdStopError
-  = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -466,36 +776,22 @@ export type GetConversationsData = {
   query?: {
     last_id?: string
     limit?: number
-    pinned?: 'false' | 'true'
+    pinned?: boolean
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   }
   url: '/conversations'
 }
 
 export type GetConversationsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
-
 export type GetConversationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConversationInfiniteScrollPagination
 }
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
@@ -510,37 +806,22 @@ export type DeleteConversationsByCIdData = {
 }
 
 export type DeleteConversationsByCIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type DeleteConversationsByCIdError
-  = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
-
 export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteConversationsByCIdResponse
   = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
-  body?: never
+  body: ConversationRenamePayload
   path: {
     c_id: string
   }
@@ -552,30 +833,15 @@ export type PostConversationsByCIdNameData = {
 }
 
 export type PostConversationsByCIdNameErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type PostConversationsByCIdNameError
-  = PostConversationsByCIdNameErrors[keyof PostConversationsByCIdNameErrors]
-
 export type PostConversationsByCIdNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleConversation
 }
 
 export type PostConversationsByCIdNameResponse
@@ -591,25 +857,12 @@ export type PatchConversationsByCIdPinData = {
 }
 
 export type PatchConversationsByCIdPinErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PatchConversationsByCIdPinError
-  = PatchConversationsByCIdPinErrors[keyof PatchConversationsByCIdPinErrors]
 
 export type PatchConversationsByCIdPinResponses = {
   200: ResultResponse
@@ -628,25 +881,12 @@ export type PatchConversationsByCIdUnpinData = {
 }
 
 export type PatchConversationsByCIdUnpinErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PatchConversationsByCIdUnpinError
-  = PatchConversationsByCIdUnpinErrors[keyof PatchConversationsByCIdUnpinErrors]
 
 export type PatchConversationsByCIdUnpinResponses = {
   200: ResultResponse
@@ -663,15 +903,9 @@ export type PostEmailCodeLoginData = {
 }
 
 export type PostEmailCodeLoginErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
-
-export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
 
 export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
@@ -688,19 +922,10 @@ export type PostEmailCodeLoginValidityData = {
 }
 
 export type PostEmailCodeLoginValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  404: unknown
 }
-
-export type PostEmailCodeLoginValidityError
-  = PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
   200: AccessTokenResultResponse
@@ -717,18 +942,10 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  413: unknown
+  415: unknown
 }
-
-export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
 
 export type PostFilesUploadResponses = {
   201: FileResponse
@@ -744,18 +961,10 @@ export type PostForgotPasswordData = {
 }
 
 export type PostForgotPasswordErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
+  429: unknown
 }
-
-export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
 
 export type PostForgotPasswordResponses = {
   200: SimpleResultDataResponse
@@ -772,19 +981,10 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  404: unknown
 }
-
-export type PostForgotPasswordResetsError
-  = PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
 
 export type PostForgotPasswordResetsResponses = {
   200: SimpleResultResponse
@@ -801,16 +1001,9 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
 }
-
-export type PostForgotPasswordValidityError
-  = PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
 
 export type PostForgotPasswordValidityResponses = {
   200: VerificationTokenResponse
@@ -829,16 +1022,14 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
 export type GetFormHumanInputByFormTokenResponse
   = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
-  body?: never
+  body: HumanInputFormSubmitPayload
   path: {
     form_token: string
   }
@@ -847,13 +1038,41 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormSubmitResponse
 }
 
 export type PostFormHumanInputByFormTokenResponse
   = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type PostFormHumanInputByFormTokenUploadTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponses = {
+  200: HumanInputUploadTokenResponse
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenResponse
+  = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+
+export type PostHumanInputFormsFilesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/human-input-forms/files'
+}
+
+export type PostHumanInputFormsFilesResponses = {
+  201: FileResponse
+}
+
+export type PostHumanInputFormsFilesResponse
+  = PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -863,21 +1082,11 @@ export type PostLoginData = {
 }
 
 export type PostLoginErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
   200: AccessTokenResultResponse
@@ -888,17 +1097,16 @@ export type PostLoginResponse = PostLoginResponses[keyof PostLoginResponses]
 export type GetLoginStatusData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    app_code?: string
+    user_id?: string
+  }
   url: '/login/status'
 }
 
 export type GetLoginStatusErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
 }
-
-export type GetLoginStatusError = GetLoginStatusErrors[keyof GetLoginStatusErrors]
 
 export type GetLoginStatusResponses = {
   200: LoginStatusResponse
@@ -931,35 +1139,21 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
-
 export type GetMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebMessageInfiniteScrollPagination
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
-  body?: never
+  body: MessageFeedbackPayload
   path: {
     message_id: string
   }
@@ -971,25 +1165,12 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostMessagesByMessageIdFeedbacksError
-  = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
@@ -1010,30 +1191,15 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 }
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetMessagesByMessageIdMoreLikeThisError
-  = GetMessagesByMessageIdMoreLikeThisErrors[keyof GetMessagesByMessageIdMoreLikeThisErrors]
-
 export type GetMessagesByMessageIdMoreLikeThisResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type GetMessagesByMessageIdMoreLikeThisResponse
@@ -1049,25 +1215,12 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type GetMessagesByMessageIdSuggestedQuestionsError
-  = GetMessagesByMessageIdSuggestedQuestionsErrors[keyof GetMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
@@ -1084,29 +1237,15 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
-
 export type GetMetaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppMetaResponse
 }
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
@@ -1119,29 +1258,15 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
-
 export type GetParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Parameters
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -1149,53 +1274,36 @@ export type GetParametersResponse = GetParametersResponses[keyof GetParametersRe
 export type GetPassportData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    user_id?: string
+  }
   url: '/passport'
 }
 
 export type GetPassportErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  404: unknown
 }
 
-export type GetPassportError = GetPassportErrors[keyof GetPassportErrors]
-
 export type GetPassportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
 
 export type PostRemoteFilesUploadData = {
-  body?: never
+  body: RemoteFileUploadPayload
   path?: never
   query?: never
   url: '/remote-files/upload'
 }
 
 export type PostRemoteFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  413: unknown
+  415: unknown
+  500: unknown
 }
-
-export type PostRemoteFilesUploadError
-  = PostRemoteFilesUploadErrors[keyof PostRemoteFilesUploadErrors]
 
 export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
@@ -1214,18 +1322,10 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
+  500: unknown
 }
-
-export type GetRemoteFilesByUrlError = GetRemoteFilesByUrlErrors[keyof GetRemoteFilesByUrlErrors]
 
 export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
@@ -1245,35 +1345,21 @@ export type GetSavedMessagesData = {
 }
 
 export type GetSavedMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetSavedMessagesError = GetSavedMessagesErrors[keyof GetSavedMessagesErrors]
-
 export type GetSavedMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SavedMessageInfiniteScrollPagination
 }
 
 export type GetSavedMessagesResponse = GetSavedMessagesResponses[keyof GetSavedMessagesResponses]
 
 export type PostSavedMessagesData = {
-  body?: never
+  body: SavedMessageCreatePayload
   path?: never
   query: {
     message_id: string
@@ -1282,24 +1368,12 @@ export type PostSavedMessagesData = {
 }
 
 export type PostSavedMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostSavedMessagesError = PostSavedMessagesErrors[keyof PostSavedMessagesErrors]
 
 export type PostSavedMessagesResponses = {
   200: ResultResponse
@@ -1317,30 +1391,15 @@ export type DeleteSavedMessagesByMessageIdData = {
 }
 
 export type DeleteSavedMessagesByMessageIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type DeleteSavedMessagesByMessageIdError
-  = DeleteSavedMessagesByMessageIdErrors[keyof DeleteSavedMessagesByMessageIdErrors]
-
 export type DeleteSavedMessagesByMessageIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteSavedMessagesByMessageIdResponse
@@ -1354,29 +1413,15 @@ export type GetSiteData = {
 }
 
 export type GetSiteErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
-
 export type GetSiteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppSiteInfoResponse
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -1389,12 +1434,8 @@ export type GetSystemFeaturesData = {
 }
 
 export type GetSystemFeaturesErrors = {
-  500: {
-    [key: string]: unknown
-  }
+  500: unknown
 }
-
-export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
 
 export type GetSystemFeaturesResponses = {
   200: SystemFeatureModel
@@ -1410,26 +1451,14 @@ export type PostTextToAudioData = {
 }
 
 export type PostTextToAudioErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  500: unknown
 }
 
-export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
-
 export type PostTextToAudioResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioBinaryResponse
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
@@ -1445,15 +1474,9 @@ export type GetWebappAccessModeData = {
 }
 
 export type GetWebappAccessModeErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  500: unknown
 }
-
-export type GetWebappAccessModeError = GetWebappAccessModeErrors[keyof GetWebappAccessModeErrors]
 
 export type GetWebappAccessModeResponses = {
   200: AccessModeResponse
@@ -1472,18 +1495,10 @@ export type GetWebappPermissionData = {
 }
 
 export type GetWebappPermissionErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  500: unknown
 }
-
-export type GetWebappPermissionError = GetWebappPermissionErrors[keyof GetWebappPermissionErrors]
 
 export type GetWebappPermissionResponses = {
   200: BooleanResultResponse
@@ -1502,9 +1517,7 @@ export type GetWorkflowByTaskIdEventsData = {
 }
 
 export type GetWorkflowByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type GetWorkflowByTaskIdEventsResponse
@@ -1518,29 +1531,15 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
-
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -1555,25 +1554,12 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostWorkflowsTasksByTaskIdStopError
-  = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

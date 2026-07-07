@@ -9,6 +9,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo } from 'react'
@@ -21,7 +22,6 @@ import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -147,8 +147,8 @@ const ModelLoadBalancingConfigs = ({
         data-testid="load-balancing-main-panel"
       >
         <div className="flex items-center gap-2 px-[15px] py-3 select-none">
-          <div className="flex size-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
-            <div className="i-custom-vender-line-financeandecommerce-balance size-4" />
+          <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
+            <div className="i-custom-vender-line-financeAndECommerce-balance h-4 w-4" />
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
@@ -194,7 +194,7 @@ const ModelLoadBalancingConfigs = ({
                             <Tooltip>
                               <TooltipTrigger
                                 render={(
-                                  <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                                  <StatusDot status={credential?.not_allowed_to_use ? 'disabled' : 'success'} />
                                 )}
                               />
                               <TooltipContent>
@@ -271,7 +271,7 @@ const ModelLoadBalancingConfigs = ({
         {
           draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
-              <div className="i-custom-vender-solid-alertsandfeedback-alert-triangle mr-1 h-3 w-3 text-[#f79009]" />
+              <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
               {t('modelProvider.loadBalancingLeastKeyWarning', { ns: 'common' })}
             </div>
           )

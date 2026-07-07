@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { Col, Heading, Properties, Property, PropertyInstruction, Row, SubProperty } from '../md'
+import { Col, Heading, Properties, Property, Row, SubProperty } from '../md'
 
 describe('md.tsx components', () => {
   describe('Heading', () => {
@@ -100,13 +100,6 @@ describe('md.tsx components', () => {
         render(<Heading {...defaultProps} />)
         const badge = screen.getByText('GET')
         expect(badge.className).toContain('font-semibold')
-      })
-
-      it('should have ring-1 and ring-inset classes', () => {
-        render(<Heading {...defaultProps} />)
-        const badge = screen.getByText('GET')
-        expect(badge.className).toContain('ring-1')
-        expect(badge.className).toContain('ring-inset')
       })
     })
 
@@ -540,67 +533,6 @@ describe('md.tsx components', () => {
     })
   })
 
-  describe('PropertyInstruction', () => {
-    it('should render children', () => {
-      render(
-        <PropertyInstruction>
-          This is an instruction
-        </PropertyInstruction>,
-      )
-      expect(screen.getByText('This is an instruction')).toBeInTheDocument()
-    })
-
-    it('should render as li element', () => {
-      const { container } = render(
-        <PropertyInstruction>
-          Instruction text
-        </PropertyInstruction>,
-      )
-      expect(container.querySelector('li')).toBeInTheDocument()
-    })
-
-    it('should have m-0 class', () => {
-      const { container } = render(
-        <PropertyInstruction>
-          Instruction
-        </PropertyInstruction>,
-      )
-      const li = container.querySelector('li')!
-      expect(li.className).toContain('m-0')
-    })
-
-    it('should have padding classes', () => {
-      const { container } = render(
-        <PropertyInstruction>
-          Instruction
-        </PropertyInstruction>,
-      )
-      const li = container.querySelector('li')!
-      expect(li.className).toContain('px-0')
-      expect(li.className).toContain('py-4')
-    })
-
-    it('should have italic class', () => {
-      const { container } = render(
-        <PropertyInstruction>
-          Instruction
-        </PropertyInstruction>,
-      )
-      const li = container.querySelector('li')!
-      expect(li.className).toContain('italic')
-    })
-
-    it('should have first:pt-0 class', () => {
-      const { container } = render(
-        <PropertyInstruction>
-          Instruction
-        </PropertyInstruction>,
-      )
-      const li = container.querySelector('li')!
-      expect(li.className).toContain('first:pt-0')
-    })
-  })
-
   describe('integration tests', () => {
     it('should render Property inside Properties', () => {
       render(
@@ -634,22 +566,6 @@ describe('md.tsx components', () => {
 
       expect(screen.getByText('Left column')).toBeInTheDocument()
       expect(screen.getByText('Right column')).toBeInTheDocument()
-    })
-
-    it('should render PropertyInstruction inside Properties', () => {
-      render(
-        <Properties anchor={false}>
-          <PropertyInstruction>
-            Note: All fields are required
-          </PropertyInstruction>
-          <Property name="required_field" type="string" anchor={false}>
-            A required field
-          </Property>
-        </Properties>,
-      )
-
-      expect(screen.getByText('Note: All fields are required')).toBeInTheDocument()
-      expect(screen.getByText('required_field')).toBeInTheDocument()
     })
   })
 })

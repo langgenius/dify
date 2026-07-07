@@ -7,12 +7,12 @@ from typing import Any, Literal, NotRequired, TypedDict
 import httpx
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
@@ -116,7 +116,7 @@ class BillingInfo(TypedDict):
     subscription: _BillingSubscription
     members: _BillingQuota
     apps: _BillingQuota
-    vector_space: _VectorSpaceQuota
+    vector_space: NotRequired[_VectorSpaceQuota]
     knowledge_rate_limit: _KnowledgeRateLimit
     documents_upload_quota: _BillingQuota
     annotation_quota_limit: _BillingQuota
@@ -128,6 +128,7 @@ class BillingInfo(TypedDict):
 
 
 _billing_info_adapter = TypeAdapter(BillingInfo)
+_vector_space_quota_adapter = TypeAdapter(_VectorSpaceQuota)
 
 
 class KnowledgeRateLimitDict(TypedDict):
@@ -185,11 +186,23 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
-    def get_info(cls, tenant_id: str) -> BillingInfo:
+    def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
+        if exclude_vector_space:
+            params["exclude_vector_space"] = "true"
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
+        if exclude_vector_space and billing_info.get("vector_space") is None:
+            # Unset proto message fields can be serialized as null; the light billing contract treats it as absent.
+            billing_info.pop("vector_space", None)
         return _billing_info_adapter.validate_python(billing_info)
+
+    @classmethod
+    def get_vector_space(cls, tenant_id: str) -> _VectorSpaceQuota:
+        params = {"tenant_id": tenant_id}
+        return _vector_space_quota_adapter.validate_python(
+            cls._send_request("GET", "/subscription/vector-space", params=params)
+        )
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
@@ -350,10 +363,10 @@ class BillingService:
         return response.json()
 
     @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account):
+    def is_tenant_owner_or_admin(session: Session | scoped_session, current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = db.session.scalar(
+        join: TenantAccountJoin | None = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)

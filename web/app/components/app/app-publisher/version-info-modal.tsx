@@ -3,12 +3,12 @@ import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '../../base/textarea'
 
 type VersionInfoModalProps = {
   isOpen: boolean
@@ -57,8 +57,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
     onClose()
   }
 
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setReleaseNotes(e.target.value)
+  const handleDescriptionChange = useCallback((value: string) => {
+    setReleaseNotes(value)
   }, [])
 
   return (
@@ -95,17 +95,16 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               onValueChange={setTitle}
             />
           </FieldRoot>
-          <div className="flex flex-col gap-y-1">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+          <FieldRoot name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
+            <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
-            </div>
+            </FieldLabel>
             <Textarea
               value={releaseNotes}
               placeholder={`${t('versionHistory.releaseNotesPlaceholder', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
-              onChange={handleDescriptionChange}
-              destructive={releaseNotesError}
+              onValueChange={handleDescriptionChange}
             />
-          </div>
+          </FieldRoot>
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">

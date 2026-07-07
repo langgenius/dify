@@ -25,6 +25,7 @@ import {
   useChecklist,
   useNodesInteractions,
 } from '../../hooks'
+import { useHooksStore } from '../../hooks-store/store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
@@ -43,7 +44,8 @@ const WorkflowChecklist = ({
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
   const checklistLabel = t('panel.checklist', { ns: 'workflow' })
 

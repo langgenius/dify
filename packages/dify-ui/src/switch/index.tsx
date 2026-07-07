@@ -2,7 +2,7 @@
 
 import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -10,7 +10,7 @@ import { cn } from '../cn'
 const switchRootStateClassName = 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
 
 const switchRootVariants = cva(
-  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-components-toggle-bg motion-reduce:transition-none ${switchRootStateClassName}`,
+  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center outline-hidden transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none ${switchRootStateClassName}`,
   {
     variants: {
       size: {
@@ -45,26 +45,34 @@ const switchThumbVariants = cva(
 
 export type SwitchSize = NonNullable<VariantProps<typeof switchRootVariants>['size']>
 
-const spinnerSizeConfig: Partial<Record<SwitchSize, {
-  icon: string
-  uncheckedPosition: string
-  checkedPosition: string
-}>> = {
-  md: {
-    icon: 'size-2',
-    uncheckedPosition: 'left-[calc(50%+6px)]',
-    checkedPosition: 'left-[calc(50%-6px)]',
+const switchSpinnerVariants = cva(
+  'absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
+  {
+    variants: {
+      size: {
+        md: 'size-2 left-[calc(50%+6px)] group-data-checked:left-[calc(50%-6px)]',
+        lg: 'size-2.5 left-[calc(50%+8px)] group-data-checked:left-[calc(50%-8px)]',
+      },
+    },
   },
-  lg: {
-    icon: 'size-2.5',
-    uncheckedPosition: 'left-[calc(50%+8px)]',
-    checkedPosition: 'left-[calc(50%-8px)]',
-  },
+)
+
+type ControlledSwitchProps = {
+  checked: boolean
+  defaultChecked?: never
 }
 
+type UncontrolledSwitchProps = {
+  checked?: never
+  defaultChecked?: boolean
+}
+
+type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
+
 export type SwitchProps
-  = Omit<BaseSwitchNS.Root.Props, 'className' | 'size' | 'onCheckedChange'>
+  = Omit<BaseSwitchNS.Root.Props, 'checked' | 'defaultChecked' | 'className' | 'size' | 'onCheckedChange'>
     & VariantProps<typeof switchRootVariants>
+    & SwitchControlProps
     & {
       onCheckedChange?: (checked: boolean) => void
       loading?: boolean
@@ -81,7 +89,6 @@ export function Switch({
   ...props
 }: SwitchProps) {
   const isDisabled = disabled || loading
-  const spinner = loading && size ? spinnerSizeConfig[size] : undefined
 
   return (
     <BaseSwitch.Root
@@ -95,14 +102,10 @@ export function Switch({
       <BaseSwitch.Thumb
         className={switchThumbVariants({ size })}
       />
-      {spinner
+      {loading && (size === 'md' || size === 'lg')
         ? (
             <span
-              className={cn(
-                'absolute top-1/2 -translate-x-1/2 -translate-y-1/2',
-                spinner.icon,
-                checked ? spinner.checkedPosition : spinner.uncheckedPosition,
-              )}
+              className={switchSpinnerVariants({ size })}
               aria-hidden="true"
             >
               <i className="i-ri-loader-2-line size-full animate-spin text-text-tertiary motion-reduce:animate-none" />
@@ -131,11 +134,8 @@ const switchSkeletonVariants = cva(
 )
 
 export type SwitchSkeletonProps
-  = Omit<HTMLAttributes<HTMLDivElement>, 'className'>
+  = React.ComponentProps<'div'>
     & VariantProps<typeof switchSkeletonVariants>
-    & {
-      className?: string
-    }
 
 export function SwitchSkeleton({
   size = 'md',

@@ -96,6 +96,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
     },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
     initialPageParam: initialPage,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -197,11 +198,12 @@ export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => 
 export const useDatasetTestingRecords = (
   datasetId?: string,
   params?: { page: number, limit: number },
+  options?: { enabled?: boolean },
 ) => {
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],
     queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params }),
-    enabled: !!datasetId && !!params,
+    enabled: !!datasetId && !!params && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   })
 }

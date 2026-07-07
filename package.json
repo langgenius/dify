@@ -2,7 +2,14 @@
   "name": "dify",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.1.3",
+  "packageManager": "pnpm@11.9.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^22.22.1",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": "^22.22.1"
   },

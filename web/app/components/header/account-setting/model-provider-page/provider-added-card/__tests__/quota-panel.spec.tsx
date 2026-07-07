@@ -7,11 +7,11 @@ import QuotaPanel from '../quota-panel'
 let mockWorkspaceData: {
   trial_credits: number
   trial_credits_used: number
-  next_credit_reset_date: string
+  next_credit_reset_date: number
 } | undefined = {
   trial_credits: 100,
   trial_credits_used: 30,
-  next_credit_reset_date: '2024-12-31',
+  next_credit_reset_date: 1735603200,
 }
 let mockWorkspaceIsPending = false
 let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
@@ -32,20 +32,35 @@ vi.mock('@/app/components/base/icons/src/public/llm', () => {
   }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useCurrentWorkspace: () => ({
-    data: mockWorkspaceData,
-    isPending: mockWorkspaceIsPending,
-  }),
+vi.mock('../use-trial-credits', () => ({
+  useTrialCredits: () => {
+    const totalCredits = mockWorkspaceData?.trial_credits ?? 0
+    const credits = Math.max(totalCredits - (mockWorkspaceData?.trial_credits_used ?? 0), 0)
+    return {
+      credits,
+      totalCredits,
+      isExhausted: credits <= 0,
+      isLoading: mockWorkspaceIsPending && !mockWorkspaceData,
+      nextCreditResetDate: mockWorkspaceData?.next_credit_reset_date,
+    }
+  },
 }))
 
 const renderQuotaPanel = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: mockTrialModels === undefined ? null : { trial_models: mockTrialModels as never },
+  trialModels: mockTrialModels ?? [],
 })
 
 vi.mock('../../hooks', () => ({
   useMarketplaceAllPlugins: () => ({
     plugins: mockPlugins,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    canUpdatePlugin: true,
+    currentDifyVersion: '1.0.0',
   }),
 }))
 
@@ -78,7 +93,7 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = {
       trial_credits: 100,
       trial_credits_used: 30,
-      next_credit_reset_date: '2024-12-31',
+      next_credit_reset_date: 1735603200,
     }
     mockWorkspaceIsPending = false
     mockTrialModels = ['langgenius/openai/openai']
@@ -118,7 +133,7 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = {
       trial_credits: 10,
       trial_credits_used: 999,
-      next_credit_reset_date: '',
+      next_credit_reset_date: 0,
     }
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)

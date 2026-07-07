@@ -4,8 +4,8 @@ import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()

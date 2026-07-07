@@ -12,6 +12,7 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import useConfig from '../use-config'
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -35,6 +36,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: vi.fn(),
+}))
+
+const mockFlowType = vi.hoisted(() => ({
+  value: undefined as FlowType | undefined,
+}))
+
+vi.mock('@/app/components/workflow/hooks-store/store', () => ({
+  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) => selector({
+    configsMap: {
+      flowType: mockFlowType.value,
+    },
+  }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-config-vision', () => ({
@@ -84,6 +97,7 @@ describe('question-classifier/use-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestVisionOptions = null
+    mockFlowType.value = undefined
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
     mockUseIsChatMode.mockReturnValue(true)
     mockUseWorkflow.mockReturnValue({
@@ -142,6 +156,44 @@ describe('question-classifier/use-config', () => {
           enabled: false,
         },
       }))
+    })
+  })
+
+  it('does not default the query selector to sys.query in snippet flows', async () => {
+    mockFlowType.value = FlowType.snippet
+    mockUseWorkflow.mockReturnValue({
+      getBeforeNodesInSameBranch: vi.fn(() => [{
+        id: 'start-node',
+        data: {
+          type: BlockEnum.Start,
+          title: 'Start',
+        },
+      }]),
+    } as unknown as ReturnType<typeof useWorkflow>)
+    mockUseStore.mockImplementation((selector) => {
+      return selector({
+        nodesDefaultConfigs: {
+          [BlockEnum.QuestionClassifier]: {
+            model: createPayload().model,
+            classes: createPayload().classes,
+            vision: createPayload().vision,
+          },
+        },
+      } as never)
+    })
+    mockUseNodeCrud.mockReturnValue({
+      inputs: createPayload({
+        query_variable_selector: [],
+      }),
+      setInputs,
+    })
+
+    renderHook(() => useConfig('question-classifier-node', createPayload({
+      query_variable_selector: [],
+    })))
+
+    await waitFor(() => {
+      expect(setInputs).not.toHaveBeenCalled()
     })
   })
 })

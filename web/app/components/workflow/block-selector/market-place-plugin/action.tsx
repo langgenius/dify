@@ -16,13 +16,13 @@ import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   onOpenChange: (v: boolean) => void
   author: string
   name: string
   version: string
-}
+}>
 
 const OperationDropdown: FC<Props> = ({
   open,

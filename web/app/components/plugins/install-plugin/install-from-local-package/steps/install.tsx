@@ -19,14 +19,14 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
-}
+}>
 
 const Installed: FC<Props> = ({
   uniqueIdentifier,
@@ -65,7 +65,7 @@ const Installed: FC<Props> = ({
     onCancel()
   }
 
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
     if (isInstalling)
       return
@@ -76,10 +76,12 @@ const Installed: FC<Props> = ({
       if (hasInstalled)
         await uninstallPlugin(installedInfoPayload.installedId)
 
+      const response = await installPackageFromLocal(uniqueIdentifier)
       const {
         all_installed,
         task_id,
-      } = await installPackageFromLocal(uniqueIdentifier)
+      } = response
+      handleInstallTaskStart(response)
       const taskId = task_id
       const isInstalled = all_installed
 
@@ -87,7 +89,6 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
-      handleRefetch()
       const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
@@ -116,7 +117,7 @@ const Installed: FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+      <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           <p>

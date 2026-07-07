@@ -1,4 +1,12 @@
+"""Tenant credit pool accounting.
+
+Credit deductions are guarded by a tenant-level Redis lock before the database
+row lock is acquired. This keeps concurrent usage accounting for one tenant
+from piling up database transactions while preserving cross-tenant concurrency.
+"""
+
 import logging
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,13 +15,44 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import QuotaExceededError
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
 
 logger = logging.getLogger(__name__)
 
+CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS = 10
+CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS = 5
+
 
 class CreditPoolService:
+    @staticmethod
+    def _get_tenant_lock_key(tenant_id: str) -> str:
+        return f"credit_pool:tenant:{tenant_id}:deduct_lock"
+
+    @classmethod
+    def _deduct_with_tenant_lock(cls, tenant_id: str, deduct: Callable[[], int]) -> int:
+        lock_key = cls._get_tenant_lock_key(tenant_id)
+        lock = redis_client.lock(
+            lock_key,
+            timeout=CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
+            blocking_timeout=CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
+        )
+        lock_acquired = False
+
+        try:
+            lock_acquired = lock.acquire(blocking=True)
+            if not lock_acquired:
+                raise QuotaExceededError("Failed to acquire credit pool lock")
+
+            return deduct()
+        finally:
+            if lock_acquired:
+                try:
+                    lock.release()
+                except Exception:
+                    logger.warning("Failed to release credit pool lock, tenant_id=%s", tenant_id, exc_info=True)
+
     @staticmethod
     def _get_locked_pool(session: Session, tenant_id: str, pool_type: str) -> TenantCreditPool | None:
         return session.scalar(
@@ -76,7 +115,7 @@ class CreditPoolService:
         if credits_required <= 0:
             return 0
 
-        try:
+        def deduct() -> int:
             with session_factory.get_session_maker().begin() as session:
                 pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
                 if not pool:
@@ -89,13 +128,15 @@ class CreditPoolService:
                     raise QuotaExceededError("Insufficient credits remaining")
 
                 pool.quota_used += credits_required
+                return credits_required
+
+        try:
+            return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
         except Exception:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
             raise QuotaExceededError("Failed to deduct credits")
-
-        return credits_required
 
     @classmethod
     def deduct_credits_capped(
@@ -108,7 +149,7 @@ class CreditPoolService:
         if credits_required <= 0:
             return 0
 
-        try:
+        def deduct() -> int:
             with session_factory.get_session_maker().begin() as session:
                 pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
                 if not pool:
@@ -121,6 +162,9 @@ class CreditPoolService:
 
                 pool.quota_used += deducted_credits
                 return deducted_credits
+
+        try:
+            return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
         except Exception:

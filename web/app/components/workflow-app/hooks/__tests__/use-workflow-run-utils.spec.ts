@@ -155,6 +155,10 @@ describe('useWorkflowRun utils', () => {
       ttsUrl: '/installed-apps/app-1/text-to-audio',
       ttsIsPublic: false,
     })
+    expect(buildTTSConfig({ appId: 'app-1' }, '/installed/app-1')).toEqual({
+      ttsUrl: '/installed-apps/app-1/text-to-audio',
+      ttsIsPublic: false,
+    })
     expect(buildTTSConfig({ appId: 'app-1' }, '/apps/app-1/workflow')).toEqual({
       ttsUrl: '/apps/app-1/text-to-audio',
       ttsIsPublic: false,

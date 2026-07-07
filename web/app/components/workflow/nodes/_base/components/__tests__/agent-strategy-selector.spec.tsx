@@ -19,7 +19,7 @@ vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: mocks.useSuspenseQuery,
 }))
 
-vi.mock('@/service/system-features', () => ({
+vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({}),
 }))
 
@@ -42,20 +42,20 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/search-input', () => ({
-  default: ({
+  SearchInput: ({
     value,
-    onChange,
+    onValueChange,
     placeholder,
   }: {
     value: string
-    onChange: (value: string) => void
+    onValueChange: (value: string) => void
     placeholder?: string
     className?: string
   }) => (
     <input
       aria-label={placeholder}
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={e => onValueChange(e.target.value)}
     />
   ),
 }))
@@ -220,14 +220,14 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     }
 
     return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
+      <PopoverContext value={{ open, setOpen }}>
         {children}
-      </PopoverContext.Provider>
+      </PopoverContext>
     )
   }
 
   const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
+    const { open, setOpen } = React.use(PopoverContext)
     return (
       <div data-testid="agent-strategy-trigger" onClick={() => setOpen(!open)}>
         {render}
@@ -236,7 +236,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
   }
 
   const PopoverContent = ({ children }: { children: React.ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
+    const { open } = React.use(PopoverContext)
     return open ? <div data-testid="agent-strategy-popover">{children}</div> : null
   }
 

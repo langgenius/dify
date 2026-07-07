@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
+import socket
 import time
+import uuid
 from collections.abc import Mapping
+from typing import Any, override
 
 from sqlalchemy import select
 
@@ -13,14 +17,70 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 
 logger = logging.getLogger(__name__)
 
+SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
+_PROCESS_SERVER_ID: str | None = None
+_PROCESS_SERVER_ID_PID: int | None = None
+
+
+def _get_process_server_id() -> str:
+    global _PROCESS_SERVER_ID, _PROCESS_SERVER_ID_PID  # pylint: disable=global-statement
+
+    pid = os.getpid()
+    if _PROCESS_SERVER_ID is None or pid != _PROCESS_SERVER_ID_PID:
+        _PROCESS_SERVER_ID_PID = pid
+        _PROCESS_SERVER_ID = f"{socket.gethostname()}:{pid}:{uuid.uuid4().hex}"
+    return _PROCESS_SERVER_ID
+
 
 class WorkflowCollaborationService:
-    def __init__(self, repository: WorkflowCollaborationRepository, socketio) -> None:
+    """
+    Coordinate workflow collaboration state across Socket.IO workers.
+
+    Socket.IO rooms are process-local unless backed by a message queue, while online users and leader election live in
+    Redis. Each websocket worker writes a small heartbeat keyed by `server_id`; session rows store their owner so a
+    worker can distinguish a live remote sid from a stale sid left behind by a dead worker.
+    """
+
+    _heartbeat_started: bool
+    _repository: WorkflowCollaborationRepository
+    _server_id_override: str | None
+    _socketio: Any
+
+    def __init__(
+        self, repository: WorkflowCollaborationRepository, socketio: Any, server_id: str | None = None
+    ) -> None:
         self._repository = repository
         self._socketio = socketio
+        self._server_id_override = server_id
+        self._heartbeat_started = False
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(repository={self._repository})"
+
+    @property
+    def server_id(self) -> str:
+        return self._server_id_override or _get_process_server_id()
+
+    def _refresh_server_heartbeat(self) -> None:
+        self._repository.refresh_server_heartbeat(self.server_id)
+
+    def _server_heartbeat_loop(self) -> None:
+        while True:
+            try:
+                self._refresh_server_heartbeat()
+                self._repository.refresh_server_sessions(self.server_id)
+            except Exception:
+                logger.exception("Failed to refresh workflow collaboration server heartbeat")
+            self._socketio.sleep(SERVER_HEARTBEAT_INTERVAL_SECONDS)
+
+    def _ensure_server_heartbeat_started(self) -> None:
+        if self._heartbeat_started:
+            return
+
+        self._heartbeat_started = True
+        self._refresh_server_heartbeat()
+        self._socketio.start_background_task(self._server_heartbeat_loop)
 
     def save_socket_identity(self, sid: str, user: Account) -> None:
         """Persist the authenticated console user on the raw socket session."""
@@ -57,12 +117,15 @@ class WorkflowCollaborationService:
             )
             return None
 
+        self._ensure_server_heartbeat_started()
+
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
             "username": str(session.get("username", "Unknown")),
             "avatar": session.get("avatar"),
             "sid": sid,
             "connected_at": int(time.time()),
+            "server_id": self.server_id,
         }
 
         self._repository.set_session_info(workflow_id, session_info)
@@ -249,6 +312,7 @@ class WorkflowCollaborationService:
         )
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
+        self._refresh_server_heartbeat()
         self._repository.refresh_session_state(workflow_id, sid)
         self._ensure_leader(workflow_id, sid)
 
@@ -280,16 +344,24 @@ class WorkflowCollaborationService:
         if not sid:
             return False
 
-        try:
-            if not self._socketio.manager.is_connected(sid, "/"):
-                return False
-        except AttributeError:
+        mapping = self._repository.get_sid_mapping(sid)
+        if not mapping:
             return False
 
         if not self._repository.session_exists(workflow_id, sid):
             return False
 
-        if not self._repository.sid_mapping_exists(sid):
-            return False
+        server_id = mapping.get("server_id")
+        if not server_id:
+            return self._is_socket_connected_locally(sid)
 
-        return True
+        if server_id == self.server_id:
+            return self._is_socket_connected_locally(sid)
+
+        return self._repository.server_heartbeat_exists(server_id)
+
+    def _is_socket_connected_locally(self, sid: str) -> bool:
+        try:
+            return bool(self._socketio.manager.is_connected(sid, "/"))
+        except AttributeError:
+            return False

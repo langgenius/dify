@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   provider?: ToolWithProvider
   value?: {
@@ -18,7 +18,7 @@ type Props = {
     tool_name: string
   }
   isConfigure?: boolean
-}
+}>
 
 const ToolTrigger = ({
   open,

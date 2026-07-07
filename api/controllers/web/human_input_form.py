@@ -4,25 +4,60 @@ Web App Human Input Form APIs.
 
 import json
 import logging
+from collections.abc import Sequence
 from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
-from controllers.web.error import NotFoundError, WebFormRateLimitExceededError
+from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
+from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
 from libs.helper import RateLimiter, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, Site
+from repositories.factory import DifyAPIRepositoryFactory
+from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
+
+
+class HumanInputUploadTokenResponse(BaseModel):
+    upload_token: str
+    expires_at: int
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: Any
+    inputs: Any
+    resolved_default_values: dict[str, str]
+    user_actions: Any
+    expiration_time: int
+    site: dict[str, Any] | None = Field(default=None)
+
+
+class HumanInputFormSubmitResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+register_schema_models(web_ns, HumanInputFormSubmitPayload)
+register_response_schema_models(
+    web_ns,
+    HumanInputUploadTokenResponse,
+    HumanInputFormDefinitionResponse,
+    HumanInputFormSubmitResponse,
+)
 
 
 _FORM_SUBMIT_RATE_LIMITER = RateLimiter(
@@ -35,6 +70,20 @@ _FORM_ACCESS_RATE_LIMITER = RateLimiter(
     max_attempts=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS,
     time_window=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS,
 )
+_FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
+    prefix="web_form_upload_token_rate_limit",
+    max_attempts=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS,
+    time_window=dify_config.WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS,
+)
+
+
+def _create_upload_service() -> HumanInputFileUploadService:
+    session_factory = sessionmaker(bind=db.engine)
+    workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    return HumanInputFileUploadService(
+        session_factory=session_factory,
+        workflow_run_repository=workflow_run_repository,
+    )
 
 
 class FormDefinitionPayload(TypedDict):
@@ -46,12 +95,17 @@ class FormDefinitionPayload(TypedDict):
     site: NotRequired[dict]
 
 
-def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
+def _jsonify_form_definition(
+    form: Form,
+    *,
+    inputs: Sequence[FormInputConfig] = (),
+    site_payload: dict | None = None,
+) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
-    definition_payload = form.get_definition().model_dump()
+    definition_payload = form.get_definition().model_dump(mode="json")
     payload: FormDefinitionPayload = {
         "form_content": definition_payload["rendered_content"],
-        "inputs": definition_payload["inputs"],
+        "inputs": [i.model_dump(mode="json") for i in inputs],
         "resolved_default_values": stringify_form_default_values(definition_payload["default_values"]),
         "user_actions": definition_payload["user_actions"],
         "expiration_time": to_timestamp(form.expiration_time),
@@ -61,6 +115,34 @@ def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Re
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
+@web_ns.route("/form/human_input/<string:form_token>/upload-token")
+class HumanInputFormUploadTokenApi(Resource):
+    """API for issuing HITL upload tokens for active human input forms."""
+
+    @web_ns.response(200, "Success", web_ns.models[HumanInputUploadTokenResponse.__name__])
+    def post(self, form_token: str):
+        """
+        Issue an upload token for a human input form.
+
+        POST /api/form/human_input/<form_token>/upload-token
+        """
+        ip_address = extract_remote_ip(request)
+        if _FORM_UPLOAD_TOKEN_RATE_LIMITER.is_rate_limited(ip_address):
+            raise WebFormRateLimitExceededError()
+        _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
+
+        try:
+            token = _create_upload_service().issue_upload_token(form_token)
+        except FormNotFoundError:
+            raise NotFoundError("Form not found")
+
+        response = HumanInputUploadTokenResponse(
+            upload_token=token.upload_token,
+            expires_at=to_timestamp(token.expires_at),
+        )
+        return response.model_dump(mode="json"), 200
+
+
 @web_ns.route("/form/human_input/<string:form_token>")
 class HumanInputFormApi(Resource):
     """API for getting and submitting human input forms via the web app."""
@@ -68,6 +150,7 @@ class HumanInputFormApi(Resource):
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
     # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @web_ns.response(200, "Success", web_ns.models[HumanInputFormDefinitionResponse.__name__])
     def get(self, form_token: str):
         """
         Get human input form definition by token.
@@ -89,10 +172,17 @@ class HumanInputFormApi(Resource):
 
         service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
+        inputs = service.resolve_form_inputs(form)
 
-        return _jsonify_form_definition(form, site_payload=serialize_app_site_payload(app_model, site, None))
+        return _jsonify_form_definition(
+            form,
+            inputs=inputs,
+            site_payload=serialize_app_site_payload(app_model, site, None),
+        )
 
     # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @web_ns.response(200, "Success", web_ns.models[HumanInputFormSubmitResponse.__name__])
+    @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     def post(self, form_token: str):
         """
         Submit human input form by token.

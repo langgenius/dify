@@ -15,6 +15,7 @@ type ItemValue = number | string
 export type Item<T extends ItemValue = ItemValue> = {
   value: T
   name: string
+  triggerName?: string
 } & Record<string, unknown>
 
 type Props<T extends ItemValue> = {
@@ -22,6 +23,7 @@ type Props<T extends ItemValue> = {
   panelClassName?: string
   showLeftIcon?: boolean
   leftIcon?: ReactNode
+  showItemIndicator?: boolean
   value: T
   items: Item<T>[]
   onSelect: (item: Item<T>) => void
@@ -33,6 +35,7 @@ function Chip<T extends ItemValue>({
   panelClassName,
   showLeftIcon = true,
   leftIcon,
+  showItemIndicator = true,
   value,
   items,
   onSelect,
@@ -40,8 +43,11 @@ function Chip<T extends ItemValue>({
 }: Props<T>) {
   const { t } = useTranslation()
   const selectedItem = items.find(item => Object.is(item.value, value))
-  const triggerContent = selectedItem?.name || ''
+  const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
+  const clearLabel = triggerContent
+    ? `${t('operation.clear', { ns: 'common' })} ${triggerContent}`
+    : t('operation.clear', { ns: 'common' })
 
   return (
     <Select
@@ -60,14 +66,14 @@ function Chip<T extends ItemValue>({
         <SelectTrigger
           aria-label={triggerContent || t('placeholder.select', { ns: 'common' })}
           className={cn(
-            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
+            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue && 'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
         >
-          <span className="flex min-w-0 grow items-center gap-0 text-left">
+          <span className="flex min-w-0 grow items-center gap-1 text-left">
             {showLeftIcon && (
-              <span className="p-0.5">
+              <span aria-hidden="true" className="p-0.5">
                 {leftIcon || (
                   <span aria-hidden className={cn('i-ri-filter-3-line block size-4 text-text-tertiary', hasValue && 'text-text-secondary')} />
                 )}
@@ -84,8 +90,8 @@ function Chip<T extends ItemValue>({
         {hasValue && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px"
+            aria-label={clearLabel}
+            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             onClick={onClear}
           >
             <span aria-hidden className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
@@ -104,12 +110,9 @@ function Chip<T extends ItemValue>({
             <SelectItem
               key={item.value}
               value={item.value}
-              className="mx-1 gap-2 rounded-lg px-2 py-[6px] pl-3 select-none"
             >
-              <SelectItemText className="mr-0 px-0">
-                <span title={item.name} className="block truncate system-sm-medium text-text-secondary">{item.name}</span>
-              </SelectItemText>
-              <SelectItemIndicator className="text-util-colors-blue-light-blue-light-600" />
+              <SelectItemText title={item.name}>{item.name}</SelectItemText>
+              {showItemIndicator && <SelectItemIndicator />}
             </SelectItem>
           ))}
         </SelectContent>

@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { ControlMode } from '../../types'
+import { ControlMode, WorkflowRunningStatus } from '../../types'
 import {
   useWorkflowInteractions,
   useWorkflowMoveMode,
@@ -102,6 +102,66 @@ describe('useWorkflowMoveMode', () => {
     act(() => {
       result.current.handleModeHand()
       result.current.handleModePointer()
+    })
+
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
+  })
+
+  it('switches to comment mode when nodes are read-only', () => {
+    runtimeState.nodesReadOnly = true
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
+    })
+
+    expect(store.getState().controlMode).toBe(ControlMode.Comment)
+    expect(mockHandleSelectionCancel).toHaveBeenCalledTimes(1)
+    expect(result.current.canUseCommentMode).toBe(true)
+  })
+
+  it('does not switch to comment mode while workflow operation is blocked', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+        workflowRunningData: {
+          result: { status: WorkflowRunningStatus.Running },
+        } as never,
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
+    })
+
+    expect(result.current.canUseCommentMode).toBe(false)
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
+  })
+
+  it('does not switch to comment mode when commenting is denied', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+      },
+      hooksStoreProps: {
+        accessControl: {
+          canEdit: true,
+          canComment: false,
+          canRun: true,
+          canImportExportDSL: true,
+          canReleaseAndVersion: true,
+        },
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
     })
 
     expect(store.getState().controlMode).toBe(ControlMode.Pointer)

@@ -1,5 +1,6 @@
 import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import {
   RiCloseLine,
   RiDownloadLine,
@@ -8,7 +9,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
 import {
@@ -65,11 +65,9 @@ const FileImageItem = ({
           progress >= 0 && !fileIsUploaded(file) && (
             <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-effects-image-frame bg-background-overlay-alt">
               <ProgressCircle
-                percentage={progress}
-                size={12}
-                circleStrokeColor="stroke-components-progress-white-border"
-                circleFillColor="fill-transparent"
-                sectorFillColor="fill-components-progress-white-progress"
+                value={progress}
+                color="white"
+                aria-label={t('uploading', { ns: 'custom' })}
               />
             </div>
           )

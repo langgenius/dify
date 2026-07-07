@@ -15,7 +15,7 @@
   "inputField.manage": "จัดการ",
   "publishToast.desc": "เมื่อไม่ได้เผยแพร่ไปป์ไลน์ คุณสามารถปรับเปลี่ยนโครงสร้างก้อนในโหนดฐานความรู้ และการประสานไปป์ไลน์และการเปลี่ยนแปลงจะถูกบันทึกเป็นแบบร่างโดยอัตโนมัติ",
   "publishToast.title": "ไปป์ไลน์นี้ยังไม่ได้รับการเผยแพร่",
-  "ragToolSuggestions.noRecommendationPlugins": "ไม่มีปลั๊กอินที่แนะนำ ค้นหาเพิ่มเติมได้ใน <CustomLink>ตลาด</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "ไม่มีการผสานรวมที่แนะนำ ค้นหาเพิ่มเติมได้ใน <CustomLink>ตลาด</CustomLink>",
   "ragToolSuggestions.title": "คําแนะนําสําหรับ RAG",
   "result.resultPreview.error": "เกิดข้อผิดพลาดระหว่างการดําเนินการ",
   "result.resultPreview.footerTip": "ในโหมดทดสอบ ลองดูตัวอย่างได้สูงสุด {{count}} ชิ้น",

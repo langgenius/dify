@@ -7,8 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 
 import { InputVarType } from '@/app/components/workflow/types'
 
@@ -74,7 +74,7 @@ const WorkflowHiddenInputFields = ({
         <Textarea
           id={fieldId}
           value={typeof fieldValue === 'string' ? fieldValue : ''}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onValueChange(variable.variable, event.target.value)}
+          onValueChange={value => onValueChange(variable.variable, value)}
           placeholder={label}
           maxLength={variable.max_length}
           className="min-h-24"

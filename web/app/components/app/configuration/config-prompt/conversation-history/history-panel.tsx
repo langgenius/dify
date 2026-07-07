@@ -6,10 +6,10 @@ import Panel from '@/app/components/app/configuration/base/feature-panel'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
-type Props = {
+type Props = Readonly<{
   showWarning: boolean
   onShowEditModal: () => void
-}
+}>
 
 const HistoryPanel: FC<Props> = ({
   showWarning,

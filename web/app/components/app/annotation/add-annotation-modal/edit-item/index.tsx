@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
-import Textarea from '@/app/components/base/textarea'
 
 export enum EditItemType {
   Query = 'query',
   Answer = 'answer',
 }
-type Props = {
+type Props = Readonly<{
   type: EditItemType
   content: string
   onChange: (content: string) => void
-}
+}>
 
 const EditItem: FC<Props> = ({
   type,
@@ -33,8 +33,9 @@ const EditItem: FC<Props> = ({
       <div className="grow">
         <div className="mb-1 system-xs-semibold text-text-primary">{name}</div>
         <Textarea
+          aria-label={name}
           value={content}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+          onValueChange={value => onChange(value)}
           placeholder={placeholder}
           autoFocus
         />

@@ -1,4 +1,5 @@
 import json
+from typing import override
 
 
 class WaterCrawlError(Exception):
@@ -18,15 +19,18 @@ class WaterCrawlBadRequestError(WaterCrawlError):
     def flat_errors(self):
         return json.dumps(self.errors)
 
+    @override
     def __str__(self):
         return f"WaterCrawlBadRequestError: {self.message} \n {self.flat_errors}"
 
 
 class WaterCrawlPermissionError(WaterCrawlBadRequestError):
+    @override
     def __str__(self):
         return f"You are exceeding your WaterCrawl API limits. {self.message}"
 
 
 class WaterCrawlAuthenticationError(WaterCrawlBadRequestError):
+    @override
     def __str__(self):
         return "WaterCrawl API key is invalid or expired. Please check your API key and try again."

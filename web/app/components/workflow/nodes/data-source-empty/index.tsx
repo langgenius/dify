@@ -56,6 +56,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
           <BlockSelector
             onSelect={handleReplaceNode}
             trigger={renderTrigger}
+            renderTriggerAsButtonRoot
             noBlocks
             noTools
             popupClassName="w-[320px]"

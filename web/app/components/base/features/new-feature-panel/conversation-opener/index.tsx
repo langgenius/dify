@@ -13,13 +13,13 @@ import { FeatureEnum } from '@/app/components/base/features/types'
 import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import { useModalContext } from '@/context/modal-context'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-}
+}>
 
 const ConversationOpener = ({
   disabled,

@@ -6,8 +6,6 @@ on:
   merge_group:
     branches: ["main"]
     types: [checks_requested]
-  push:
-    branches: ["main"]
 
 permissions:
   actions: write
@@ -42,13 +40,14 @@ jobs:
     runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
+      cli-changed: ${{ steps.changes.outputs.cli }}
       e2e-changed: ${{ steps.changes.outputs.e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: changes
         with:
           filters: |
@@ -62,6 +61,18 @@ jobs:
               - 'docker/generate_docker_compose'
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
+            cli:
+              - 'cli/**'
+              - 'packages/tsconfig/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - '.npmrc'
+              - '.nvmrc'
+              - '.github/workflows/cli-tests.yml'
+              - '.github/workflows/cli-docker-build.yml'
+              - '.github/actions/setup-web/**'
             web:
               - 'web/**'
               - 'packages/**'
@@ -184,6 +195,66 @@ jobs:
           echo "API tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1
 
+  cli-tests-run:
+    name: Run CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed == 'true'
+    uses: ./.github/workflows/cli-tests.yml
+    secrets: inherit
+
+  cli-tests-skip:
+    name: Skip CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped CLI tests
+        run: echo "No CLI-related changes detected; skipping CLI tests."
+
+  cli-tests:
+    name: CLI Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - cli-tests-run
+      - cli-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize CLI Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.cli-changed }}
+          RUN_RESULT: ${{ needs.cli-tests-run.result }}
+          SKIP_RESULT: ${{ needs.cli-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "CLI tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "CLI tests ran successfully."
+              exit 0
+            fi
+
+            echo "CLI tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "CLI tests were skipped because no CLI-related files changed."
+            exit 0
+          fi
+
+          echo "CLI tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
   web-tests-run:
     name: Run Web Tests
     needs:
@@ -251,6 +322,7 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
     uses: ./.github/workflows/web-e2e.yml
+    secrets: inherit
 
   web-e2e-skip:
     name: Skip Web Full-Stack E2E

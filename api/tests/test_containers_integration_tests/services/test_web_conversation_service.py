@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
@@ -72,8 +72,9 @@ class TestWebConversationService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -109,7 +110,7 @@ class TestWebConversationService:
         end_user = EndUser(
             session_id=fake.uuid4(),
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             tenant_id=app.tenant_id,
         )

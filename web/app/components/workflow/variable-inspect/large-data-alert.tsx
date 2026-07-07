@@ -5,11 +5,11 @@ import { RiInformation2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   textHasNoExport?: boolean
   downloadUrl?: string
   className?: string
-}
+}>
 
 const LargeDataAlert: FC<Props> = ({
   textHasNoExport,

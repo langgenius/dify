@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {
-  status: string
-  executor?: string
-  startTime?: number
-  time?: number
-  tokens?: number
-  steps?: number
-  showSteps?: boolean
+  readonly status: string
+  readonly executor?: string
+  readonly startTime?: number
+  readonly time?: number
+  readonly tokens?: number
+  readonly steps?: number
+  readonly showSteps?: boolean
 }
 
 const MetaData: FC<Props> = ({

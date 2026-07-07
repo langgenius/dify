@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
+import { expectLoadingButton } from '@/test/button'
 import RenameModal from '../rename-modal'
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
@@ -72,8 +73,7 @@ describe('RenameModal', () => {
   it('shows loading state when saveLoading is true', () => {
     render(<RenameModal {...defaultProps} saveLoading />)
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).toBeDisabled()
-    expect(saveButton).toHaveAttribute('aria-busy', 'true')
+    expectLoadingButton(saveButton)
     expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 

@@ -6,13 +6,13 @@ import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   email: string
   data: Member
   disabled?: boolean
   onDelete: (recipient: RecipientItem) => void
   isError: boolean
-}
+}>
 
 const EmailItem = ({
   email,

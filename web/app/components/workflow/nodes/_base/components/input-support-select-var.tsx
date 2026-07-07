@@ -16,7 +16,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   instanceId?: string
   className?: string
   placeholder?: string
@@ -30,7 +30,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   insertVarTipToLeft?: boolean
-}
+}>
 
 const Editor: FC<Props> = ({
   instanceId,

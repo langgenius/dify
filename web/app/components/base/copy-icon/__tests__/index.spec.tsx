@@ -5,7 +5,7 @@ const copy = vi.fn()
 const reset = vi.fn()
 let copied = false
 
-vi.mock('@/hooks/use-clipboard', () => ({
+vi.mock('foxact/use-clipboard', () => ({
   useClipboard: () => ({
     copy,
     reset,

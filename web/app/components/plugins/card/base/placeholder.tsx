@@ -3,10 +3,10 @@ import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from
 import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 
-type Props = {
+type Props = Readonly<{
   wrapClassName: string
   loadingFileName?: string
-}
+}>
 
 export const LoadingPlaceholder = ({ className }: { className?: string }) => (
   <div className={cn('h-2 rounded-xs bg-text-quaternary opacity-20', className)} />
@@ -17,7 +17,7 @@ const Placeholder = ({
   loadingFileName,
 }: Props) => {
   return (
-    <div className={wrapClassName}>
+    <div className={cn(wrapClassName, 'p-3')}>
       <SkeletonRow>
         <div
           className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]

@@ -1,6 +1,5 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 
 import Conversion from '../conversion'
@@ -82,6 +81,17 @@ vi.mock('@/app/components/workflow/store', () => {
     }),
   }
 })
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean, canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
 
 const {
   mockHandlePaneContextmenuCancel,
@@ -209,6 +219,24 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => vi.fn(),
 }))
 
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
+}))
+
+let mockAppContextState = {
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
+}))
+
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: {} },
@@ -279,8 +307,6 @@ vi.mock('@/app/components/workflow/constants', () => ({
 vi.mock('@/app/components/workflow/utils', () => ({
   initialNodes: vi.fn(nodes => nodes),
   initialEdges: vi.fn(edges => edges),
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -348,58 +374,6 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: function MockAppIconPicker({ onSelect, onClose }: {
-    onSelect?: (payload:
-      | { type: 'emoji', icon: string, background: string }
-      | { type: 'image', fileId: string, url: string },
-    ) => void
-    onClose?: () => void
-  }) {
-    const [activeTab, setActiveTab] = useState<'emoji' | 'image'>('emoji')
-    const [selectedEmoji, setSelectedEmoji] = useState({ icon: '😀', background: '#FFFFFF' })
-
-    return (
-      <div data-testid="app-icon-picker">
-        <button type="button" onClick={() => setActiveTab('emoji')}>iconPicker.emoji</button>
-        <button type="button" onClick={() => setActiveTab('image')}>iconPicker.image</button>
-        {activeTab === 'emoji' && (
-          <button
-            type="button"
-            data-testid="picker-emoji-option"
-            onClick={() => setSelectedEmoji({ icon: '🎯', background: '#FFAA00' })}
-          >
-            picker-emoji-option
-          </button>
-        )}
-        {activeTab === 'image' && <div data-testid="picker-image-panel">picker-image-panel</div>}
-        <button type="button" onClick={() => onClose?.()}>iconPicker.cancel</button>
-        <button
-          type="button"
-          onClick={() => {
-            if (activeTab === 'emoji') {
-              onSelect?.({
-                type: 'emoji',
-                icon: selectedEmoji.icon,
-                background: selectedEmoji.background,
-              })
-              return
-            }
-
-            onSelect?.({
-              type: 'image',
-              fileId: 'test-file-id',
-              url: 'https://example.com/icon.png',
-            })
-          }}
-        >
-          iconPicker.ok
-        </button>
-      </div>
-    )
-  },
-}))
-
 // Silence expected console.error from Dialog/Modal rendering
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -429,6 +403,16 @@ function getAppIcon() {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
+    mockAppContextState = {
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   describe('Rendering', () => {
@@ -767,7 +751,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
 
-      fireEvent.click(screen.getByTestId('picker-emoji-option'))
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
 
       // Click OK to confirm selection
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
@@ -1087,7 +1071,7 @@ describe('Integration Tests', () => {
       // Open picker and select an emoji
       const appIcon = getAppIcon()
       fireEvent.click(appIcon)
-      fireEvent.click(screen.getByTestId('picker-emoji-option'))
+      fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))

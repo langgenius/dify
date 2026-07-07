@@ -5,21 +5,31 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Input from '@/app/components/base/input'
-import TabSlider from '@/app/components/base/tab-slider'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import { isValidServerID, isValidUrl, useMCPModalForm } from './hooks/use-mcp-modal-form'
 import AuthenticationSection from './sections/authentication-section'
 import ConfigurationsSection from './sections/configurations-section'
 import HeadersSection from './sections/headers-section'
+
+// SSO protocols whose token-endpoint flow supports refresh-token issuance and
+// therefore can back MCP per-user identity forwarding. SAML cannot — it has
+// no refresh model and no token endpoint, so the enterprise side returns the
+// disabled stub for it.
+const MCP_FORWARDING_CAPABLE_PROTOCOLS = ['oidc', 'oauth2'] as const
+type MCPForwardingCapableProtocol = typeof MCP_FORWARDING_CAPABLE_PROTOCOLS[number]
 
 type MCPModalConfirmPayload = {
   name: string
@@ -39,6 +49,7 @@ type MCPModalConfirmPayload = {
     timeout: number
     sse_read_timeout: number
   }
+  identity_mode?: 'off' | 'idp_token'
 }
 
 type DuplicateAppModalProps = {
@@ -69,6 +80,13 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
     state,
     actions,
   } = useMCPModalForm(data)
+
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  // SAML has no refresh_token model, so the enterprise side can't mint
+  // per-call MCP tokens. Only OIDC and OAuth2 can — gate the toggle on
+  // both "SSO enforced" AND "protocol is refresh-capable".
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol as MCPForwardingCapableProtocol
+  const isForwardIdentitySupported = systemFeatures.sso_enforced_for_signin && MCP_FORWARDING_CAPABLE_PROTOCOLS.includes(ssoProtocol)
 
   const isHovering = useHover(appIconRef)
 
@@ -110,6 +128,9 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         timeout: state.timeout || 30,
         sse_read_timeout: state.sseReadTimeout || 300,
       },
+      // Edit-mode data may carry idp_token; clamp to off when SSO is no
+      // longer available so a stale row can't keep forwarding configured.
+      identity_mode: state.forwardUserIdentity && isForwardIdentitySupported ? 'idp_token' : 'off',
     })
     if (isCreate)
       onHide()
@@ -117,12 +138,6 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
   const handleIconSelect = (payload: AppIconSelection) => {
     actions.setAppIcon(payload)
-    actions.setShowAppIconPicker(false)
-  }
-
-  const handleIconClose = () => {
-    actions.resetIcon()
-    actions.setShowAppIconPicker(false)
   }
 
   const isSubmitDisabled = !state.name || !state.url || !state.serverIdentifier || state.isFetchingIcon
@@ -213,14 +228,49 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
           )}
         </div>
 
+        {isForwardIdentitySupported && (
+          <div>
+            <div className="mb-1 flex h-6 items-center">
+              <Switch
+                className="mr-2"
+                checked={state.forwardUserIdentity}
+                onCheckedChange={actions.setForwardUserIdentity}
+                aria-labelledby="mcp-forward-user-identity-label"
+              />
+              <span
+                id="mcp-forward-user-identity-label"
+                className="system-sm-medium text-text-secondary"
+              >
+                {t('mcp.modal.forwardUserIdentity', { ns: 'tools' })}
+              </span>
+            </div>
+            <div className="body-xs-regular text-text-tertiary">
+              {t('mcp.modal.forwardUserIdentityTip', { ns: 'tools' })}
+            </div>
+          </div>
+        )}
+
         {/* Auth Method Tabs */}
-        <TabSlider
+        <SegmentedControl<MCPAuthMethod>
+          value={[state.authMethod]}
+          onValueChange={(nextValue) => {
+            const nextAuthMethod = nextValue[0]
+            if (nextAuthMethod)
+              actions.setAuthMethod(nextAuthMethod)
+          }}
+          aria-label={t('mcp.modal.authentication', { ns: 'tools' })}
           className="w-full"
-          itemClassName={isActive => `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`}
-          value={state.authMethod}
-          onChange={actions.setAuthMethod}
-          options={authMethods}
-        />
+        >
+          {authMethods.map(option => (
+            <SegmentedControlItem<MCPAuthMethod>
+              key={option.value}
+              value={option.value}
+              className="flex-1"
+            >
+              {option.text}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
 
         {/* Tab Content */}
         {state.authMethod === MCPAuthMethod.authentication && (
@@ -260,8 +310,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
       {state.showAppIconPicker && (
         <AppIconPicker
+          open={state.showAppIconPicker}
+          initialEmoji={state.appIcon.type === 'emoji'
+            ? { icon: state.appIcon.icon, background: state.appIcon.background }
+            : undefined}
+          onOpenChange={actions.setShowAppIconPicker}
           onSelect={handleIconSelect}
-          onClose={handleIconClose}
         />
       )}
     </>

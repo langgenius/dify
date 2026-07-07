@@ -6,7 +6,6 @@ import {
   fetchWithRetry,
   getPurifyHref,
   getTextWidthWithCanvas,
-  randomString,
   sleep,
 } from './index'
 
@@ -78,26 +77,6 @@ describe('getTextWidthWithCanvas', () => {
 
     const width = getTextWidthWithCanvas('test text')
     expect(width).toBe(0)
-  })
-})
-
-describe('randomString', () => {
-  it('should generate string of specified length', () => {
-    const result = randomString(10)
-    expect(result.length).toBe(10)
-  })
-
-  it('should only contain valid characters', () => {
-    const result = randomString(100)
-    const validChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_'
-    for (const char of result)
-      expect(validChars).toContain(char)
-  })
-
-  it('should generate different strings on consecutive calls', () => {
-    const result1 = randomString(20)
-    const result2 = randomString(20)
-    expect(result1).not.toEqual(result2)
   })
 })
 
@@ -320,39 +299,6 @@ describe('getTextWidthWithCanvas', () => {
     expect(width).toBe(0)
 
     vi.restoreAllMocks()
-  })
-})
-
-describe('randomString extended', () => {
-  it('should generate string of exact length', () => {
-    expect(randomString(10).length).toBe(10)
-    expect(randomString(50).length).toBe(50)
-    expect(randomString(100).length).toBe(100)
-  })
-
-  it('should generate different strings on multiple calls', () => {
-    const str1 = randomString(20)
-    const str2 = randomString(20)
-    const str3 = randomString(20)
-    expect(str1).not.toBe(str2)
-    expect(str2).not.toBe(str3)
-    expect(str1).not.toBe(str3)
-  })
-
-  it('should only contain valid characters', () => {
-    const validChars = /^[\w-]+$/
-    const str = randomString(100)
-    expect(validChars.test(str)).toBe(true)
-  })
-
-  it('should handle length of 1', () => {
-    const str = randomString(1)
-    expect(str.length).toBe(1)
-  })
-
-  it('should handle length of 0', () => {
-    const str = randomString(0)
-    expect(str).toBe('')
   })
 })
 

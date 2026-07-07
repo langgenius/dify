@@ -10,6 +10,7 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.redis_names import normalize_redis_key_prefix
+from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -28,6 +29,11 @@ class CelerySSLOptionsDict(TypedDict):
     ssl_ca_certs: str | None
     ssl_certfile: str | None
     ssl_keyfile: str | None
+
+
+class CeleryBeatScheduleEntry(TypedDict):
+    task: str
+    schedule: crontab | timedelta
 
 
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
@@ -142,17 +148,19 @@ def init_app(app: DifyApp) -> Celery:
 
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+    setup_workflow_warm_shutdown_handler()
 
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule = {}
+    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
@@ -221,6 +229,12 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["clean_workflow_runs_task"] = {
             "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
             "schedule": crontab(minute="0", hour="0"),
+        }
+    if dify_config.ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK:
+        imports.append("schedule.clean_oauth_access_tokens_task")
+        beat_schedule["clean_oauth_access_tokens_task"] = {
+            "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
+            "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")

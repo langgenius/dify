@@ -1,5 +1,5 @@
 'use client'
-import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
+import type { PropsWithChildren, ReactElement } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Tabs,
@@ -9,8 +9,6 @@ import {
 } from '@langgenius/dify-ui/tabs'
 import {
   Children,
-  createContext,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -56,7 +54,7 @@ function CopyButton({ code }: { code: string }) {
     <button
       type="button"
       className={cn('group/button absolute top-1.5 right-4 overflow-hidden rounded-full py-1 pr-3 pl-2 text-2xs font-medium opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus:opacity-100', copied
-        ? 'bg-emerald-400/10 ring-1 ring-emerald-400/20 ring-inset'
+        ? 'bg-emerald-400/10 inset-ring-1 inset-ring-emerald-400/20'
         : 'bg-white/5 hover:bg-white/7.5 dark:bg-white/2.5 dark:hover:bg-white/5')}
       onClick={() => {
         writeTextToClipboard(code).then(() => {
@@ -269,8 +267,6 @@ function useTabGroupProps(tabValues: string[]) {
   }
 }
 
-const CodeGroupContext = createContext(false)
-
 type CodeGroupProps = PropsWithChildren<{
   /** Code example(s) to display */
   targetCode?: string | CodeExample[]
@@ -297,42 +293,20 @@ export function CodeGroup({ children, title, targetCode, ...props }: CodeGroupPr
     </>
   )
 
-  return (
-    <CodeGroupContext.Provider value={true}>
-      {hasTabs
-        ? (
-            <Tabs
-              {...tabGroupProps}
-              className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
-            >
-              {content}
-            </Tabs>
-          )
-        : (
-            <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
-              {content}
-            </div>
-          )}
-    </CodeGroupContext.Provider>
-  )
-}
-
-type IChildProps = {
-  children: ReactNode
-  [key: string]: any
-}
-
-export function Code({ children, ...props }: IChildProps) {
-  return <code {...props}>{children}</code>
-}
-
-export function Pre({ children, ...props }: IChildrenProps) {
-  const isGrouped = useContext(CodeGroupContext)
-
-  if (isGrouped)
-    return children
-
-  return <CodeGroup {...props}>{children}</CodeGroup>
+  return hasTabs
+    ? (
+        <Tabs
+          {...tabGroupProps}
+          className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
+        >
+          {content}
+        </Tabs>
+      )
+    : (
+        <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
+          {content}
+        </div>
+      )
 }
 
 export function Embed({ value, ...props }: IChildrenProps) {

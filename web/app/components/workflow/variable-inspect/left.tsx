@@ -11,10 +11,10 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useStore } from '../store'
 import Group from './group'
 
-type Props = {
+type Props = Readonly<{
   currentNodeVar?: currentVarType
   handleVarSelect: (state: any) => void
-}
+}>
 
 const Left = ({
   currentNodeVar,

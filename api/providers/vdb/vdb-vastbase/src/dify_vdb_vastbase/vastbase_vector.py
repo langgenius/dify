@@ -1,7 +1,7 @@
 import json
 import uuid
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, override
 
 import psycopg2.extras
 import psycopg2.pool
@@ -69,6 +69,7 @@ class VastbaseVector(BaseVector):
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"
 
+    @override
     def get_type(self) -> str:
         return VectorType.VASTBASE
 
@@ -94,11 +95,13 @@ class VastbaseVector(BaseVector):
             conn.commit()
             self.pool.putconn(conn)
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         values = []
         pks = []
@@ -120,6 +123,7 @@ class VastbaseVector(BaseVector):
             )
         return pks
 
+    @override
     def text_exists(self, id: str) -> bool:
         with self._get_cursor() as cur:
             cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
@@ -133,6 +137,7 @@ class VastbaseVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
         # Scenario 1: extract a document fails, resulting in a table not being created.
@@ -142,10 +147,12 @@ class VastbaseVector(BaseVector):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE meta->>%s = %s", (key, value))
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search the nearest neighbors to a vector.
@@ -174,6 +181,7 @@ class VastbaseVector(BaseVector):
                     docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
 
@@ -199,6 +207,7 @@ class VastbaseVector(BaseVector):
 
         return docs
 
+    @override
     def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
@@ -220,6 +229,7 @@ class VastbaseVector(BaseVector):
 
 
 class VastbaseVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> VastbaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

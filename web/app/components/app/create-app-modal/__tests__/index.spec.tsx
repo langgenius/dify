@@ -1,8 +1,9 @@
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -15,6 +16,7 @@ import CreateAppModal from '../index'
 const ahooksMocks = vi.hoisted(() => ({
   keyPressHandlers: [] as Array<() => void>,
 }))
+const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -23,19 +25,26 @@ vi.mock('ahooks', () => ({
     const flush = vi.fn()
     return { run, cancel, flush }
   },
-  useKeyPress: (_keys: unknown, handler: () => void) => {
+  useHover: () => false,
+}))
+vi.mock('@tanstack/react-hotkeys', () => ({
+  formatForDisplay: (key: string) => key,
+  useHotkey: (_hotkey: string, handler: () => void) => {
     ahooksMocks.keyPressHandlers.push(handler)
   },
-  useHover: () => false,
 }))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
+  useParams: () => ({}),
 }))
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
 vi.mock('@/service/apps', () => ({
   createApp: vi.fn(),
+}))
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => mockInvalidateAppList,
 }))
 const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
@@ -53,19 +62,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
     <button type="button" onClick={onClick}>open-icon-picker</button>
-  ),
-}))
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (payload: Record<string, unknown>) => void, onClose: () => void }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSelect({ type: 'image', fileId: 'file-1', url: 'https://example.com/icon.png' })}
-      >
-        select-image-icon
-      </button>
-      <button type="button" onClick={onClose}>close-icon-picker</button>
-    </div>
   ),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -136,7 +132,8 @@ describe('CreateAppModal', () => {
       enableBilling: true,
     } as unknown as ReturnType<typeof useProviderContext>)
     mockUseAppContext.mockReturnValue({
-      isCurrentWorkspaceEditor: true,
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: ['app.create_and_management'],
     } as unknown as ReturnType<typeof useAppContext>)
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
@@ -153,7 +150,7 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -175,7 +172,15 @@ describe('CreateAppModal', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
-    await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush))
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      }),
+    )
   })
 
   it('shows error toast when creation fails', async () => {
@@ -216,14 +221,21 @@ describe('CreateAppModal', () => {
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
 
-  it('creates a beginner chat app with the keyboard shortcut and selected image icon', async () => {
+  it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
     mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
     renderModal()
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
     fireEvent.click(screen.getByText('open-icon-picker'))
-    fireEvent.click(screen.getByText('select-image-icon'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
       target: { value: 'Keyboard App' },
     })
@@ -237,9 +249,9 @@ describe('CreateAppModal', () => {
       expect(mockCreateApp).toHaveBeenCalledWith({
         name: 'Keyboard App',
         description: 'Created from shortcut',
-        icon_type: 'image',
-        icon: 'file-1',
-        icon_background: undefined,
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#E4FBCC',
         mode: AppModeEnum.CHAT,
       })
     })
@@ -254,7 +266,7 @@ describe('CreateAppModal', () => {
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
-  it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', () => {
+  it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: AppModeEnum.ADVANCED_CHAT,
@@ -268,10 +280,15 @@ describe('CreateAppModal', () => {
     renderModal()
 
     fireEvent.click(screen.getByText('open-icon-picker'))
-    expect(screen.getByText('select-image-icon')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('close-icon-picker'))
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    })
 
-    expect(screen.queryByText('select-image-icon')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
     ahooksMocks.keyPressHandlers.at(-1)?.()
 

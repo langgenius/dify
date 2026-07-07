@@ -1,13 +1,14 @@
 from collections.abc import Iterator
+from typing import override
 
 import pytest
 from dify_agent.client import DifyAgentHTTPError, DifyAgentStreamError, DifyAgentTimeoutError, DifyAgentValidationError
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
-    ExecutionContext,
     RunEvent,
     RunStartedEvent,
     RunStatusResponse,
@@ -29,12 +30,16 @@ def _request():
     return AgentBackendRunRequestBuilder().build_for_workflow_node(
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
-                tenant_id="tenant-1",
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=ExecutionContext(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="debugger",
+            ),
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )
@@ -82,6 +87,7 @@ def test_dify_agent_backend_run_client_delegates_sync_methods():
 
 def test_dify_agent_backend_run_client_maps_validation_error():
     class InvalidClient(_SuccessfulClient):
+        @override
         def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
             raise DifyAgentValidationError(detail={"field": "bad"})
 
@@ -93,6 +99,7 @@ def test_dify_agent_backend_run_client_maps_validation_error():
 
 def test_dify_agent_backend_run_client_maps_http_error():
     class HTTPErrorClient(_SuccessfulClient):
+        @override
         def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
             raise DifyAgentHTTPError(status_code=503, detail="unavailable")
 
@@ -105,6 +112,7 @@ def test_dify_agent_backend_run_client_maps_http_error():
 
 def test_dify_agent_backend_run_client_maps_timeout_error():
     class TimeoutClient(_SuccessfulClient):
+        @override
         def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
             raise DifyAgentTimeoutError("timeout")
 
@@ -116,6 +124,7 @@ def test_dify_agent_backend_run_client_maps_timeout_error():
 
 def test_dify_agent_backend_run_client_maps_stream_error():
     class StreamClient(_SuccessfulClient):
+        @override
         def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
             raise DifyAgentStreamError("bad stream")
             yield

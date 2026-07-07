@@ -235,6 +235,7 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -255,6 +256,7 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.AGENT_CHAT),
             user=_make_user(),
             args={"inputs": {}},
@@ -276,6 +278,7 @@ class TestGenerate:
         )
         app = _make_app(AppMode.CHAT, is_agent=True)
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -297,6 +300,7 @@ class TestGenerate:
         )
         app = _make_app(AppMode.CHAT, is_agent=False)
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -304,6 +308,22 @@ class TestGenerate:
             streaming=False,
         )
         assert result == {"result": "chat"}
+        gen_spy.assert_called_once()
+
+    def test_stateless_agent_mode(self, mocker: MockerFixture):
+        gen_spy = mocker.patch(
+            "services.app_generate_service.AgentAppGenerator.generate_stateless",
+            return_value={"result": "stateless-agent"},
+        )
+
+        result = AppGenerateService.generate_stateless_agent_app(
+            app_model=_make_app(AppMode.AGENT),
+            user=_make_user(),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+
+        assert result == {"result": "stateless-agent"}
         gen_spy.assert_called_once()
 
     # -- ADVANCED_CHAT blocking ---------------------------------------------
@@ -322,6 +342,7 @@ class TestGenerate:
         )
 
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -354,6 +375,7 @@ class TestGenerate:
         )
 
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -379,6 +401,7 @@ class TestGenerate:
         )
 
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -412,6 +435,7 @@ class TestGenerate:
         )
 
         result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -427,6 +451,7 @@ class TestGenerate:
         app = _make_app("invalid-mode", is_agent=False)
         with pytest.raises(ValueError, match="Invalid app mode"):
             AppGenerateService.generate(
+                MagicMock(),
                 app_model=app,
                 user=_make_user(),
                 args={},
@@ -464,6 +489,7 @@ class TestGenerateBilling:
         )
 
         AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -487,6 +513,7 @@ class TestGenerateBilling:
 
         with pytest.raises(InvokeRateLimitError):
             AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -512,6 +539,7 @@ class TestGenerateBilling:
 
         with pytest.raises(RuntimeError, match="boom"):
             AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -543,6 +571,7 @@ class TestGenerateBilling:
         )
 
         AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -550,7 +579,138 @@ class TestGenerateBilling:
             streaming=False,
         )
         # exit is called in finally block for non-streaming
-        assert len(exit_calls) >= 1
+        assert exit_calls == ["dummy-request-id"]
+
+    def test_stateless_agent_app_uses_billing_and_rate_limit_guardrails(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        quota_charge = MagicMock()
+        reserve_mock = mocker.patch(
+            "services.app_generate_service.QuotaService.reserve",
+            return_value=quota_charge,
+        )
+        exit_calls: list[str] = []
+
+        class _TrackingRateLimit(_DummyRateLimit):
+            def exit(self, request_id: str) -> None:
+                exit_calls.append(request_id)
+
+        mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        gen_spy = mocker.patch(
+            "services.app_generate_service.AgentAppGenerator.generate_stateless",
+            return_value={"ok": True},
+        )
+
+        result = AppGenerateService.generate_stateless_agent_app(
+            app_model=_make_app(AppMode.AGENT),
+            user=_make_user(),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+
+        assert result == {"ok": True}
+        reserve_mock.assert_called_once_with(QuotaType.WORKFLOW, "tenant-id")
+        quota_charge.commit.assert_called_once()
+        assert exit_calls == ["dummy-request-id"]
+        gen_spy.assert_called_once()
+
+    def test_stateless_agent_app_failure_refunds_quota_and_exits_once(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        quota_charge = MagicMock()
+        mocker.patch(
+            "services.app_generate_service.QuotaService.reserve",
+            return_value=quota_charge,
+        )
+        exit_calls: list[str] = []
+
+        class _TrackingRateLimit(_DummyRateLimit):
+            def exit(self, request_id: str) -> None:
+                exit_calls.append(request_id)
+
+        mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        mocker.patch(
+            "services.app_generate_service.AgentAppGenerator.generate_stateless",
+            side_effect=RuntimeError("boom"),
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            AppGenerateService.generate_stateless_agent_app(
+                app_model=_make_app(AppMode.AGENT),
+                user=_make_user(),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+            )
+
+        quota_charge.commit.assert_called_once()
+        quota_charge.refund.assert_called_once()
+        assert exit_calls == ["dummy-request-id"]
+
+    def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        quota_charge = MagicMock()
+        mocker.patch(
+            "services.app_generate_service.QuotaService.reserve",
+            return_value=quota_charge,
+        )
+        exit_calls: list[str] = []
+
+        class _TrackingRateLimit(_DummyRateLimit):
+            def exit(self, request_id: str) -> None:
+                exit_calls.append(request_id)
+
+        mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        mocker.patch(
+            "services.app_generate_service.CompletionAppGenerator.generate",
+            side_effect=RuntimeError("boom"),
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            AppGenerateService.generate(
+                MagicMock(),
+                app_model=_make_app(AppMode.COMPLETION),
+                user=_make_user(),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+            )
+
+        quota_charge.refund.assert_called_once()
+        assert exit_calls == ["dummy-request-id"]
+
+    def test_streaming_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        quota_charge = MagicMock()
+        mocker.patch(
+            "services.app_generate_service.QuotaService.reserve",
+            return_value=quota_charge,
+        )
+        exit_calls: list[str] = []
+
+        class _TrackingRateLimit(_DummyRateLimit):
+            def exit(self, request_id: str) -> None:
+                exit_calls.append(request_id)
+
+        mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        mocker.patch(
+            "services.app_generate_service.CompletionAppGenerator.generate",
+            side_effect=RuntimeError("boom"),
+        )
+
+        with pytest.raises(RuntimeError, match="boom"):
+            AppGenerateService.generate(
+                MagicMock(),
+                app_model=_make_app(AppMode.COMPLETION),
+                user=_make_user(),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=True,
+            )
+
+        quota_charge.refund.assert_called_once()
+        assert exit_calls == ["dummy-request-id"]
 
 
 # ---------------------------------------------------------------------------
@@ -729,6 +889,7 @@ class TestGenerateMoreLikeThis:
             return_value={"result": "similar"},
         )
         result = AppGenerateService.generate_more_like_this(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             message_id="msg-1",

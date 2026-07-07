@@ -72,7 +72,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
-        publishShortcut={['ctrl', '⇧', 'P']}
+        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -110,7 +110,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
+        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -134,7 +134,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
+        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -158,7 +158,7 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['ctrl', '⇧', 'P']}
+        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}
       />,
@@ -243,7 +243,6 @@ describe('app-publisher sections', () => {
         workflowToolAvailable={false}
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
         workflowToolMessage="workflow-disabled"
         onConfigureWorkflowTool={vi.fn()}
       />,
@@ -282,7 +281,6 @@ describe('app-publisher sections', () => {
         workflowToolAvailable
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
         onConfigureWorkflowTool={vi.fn()}
       />,
     )
@@ -309,7 +307,6 @@ describe('app-publisher sections', () => {
         workflowToolAvailable
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
         onConfigureWorkflowTool={vi.fn()}
       />,
     )

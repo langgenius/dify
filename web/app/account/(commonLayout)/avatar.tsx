@@ -12,8 +12,9 @@ import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
-import { useLogout, userProfileQueryOptions } from '@/service/use-common'
+import { useLogout } from '@/service/use-common'
 
 export default function AppSelector() {
   const router = useRouter()
@@ -31,7 +32,6 @@ export default function AppSelector() {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
     resetUser()
     // Tokens are now stored in cookies and cleared by backend
 

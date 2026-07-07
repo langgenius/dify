@@ -279,7 +279,7 @@ const Item: FC<ItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   hideSearch?: boolean
   searchText?: string
   searchBoxClassName?: string
@@ -295,7 +295,7 @@ type Props = {
   onManageInputField?: () => void
   autoFocus?: boolean
   preferSchemaType?: boolean
-}
+}>
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
   searchText,

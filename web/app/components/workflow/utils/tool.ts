@@ -43,13 +43,6 @@ export const getToolCheckParams = (
     language,
   }
 }
-
-export const CHUNK_TYPE_MAP = {
-  general_chunks: 'GeneralStructureChunk',
-  parent_child_chunks: 'ParentChildStructureChunk',
-  qa_chunks: 'QAStructureChunk',
-}
-
 export const wrapStructuredVarItem = (outputItem: any, matchedSchemaType: string): StructuredOutput => {
   const dataType = Type.object
   return {

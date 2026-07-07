@@ -1,86 +1,103 @@
-import type { FC } from 'react'
+import type { InputProps } from '@langgenius/dify-ui/input'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
+import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type SearchInputProps = {
+  value: string
+  onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-  value: string
-  onChange: (v: string) => void
-  white?: boolean
-}
+} & Pick<InputProps, 'aria-label' | 'autoFocus'>
 
-const SearchInput: FC<SearchInputProps> = ({
+export function SearchInput({
   placeholder,
   className,
   value,
-  onChange,
-  white,
-}) => {
+  onValueChange,
+  autoFocus,
+  'aria-label': ariaLabel,
+}: SearchInputProps) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [focus, setFocus] = useState<boolean>(false)
-  const isComposing = useRef<boolean>(false)
-  const [compositionValue, setCompositionValue] = useState<string>('')
+  const isComposingRef = useRef<boolean>(false)
+  const compositionCommitRef = useRef<string | null>(null)
+  const [compositionValue, setCompositionValue] = useState('')
+  const inputValue = isComposingRef.current ? compositionValue : value
+
+  const handleClear = () => {
+    isComposingRef.current = false
+    compositionCommitRef.current = null
+    setCompositionValue('')
+    onValueChange('')
+    inputRef.current?.focus()
+  }
 
   return (
     <div className={cn(
-      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-      focus && 'bg-components-input-bg-active!',
-      white && 'border-gray-300! bg-white! shadow-xs hover:border-gray-300! hover:bg-white!',
+      'relative',
       className,
     )}
     >
-      <div className="pointer-events-none mr-1.5 flex size-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="size-4 text-components-input-text-placeholder" aria-hidden="true" />
-      </div>
-      <input
+      <span className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" aria-hidden="true" />
+      <Input
         ref={inputRef}
-        type="text"
+        type="search"
         name="query"
+        aria-label={ariaLabel ?? t('operation.search', { ns: 'common' })}
         className={cn(
-          'caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-          white && 'bg-white! group-hover:bg-white! placeholder:text-gray-400! hover:bg-white!',
+          'ps-7',
+          !!inputValue && 'pe-7',
+          '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
         )}
-        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
-        value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          const newValue = e.target.value
-          if (isComposing.current)
-            setCompositionValue(newValue)
-          else
-            onChange(newValue)
+        placeholder={placeholder ?? t('operation.search', { ns: 'common' })}
+        value={inputValue}
+        onValueChange={(nextValue) => {
+          if (isComposingRef.current) {
+            setCompositionValue(nextValue)
+            return
+          }
+          if (compositionCommitRef.current !== null) {
+            if (compositionCommitRef.current !== nextValue) {
+              compositionCommitRef.current = null
+              onValueChange(nextValue)
+              return
+            }
+            compositionCommitRef.current = null
+            return
+          }
+          onValueChange(nextValue)
         }}
         onCompositionStart={() => {
-          isComposing.current = true
+          isComposingRef.current = true
+          compositionCommitRef.current = null
           setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
-          isComposing.current = false
+          if (!isComposingRef.current)
+            return
+
+          isComposingRef.current = false
           setCompositionValue('')
-          onChange(e.currentTarget.value)
+          compositionCommitRef.current = e.currentTarget.value
+          onValueChange(e.currentTarget.value)
         }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
         autoComplete="off"
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={autoFocus}
+        enterKeyHint="search"
       />
-      {value && (
+      {!!inputValue && (
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex size-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
-          onClick={() => {
-            onChange('')
-            inputRef.current?.focus()
-          }}
+          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          onClick={handleClear}
         >
-          <RiCloseCircleFill className="size-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <span className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary" aria-hidden="true" />
         </button>
       )}
     </div>
   )
 }
-
-export default SearchInput

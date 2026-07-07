@@ -39,6 +39,7 @@ export const zFileResponse = z.object({
   name: z.string(),
   original_url: z.string().nullish(),
   preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
   tenant_id: z.string().nullish(),
@@ -62,13 +63,18 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
  */
 export const zGetFilesUploadResponse = zUploadConfig
 
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+  source: z.enum(['datasets']).optional(),
+})
+
 /**
  * File uploaded successfully
  */
 export const zPostFilesUploadResponse = zFileResponse
 
 export const zGetFilesByFileIdPreviewPath = z.object({
-  file_id: z.string(),
+  file_id: z.uuid(),
 })
 
 /**

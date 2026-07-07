@@ -24,7 +24,7 @@ import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import HeaderTable from './components/header-table'
 import ParagraphInput from './components/paragraph-input'
 import ParameterTable from './components/parameter-table'
-import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from './use-config'
+import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, useConfig } from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
 
 const i18nPrefix = 'nodes.triggerWebhook'
@@ -262,8 +262,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 disabled={readOnly}
                 onValueChange={value => value !== null && handleStatusCodeChange(value)}
                 onValueCommitted={(value, eventDetails) => {
-                  if (eventDetails.reason === 'input-blur' || eventDetails.reason === 'input-clear')
-                    handleStatusCodeChange(normalizeStatusCode(value ?? DEFAULT_STATUS_CODE))
+                  if (eventDetails.reason === 'input-clear')
+                    handleStatusCodeChange(value ?? DEFAULT_STATUS_CODE)
                 }}
               >
                 <NumberFieldGroup>

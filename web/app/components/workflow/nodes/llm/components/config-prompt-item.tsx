@@ -13,7 +13,7 @@ import { EditionType } from '../../../types'
 
 const i18nPrefix = 'nodes.llm'
 
-type Props = {
+type Props = Readonly<{
   instanceId: string
   className?: string
   headerClassName?: string
@@ -40,7 +40,7 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: Variable) => void
   modelConfig?: ModelConfig
-}
+}>
 
 const roleOptions = [
   {

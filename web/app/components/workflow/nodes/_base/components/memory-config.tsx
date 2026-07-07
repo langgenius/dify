@@ -46,13 +46,14 @@ const RoleItem: FC<RoleItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   config: { data?: Memory }
   onChange: (memory?: Memory) => void
   canSetRoleName?: boolean
-}
+  defaultMemory?: Memory
+}>
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
@@ -65,15 +66,16 @@ const MemoryConfig: FC<Props> = ({
   config = { data: MEMORY_DEFAULT },
   onChange,
   canSetRoleName = false,
+  defaultMemory = MEMORY_DEFAULT,
 }) => {
   const { t } = useTranslation()
   const payload = config.data
   const windowSizeLabel = t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })
   const handleMemoryEnabledChange = useCallback((enabled: boolean) => {
-    onChange(enabled ? MEMORY_DEFAULT : undefined)
-  }, [onChange])
+    onChange(enabled ? defaultMemory : undefined)
+  }, [defaultMemory, onChange])
   const handleWindowEnabledChange = useCallback((enabled: boolean) => {
-    const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
+    const newPayload = produce(config.data || defaultMemory, (draft) => {
       if (!draft.window)
         draft.window = { enabled: false, size: WINDOW_SIZE_DEFAULT }
 
@@ -81,10 +83,10 @@ const MemoryConfig: FC<Props> = ({
     })
 
     onChange(newPayload)
-  }, [config, onChange])
+  }, [config, defaultMemory, onChange])
 
   const handleWindowSizeChange = useCallback((size: number | string) => {
-    const newPayload = produce(payload || MEMORY_DEFAULT, (draft) => {
+    const newPayload = produce(payload || defaultMemory, (draft) => {
       if (!draft.window)
         draft.window = { enabled: true, size: WINDOW_SIZE_DEFAULT }
       let limitedSize: null | string | number = size
@@ -106,7 +108,7 @@ const MemoryConfig: FC<Props> = ({
       draft.window.size = limitedSize as number
     })
     onChange(newPayload)
-  }, [payload, onChange])
+  }, [payload, defaultMemory, onChange])
 
   const handleBlur = useCallback(() => {
     const payload = config.data
@@ -119,7 +121,7 @@ const MemoryConfig: FC<Props> = ({
 
   const handleRolePrefixChange = useCallback((role: MemoryRole) => {
     return (value: string) => {
-      const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
+      const newPayload = produce(config.data || defaultMemory, (draft) => {
         if (!draft.role_prefix) {
           draft.role_prefix = {
             user: '',
@@ -130,7 +132,7 @@ const MemoryConfig: FC<Props> = ({
       })
       onChange(newPayload)
     }
-  }, [config, onChange])
+  }, [config, defaultMemory, onChange])
   return (
     <div className={cn(className)}>
       <Field

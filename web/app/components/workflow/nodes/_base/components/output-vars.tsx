@@ -6,14 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title?: string
   children: ReactNode
   operations?: ReactNode
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
-}
+}>
 
 const OutputVars: FC<Props> = ({
   title,
@@ -26,7 +26,7 @@ const OutputVars: FC<Props> = ({
   return (
     <FieldCollapse
       title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
-      operations={operations}
+      actions={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}
     >

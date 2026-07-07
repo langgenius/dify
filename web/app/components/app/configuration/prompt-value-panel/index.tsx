@@ -5,6 +5,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
@@ -19,7 +20,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -40,7 +40,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { readonly, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { readonly, canTestAndRun = false, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const debugInputReadonly = !canTestAndRun
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -86,6 +87,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }, [chatPromptConfig?.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
+    if (debugInputReadonly)
+      return
     if (!(key in promptVariableObj))
       return
 
@@ -98,6 +101,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const onClear = () => {
+    if (debugInputReadonly)
+      return
     const newInputs: Inputs = {}
     promptVariables.forEach((item) => {
       newInputs[item.key] = ''
@@ -146,30 +151,31 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'paragraph' && (
                       <Textarea
+                        aria-label={name}
                         className="h-[120px] grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                        readOnly={readonly}
+                        onValueChange={(value) => { handleInputValueChange(key, value) }}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'select' && (
-                      <Select
-                        value={inputs[key] ? String(inputs[key]) : null}
-                        disabled={readonly}
+                      <Select<string>
+                        value={typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null}
+                        disabled={debugInputReadonly}
                         onValueChange={(nextValue) => {
-                          if (!nextValue)
+                          if (nextValue == null || nextValue === '')
                             return
                           handleInputValueChange(key, nextValue)
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                          {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t('placeholder.select', { ns: 'common' })}
                         </SelectTrigger>
                         <SelectContent>
                           {(options || []).map(option => (
@@ -189,7 +195,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'checkbox' && (
@@ -198,7 +204,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         value={!!inputs[key]}
                         required={required}
                         onChange={(value) => { handleInputValueChange(key, value) }}
-                        readonly={readonly}
+                        readonly={debugInputReadonly}
                       />
                     )}
                   </div>
@@ -217,7 +223,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       url: fileItem.url,
                       upload_file_id: fileItem.fileId,
                     })))}
-                    disabled={readonly}
+                    disabled={debugInputReadonly}
                   />
                 </div>
               </div>
@@ -226,14 +232,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
+            <Button className="w-[72px]" disabled={debugInputReadonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
               <Tooltip>
                 <TooltipTrigger
                   render={(
                     <Button
                       variant="primary"
-                      disabled={canNotRun || readonly}
+                      disabled={canNotRun || !canTestAndRun}
                       onClick={() => onSend?.()}
                       className="w-[96px]"
                     >
@@ -250,7 +256,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             {!canNotRun && (
               <Button
                 variant="primary"
-                disabled={canNotRun || readonly}
+                disabled={canNotRun || !canTestAndRun}
                 onClick={() => onSend?.()}
                 className="w-[96px]"
               >

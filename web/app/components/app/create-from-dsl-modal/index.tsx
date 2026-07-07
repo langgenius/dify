@@ -4,16 +4,20 @@ import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -23,9 +27,9 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -53,6 +57,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
+  const setNeedRefresh = useSetNeedRefreshAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const { userProfile, workspacePermissionKeys } = useAppContext()
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -71,9 +79,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       setFileContent('')
   }, [readFile])
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -108,7 +116,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
       if (!response)
         return
-      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version, permission_keys } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         trackCreateApp({ source: 'studio_upload', appMode: app_mode })
 
@@ -123,10 +131,17 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             ? t('newApp.appCreateDSLWarning', { ns: 'app' })
             : undefined,
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        if (app_id)
+        setNeedRefresh('1')
+        invalidateAppList()
+        if (app_id) {
           await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -150,14 +165,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp(undefined)
-  })
-
-  useKeyPress('esc', () => {
-    if (show && !showErrorModal)
-      onClose()
+  useHotkey('Mod+Enter', () => {
+    handleCreateApp(undefined)
+  }, {
+    enabled: show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && !!currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && !!dslUrlValue)),
+    ignoreInputs: false,
   })
 
   const onDSLConfirm: MouseEventHandler = async () => {
@@ -168,7 +180,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         import_id: importId,
       })
 
-      const { status, app_id, app_mode } = response
+      const { status, app_id, app_mode, permission_keys } = response
 
       if (status === DSLImportStatus.COMPLETED) {
         trackCreateApp({ source: 'studio_upload', appMode: app_mode })
@@ -180,8 +192,16 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        setNeedRefresh('1')
+        invalidateAppList()
+        if (app_id) {
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
@@ -215,7 +235,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   return (
     <>
-      <Dialog open={show}>
+      <Dialog open={show} onOpenChange={open => !open && !showErrorModal && onClose()}>
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
 
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
@@ -285,7 +305,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               className="gap-1"
             >
               <span>{t('newApp.Create', { ns: 'app' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
             </Button>
           </div>
         </DialogContent>

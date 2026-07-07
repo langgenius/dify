@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import {
@@ -28,13 +28,15 @@ const parseAsPluginPageTab = parseAsStringEnum<PluginPageTab>(PLUGIN_PAGE_TAB_VA
 
 type PluginPageContextProviderProps = {
   children: ReactNode
+  initialFilters?: FilterState
 }
 
 export const PluginPageContextProvider = ({
   children,
+  initialFilters,
 }: PluginPageContextProviderProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<FilterState>(initialFilters ?? {
     categories: [],
     tags: [],
     searchQuery: '',

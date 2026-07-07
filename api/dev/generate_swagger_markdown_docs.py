@@ -1,7 +1,7 @@
 """Generate OpenAPI JSON specs and split Markdown API docs.
 
 The Markdown step uses `swagger-markdown`, the same converter family as the
-Swagger Markdown UI, so CI and local regeneration catch converter-incompatible
+legacy Markdown UI, so CI and local regeneration catch converter-incompatible
 OpenAPI output early.
 """
 
@@ -25,19 +25,21 @@ from dev.generate_swagger_specs import SPEC_TARGETS, generate_specs
 logger = logging.getLogger(__name__)
 
 SWAGGER_MARKDOWN_PACKAGE = "swagger-markdown@3.0.0"
-CONSOLE_SWAGGER_FILENAME = "console-swagger.json"
+CONSOLE_OPENAPI_FILENAME = "console-openapi.json"
 STALE_COMBINED_MARKDOWN_FILENAME = "api-reference.md"
 
 
-def _definition_ref_name(schema: object) -> str | None:
+def _schema_ref_name(schema: object) -> str | None:
     if not isinstance(schema, dict):
         return None
 
     ref = schema.get("$ref")
-    if not isinstance(ref, str) or not ref.startswith("#/definitions/"):
+    if not isinstance(ref, str):
         return None
 
-    return ref.removeprefix("#/definitions/")
+    if ref.startswith("#/components/schemas/"):
+        return ref.removeprefix("#/components/schemas/")
+    return None
 
 
 def _markdown_anchor(name: str) -> str:
@@ -48,7 +50,7 @@ def _schema_markdown_type(schema: object) -> str:
     if not isinstance(schema, dict):
         return ""
 
-    ref_name = _definition_ref_name(schema)
+    ref_name = _schema_ref_name(schema)
     if ref_name is not None:
         return f"[{ref_name}](#{_markdown_anchor(ref_name)})"
 
@@ -103,34 +105,51 @@ def _replace_schema_table_type(markdown: str, definition_name: str, row_name: st
         lines[index] = "|".join(cells)
         break
 
-    return "\n".join(lines)
+    return "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
+
+
+def _has_union_schema(schema: object) -> bool:
+    return isinstance(schema, dict) and (isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list))
 
 
 def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
-    """Fill Swagger Markdown table cells that `swagger-markdown` leaves blank for union schemas."""
+    """Fill Markdown table cells that `swagger-markdown` leaves blank for union schemas."""
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
-    definitions = spec.get("definitions")
-    if not isinstance(definitions, dict):
+    components = spec.get("components")
+    schemas = components.get("schemas") if isinstance(components, dict) else None
+    if not isinstance(schemas, dict):
         return markdown
 
-    for definition_name, schema in definitions.items():
-        if not isinstance(definition_name, str) or not isinstance(schema, dict):
+    for schema_name, schema in schemas.items():
+        if not isinstance(schema_name, str) or not isinstance(schema, dict):
             continue
-        one_of = schema.get("oneOf")
-        if not isinstance(one_of, list):
+
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            for property_name, property_schema in properties.items():
+                if isinstance(property_name, str) and _has_union_schema(property_schema):
+                    markdown = _replace_schema_table_type(
+                        markdown,
+                        schema_name,
+                        property_name,
+                        _schema_markdown_type(property_schema),
+                    )
+
+        union_variants = schema.get("oneOf") or schema.get("anyOf")
+        if not isinstance(union_variants, list):
             continue
 
         markdown = _replace_schema_table_type(
             markdown,
-            definition_name,
-            definition_name,
+            schema_name,
+            schema_name,
             _schema_markdown_type(schema),
         )
 
-        for variant in one_of:
-            variant_name = _definition_ref_name(variant)
-            variant_schema = definitions.get(variant_name) if variant_name is not None else None
+        for variant in union_variants:
+            variant_name = _schema_ref_name(variant)
+            variant_schema = schemas.get(variant_name) if variant_name is not None else None
             if not isinstance(variant_name, str) or not isinstance(variant_schema, dict):
                 continue
             properties = variant_schema.get("properties")
@@ -148,9 +167,15 @@ def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
     return markdown
 
 
+def _strip_trailing_line_whitespace(markdown: str) -> str:
+    """Remove converter-emitted trailing whitespace without changing line structure."""
+
+    return "\n".join(line.rstrip(" \t") for line in markdown.split("\n"))
+
+
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-", dir=markdown_path.parent) as temp_dir:
+    with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-") as temp_dir:
         temp_markdown_path = Path(temp_dir) / markdown_path.name
         result = subprocess.run(
             [
@@ -158,12 +183,13 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
                 "--yes",
                 SWAGGER_MARKDOWN_PACKAGE,
                 "-i",
-                str(spec_path),
+                str(spec_path.resolve()),
                 "-o",
-                str(temp_markdown_path),
+                str(temp_markdown_path.resolve()),
             ],
             check=False,
             capture_output=True,
+            cwd=temp_dir,
             text=True,
         )
         if result.returncode != 0:
@@ -181,6 +207,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             temp_markdown_path.read_text(encoding="utf-8"),
             spec_path,
         )
+        converted_markdown = _strip_trailing_line_whitespace(converted_markdown)
         if not converted_markdown.strip():
             raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")
 
@@ -212,7 +239,7 @@ def _append_fastopenapi_markdown(console_markdown_path: Path, fastopenapi_markdo
         "\n\n".join(
             [
                 console_markdown,
-                "## FastOpenAPI Preview (OpenAPI 3.0)",
+                "## FastOpenAPI Preview (OpenAPI 3.1)",
                 fastopenapi_markdown,
             ]
         )
@@ -222,17 +249,17 @@ def _append_fastopenapi_markdown(console_markdown_path: Path, fastopenapi_markdo
 
 
 def generate_markdown_docs(
-    swagger_dir: Path,
+    openapi_dir: Path,
     markdown_dir: Path,
     *,
     keep_swagger_json: bool = False,
 ) -> list[Path]:
     """Generate intermediate specs, convert them to split Markdown API docs, and return Markdown paths."""
 
-    swagger_paths = generate_specs(swagger_dir)
-    fastopenapi_paths = generate_fastopenapi_specs(swagger_dir)
-    spec_paths = [*swagger_paths, *fastopenapi_paths]
-    swagger_paths_by_name = {path.name: path for path in swagger_paths}
+    openapi_paths = generate_specs(openapi_dir)
+    fastopenapi_paths = generate_fastopenapi_specs(openapi_dir)
+    spec_paths = [*openapi_paths, *fastopenapi_paths]
+    openapi_paths_by_name = {path.name: path for path in openapi_paths}
     fastopenapi_paths_by_name = {path.name: path for path in fastopenapi_paths}
 
     markdown_dir.mkdir(parents=True, exist_ok=True)
@@ -243,9 +270,9 @@ def generate_markdown_docs(
             temp_markdown_dir = Path(temp_dir)
 
             for target in SPEC_TARGETS:
-                swagger_path = swagger_paths_by_name[target.filename]
-                markdown_path = markdown_dir / f"{swagger_path.stem}.md"
-                _convert_spec_to_markdown(swagger_path, markdown_path)
+                openapi_path = openapi_paths_by_name[target.filename]
+                markdown_path = markdown_dir / f"{openapi_path.stem}.md"
+                _convert_spec_to_markdown(openapi_path, markdown_path)
                 written_paths.append(markdown_path)
 
             for target in FASTOPENAPI_SPEC_TARGETS:  # type: ignore
@@ -253,7 +280,7 @@ def generate_markdown_docs(
                 markdown_path = temp_markdown_dir / f"{fastopenapi_path.stem}.md"
                 _convert_spec_to_markdown(fastopenapi_path, markdown_path)
 
-                console_markdown_path = markdown_dir / f"{Path(CONSOLE_SWAGGER_FILENAME).stem}.md"
+                console_markdown_path = markdown_dir / f"{Path(CONSOLE_OPENAPI_FILENAME).stem}.md"
                 _append_fastopenapi_markdown(console_markdown_path, markdown_path)
 
             (markdown_dir / STALE_COMBINED_MARKDOWN_FILENAME).unlink(missing_ok=True)
@@ -269,6 +296,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--swagger-dir",
+        "--openapi-dir",
+        dest="openapi_dir",
         type=Path,
         default=Path("openapi"),
         help="Directory where intermediate JSON spec files will be written.",
@@ -290,7 +319,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     written_paths = generate_markdown_docs(
-        args.swagger_dir,
+        args.openapi_dir,
         args.markdown_dir,
         keep_swagger_json=args.keep_swagger_json,
     )

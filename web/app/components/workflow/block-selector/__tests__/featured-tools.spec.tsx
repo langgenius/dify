@@ -22,7 +22,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 
 vi.mock('@/utils/var', async importOriginal => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: () => 'https://marketplace.test/tools',
+  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)

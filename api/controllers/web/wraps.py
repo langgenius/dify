@@ -16,7 +16,7 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
 from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
+from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
@@ -74,7 +74,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
-            app_web_auth_enabled = webapp_settings.access_mode != "public"
+            app_web_auth_enabled = webapp_settings.access_mode != WebAppAccessMode.PUBLIC
 
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
         _validate_user_accessibility(
@@ -88,7 +88,8 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
                 raise Unauthorized("Please re-login to access the web app.")
             app_id = AppService.get_app_id_by_code(app_code)
             app_web_auth_enabled = (
-                EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode != "public"
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
+                != WebAppAccessMode.PUBLIC
             )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()

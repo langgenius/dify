@@ -1,4 +1,5 @@
 import type {
+  ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
@@ -7,6 +8,7 @@ import type {
   Model,
   ModelModalModeEnum,
   ModelProvider,
+
   ModelTypeEnum,
 } from './declarations'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -28,13 +30,10 @@ import { consoleQuery } from '@/service/client'
 import {
   fetchDefaultModal,
   fetchModelList,
-  fetchModelProviderCredentials,
-  getPayUrl,
 } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
 import {
-  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
@@ -78,69 +77,6 @@ export const useLanguage = () => {
   const locale = useLocale()
   return locale.replace('-', '_')
 }
-
-export const useProviderCredentialsAndLoadBalancing = (
-  provider: string,
-  configurationMethod: ConfigurationMethodEnum,
-  configured?: boolean,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  credentialId?: string,
-) => {
-  const queryClient = useQueryClient()
-  const predefinedEnabled = configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
-  const customEnabled = configurationMethod === ConfigurationMethodEnum.customizableModel && !!currentCustomConfigurationModelFixedFields && !!credentialId
-
-  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'credentials', provider, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
-      enabled: predefinedEnabled,
-    },
-  )
-  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
-      enabled: customEnabled,
-    },
-  )
-
-  const credentials = useMemo(() => {
-    return configurationMethod === ConfigurationMethodEnum.predefinedModel
-      ? predefinedFormSchemasValue?.credentials
-      : customFormSchemasValue?.credentials
-        ? {
-            ...customFormSchemasValue?.credentials,
-            ...currentCustomConfigurationModelFixedFields,
-          }
-        : undefined
-  }, [
-    configurationMethod,
-    credentialId,
-    currentCustomConfigurationModelFixedFields,
-    customFormSchemasValue?.credentials,
-    predefinedFormSchemasValue?.credentials,
-  ])
-
-  const mutate = useCallback(() => {
-    if (predefinedEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
-    if (customEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
-  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
-
-  return {
-    credentials,
-    loadBalancing: (configurationMethod === ConfigurationMethodEnum.predefinedModel
-      ? predefinedFormSchemasValue
-      : customFormSchemasValue
-    )?.load_balancing,
-    mutate,
-    isLoading: isPredefinedLoading || isCustomizedLoading,
-  }
-  // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
-}
-
 export const useModelList = (type: ModelTypeEnum) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: commonQueryKeys.modelList(type),
@@ -235,28 +171,6 @@ export const useInvalidateDefaultModel = () => {
     queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
   }, [queryClient])
 }
-
-export const useAnthropicBuyQuota = () => {
-  const [loading, setLoading] = useState(false)
-
-  const handleGetPayUrl = async () => {
-    if (loading)
-      return
-
-    setLoading(true)
-    try {
-      const res = await getPayUrl('/workspaces/current/model-providers/anthropic/checkout-url')
-
-      window.location.href = res.url
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-
-  return handleGetPayUrl
-}
-
 export const useUpdateModelProviders = () => {
   const queryClient = useQueryClient()
 
@@ -267,22 +181,30 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
-export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
+export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string, enabled = true) => {
   const exclude = useMemo(() => {
     return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
   const {
     plugins: collectionPlugins = [],
     isLoading: isCollectionLoading,
-  } = useMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+  } = useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced = () => {},
+    resetPlugins = () => {},
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
   useEffect(() => {
+    if (!enabled) {
+      cancelQueryPluginsWithDebounced()
+      resetPlugins()
+      return
+    }
+
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
@@ -304,9 +226,12 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_order: 'DESC',
       })
     }
-  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
+  }, [cancelQueryPluginsWithDebounced, enabled, queryPlugins, queryPluginsWithDebounced, resetPlugins, searchText, exclude])
 
   const allPlugins = useMemo(() => {
+    if (!enabled)
+      return []
+
     const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
@@ -319,11 +244,11 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     }
 
     return allPlugins
-  }, [plugins, collectionPlugins, exclude])
+  }, [enabled, plugins, collectionPlugins, exclude])
 
   return {
-    plugins: searchText ? plugins : allPlugins,
-    isLoading: isCollectionLoading || isPluginsLoading,
+    plugins: enabled && searchText ? plugins : allPlugins,
+    isLoading: enabled && (isCollectionLoading || isPluginsLoading),
   }
 }
 
@@ -337,7 +262,7 @@ export const useRefreshModel = () => {
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     refreshModelList?: boolean,
   ) => {
-    const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
       input: {
         params: {
           provider: provider.provider,

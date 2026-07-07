@@ -251,7 +251,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
         id: 'tag1',
         name: 'test-tag',
         type: 'app',
-        binding_count: 1,
+        binding_count: '',
       }
 
       expect(tag).toHaveProperty('id')
@@ -259,13 +259,13 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       expect(tag).toHaveProperty('type')
       expect(tag).toHaveProperty('binding_count')
       expect(tag.type).toBe('app')
-      expect(typeof tag.binding_count).toBe('number')
+      expect(typeof tag.binding_count).toBe('string')
     })
 
     it('should handle tag arrays correctly', () => {
       const tags = [
-        { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 1 },
-        { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: 0 },
+        { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: '' },
+        { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: '' },
       ]
 
       expect(Array.isArray(tags)).toBe(true)
@@ -278,7 +278,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
         id: 'test-app',
         name: 'Test App',
         tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 1 },
+          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: '' },
         ],
       }
 
@@ -308,22 +308,22 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
     it('should handle malformed tag data gracefully', () => {
       const mixedData = [
-        { id: 'valid1', name: 'Valid Tag', type: 'app', binding_count: 1 },
+        { id: 'valid1', name: 'Valid Tag', type: 'app', binding_count: '' },
         { id: 'invalid1' }, // Missing required properties
         null,
         undefined,
-        { id: 'valid2', name: 'Another Valid', type: 'app', binding_count: 0 },
+        { id: 'valid2', name: 'Another Valid', type: 'app', binding_count: '' },
       ]
 
       // Filter out invalid entries
-      const validTags = mixedData.filter((tag): tag is { id: string, name: string, type: string, binding_count: number } =>
+      const validTags = mixedData.filter((tag): tag is { id: string, name: string, type: string, binding_count: string } =>
         tag != null
         && typeof tag === 'object'
         && 'id' in tag
         && 'name' in tag
         && 'type' in tag
         && 'binding_count' in tag
-        && typeof tag.binding_count === 'number',
+        && typeof tag.binding_count === 'string',
       )
 
       expect(validTags.length).toBe(2)

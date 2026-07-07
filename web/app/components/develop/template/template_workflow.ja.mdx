@@ -65,6 +65,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         1. Header：HTTPヘッダー `X-Trace-Id` で渡す（最優先）。
         2. クエリパラメータ：URLクエリパラメータ `trace_id` で渡す。
         3. リクエストボディ：リクエストボディの `trace_id` フィールドで渡す（本フィールド）。
+      - `trace_session_id` (string) オプション
+        可観測性のグルーピングに使用するトレースセッションID。セッションのグルーピングに対応するトレースプロバイダーは、この値をエクスポートされるセッション識別子として使用できます。conversation_id、workflow_run_id、trace_id、または span の関係は変更しません。以下の3つの方法で渡すことができ、優先順位は次のとおりです：
+        1. ヘッダー：HTTP ヘッダー `X-Trace-Session-Id` で渡すことを推奨、最高優先度。
+        2. クエリパラメータ：URL クエリパラメータ `trace_session_id` で渡す。
+        3. リクエストボディ：リクエストボディフィールド `trace_session_id` で渡す（つまり、このフィールド）。
 
 
     ### 応答
@@ -675,6 +680,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         1. ヘッダー：HTTP ヘッダー `X-Trace-Id` で渡すことを推奨、最高優先度。
         2. クエリパラメータ：URL クエリパラメータ `trace_id` で渡す。
         3. リクエストボディ：リクエストボディフィールド `trace_id` で渡す（つまり、このフィールド）。
+      - `trace_session_id` (string) オプション
+        可観測性のグルーピングに使用するトレースセッションID。セッションのグルーピングに対応するトレースプロバイダーは、この値をエクスポートされるセッション識別子として使用できます。conversation_id、workflow_run_id、trace_id、または span の関係は変更しません。以下の3つの方法で渡すことができ、優先順位は以下の通りです：
+        1. ヘッダー：HTTP ヘッダー `X-Trace-Session-Id` で渡すことを推奨、最高優先度。
+        2. クエリパラメータ：URL クエリパラメータ `trace_session_id` で渡す。
+        3. リクエストボディ：リクエストボディフィールド `trace_session_id` で渡す（つまり、このフィールド）。
 
     ### 応答
     `response_mode` が `blocking` の場合、CompletionResponse オブジェクトを返します。

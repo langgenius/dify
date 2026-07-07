@@ -3,10 +3,10 @@ import type { VersionInfo } from '../../types'
 import { useMemo } from 'react'
 import { useCheckInstalled as useDoCheckInstalled } from '@/service/use-plugins'
 
-type Props = {
+type Props = Readonly<{
   pluginIds: string[]
   enabled: boolean
-}
+}>
 const useCheckInstalled = (props: Props) => {
   const { data, isLoading, error } = useDoCheckInstalled(props)
 

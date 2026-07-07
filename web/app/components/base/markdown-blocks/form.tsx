@@ -3,6 +3,7 @@ import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
@@ -10,7 +11,6 @@ import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -41,7 +41,15 @@ type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = /^[a-z][\w-]*$/i
+const SAFE_NAME_RE = (() => {
+  try {
+    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_-]*$', 'u')
+  }
+  catch {
+    // Fallback for browsers without Unicode property escape support.
+    return /^[a-z][\w-]*$/i
+  }
+})()
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
@@ -372,11 +380,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return null
           return (
             <Textarea
+              aria-label={name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={e => updateValue(name, e.target.value)}
+              onValueChange={value => updateValue(name, value)}
             />
           )
         }

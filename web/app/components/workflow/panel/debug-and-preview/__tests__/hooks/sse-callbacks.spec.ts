@@ -216,6 +216,50 @@ describe('useChat – handleSend SSE callbacks', () => {
     })
   })
 
+  describe('onReasoning', () => {
+    const findAnswer = (result: any) =>
+      result.current.chatList.find((item: any) => item.isAnswer && !item.isOpeningStatement)
+
+    it('should accumulate reasoning per node without leaking into content', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' } })
+      })
+
+      const answer = findAnswer(result)
+      expect(answer!.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(answer!.reasoningFinished).toBeUndefined()
+      expect(answer!.content).toBe('')
+    })
+
+    it('should key reasoning by node and fall back to "_" when node_id is absent', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'c' } })
+      })
+
+      expect(findAnswer(result)!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', '_': 'c' })
+    })
+
+    it('should ignore empty reasoning and mark finished when is_final is set', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'done', node_id: 'llm' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true } })
+      })
+
+      const answer = findAnswer(result)
+      expect(answer!.reasoningContent).toEqual({ llm: 'done' })
+      expect(answer!.reasoningFinished).toBe(true)
+    })
+  })
+
   describe('onCompleted', () => {
     it('should set isResponding to false', async () => {
       const { result } = setupAndSend()
@@ -477,6 +521,19 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.status).toBe('succeeded')
+    })
+
+    it('should store workflow finished error on workflow process', () => {
+      const { result } = setupAndSend()
+      startWorkflow()
+
+      act(() => {
+        capturedCallbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
     })
   })
 
@@ -784,7 +841,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
@@ -801,7 +858,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
@@ -862,13 +919,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', form_data: { answer: 'yes' } },
+          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
         })
       })
 
@@ -876,7 +933,11 @@ describe('useChat – handleSend SSE callbacks', () => {
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
       expect(answer!.humanInputFilledFormDataList![0]!.node_id).toBe('human-node')
-      expect((answer!.humanInputFilledFormDataList![0] as any).form_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]!.submitted_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
     })
   })
 

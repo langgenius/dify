@@ -68,6 +68,7 @@ export enum ModelFeatureEnum {
   video = 'video',
   document = 'document',
   audio = 'audio',
+  polling = 'polling',
   StructuredOutput = 'structured-output',
 }
 
@@ -247,6 +248,7 @@ export type DefaultModelResponse = {
 export type DefaultModel = {
   provider: string
   model: string
+  plugin_id?: string
 }
 
 export type CustomConfigurationModelFixedFields = {
@@ -302,6 +304,14 @@ export type ModelCredential = {
   available_credentials: Credential[]
   current_credential_id?: string
   current_credential_name?: string
+}
+
+export type ModelCredentialPayload = {
+  credentials: Record<string, unknown>
+  model: string
+  model_type: ModelTypeEnum
+  name?: string
+  credential_id?: string
 }
 
 export enum ModelModalModeEnum {

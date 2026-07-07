@@ -2,9 +2,9 @@ import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -42,8 +42,8 @@ const PdfPreview: FC<PdfPreviewProps> = ({
     })
   }
 
-  useHotkeys('up', zoomIn)
-  useHotkeys('down', zoomOut)
+  useHotkey('ArrowUp', zoomIn)
+  useHotkey('ArrowDown', zoomOut)
 
   const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
   const zoomInLabel = t('operation.zoomIn', { ns: 'common' })

@@ -1,17 +1,13 @@
 import io
 import types
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import Forbidden
 
 import controllers.files.upload as module
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from core.workflow.file_reference import build_file_reference
 
 
 def fake_request(args: dict, file=None):
@@ -69,6 +65,7 @@ class TestPluginUploadFileApi:
                 "sign": "sig",
                 "tenant_id": "tenant-1",
                 "user_id": "user-1",
+                "conversation_id": "conversation-1",
             },
             file=dummy_file,
         )
@@ -85,7 +82,12 @@ class TestPluginUploadFileApi:
 
         assert status_code == 201
         assert result["id"] == "file-id"
+        assert result["reference"] == build_file_reference(record_id="file-id")
         assert result["preview_url"] == "signed-url"
+        mock_verify_signature.assert_called_once()
+        assert mock_verify_signature.call_args.kwargs["conversation_id"] == "conversation-1"
+        tool_file_manager_instance.create_file_by_raw.assert_called_once()
+        assert tool_file_manager_instance.create_file_by_raw.call_args.kwargs["conversation_id"] == "conversation-1"
 
     def test_missing_file(self):
         module.request = fake_request(
