@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   saveBuildDraft: vi.fn(),
   saveAgentSoulConfig: vi.fn(),
   saveDraft: vi.fn(),
+  uploadAgentSandboxFile: vi.fn(),
+  uploadWorkflowSandboxFile: vi.fn(),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -135,6 +137,38 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
 }))
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    agent: {
+      byAgentId: {
+        sandbox: {
+          files: {
+            upload: {
+              post: mocks.uploadAgentSandboxFile,
+            },
+          },
+        },
+      },
+    },
+    apps: {
+      byAppId: {
+        workflowRuns: {
+          byWorkflowRunId: {
+            agentNodes: {
+              byNodeId: {
+                sandbox: {
+                  files: {
+                    upload: {
+                      post: mocks.uploadWorkflowSandboxFile,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -225,6 +259,11 @@ vi.mock('@/service/client', () => ({
                 }),
               },
             },
+            upload: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
+              },
+            },
           },
         },
       },
@@ -258,6 +297,11 @@ vi.mock('@/service/client', () => ({
                             text: 'result',
                           }),
                         }),
+                      },
+                    },
+                    upload: {
+                      post: {
+                        mutationOptions: () => ({ mutationFn: mocks.uploadWorkflowSandboxFile }),
                       },
                     },
                   },
@@ -368,6 +412,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     })
     mocks.saveDraft.mockResolvedValue(createInlineComposerState())
     mocks.saveAgentSoulConfig.mockResolvedValue(createInlineComposerState())
+    mocks.uploadAgentSandboxFile.mockResolvedValue({ url: 'https://example.com/agent-sandbox-file' })
+    mocks.uploadWorkflowSandboxFile.mockResolvedValue({ url: 'https://example.com/workflow-sandbox-file' })
   })
 
   afterEach(() => {
