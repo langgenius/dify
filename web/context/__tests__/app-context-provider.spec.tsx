@@ -425,17 +425,21 @@ describe('AppContextProvider', () => {
         id: ZENDESK_FIELD_IDS.EMAIL,
         value: 'user@example.com',
       }])
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([{
-        id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-        value: 'workspace-1',
-      }])
-      expect(setUserId).toHaveBeenCalledWith('user@example.com')
-      expect(setUserProperties).toHaveBeenCalledWith(expect.objectContaining({
-        email: 'user@example.com',
-        workspace_id: 'workspace-1',
-        workspace_role: 'editor',
-      }))
-      expect(flushRegistrationSuccess).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledWith([{
+          id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+          value: 'workspace-1',
+        }])
+      })
+      await waitFor(() => {
+        expect(setUserId).toHaveBeenCalledWith('user@example.com')
+        expect(setUserProperties).toHaveBeenCalledWith(expect.objectContaining({
+          email: 'user@example.com',
+          workspace_id: 'workspace-1',
+          workspace_role: 'editor',
+        }))
+        expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
     })
 
     it('should not sync Amplitude identity when user id is missing', async () => {
