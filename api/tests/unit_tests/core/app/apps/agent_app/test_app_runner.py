@@ -662,6 +662,64 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 
+def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "thinking",
+                    "content_delta": "The first thought.",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"cmd": "date"},
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "thinking",
+                    "content_delta": "The next thought.",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert [row.thought for row in rows] == ["The first thought.", "", "The next thought."]
+    assert rows[0].id != rows[2].id
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"cmd": "date"}'
+
+
 def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
     fake_session = _FakeDbSession()
     monkeypatch.setattr(app_runner_module.db, "session", fake_session)
