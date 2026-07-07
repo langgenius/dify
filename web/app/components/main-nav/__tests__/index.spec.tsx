@@ -142,6 +142,9 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) => selector({
+    hasBlockingModalOpen: false,
+  }),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => {

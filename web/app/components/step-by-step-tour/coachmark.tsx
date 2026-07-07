@@ -2,16 +2,20 @@
 
 import type { CSSProperties } from 'react'
 import type { StepByStepTourGuide, StepByStepTourGuideInteractionPolicy } from './target-registry'
-import type { StepByStepTourCoachmarkPlacement } from './use-coachmark-position'
+import type { StepByStepTourCoachmarkPlacement, StepByStepTourCoachmarkSize } from './use-coachmark-position'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getStepByStepTourGuideKind, getStepByStepTourTargetSelector } from './target-registry'
 import { useStepByStepTourCoachmarkPosition } from './use-coachmark-position'
 import { useStepByStepTourTargetRect } from './use-target-rect'
 
 const HIGHLIGHT_PADDING = 4
+const DEFAULT_COACHMARK_SIZE: StepByStepTourCoachmarkSize = {
+  height: 158,
+  width: 352,
+}
 const VERTICAL_ARROW_LENGTH = 28
 const VERTICAL_ARROW_DOT_SIZE = 12
 const VERTICAL_ARROW_DOT_OVERHANG = 3
@@ -62,7 +66,10 @@ export function StepByStepTourCoachmark({
   onComplete,
 }: StepByStepTourCoachmarkProps) {
   const { anchorRect, highlightPartsReady, highlightRect, rectSettled, targetElement: measuredTargetElement } = useStepByStepTourTargetRect(targetElement, guide.highlightPartSelectors)
-  const coachmarkPosition = useStepByStepTourCoachmarkPosition(highlightRect, placement, anchorRect)
+  const coachmarkRef = useRef<HTMLDivElement>(null)
+  const coachmarkSizeFrameRef = useRef<number | undefined>(undefined)
+  const [coachmarkSize, setCoachmarkSize] = useState<StepByStepTourCoachmarkSize>(DEFAULT_COACHMARK_SIZE)
+  const coachmarkPosition = useStepByStepTourCoachmarkPosition(highlightRect, placement, anchorRect, coachmarkSize)
   const stableOverlayRef = useRef<{
     coachmarkPosition: ReturnType<typeof useStepByStepTourCoachmarkPosition>
     guide: StepByStepTourCoachmarkGuide
@@ -85,7 +92,7 @@ export function StepByStepTourCoachmark({
       highlightRect,
       onComplete,
       onSkip,
-      placement,
+      placement: coachmarkPosition.placement,
       skipLabel,
       interactionPolicy,
       stepLabel,
@@ -94,6 +101,20 @@ export function StepByStepTourCoachmark({
 
   const stableOverlay = stableOverlayRef.current
   const isActionGuide = stableOverlay ? getStepByStepTourGuideKind(stableOverlay.guide) === 'action' : false
+  const coachmarkMeasurementKey = stableOverlay
+    ? [
+        stableOverlay.guide.target,
+        stableOverlay.guide.title,
+        stableOverlay.guide.description,
+        stableOverlay.guide.learnMoreHref,
+        stableOverlay.guide.learnMoreLabel,
+        stableOverlay.guide.primaryActionLabel,
+        stableOverlay.placement,
+        stableOverlay.stepLabel,
+        stableOverlay.skipLabel,
+        isActionGuide,
+      ].join('|')
+    : undefined
   const highlightStyle: CSSProperties | undefined = stableOverlay
     ? {
         height: stableOverlay.highlightRect.height + HIGHLIGHT_PADDING * 2,
@@ -102,6 +123,40 @@ export function StepByStepTourCoachmark({
         width: stableOverlay.highlightRect.width + HIGHLIGHT_PADDING * 2,
       }
     : undefined
+
+  const syncCoachmarkSize = useCallback((element: HTMLElement) => {
+    const rect = element.getBoundingClientRect()
+    const nextSize = {
+      height: Math.ceil(rect.height),
+      width: Math.ceil(rect.width),
+    }
+    if (nextSize.height <= 0 || nextSize.width <= 0)
+      return
+
+    setCoachmarkSize(currentSize => (
+      currentSize.height === nextSize.height && currentSize.width === nextSize.width
+        ? currentSize
+        : nextSize
+    ))
+  }, [])
+
+  useLayoutEffect(() => {
+    const element = coachmarkRef.current
+    if (!element)
+      return
+
+    coachmarkSizeFrameRef.current = window.requestAnimationFrame(() => {
+      coachmarkSizeFrameRef.current = undefined
+      syncCoachmarkSize(element)
+    })
+
+    return () => {
+      if (coachmarkSizeFrameRef.current !== undefined) {
+        window.cancelAnimationFrame(coachmarkSizeFrameRef.current)
+        coachmarkSizeFrameRef.current = undefined
+      }
+    }
+  }, [coachmarkMeasurementKey, syncCoachmarkSize])
 
   if (typeof document === 'undefined')
     return null
@@ -165,6 +220,7 @@ export function StepByStepTourCoachmark({
             style={highlightStyle}
           />
           <div
+            ref={coachmarkRef}
             className="fixed z-50 w-[352px] max-w-[calc(100vw-16px)]"
             data-step-by-step-tour-coachmark=""
             style={stableOverlay.coachmarkPosition.bubbleStyle}

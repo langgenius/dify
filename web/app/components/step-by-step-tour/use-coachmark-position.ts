@@ -18,9 +18,15 @@ type ViewportSize = {
   width: number
 }
 
+export type StepByStepTourCoachmarkSize = {
+  height: number
+  width: number
+}
+
 type CoachmarkPosition = {
   arrowStyle: CSSProperties
   bubbleStyle: CSSProperties
+  placement: StepByStepTourCoachmarkPlacement
 }
 
 export type StepByStepTourCoachmarkPlacement = 'bottom' | 'right' | 'top'
@@ -39,16 +45,20 @@ export const getStepByStepTourCoachmarkPosition = (
   viewportSize: ViewportSize,
   placement: StepByStepTourCoachmarkPlacement = 'bottom',
   anchorRect: StepByStepTourTargetRect = placementRect,
+  bubbleSize: StepByStepTourCoachmarkSize = {
+    height: BUBBLE_HEIGHT,
+    width: BUBBLE_WIDTH,
+  },
 ): CoachmarkPosition => {
   if (placement === 'right') {
-    const maxBubbleLeft = viewportSize.width - BUBBLE_WIDTH - VIEWPORT_PADDING
+    const maxBubbleLeft = viewportSize.width - bubbleSize.width - VIEWPORT_PADDING
     const bubbleLeft = clamp(
       placementRect.left + placementRect.width + BUBBLE_SIDE_OFFSET,
       VIEWPORT_PADDING,
       Math.max(VIEWPORT_PADDING, maxBubbleLeft),
     )
-    const maxBubbleTop = viewportSize.height - BUBBLE_HEIGHT - VIEWPORT_PADDING
-    const preferredBubbleTop = anchorRect.top + (anchorRect.height - BUBBLE_HEIGHT) / 2
+    const maxBubbleTop = viewportSize.height - bubbleSize.height - VIEWPORT_PADDING
+    const preferredBubbleTop = anchorRect.top + (anchorRect.height - bubbleSize.height) / 2
     const bubbleTop = clamp(
       preferredBubbleTop,
       VIEWPORT_PADDING,
@@ -63,18 +73,28 @@ export const getStepByStepTourCoachmarkPosition = (
         left: bubbleLeft,
         top: bubbleTop,
       },
+      placement,
     }
   }
 
-  const maxBubbleLeft = viewportSize.width - BUBBLE_WIDTH - VIEWPORT_PADDING
+  const maxBubbleLeft = viewportSize.width - bubbleSize.width - VIEWPORT_PADDING
   const bubbleLeft = clamp(
     placementRect.left,
     VIEWPORT_PADDING,
     Math.max(VIEWPORT_PADDING, maxBubbleLeft),
   )
-  const maxBubbleTop = viewportSize.height - BUBBLE_HEIGHT - VIEWPORT_PADDING
-  const preferredBubbleTop = placement === 'top'
-    ? placementRect.top - BUBBLE_HEIGHT - BUBBLE_SIDE_OFFSET
+  const maxBubbleTop = viewportSize.height - bubbleSize.height - VIEWPORT_PADDING
+  const bottomBubbleTop = placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
+  const topBubbleTop = placementRect.top - bubbleSize.height - BUBBLE_SIDE_OFFSET
+  const hasBottomRoom = bottomBubbleTop + bubbleSize.height <= viewportSize.height - VIEWPORT_PADDING
+  const hasTopRoom = topBubbleTop >= VIEWPORT_PADDING
+  const spaceBelow = viewportSize.height - VIEWPORT_PADDING - bottomBubbleTop
+  const spaceAbove = placementRect.top - VIEWPORT_PADDING - BUBBLE_SIDE_OFFSET
+  const resolvedPlacement = placement === 'bottom'
+    ? (!hasBottomRoom && (hasTopRoom || spaceAbove > spaceBelow) ? 'top' : 'bottom')
+    : (!hasTopRoom && (hasBottomRoom || spaceBelow > spaceAbove) ? 'bottom' : 'top')
+  const preferredBubbleTop = resolvedPlacement === 'top'
+    ? placementRect.top - bubbleSize.height - BUBBLE_SIDE_OFFSET
     : placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
   const bubbleTop = clamp(
     preferredBubbleTop,
@@ -85,7 +105,7 @@ export const getStepByStepTourCoachmarkPosition = (
   const arrowLeft = clamp(
     targetAnchorX - bubbleLeft - FIGMA_ARROW_DOT_CENTER_X,
     MIN_ARROW_LEFT,
-    BUBBLE_WIDTH - MAX_ARROW_RIGHT_PADDING,
+    bubbleSize.width - MAX_ARROW_RIGHT_PADDING,
   )
 
   return {
@@ -96,6 +116,7 @@ export const getStepByStepTourCoachmarkPosition = (
       left: bubbleLeft,
       top: bubbleTop,
     },
+    placement: resolvedPlacement,
   }
 }
 
@@ -103,6 +124,7 @@ export const useStepByStepTourCoachmarkPosition = (
   placementRect: StepByStepTourTargetRect,
   placement: StepByStepTourCoachmarkPlacement = 'bottom',
   anchorRect: StepByStepTourTargetRect = placementRect,
+  bubbleSize?: StepByStepTourCoachmarkSize,
 ) => {
   const [viewportSize, setViewportSize] = useState<ViewportSize>(() => getViewportSize())
 
@@ -118,5 +140,5 @@ export const useStepByStepTourCoachmarkPosition = (
     }
   }, [])
 
-  return getStepByStepTourCoachmarkPosition(placementRect, viewportSize, placement, anchorRect)
+  return getStepByStepTourCoachmarkPosition(placementRect, viewportSize, placement, anchorRect, bubbleSize)
 }

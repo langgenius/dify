@@ -12,6 +12,7 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
@@ -133,6 +134,7 @@ export default function StepByStepTourMount({
   const docLink = useDocLink()
   const { t } = useTranslation('common')
   const { currentWorkspace, isCurrentWorkspaceManager, workspacePermissionKeys } = useAppContext()
+  const hasBlockingModalOpen = useModalContextSelector(state => state.hasBlockingModalOpen)
   const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const accountState = useStepByStepTourAccountValue()
   const setAccountState = useSetStepByStepTourAccount()
@@ -213,6 +215,7 @@ export default function StepByStepTourMount({
   const visible = IS_CLOUD_EDITION
     && enabledForCurrentWorkspace
     && (hasActiveGuide || !shouldHideOnPathname(pathname))
+  const overlayVisible = visible && !hasBlockingModalOpen
   const completionPromptVisible = visible
     && allTasksCompleted
     && !activeTask
@@ -753,7 +756,7 @@ export default function StepByStepTourMount({
 
   return (
     <div className={cn('relative', className)}>
-      {visible && !allTasksCompleted && activeTask && activeGuide && activeTargetElement && (
+      {overlayVisible && !allTasksCompleted && activeTask && activeGuide && activeTargetElement && (
         <StepByStepTourCoachmark
           guide={{
             ...activeGuide,
@@ -776,25 +779,27 @@ export default function StepByStepTourMount({
         />
       )}
       {visible && (!allTasksCompleted || completionPromptVisible) && (
-        <Popover open={expanded}>
-          <div ref={anchorRef} aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" />
+        <Popover open={overlayVisible && expanded}>
+          <div ref={anchorRef} aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-0 w-full" />
           {minimized && floatingChecklist}
-          <PopoverContent
-            placement="top-start"
-            sideOffset={8}
-            positionerProps={{
-              anchor: anchorRef,
-              collisionPadding: 8,
-              collisionAvoidance: {
-                side: 'shift',
-                align: 'shift',
-                fallbackAxisSide: 'none',
-              },
-            }}
-            popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
-          >
-            {floatingChecklist}
-          </PopoverContent>
+          {overlayVisible && (
+            <PopoverContent
+              placement="top-start"
+              sideOffset={0}
+              positionerProps={{
+                anchor: anchorRef,
+                collisionPadding: 8,
+                collisionAvoidance: {
+                  side: 'shift',
+                  align: 'shift',
+                  fallbackAxisSide: 'none',
+                },
+              }}
+              popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
+            >
+              {floatingChecklist}
+            </PopoverContent>
+          )}
         </Popover>
       )}
       {skipRecoveryVisible && (

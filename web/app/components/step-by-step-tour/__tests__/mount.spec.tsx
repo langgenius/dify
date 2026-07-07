@@ -5,7 +5,7 @@ import type {
 import type { StepByStepTourAccountState, StepByStepTourUiState } from '../types'
 import type { AppContextValue } from '@/context/app-context'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
@@ -13,6 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { defaultSystemFeatures } from '@/features/system-features/config'
 import StepByStepTourMount from '../mount'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../target-registry'
+import { getStepByStepTourCoachmarkPosition } from '../use-coachmark-position'
 import { useStepByStepTourTargetRect } from '../use-target-rect'
 import {
   StepByStepTourTestStateObserver,
@@ -43,6 +44,9 @@ const mockCurrentWorkspaceRole = vi.hoisted(() => ({
 }))
 const mockEnableLearnApp = vi.hoisted(() => ({
   value: true,
+}))
+const mockHasBlockingModalOpen = vi.hoisted(() => ({
+  value: false,
 }))
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
@@ -202,6 +206,12 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+}))
+
+vi.mock('@/context/modal-context', () => ({
+  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) => selector({
+    hasBlockingModalOpen: mockHasBlockingModalOpen.value,
+  }),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -458,6 +468,7 @@ describe('StepByStepTourMount', () => {
     mockIsCurrentWorkspaceManager.value = true
     mockCurrentWorkspaceRole.value = 'owner'
     mockEnableLearnApp.value = true
+    mockHasBlockingModalOpen.value = false
     mockPathname = '/apps'
     localStorage.clear()
     mockStepByStepTour.reset()
@@ -624,11 +635,11 @@ describe('StepByStepTourMount', () => {
     const { container } = renderStepByStepTourMount()
 
     const checklist = await screen.findByRole('region', { name: 'Get to know Dify' })
-    const anchor = container.querySelector('[aria-hidden="true"].pointer-events-none.absolute.inset-0')
+    const anchor = container.querySelector('[aria-hidden="true"].pointer-events-none.absolute.bottom-0.left-0')
     const popoverPopup = checklist.parentElement
     const popoverPositioner = popoverPopup?.parentElement
 
-    expect(anchor).toHaveClass('h-full', 'w-full')
+    expect(anchor).toHaveClass('h-0', 'w-full')
     expect(checklist.closest('[data-base-ui-portal]')).toBeInTheDocument()
     expect(popoverPositioner).toHaveClass('z-50')
     expect(popoverPositioner).toHaveAttribute('data-side', 'top')
@@ -639,6 +650,40 @@ describe('StepByStepTourMount', () => {
     expect(screen.getByRole('button', { name: 'Skip tour' })).toHaveClass('h-6', 'px-1.5')
     expect(screen.getByRole('button', { name: 'Minimize tour' }).querySelector('span[aria-hidden="true"]'))
       .toHaveClass('i-ri-arrow-left-down-line', 'size-4')
+  })
+
+  it('hides expanded tour overlays while a blocking modal is open', async () => {
+    mockHasBlockingModalOpen.value = true
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('keeps the minimized tour entry available while a blocking modal is open', async () => {
+    mockHasBlockingModalOpen.value = true
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('starts the integration guide instead of immediately completing the task', async () => {
@@ -1145,6 +1190,68 @@ describe('StepByStepTourMount', () => {
     }
   })
 
+  it('measures the coachmark size without observing the coachmark element', async () => {
+    const resizeObservers: Array<{
+      observedElements: Element[]
+    }> = []
+    globalThis.ResizeObserver = class ResizeObserver {
+      observedElements: Element[] = []
+
+      constructor(_callback: ResizeObserverCallback) {
+        resizeObservers.push(this)
+      }
+
+      observe(element: Element) {
+        this.observedElements.push(element)
+      }
+
+      unobserve() {}
+
+      disconnect() {}
+    } as typeof ResizeObserver
+    const animationFrameCallbacks: FrameRequestCallback[] = []
+    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrameCallbacks.push(callback)
+      return animationFrameCallbacks.length
+    })
+    const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    setStepByStepTourTestState({
+      activeTaskId: 'home',
+      activeGuideIndex: 1,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate, 240, {
+      height: 40,
+      left: 980,
+      width: 320,
+    })
+
+    try {
+      renderStepByStepTourMount()
+
+      const coachmark = await screen.findByText('Click here to make it yours')
+      const coachmarkOverlay = coachmark.closest('[data-step-by-step-tour-coachmark]')
+      const coachmarkResizeObserver = resizeObservers.find(observer =>
+        observer.observedElements.includes(coachmarkOverlay!),
+      )
+      act(() => {
+        animationFrameCallbacks.splice(0).forEach(callback => callback(0))
+      })
+
+      expect(coachmarkResizeObserver).toBeUndefined()
+      expect(requestAnimationFrameSpy).toHaveBeenCalled()
+    }
+    finally {
+      requestAnimationFrameSpy.mockRestore()
+      cancelAnimationFrameSpy.mockRestore()
+      target.remove()
+    }
+  })
+
   it('only allows users to uncomplete tasks from the checklist status control', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -1511,6 +1618,37 @@ describe('StepByStepTourMount', () => {
       requestAnimationFrameSpy.mockRestore()
       target.remove()
     }
+  })
+
+  it('flips the coachmark above the target when the measured height does not fit below', () => {
+    const position = getStepByStepTourCoachmarkPosition(
+      {
+        height: 64,
+        left: 472,
+        top: 900,
+        width: 1012,
+      },
+      {
+        height: 1160,
+        width: 2048,
+      },
+      'bottom',
+      {
+        height: 64,
+        left: 472,
+        top: 900,
+        width: 1012,
+      },
+      {
+        height: 260,
+        width: 352,
+      },
+    )
+
+    expect(position.bubbleStyle).toMatchObject({
+      top: 620,
+    })
+    expect(position.placement).toBe('top')
   })
 
   it('observes only the primary target for resize while measuring highlight parts', () => {
