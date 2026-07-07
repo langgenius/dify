@@ -20,7 +20,11 @@ import { usePathname } from '@/next/navigation'
 import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { TitleTooltip } from '../shared/components/title-tooltip'
-import { deploymentDetailAppInstanceQueryAtom } from './state'
+import {
+  deploymentDetailAppInstanceAtom,
+  deploymentDetailAppInstanceIsErrorAtom,
+  deploymentDetailAppInstanceIsLoadingAtom,
+} from './state'
 
 type TabDef = {
   key: InstanceDetailTabKey
@@ -95,10 +99,12 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
   expand: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const overviewQuery = useAtomValue(deploymentDetailAppInstanceQueryAtom)
-  const app = overviewQuery.data?.appInstance
-  const isLoading = !app && overviewQuery.isLoading
-  const isUnavailable = !app || overviewQuery.isError
+  const overview = useAtomValue(deploymentDetailAppInstanceAtom)
+  const isOverviewLoading = useAtomValue(deploymentDetailAppInstanceIsLoadingAtom)
+  const isOverviewError = useAtomValue(deploymentDetailAppInstanceIsErrorAtom)
+  const app = overview?.appInstance
+  const isLoading = !app && isOverviewLoading
+  const isUnavailable = !app || isOverviewError
   const instanceName = app ? app.displayName : appInstanceId
 
   return (
