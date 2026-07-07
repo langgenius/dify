@@ -449,6 +449,7 @@ export type AgentChatRuntimeProps = {
   conversationId?: string | null
   draftType?: 'debug_build'
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -470,6 +471,7 @@ export function AgentChatRuntime({
   conversationId,
   draftType,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -534,6 +536,7 @@ export function AgentChatRuntime({
       draftType={draftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
+      inputAutoFocus={inputAutoFocus}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={handleClearChatListChange}
@@ -558,6 +561,7 @@ function AgentPreviewChatSession({
   draftType,
   initialChatTree,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -578,6 +582,7 @@ function AgentPreviewChatSession({
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -754,6 +759,9 @@ function AgentPreviewChatSession({
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
+        // Build chat opts out so it does not steal focus from the configure editor.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={inputAutoFocus}
         sendButtonLoading={sendButtonLoading}
         showFileUpload={false}
         visionConfig={config.file_upload}
