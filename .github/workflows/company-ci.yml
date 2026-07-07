@@ -1,0 +1,196 @@
+name: Company CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'release/**', 'hotfix/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: company-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-24.04
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      agent: ${{ steps.filter.outputs.agent }}
+      docker: ${{ steps.filter.outputs.docker }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'docker/envs/**'
+              - 'docker/docker-compose*.yaml'
+              - 'docker/generate_docker_compose'
+              - 'Makefile'
+            web:
+              - 'web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - '.github/actions/setup-web/**'
+            agent:
+              - 'dify-agent/**'
+            docker:
+              - 'api/Dockerfile'
+              - 'web/Dockerfile'
+              - 'dify-agent/Dockerfile'
+              - 'docker/**'
+            workflow:
+              - '.github/workflows/company-ci.yml'
+              - '.github/workflows/company-release-ghcr.yml'
+              - '.github/workflows/company-deploy-compose.yml'
+
+  api-smoke:
+    name: API smoke
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+      - name: Install API dependencies
+        run: uv sync --project api --dev
+      - name: Ruff check API
+        run: uv run --project api --dev ruff check api
+      - name: Config consistency smoke test
+        run: uv run --project api --dev pytest api/tests/unit_tests/configs/test_env_consistency.py
+
+  web-quality:
+    name: Web lint and typecheck
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+      - name: Web lint
+        run: vp run lint:ci
+      - name: Web typecheck
+        run: vp run type-check
+
+  agent-smoke:
+    name: Dify Agent smoke
+    needs: changes
+    if: needs.changes.outputs.agent == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: dify-agent
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: dify-agent/uv.lock
+      - name: Install Dify Agent dependencies
+        run: uv sync --extra server
+      - name: Ruff check Dify Agent
+        run: uv run python -m ruff check .
+      - name: Smoke test Dify Agent
+        run: |
+          uv run --extra server python -m pytest \
+            tests/local/test_packaging.py \
+            tests/local/dify_agent/test_client_safe_exports.py \
+            tests/local/dify_agent/test_import_boundaries.py
+
+  docker-dry-run:
+    name: Docker build dry-run
+    needs: changes
+    if: needs.changes.outputs.docker == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: api
+            file: api/Dockerfile
+          - component: web
+            file: web/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.component }} image without push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: false
+          tags: local/dify-${{ matrix.component }}:${{ github.sha }}
+          cache-from: type=gha,scope=company-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=company-${{ matrix.component }}
+
+  company-ci:
+    name: Company CI
+    needs: [changes, api-smoke, web-quality, agent-smoke, docker-dry-run]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Finalize required status
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          API_RESULT: ${{ needs.api-smoke.result }}
+          WEB_RESULT: ${{ needs.web-quality.result }}
+          AGENT_RESULT: ${{ needs.agent-smoke.result }}
+          DOCKER_RESULT: ${{ needs.docker-dry-run.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for item in \
+            "changes:$CHANGES_RESULT" \
+            "api:$API_RESULT" \
+            "web:$WEB_RESULT" \
+            "agent:$AGENT_RESULT" \
+            "docker:$DOCKER_RESULT"; do
+            name="${item%%:*}"
+            result="${item#*:}"
+            case "$result" in
+              success|skipped)
+                echo "$name => $result"
+                ;;
+              *)
+                echo "$name => $result" >&2
+                failed=1
+                ;;
+            esac
+          done
+          exit "$failed"

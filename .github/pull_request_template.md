@@ -1,24 +1,55 @@
-> [!IMPORTANT]
->
-> 1. Make sure you have read our [contribution guidelines](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)
-> 1. Ensure there is an associated issue and you have been assigned to it
-> 1. Use the correct syntax to link this PR: `Fixes #<issue number>`.
-
 ## Summary
 
-<!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change. -->
-<!-- If this PR was created by an automated agent, add `From <Tool Name>` as the final line of the description. Example: `From Codex`. -->
+<!-- What changed and why? Keep this human-written; do not paste raw AI output. -->
 
-## Screenshots
+## Source / Vibe Coding Disclosure
 
-| Before | After |
-|--------|-------|
-| ... | ... |
+- [ ] I used AI/vibe coding assistance.
+- [ ] I did not use AI/vibe coding assistance.
 
-## Checklist
+If AI/vibe coding was used, describe:
 
-- [ ] This change requires a documentation update, included: [Dify Document](https://github.com/langgenius/dify-docs)
-- [ ] I understand that this PR may be closed in case there was no previous discussion or issues. (This doesn't apply to typos!)
-- [ ] I've added a test for each change that was introduced, and I tried as much as possible to make a single atomic change.
-- [ ] I've updated the documentation accordingly.
-- [ ] I ran `make lint && make type-check` (backend) and `cd web && pnpm exec vp staged` (frontend) to appease the lint gods
+- Tool/model:
+- What was generated:
+- What I personally inspected or rewrote:
+- Known uncertainty / areas needing reviewer attention:
+
+## Risk
+
+- [ ] risk:low — docs/tests/UI copy/small isolated change
+- [ ] risk:medium — user-visible behavior, API contract, non-critical service logic
+- [ ] risk:high — auth, tenant isolation, billing, migrations, deployment, secrets, data safety
+
+## Validation
+
+Commands run locally:
+
+```text
+# paste commands and relevant output
+```
+
+For UI changes:
+
+- [ ] Screenshot or recording attached.
+- [ ] i18n keys updated; no new hardcoded user-facing strings.
+
+For API/backend changes:
+
+- [ ] Tests added or updated.
+- [ ] Tenant/workspace permission boundaries checked where relevant.
+
+## Reviewer Checklist
+
+Reviewer must confirm before approval:
+
+- [ ] I read the diff myself instead of approving based only on the PR description.
+- [ ] I checked for unnecessary AI-generated abstraction, duplicated code, dead code, and hallucinated APIs.
+- [ ] I verified the stated tests or asked for missing verification.
+- [ ] I checked security-sensitive surfaces when touched: auth, tenant isolation, secrets, billing, migrations, deployment.
+- [ ] I left comments for unclear logic, risky assumptions, or missing tests.
+
+## Release / Rollback Notes
+
+- Release impact:
+- Rollback approach:
+- Follow-up issues:

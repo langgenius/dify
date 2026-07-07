@@ -1,0 +1,90 @@
+name: Company Deploy Compose
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [staging, production]
+      image_tag:
+        description: Image tag to deploy, for example company-v2026.07.07.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    env:
+      API_IMAGE: ghcr.io/${{ github.repository_owner }}/dify-api:${{ inputs.image_tag }}
+      WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/dify-web:${{ inputs.image_tag }}
+    steps:
+      - name: Prepare SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Write compose image override
+        run: |
+          set -euo pipefail
+          cat > /tmp/docker-compose.company-images.yaml <<EOF2
+          services:
+            api:
+              image: ${API_IMAGE}
+            api_websocket:
+              image: ${API_IMAGE}
+            worker:
+              image: ${API_IMAGE}
+            worker_beat:
+              image: ${API_IMAGE}
+            web:
+              image: ${WEB_IMAGE}
+          EOF2
+          cat /tmp/docker-compose.company-images.yaml
+
+      - name: Upload override and deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          scp /tmp/docker-compose.company-images.yaml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/docker-compose.company-images.yaml"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "set -euo pipefail
+            cd '$DEPLOY_PATH'
+            docker compose -f docker-compose.yaml -f docker-compose.company-images.yaml pull api api_websocket worker worker_beat web
+            docker compose -f docker-compose.yaml -f docker-compose.company-images.yaml up -d api api_websocket worker worker_beat web
+            docker compose -f docker-compose.yaml -f docker-compose.company-images.yaml ps
+          "
+
+      - name: Health check
+        env:
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS "$HEALTHCHECK_URL" >/tmp/health.txt; then
+              cat /tmp/health.txt
+              echo "health check passed"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "health check failed" >&2
+          exit 1
