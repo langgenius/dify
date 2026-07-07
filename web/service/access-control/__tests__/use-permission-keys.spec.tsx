@@ -1,3 +1,4 @@
+import { QueryClient } from '@tanstack/react-query'
 // eslint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
 import { workspacePermissionKeysQueryOptions } from '../use-permission-keys'
@@ -19,9 +20,13 @@ describe('workspacePermissionKeysQueryOptions', () => {
   // Current-user permissions come from the my-permissions RBAC endpoint.
   describe('Queries', () => {
     it('should fetch workspace permission keys', async () => {
-      const { queryFn } = workspacePermissionKeysQueryOptions()
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: { retry: false },
+        },
+      })
 
-      await queryFn()
+      await queryClient.fetchQuery(workspacePermissionKeysQueryOptions())
 
       expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/my-permissions')
     })
