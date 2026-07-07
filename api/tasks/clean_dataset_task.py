@@ -176,9 +176,7 @@ def _delete_segments(session: Session, dataset_id: str, batch_size: int = _DELET
 def _delete_documents(session: Session, dataset_id: str, batch_size: int = _DELETE_BATCH_SIZE) -> None:
     """Delete documents in batches, removing their uploaded source files first."""
     while True:
-        documents = session.scalars(
-            select(Document).where(Document.dataset_id == dataset_id).limit(batch_size)
-        ).all()
+        documents = session.scalars(select(Document).where(Document.dataset_id == dataset_id).limit(batch_size)).all()
         if not documents:
             break
         file_ids: list[str] = []
@@ -234,9 +232,7 @@ def _delete_attachments(session: Session, dataset_id: str, tenant_id: str) -> No
     session.commit()
 
 
-def _delete_dataset_scoped_rows(
-    session: Session, dataset_id: str, tenant_id: str, pipeline_id: str | None
-) -> None:
+def _delete_dataset_scoped_rows(session: Session, dataset_id: str, tenant_id: str, pipeline_id: str | None) -> None:
     """Delete the remaining small dataset-scoped tables (and the pipeline/workflow)."""
     session.execute(delete(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id))
     session.execute(delete(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id))
