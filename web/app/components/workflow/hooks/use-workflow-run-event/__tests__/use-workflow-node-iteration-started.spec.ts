@@ -30,7 +30,7 @@ describe('useWorkflowNodeIterationStarted', () => {
     })
 
     const tracing = store.getState().workflowRunningData!.tracing!
-    expect(tracing[0].status).toBe(NodeRunningStatus.Running)
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
     expect(store.getState().iterTimes).toBe(DEFAULT_ITER_TIMES)
 
     await waitFor(() => {

@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 
 const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()
+  const tip = t('detailPanel.toolSelector.unsupportedMCPTool', { ns: 'plugin' })
+
   return (
-    <Tooltip
-      popupContent={(
-        <div className="w-[256px]">
-          {t('detailPanel.toolSelector.unsupportedMCPTool', { ns: 'plugin' })}
-        </div>
-      )}
-    >
-      <RiAlertFill className="size-4 text-text-warning-secondary" />
-    </Tooltip>
+    <Popover>
+      <PopoverTrigger openOnHover aria-label={tip} className="inline-flex border-0 bg-transparent p-0">
+        <RiAlertFill className="size-4 text-text-warning-secondary" />
+      </PopoverTrigger>
+      <PopoverContent popupClassName="w-[256px] px-3 py-2 system-xs-regular text-text-tertiary">
+        {tip}
+      </PopoverContent>
+    </Popover>
   )
 }
 export default React.memo(McpToolNotSupportTooltip)

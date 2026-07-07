@@ -1,18 +1,20 @@
 'use client'
-import type { LexicalCommand } from 'lexical'
 import type { FC } from 'react'
 import type { FormInputItem } from '../types'
+import type { ShortcutPopupInsertHandler } from '@/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin'
+import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
 import { useWorkflowVariableType } from '../../../hooks'
 import { BlockEnum } from '../../../types'
-import { isMac } from '../../../utils'
 import AddInputField from './add-input-field'
 
 type FormContentProps = {
@@ -28,14 +30,6 @@ type FormContentProps = {
   availableVars: NodeOutPutVar[]
   availableNodes: Node[]
   readonly?: boolean
-}
-
-const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
-  return <span className={cn('mx-0.5 inline-flex size-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder', className)}>{children}</span>
-}
-
-const CtrlKey: FC = () => {
-  return <Key className={cn('mr-0', !isMac() && 'w-7')}>{isMac() ? '⌘' : 'Ctrl'}</Key>
 }
 
 const FormContent: FC<FormContentProps> = ({
@@ -56,11 +50,20 @@ const FormContent: FC<FormContentProps> = ({
 
   const getVarType = useWorkflowVariableType()
 
-  const [needToAddFormInput, setNeedToAddFormInput] = useState(false)
-  const [newFormInputs, setNewFormInputs] = useState<FormInputItem[]>([])
-  const handleInsertHITLNode = (onInsert: (command: LexicalCommand<unknown>, params: any) => void) => {
+  const pendingFormInputsRef = useRef<{
+    value: string
+    formInputs: FormInputItem[]
+  } | null>(null)
+  const handleInsertHITLNode = useCallback((onInsert: ShortcutPopupInsertHandler) => {
     return (payload: FormInputItem) => {
+      if (formInputs.some(input => input.output_variable_name === payload.output_variable_name))
+        return
+
       const newFormInputs = [...(formInputs || []), payload]
+      pendingFormInputsRef.current = {
+        value,
+        formInputs: newFormInputs,
+      }
       onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
         variableName: payload.output_variable_name,
         nodeId,
@@ -69,30 +72,37 @@ const FormContent: FC<FormContentProps> = ({
         onFormInputItemRename,
         onFormInputItemRemove,
       })
-      setNewFormInputs(newFormInputs)
-      setNeedToAddFormInput(true)
     }
-  }
+  }, [
+    formInputs,
+    nodeId,
+    onFormInputsChange,
+    onFormInputItemRemove,
+    onFormInputItemRename,
+    value,
+  ])
 
   // avoid update formInputs would overwrite the value just inserted
   useEffect(() => {
-    if (needToAddFormInput) {
-      onFormInputsChange(newFormInputs)
-      setNeedToAddFormInput(false)
-    }
-  }, [value])
+    const pendingFormInputs = pendingFormInputsRef.current
+    if (!pendingFormInputs || pendingFormInputs.value === value)
+      return
+
+    onFormInputsChange(pendingFormInputs.formInputs)
+    pendingFormInputsRef.current = null
+  }, [onFormInputsChange, value])
 
   const [isFocus, {
     setTrue: setFocus,
     setFalse: setBlur,
   }] = useBoolean(false)
 
-  const workflowNodesMap = availableNodes.reduce((acc: any, node) => {
+  const workflowNodesMap = availableNodes.reduce<WorkflowNodesMap>((acc, node) => {
     acc[node.id] = {
       title: node.data.title,
       type: node.data.type,
-      width: node.width,
-      height: node.height,
+      width: node.width ?? undefined,
+      height: node.height ?? undefined,
       position: node.position,
     }
     if (node.data.type === BlockEnum.Start) {
@@ -103,6 +113,49 @@ const FormContent: FC<FormContentProps> = ({
     }
     return acc
   }, {})
+  const unavailableVariableNames = useMemo(() => {
+    return formInputs.map(input => input.output_variable_name)
+  }, [formInputs])
+  const addInputFieldConfigRef = useRef({
+    nodeId,
+    unavailableVariableNames,
+    handleInsertHITLNode,
+  })
+  addInputFieldConfigRef.current = {
+    nodeId,
+    unavailableVariableNames,
+    handleInsertHITLNode,
+  }
+  const shortcutPopups = useMemo(() => {
+    if (readonly)
+      return []
+
+    return [{
+      hotkey: ['mod', '/'],
+      displayMode: 'workflow-panel-adjacent-center' as const,
+      // Keep this component type stable while the popup is open; it reads fresh props from a ref.
+      // eslint-disable-next-line react/no-nested-component-definitions
+      Popup: ({ onClose, onInsert }: {
+        onClose: () => void
+        onInsert: ShortcutPopupInsertHandler
+      }) => {
+        const {
+          nodeId,
+          unavailableVariableNames,
+          handleInsertHITLNode,
+        } = addInputFieldConfigRef.current
+
+        return (
+          <AddInputField
+            nodeId={nodeId}
+            unavailableVariableNames={unavailableVariableNames}
+            onSave={handleInsertHITLNode(onInsert)}
+            onCancel={onClose}
+          />
+        )
+      },
+    }]
+  }, [readonly])
 
   return (
     <div
@@ -137,22 +190,11 @@ const FormContent: FC<FormContentProps> = ({
           workflowVariableBlock={{
             show: true,
             variables: availableVars || [],
-            getVarType: getVarType as any,
+            getVarType,
             workflowNodesMap,
           }}
           editable={!readonly}
-          shortcutPopups={readonly
-            ? []
-            : [{
-                hotkey: ['mod', '/'],
-                Popup: ({ onClose, onInsert }) => (
-                  <AddInputField
-                    nodeId={nodeId}
-                    onSave={handleInsertHITLNode(onInsert!)}
-                    onCancel={onClose}
-                  />
-                ),
-              }]}
+          shortcutPopups={shortcutPopups}
         />
       </div>
       {isFocus && (
@@ -162,8 +204,8 @@ const FormContent: FC<FormContentProps> = ({
             ns="workflow"
             components={
               {
-                Key: <Key>/</Key>,
-                CtrlKey: <CtrlKey />,
+                Key: <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>,
+                CtrlKey: <Kbd className="mx-0.5 text-text-placeholder">{formatForDisplay('Mod')}</Kbd>,
               }
             }
           />

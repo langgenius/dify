@@ -1,4 +1,5 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { BlockEnum, ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -9,7 +10,10 @@ import type {
   VarInInspect,
 } from '@/types/workflow'
 import { get, post } from './base'
+import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
+
+export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -39,7 +43,7 @@ export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean,
 }
 
 export const fetchPublishedWorkflow = (url: string) => {
-  return get<FetchWorkflowDraftResponse>(url)
+  return get<FetchWorkflowDraftResponse | null>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {
@@ -96,8 +100,38 @@ export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, n
   return items
 }
 
+export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
+  appId: string
+  environmentVariables: EnvironmentVariable[]
+}) => {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
+    body: { environment_variables: environmentVariables },
+  })
+}
+
+export const updateConversationVariables = ({ appId, conversationVariables }: {
+  appId: string
+  conversationVariables: ConversationVariable[]
+}) => {
+  return consoleClient.apps.byAppId.workflows.draft.conversationVariables.post({
+    params: { app_id: appId },
+    body: { conversation_variables: conversationVariables },
+  })
+}
+
+export const updateFeatures = ({ appId, features }: {
+  appId: string
+  features: WorkflowDraftFeaturesPayload
+}) => {
+  return consoleClient.apps.byAppId.workflows.draft.features.post({
+    params: { app_id: appId },
+    body: { features },
+  })
+}
+
 export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, string>
+  inputs: Record<string, unknown>
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })
@@ -106,7 +140,7 @@ export const submitHumanInputForm = (token: string, data: {
 export const fetchHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, string>
+    inputs: Record<string, unknown>
   },
 ) => {
   return post<HumanInputFormData>(`${url}/preview`, { body: data })
@@ -115,8 +149,8 @@ export const fetchHumanInputNodeStepRunForm = (
 export const submitHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, string> | undefined
-    form_inputs: Record<string, string> | undefined
+    inputs: Record<string, unknown> | undefined
+    form_inputs: Record<string, unknown> | undefined
     action: string
   },
 ) => {

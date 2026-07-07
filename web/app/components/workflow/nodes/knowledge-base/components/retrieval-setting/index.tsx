@@ -5,7 +5,13 @@ import type {
   WeightedScore,
 } from '../../types'
 import type { RerankingModelSelectorProps } from './reranking-model-selector'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
+import type {
+  TopKFieldProps,
+  VisibleScoreThresholdFieldProps,
+} from './top-k-and-score-threshold'
+import { FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   memo,
 } from 'react'
@@ -13,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { useDocLink } from '@/context/i18n'
 import { useRetrievalSetting } from './hooks'
-import SearchMethodOption from './search-method-option'
+import { SearchMethodOption } from './search-method-option'
 
 type RetrievalSettingProps = {
   indexMethod?: IndexMethodEnum
@@ -23,11 +29,18 @@ type RetrievalSettingProps = {
   hybridSearchMode?: HybridSearchModeEnum
   onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
   rerankingModelEnabled?: boolean
-  onRerankingModelEnabledChange?: (value: boolean) => void
+  onRerankingModelEnabledChange: (value: boolean) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
   showMultiModalTip?: boolean
-} & RerankingModelSelectorProps & TopKAndScoreThresholdProps
+} & RerankingModelSelectorProps & {
+  topK: TopKFieldProps['value']
+  onTopKChange: TopKFieldProps['onChange']
+  scoreThreshold: VisibleScoreThresholdFieldProps['value']
+  onScoreThresholdChange: VisibleScoreThresholdFieldProps['onChange']
+  isScoreThresholdEnabled?: VisibleScoreThresholdFieldProps['enabled']
+  onScoreThresholdEnabledChange: VisibleScoreThresholdFieldProps['onEnabledChange']
+}
 
 const RetrievalSetting = ({
   indexMethod,
@@ -62,7 +75,7 @@ const RetrievalSetting = ({
       fieldTitleProps={{
         title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
         subTitle: (
-          <div className="body-xs-regular flex items-center text-text-tertiary">
+          <div className="flex items-center body-xs-regular text-text-tertiary">
             <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
             &nbsp;
             {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
@@ -70,35 +83,56 @@ const RetrievalSetting = ({
         ),
       }}
     >
-      <div className="space-y-1">
-        {
-          options.map(option => (
+      <FieldRoot name="retrieval_search_method" className="gap-0">
+        <FieldsetRoot
+          render={(
+            <RadioGroup<RetrievalSearchMethodEnum>
+              value={searchMethod}
+              onValueChange={value => onRetrievalSearchMethodChange(value)}
+              disabled={readonly}
+              className="flex-col items-stretch gap-1"
+            />
+          )}
+        >
+          <FieldsetLegend className="sr-only">
+            {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+          </FieldsetLegend>
+          {options.map(option => (
             <SearchMethodOption
               key={option.id}
               option={option}
-              hybridSearchModeOptions={hybridSearchModeOptions}
               searchMethod={searchMethod}
-              onRetrievalSearchMethodChange={onRetrievalSearchMethodChange}
-              hybridSearchMode={hybridSearchMode}
-              onHybridSearchModeChange={onHybridSearchModeChange}
-              weightedScore={weightedScore}
-              onWeightedScoreChange={onWeightedScoreChange}
-              topK={topK}
-              onTopKChange={onTopKChange}
-              scoreThreshold={scoreThreshold}
-              onScoreThresholdChange={onScoreThresholdChange}
-              isScoreThresholdEnabled={isScoreThresholdEnabled}
-              onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
-              rerankingModelEnabled={rerankingModelEnabled}
-              onRerankingModelEnabledChange={onRerankingModelEnabledChange}
-              rerankingModel={rerankingModel}
-              onRerankingModelChange={onRerankingModelChange}
+              hybridSearch={{
+                mode: hybridSearchMode,
+                options: hybridSearchModeOptions,
+                onModeChange: onHybridSearchModeChange,
+                weightedScore,
+                onWeightedScoreChange,
+              }}
+              retrievalParameters={{
+                topK: {
+                  value: topK,
+                  onChange: onTopKChange,
+                },
+                scoreThreshold: {
+                  value: scoreThreshold,
+                  onChange: onScoreThresholdChange,
+                  enabled: isScoreThresholdEnabled,
+                  onEnabledChange: onScoreThresholdEnabledChange,
+                },
+              }}
+              reranking={{
+                enabled: rerankingModelEnabled,
+                onEnabledChange: onRerankingModelEnabledChange,
+                rerankingModel,
+                onRerankingModelChange,
+                showMultiModalTip,
+              }}
               readonly={readonly}
-              showMultiModalTip={showMultiModalTip}
             />
-          ))
-        }
-      </div>
+          ))}
+        </FieldsetRoot>
+      </FieldRoot>
     </Field>
   )
 }

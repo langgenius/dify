@@ -8,7 +8,7 @@
  */
 
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
@@ -56,8 +56,9 @@ describe('Filter', () => {
       )
 
       // Should render status chip, period chip, and search input
-      expect(screen.getByText('All')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      // Should render status chip, period chip, and search input
+      expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
 
     it('should render all filter components', () => {
@@ -69,11 +70,14 @@ describe('Filter', () => {
       )
 
       // Status chip
-      expect(screen.getByText('All')).toBeInTheDocument()
+      // Status chip
+      expect(screen.getByText('All'))!.toBeInTheDocument()
       // Period chip (shows translated key)
-      expect(screen.getByText('appLog.filter.period.last7days')).toBeInTheDocument()
+      // Period chip (shows translated key)
+      expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
       // Search input
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      // Search input
+      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
     })
   })
 
@@ -90,7 +94,8 @@ describe('Filter', () => {
       )
 
       // Chip should show Success for succeeded status
-      expect(screen.getByText('Success')).toBeInTheDocument()
+      // Chip should show Success for succeeded status
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
     })
 
     it('should open status dropdown when clicked', async () => {
@@ -107,10 +112,10 @@ describe('Filter', () => {
 
       // Should show all status options
       await waitFor(() => {
-        expect(screen.getByText('Success')).toBeInTheDocument()
-        expect(screen.getByText('Fail')).toBeInTheDocument()
-        expect(screen.getByText('Stop')).toBeInTheDocument()
-        expect(screen.getByText('Partial Success')).toBeInTheDocument()
+        expect(screen.getByText('Success'))!.toBeInTheDocument()
+        expect(screen.getByText('Fail'))!.toBeInTheDocument()
+        expect(screen.getByText('Stop'))!.toBeInTheDocument()
+        expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
       })
     })
 
@@ -157,18 +162,18 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ status: 'succeeded' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // Find the clear icon (div with group/clear class) in the status chip
-      const clearIcon = container.querySelector('.group\\/clear')
+      const statusTrigger = screen.getByRole('combobox', { name: 'Success' })
+      const statusChip = statusTrigger.parentElement!
+      const clearButton = within(statusChip).getByRole('button', { name: /common\.operation\.clear Success/ })
 
-      expect(clearIcon).toBeInTheDocument()
-      await user.click(clearIcon!)
+      await user.click(clearButton)
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
@@ -190,7 +195,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText(expectedLabel)).toBeInTheDocument()
+      expect(screen.getByText(expectedLabel))!.toBeInTheDocument()
     })
   })
 
@@ -206,7 +211,7 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
+      expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
     })
 
     it('should open period dropdown when clicked', async () => {
@@ -223,11 +228,29 @@ describe('Filter', () => {
 
       // Should show all period options
       await waitFor(() => {
-        expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.last4weeks')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.last3months')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.allTime')).toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last4weeks'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last3months'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.allTime'))!.toBeInTheDocument()
       })
+    })
+
+    it('should apply period chip sizing classes to trigger and panel', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={defaultSetQueryParams}
+        />,
+      )
+
+      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
+      expect(periodTrigger).toHaveClass('min-w-[150px]')
+
+      await user.click(periodTrigger)
+      const listbox = await screen.findByRole('listbox')
+      expect(listbox.parentElement).toHaveClass('w-[270px]')
     })
 
     it('should call setQueryParams when period is selected', async () => {
@@ -261,17 +284,15 @@ describe('Filter', () => {
         />,
       )
 
-      // Find the period chip's clear button
-      const periodChip = screen.getByText('appLog.filter.period.last7days').closest('div')
-      const clearButton = periodChip?.querySelector('button[type="button"]')
+      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
+      const periodChip = periodTrigger.parentElement!
+      const clearButton = within(periodChip).getByRole('button', { name: /common\.operation\.clear appLog\.filter\.period\.last7days/ })
 
-      if (clearButton) {
-        await user.click(clearButton)
-        expect(setQueryParams).toHaveBeenCalledWith({
-          status: 'all',
-          period: '9',
-        })
-      }
+      await user.click(clearButton)
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '9',
+      })
     })
   })
 
@@ -287,18 +308,18 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByDisplayValue('test search')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('test search'))!.toBeInTheDocument()
     })
 
     it('should call setQueryParams when typing in search', async () => {
       const user = userEvent.setup()
-      const setQueryParams = vi.fn()
+      const onSetQueryParams = vi.fn()
 
       const Wrapper = () => {
-        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const [queryParams, setQueryParams] = useState<QueryParam>(() => createDefaultQueryParams())
         const handleSetQueryParams = (next: QueryParam) => {
-          updateQueryParams(next)
           setQueryParams(next)
+          onSetQueryParams(next)
         }
         return (
           <Filter
@@ -314,7 +335,7 @@ describe('Filter', () => {
       await user.type(input, 'workflow')
 
       // Should call setQueryParams for each character typed
-      expect(setQueryParams).toHaveBeenLastCalledWith(
+      expect(onSetQueryParams).toHaveBeenLastCalledWith(
         expect.objectContaining({ keyword: 'workflow' }),
       )
     })
@@ -323,22 +344,16 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ keyword: 'test' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // The Input component renders a clear icon div inside the input wrapper
-      // when showClearIcon is true and value exists
-      const inputWrapper = container.querySelector('.w-\\[200px\\]')
-
-      // Find the clear icon div (has cursor-pointer class and contains RiCloseCircleFill)
-      const clearIconDiv = inputWrapper?.querySelector('div.cursor-pointer')
-
-      expect(clearIconDiv).toBeInTheDocument()
-      await user.click(clearIconDiv!)
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      const searchField = searchInput.closest('div')!
+      await user.click(within(searchField).getByRole('button', { name: 'common.operation.clear' }))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
@@ -399,11 +414,11 @@ describe('Filter', () => {
       ['9', 'allTime', -1],
     ])('TIME_PERIOD_MAPPING[%s] should have name=%s and correct value', (key, name, expectedValue) => {
       const mapping = TIME_PERIOD_MAPPING[key]
-      expect(mapping.name).toBe(name)
+      expect(mapping!.name).toBe(name)
       if (expectedValue >= 0)
-        expect(mapping.value).toBe(expectedValue)
+        expect(mapping!.value).toBe(expectedValue)
       else
-        expect(mapping.value).toBe(-1)
+        expect(mapping!.value).toBe(-1)
     })
   })
 
@@ -420,7 +435,7 @@ describe('Filter', () => {
       )
 
       const input = screen.getByPlaceholderText('common.operation.search')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should handle empty string keyword', () => {
@@ -432,7 +447,7 @@ describe('Filter', () => {
       )
 
       const input = screen.getByPlaceholderText('common.operation.search')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should preserve other query params when updating status', async () => {
@@ -515,9 +530,9 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('Success')).toBeInTheDocument()
-      expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('integration test')).toBeInTheDocument()
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('integration test'))!.toBeInTheDocument()
     })
 
     it('should have proper layout with flex and gap', () => {
@@ -529,9 +544,9 @@ describe('Filter', () => {
       )
 
       const filterContainer = container.firstChild as HTMLElement
-      expect(filterContainer).toHaveClass('flex')
-      expect(filterContainer).toHaveClass('flex-row')
-      expect(filterContainer).toHaveClass('gap-2')
+      expect(filterContainer)!.toHaveClass('flex')
+      expect(filterContainer)!.toHaveClass('flex-row')
+      expect(filterContainer)!.toHaveClass('gap-2')
     })
   })
 })

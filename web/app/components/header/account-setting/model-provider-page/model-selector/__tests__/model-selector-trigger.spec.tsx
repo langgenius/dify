@@ -97,6 +97,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
+      expect(screen.getByText('legacy-model')).toHaveClass('line-through')
       expect(container.firstElementChild).toHaveClass('bg-components-input-bg-disabled')
       expect(container.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
     })
@@ -204,6 +205,17 @@ describe('ModelSelectorTrigger', () => {
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 
+    it('should strike through deprecated selected model name', () => {
+      render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem({ deprecated: true })}
+        />,
+      )
+
+      expect(screen.getByText('GPT-4')).toHaveClass('line-through')
+    })
+
     it('should not show status badge when selected model is readonly', () => {
       render(
         <ModelSelectorTrigger
@@ -229,6 +241,20 @@ describe('ModelSelectorTrigger', () => {
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
       expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
+    })
+
+    it('should show incompatible badge when selected model fails the compatibility predicate', () => {
+      const { container } = render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem()}
+          isModelCompatible={false}
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
   })
 
@@ -284,7 +310,7 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(container.querySelector('img[alt="model-icon"]')).not.toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-other-group')).toBeInTheDocument()
     })
   })
 })

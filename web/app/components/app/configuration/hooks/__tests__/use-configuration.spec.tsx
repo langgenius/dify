@@ -2,11 +2,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
 import { AppModeEnum, ModelModeType } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
 const mockSetShowAccountSettingModal = vi.fn()
-const mockSetAppSidebarExpand = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
+const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -27,6 +28,7 @@ let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
 let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
+let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -53,6 +55,11 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: ['app.create_and_management'],
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
   }),
 }))
 
@@ -76,11 +83,15 @@ vi.mock('@/app/components/app/store', () => ({
         updated_at: 1710000000,
       },
       mode: AppModeEnum.CHAT,
+      permission_keys: mockAppPermissionKeys,
     },
-    setAppSidebarExpand: mockSetAppSidebarExpand,
     showAppConfigureFeaturesModal: false,
     setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
   }),
+}))
+
+vi.mock('@/app/components/detail-sidebar/storage', () => ({
+  useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -176,6 +187,7 @@ describe('useConfiguration', () => {
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
+    mockAppPermissionKeys = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchDatasets.mockResolvedValue({ data: [] })
     mockFetchAndMergeValidCompletionParams.mockResolvedValue({
@@ -268,6 +280,92 @@ describe('useConfiguration', () => {
       true,
     )
     expect(result.current.appPublisherProps.onPublish).toBeDefined()
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
+      url: '/apps/app-1/model-config',
+    }))
+  })
+
+  it('should block publishing when app release permission is missing', async () => {
+    mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should allow test and run while keeping configuration readonly when only app test/run permission exists', async () => {
+    mockAppPermissionKeys = [AppACLPermission.TestAndRun]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(true)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should keep configuration editable but block publishing when only app edit permission exists', async () => {
+    mockAppPermissionKeys = [AppACLPermission.Edit]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(false)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should allow publishing with app release permission even when configuration is readonly', async () => {
+    mockAppPermissionKeys = [AppACLPermission.ReleaseAndVersion]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
+    expect(result.current.appPublisherProps.disabled).toBe(false)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(false)
 
     await act(async () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
@@ -371,7 +469,7 @@ describe('useConfiguration', () => {
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
-    expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',

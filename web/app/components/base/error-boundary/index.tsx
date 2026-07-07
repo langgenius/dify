@@ -1,11 +1,11 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { IS_DEV } from '@/config'
 
 type ErrorBoundaryState = {
@@ -67,7 +67,7 @@ class ErrorBoundaryInner extends React.Component<
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
@@ -82,7 +82,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onError(error, errorInfo)
   }
 
-  componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: any) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
@@ -98,7 +98,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onResetKeysChange(prevProps.resetKeys)
   }
 
-  render() {
+  override render() {
     const { hasError, error, errorInfo, errorCount } = this.state
     const {
       fallback,
@@ -130,7 +130,7 @@ class ErrorBoundaryInner extends React.Component<
           )}
         >
           <div className="mb-4 flex items-center gap-2">
-            <RiAlertLine className="text-state-critical-solid h-8 w-8" />
+            <RiAlertLine className="text-state-critical-solid size-8" />
             <h2 className="text-xl font-semibold text-text-primary">
               {customTitle || copy.title}
             </h2>
@@ -144,7 +144,7 @@ class ErrorBoundaryInner extends React.Component<
             <details className="mb-6 w-full max-w-2xl">
               <summary className="mb-2 cursor-pointer text-sm font-medium text-text-tertiary hover:text-text-secondary">
                 <span className="inline-flex items-center gap-1">
-                  <RiBugLine className="h-4 w-4" />
+                  <RiBugLine className="size-4" />
                   {copy.details}
                 </span>
               </summary>
@@ -238,35 +238,7 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
       onResetKeysChange={onResetKeysChange}
     />
   )
-}
-
-// Hook for imperative error handling
-export function useErrorHandler() {
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    if (error)
-      throw error
-  }, [error])
-
-  return setError
-}
-
-// Hook for catching async errors
-export function useAsyncError() {
-  const [, setError] = useState()
-
-  return useCallback(
-    (error: Error) => {
-      setError(() => {
-        throw error
-      })
-    },
-    [setError],
-  )
-}
-
-// HOC for wrapping components with error boundary
+}// HOC for wrapping components with error boundary
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>,
@@ -281,23 +253,4 @@ export function withErrorBoundary<P extends object>(
 
   return WrappedComponent
 }
-
-// Simple error fallback component
-export const ErrorFallback: React.FC<{
-  error: Error
-  resetErrorBoundaryAction: () => void
-}> = ({ error, resetErrorBoundaryAction }) => {
-  const { t } = useTranslation()
-
-  return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-8">
-      <h2 className="mb-2 text-lg font-semibold text-red-800">{t('errorBoundary.fallbackTitle', { ns: 'common' })}</h2>
-      <p className="mb-4 text-center text-red-600">{error.message}</p>
-      <Button onClick={resetErrorBoundaryAction} size="small">
-        {t('errorBoundary.tryAgainCompact', { ns: 'common' })}
-      </Button>
-    </div>
-  )
-}
-
 export default ErrorBoundary

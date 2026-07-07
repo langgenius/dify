@@ -64,7 +64,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId !== item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId !== item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId !== item.targetHandleId
     }
 
     return false
@@ -74,7 +74,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId === item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId === item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId === item.targetHandleId
     }
 
     return false
@@ -116,7 +116,7 @@ const NodeGroupItem = ({
           <div
             className={cn(
               'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal text-text-tertiary uppercase',
-              (showSelectedBorder || showSelectionBorder) && 'bg-black/[0.02]!',
+              (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
             )}
           >
             {t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}

@@ -7,8 +7,20 @@ import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
-
 import Apps from '../index'
+
+vi.mock('@/next/dynamic', () => ({
+  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+    const LazyComp = React.lazy(loader)
+    return function DynamicWrapper(props: Record<string, unknown>) {
+      return React.createElement(
+        React.Suspense,
+        { fallback: null },
+        React.createElement(LazyComp, props),
+      )
+    }
+  },
+}))
 
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
@@ -16,10 +28,11 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockFetchAppDetail = vi.mocked(fetchAppDetail)
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 const mockTemplateApp: App = {
   app_id: 'template-1',
-  category: 'Assistant',
+  categories: ['Assistant'],
   app: {
     id: 'template-1',
     mode: AppModeEnum.CHAT,
@@ -56,6 +69,15 @@ vi.mock('@/app/education-apply/hooks', () => ({
   },
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useAppContext: () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/hooks/use-import-dsl', () => ({
   useImportDSL: () => ({
     handleImportDSL: mockHandleImportDSL,
@@ -63,6 +85,16 @@ vi.mock('@/hooks/use-import-dsl', () => ({
     versions: [],
     isFetching: false,
   }),
+}))
+
+const mockReplace = vi.fn()
+let mockSearchParams = new URLSearchParams()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+  }),
+  useSearchParams: () => mockSearchParams,
 }))
 
 vi.mock('../list', () => {
@@ -129,6 +161,16 @@ vi.mock('../../app/create-from-dsl-modal/dsl-confirm-modal', () => ({
   ),
 }))
 
+vi.mock('../import-from-marketplace-template-modal', () => ({
+  default: ({ templateId, onClose, onConfirm }: { templateId: string, onClose: () => void, onConfirm: (dsl: string) => void }) => (
+    <div data-testid="marketplace-template-modal">
+      <span data-testid="template-id">{templateId}</span>
+      <button data-testid="close-template" onClick={onClose}>Close Template</button>
+      <button data-testid="confirm-template" onClick={() => onConfirm('yaml-dsl-content')}>Confirm Template</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
 }))
@@ -161,6 +203,9 @@ describe('Apps', () => {
     vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
+    mockWorkspacePermissionKeys = ['app.create_and_management']
+    mockSearchParams = new URLSearchParams()
+    mockReplace.mockClear()
     mockFetchAppDetail.mockResolvedValue({
       id: 'template-1',
       name: 'Sample App',
@@ -228,8 +273,8 @@ describe('Apps', () => {
     })
 
     it('should track template preview creation after a successful import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderWithClient(<Apps />)
@@ -241,7 +286,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalledWith('template-1')
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'studio_template_preview',
           appMode: AppModeEnum.CHAT,
+          templateId: 'template-1',
         })
       })
     })
@@ -250,8 +297,8 @@ describe('Apps', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
       })
 
       renderWithClient(<Apps />)
@@ -265,7 +312,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          appMode: AppModeEnum.CHAT,
+          source: 'studio_template_preview',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'template-1',
         })
       })
     })
@@ -301,6 +350,102 @@ describe('Apps', () => {
         expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
       })
       expect(mockTrackCreateApp).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Marketplace Template', () => {
+    it('should render the template modal when template-id is in search params', async () => {
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      expect(await screen.findByTestId('marketplace-template-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('template-id')).toHaveTextContent('tpl-42')
+    })
+
+    it('should not render the template modal without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
+    })
+
+    it('should not render the template modal when no template-id is present', () => {
+      renderWithClient(<Apps />)
+
+      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
+    })
+
+    it('should close the template modal and remove template-id from URL', async () => {
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('close-template'))
+
+      expect(mockReplace).toHaveBeenCalledTimes(1)
+      const replaceArg = mockReplace.mock.calls[0]![0] as string
+      expect(replaceArg).not.toContain('template-id')
+    })
+
+    it('should import DSL from marketplace template on confirm', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      })
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('confirm-template'))
+
+      await waitFor(() => {
+        expect(mockHandleImportDSL).toHaveBeenCalledWith(
+          { mode: 'yaml-content', yaml_content: 'yaml-dsl-content' },
+          expect.objectContaining({ onSuccess: expect.any(Function) }),
+        )
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.CHAT,
+          templateId: 'tpl-42',
+        })
+        expect(mockReplace).toHaveBeenCalled()
+      })
+    })
+
+    it('should not open create modal from template preview without app.create_and_management permission', async () => {
+      mockWorkspacePermissionKeys = []
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+    })
+
+    it('should track marketplace template creation after confirming a pending import', async () => {
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
+        options.onPending?.()
+      })
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
+      })
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      fireEvent.click(await screen.findByTestId('confirm-template'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
+        expect(mockReplace).toHaveBeenCalled()
+      })
+
+      fireEvent.click(screen.getByTestId('confirm-dsl'))
+
+      await waitFor(() => {
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'tpl-42',
+        })
+      })
     })
   })
 

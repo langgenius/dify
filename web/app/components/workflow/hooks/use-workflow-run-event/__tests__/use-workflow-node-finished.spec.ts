@@ -31,7 +31,7 @@ describe('useWorkflowNodeFinished', () => {
     })
 
     const trace = store.getState().workflowRunningData!.tracing![0]
-    expect(trace.status).toBe(NodeRunningStatus.Succeeded)
+    expect(trace!.status).toBe(NodeRunningStatus.Succeeded)
 
     await waitFor(() => {
       expect(getNodeRuntimeState(result.current.nodes[0])._runningStatus).toBe(NodeRunningStatus.Succeeded)

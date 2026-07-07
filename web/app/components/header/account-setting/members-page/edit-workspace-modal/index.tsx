@@ -1,11 +1,11 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 
@@ -60,8 +60,8 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="overflow-visible">
-        <DialogCloseButton data-testid="edit-workspace-close" />
+      <DialogContent backdropProps={{ forceRender: true }}>
+        <DialogCloseButton />
 
         <form
           className="flex flex-col"
@@ -102,10 +102,10 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           </div>
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
-            <Button size="large" type="button" data-testid="edit-workspace-cancel" onClick={onCancel}>
+            <Button size="large" type="button" onClick={onCancel}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button size="large" type="submit" variant="primary" data-testid="edit-workspace-save" disabled={isSaveDisabled} loading={isSubmitting}>
+            <Button size="large" type="submit" variant="primary" disabled={isSaveDisabled} loading={isSubmitting}>
               {t(isSubmitting ? 'operation.saving' : 'operation.save', { ns: 'common' })}
             </Button>
           </div>

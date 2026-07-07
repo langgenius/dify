@@ -1,10 +1,4 @@
 import type { ConversationItem } from '@/models/share'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import AppIcon from '@/app/components/base/app-icon'
-import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,7 +7,13 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
 import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'
@@ -128,7 +128,7 @@ const HeaderInMobile = () => {
         >
           <div className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
-              <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
+              <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
               <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
             </div>
             <div className="p-4">

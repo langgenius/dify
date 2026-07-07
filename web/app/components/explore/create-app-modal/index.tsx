@@ -1,23 +1,22 @@
 'use client'
 import type { AppIconType } from '@/types/app'
-import { RiCloseLine } from '@remixicon/react'
-import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/function'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
-import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -43,6 +42,8 @@ export type CreateAppModalProps = {
   confirmDisabled?: boolean
   onHide: () => void
 }
+
+type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const CreateAppModal = ({
   show = false,
@@ -84,8 +85,9 @@ const CreateAppModal = ({
       toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
       return
     }
-    const isValid = maxActiveRequestsInput.trim() !== '' && !isNaN(Number(maxActiveRequestsInput))
-    const payload: any = {
+    const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
+    const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
+    const payload: CreateAppPayload = {
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
@@ -94,7 +96,7 @@ const CreateAppModal = ({
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
     if (isValid)
-      payload.max_active_requests = Number(maxActiveRequestsInput)
+      payload.max_active_requests = parsedMaxActiveRequests
 
     onConfirm(payload)
     onHide()
@@ -102,119 +104,115 @@ const CreateAppModal = ({
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !(!isEditModal && isAppsFull) && name.trim())
-      handleSubmit()
-  })
-
-  useKeyPress('esc', () => {
-    if (show)
-      onHide()
+  useHotkey('Mod+Enter', () => {
+    handleSubmit()
+  }, {
+    enabled: show && !(!isEditModal && isAppsFull) && !!name.trim(),
+    ignoreInputs: false,
   })
 
   return (
     <>
-      <Modal
-        isShow={show}
-        onClose={noop}
-        className="relative max-w-[480px]! px-8"
-      >
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-        {isEditModal && (
-          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</div>
-        )}
-        {!isEditModal && (
-          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</div>
-        )}
-        <div className="mb-9">
-          {/* icon & name */}
-          <div className="pt-2">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
-            <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => { setShowAppIconPicker(true) }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
-                className="h-10 grow"
-              />
-            </div>
-          </div>
-          {/* description */}
-          <div className="pt-2">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
-            <Textarea
-              className="resize-none"
-              placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </div>
-          {/* answer icon */}
-          {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
+      <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
+        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
+          <DialogCloseButton />
+          {isEditModal && (
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+          )}
+          {!isEditModal && (
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+          )}
+          <div className="mb-9">
+            {/* icon & name */}
             <div className="pt-2">
-              <div className="flex items-center justify-between">
-                <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
-                <Switch
-                  checked={useIconAsAnswerIcon}
-                  onCheckedChange={v => setUseIconAsAnswerIcon(v)}
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <div className="flex items-center justify-between space-x-2">
+                <AppIcon
+                  size="large"
+                  onClick={() => { setShowAppIconPicker(true) }}
+                  className="cursor-pointer"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                />
+                <Input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                  className="h-10 grow"
                 />
               </div>
-              <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
             </div>
-          )}
-          {isEditModal && (
+            {/* description */}
             <div className="pt-2">
-              <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
-              <Input
-                type="number"
-                min={1}
-                placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
-                value={maxActiveRequestsInput}
-                onChange={(e) => {
-                  setMaxActiveRequestsInput(e.target.value)
-                }}
-                className="h-10 w-full"
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <Textarea
+                aria-label={t('newApp.captionDescription', { ns: 'app' })}
+                className="resize-none"
+                placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                value={description}
+                onValueChange={value => setDescription(value)}
               />
-              <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
             </div>
-          )}
-          {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
-        </div>
-        <div className="flex flex-row-reverse">
-          <Button
-            disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
-            className="ml-2 w-24 gap-1"
-            variant="primary"
-            onClick={handleSubmit}
-          >
-            <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
-          </Button>
-          <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        </div>
-      </Modal>
+            {/* answer icon */}
+            {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                  <Switch
+                    checked={useIconAsAnswerIcon}
+                    onCheckedChange={v => setUseIconAsAnswerIcon(v)}
+                  />
+                </div>
+                <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
+              </div>
+            )}
+            {isEditModal && (
+              <div className="pt-2">
+                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
+                  value={maxActiveRequestsInput}
+                  onChange={(e) => {
+                    setMaxActiveRequestsInput(e.target.value)
+                  }}
+                  className="h-10 w-full"
+                />
+                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
+              </div>
+            )}
+            {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
+          </div>
+          <div className="flex flex-row-reverse">
+            <Button
+              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
+              className="ml-2 w-24 gap-1"
+              variant="primary"
+              onClick={handleSubmit}
+            >
+              <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
+            </Button>
+            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(appIconType === 'image'
-              ? { type: 'image' as const, url: appIconUrl, fileId: _appIcon }
-              : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground })
-            setShowAppIconPicker(false)
           }}
         />
       )}

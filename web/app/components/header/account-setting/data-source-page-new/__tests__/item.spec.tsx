@@ -1,5 +1,5 @@
 import type { DataSourceCredential } from '../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Item from '../item'
 
@@ -14,6 +14,9 @@ const triggerRename = async () => {
   fireEvent.click(dropdownTrigger)
   const renameOption = await screen.findByText('common.operation.rename')
   fireEvent.click(renameOption)
+  await waitFor(() => {
+    expect(screen.getByPlaceholderText('common.placeholder.input')).toBeInTheDocument()
+  })
 }
 
 describe('Item Component', () => {
@@ -38,15 +41,33 @@ describe('Item Component', () => {
 
       // Assert
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
-      expect(screen.getByText('connected')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.connected')).toBeInTheDocument()
       expect(screen.getByRole('button')).toBeInTheDocument() // Dropdown trigger
+    })
+
+    it('should render default badge without a leading avatar', () => {
+      // Act
+      const { container } = render(
+        <Item
+          credentialItem={{
+            ...mockCredentialItem,
+            is_default: true,
+            avatar_url: 'avatar-url',
+          }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      // Assert
+      expect(container.querySelector('img')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.default')).toBeInTheDocument()
     })
   })
 
   describe('Rename Mode Interactions', () => {
     it('should switch to rename mode when Trigger Rename is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
 
       // Act
       await triggerRename()
@@ -57,7 +78,7 @@ describe('Item Component', () => {
 
     it('should update rename input value when changed', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
 
@@ -70,7 +91,7 @@ describe('Item Component', () => {
 
     it('should call onAction with "rename" and correct payload when Save is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'New Name' } })
@@ -94,7 +115,7 @@ describe('Item Component', () => {
 
     it('should exit rename mode without calling onAction when Cancel is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'Cancelled Name' } })
@@ -116,7 +137,7 @@ describe('Item Component', () => {
       const parentClick = vi.fn()
       render(
         <div onClick={parentClick}>
-          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} />
+          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />
         </div>,
       )
       // Act & Assert
@@ -143,7 +164,7 @@ describe('Item Component', () => {
     it('should not throw if onAction is missing', async () => {
       // Arrange & Act
       // @ts-expect-error - Testing runtime tolerance for missing prop
-      render(<Item credentialItem={mockCredentialItem} onAction={undefined} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={undefined} canManageCredential />)
       await triggerRename()
 
       // Assert

@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useAppContext } from '@/context/app-context'
+import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import { BlockEnum } from '../../../types'
 import useConfig from '../use-config'
 
@@ -60,7 +61,7 @@ describe('trigger-schedule/use-config', () => {
       frequency: undefined,
       timezone: undefined,
       visual_config: undefined,
-    })))
+    })), { wrapper: createAccountProfileQueryWrapper() })
 
     expect(mockUseNodeCrud).toHaveBeenCalledWith('schedule-node', expect.objectContaining({
       mode: 'visual',
@@ -78,7 +79,7 @@ describe('trigger-schedule/use-config', () => {
   it('updates visual mode configuration and clears cron expression when needed', () => {
     const { result } = renderHook(() => useConfig('schedule-node', createData({
       cron_expression: '0 0 * * *',
-    })))
+    })), { wrapper: createAccountProfileQueryWrapper() })
 
     result.current.handleModeChange('cron')
     result.current.handleFrequencyChange('hourly')
@@ -107,7 +108,7 @@ describe('trigger-schedule/use-config', () => {
   })
 
   it('switches to raw cron mode and clears visual schedule fields', () => {
-    const { result } = renderHook(() => useConfig('schedule-node', createData()))
+    const { result } = renderHook(() => useConfig('schedule-node', createData()), { wrapper: createAccountProfileQueryWrapper() })
 
     result.current.handleCronExpressionChange('*/15 * * * *')
 

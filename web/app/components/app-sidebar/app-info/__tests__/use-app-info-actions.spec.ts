@@ -20,8 +20,12 @@ const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
 const mockExportAppConfig = vi.fn()
 const mockDeleteApp = vi.fn()
+const mockFetchAppDetail = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
+const mockGetSocket = vi.fn()
+const mockOnAppMetaUpdate = vi.fn()
+const mockSetQueryData = vi.fn()
 
 let mockAppDetail: Record<string, unknown> | undefined = {
   id: 'app-1',
@@ -47,7 +51,7 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.api, {
     success: vi.fn((message, options) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message, options) => toastMocks.call({ type: 'error', message, ...options })),
@@ -60,7 +64,18 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
+  appDetailQueryKeyPrefix: ['apps', 'detail'],
   useInvalidateAppList: () => mockInvalidateAppList,
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  queryOptions: <TOptions>(options: TOptions) => options,
+  useSuspenseQuery: () => ({
+    data: { rbac_enabled: true },
+  }),
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -68,6 +83,7 @@ vi.mock('@/service/apps', () => ({
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
   exportAppConfig: (...args: unknown[]) => mockExportAppConfig(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -82,13 +98,24 @@ vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'test-refresh-key',
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: (...args: unknown[]) => mockGetSocket(...args),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppMetaUpdate: (...args: unknown[]) => mockOnAppMetaUpdate(...args),
+  },
 }))
 
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOnAppMetaUpdate.mockReturnValue(() => {})
+    mockGetSocket.mockReturnValue(null)
+    mockSetQueryData.mockReset()
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',
@@ -134,6 +161,27 @@ describe('useAppInfoActions', () => {
 
       expect(result.current.panelOpen).toBe(false)
       expect(onDetailExpand).toHaveBeenCalledWith(false)
+    })
+
+    it('should reset app-scoped state when resetKey changes', () => {
+      const { result, rerender } = renderHook(
+        ({ resetKey }) => useAppInfoActions({ resetKey }),
+        { initialProps: { resetKey: 'app-1' } },
+      )
+
+      act(() => {
+        result.current.openModal('delete')
+        result.current.setPanelOpen(true)
+      })
+
+      expect(result.current.panelOpen).toBe(true)
+      expect(result.current.activeModal).toBe('delete')
+
+      rerender({ resetKey: 'app-2' })
+
+      expect(result.current.panelOpen).toBe(false)
+      expect(result.current.activeModal).toBeNull()
+      expect(result.current.secretEnvList).toEqual([])
     })
   })
 
@@ -189,6 +237,35 @@ describe('useAppInfoActions', () => {
       expect(mockUpdateAppInfo).toHaveBeenCalled()
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+    })
+
+    it('should emit app_meta_update after successful edit when collaboration socket exists', async () => {
+      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const socket = { emit: vi.fn() }
+      mockUpdateAppInfo.mockResolvedValue(updatedApp)
+      mockGetSocket.mockReturnValue(socket)
+
+      const { result } = renderHook(() => useAppInfoActions({}))
+
+      await act(async () => {
+        await result.current.onEdit({
+          name: 'Updated',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#fff',
+          description: '',
+          use_icon_as_answer_icon: false,
+        })
+      })
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(mockGetSocket).toHaveBeenCalledWith('app-1')
+      expect(socket.emit).toHaveBeenCalledWith(
+        'collaboration_event',
+        expect.objectContaining({
+          type: 'app_meta_update',
+        }),
+      )
     })
 
     it('should notify error on edit failure', async () => {
@@ -500,6 +577,33 @@ describe('useAppInfoActions', () => {
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })
+    })
+  })
+
+  describe('collaboration app meta updates', () => {
+    it('should refresh app detail when receiving app_meta_update', async () => {
+      const updated = { ...mockAppDetail, name: 'Remote Updated' }
+      const unsubscribe = vi.fn()
+      let onUpdate: (() => Promise<void>) | undefined
+
+      mockOnAppMetaUpdate.mockImplementation((callback: () => Promise<void>) => {
+        onUpdate = callback
+        return unsubscribe
+      })
+      mockFetchAppDetail.mockResolvedValue(updated)
+
+      const { unmount } = renderHook(() => useAppInfoActions({}))
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await act(async () => {
+        await onUpdate?.()
+      })
+
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetAppDetail).toHaveBeenCalledWith(updated)
+
+      unmount()
+      expect(unsubscribe).toHaveBeenCalled()
     })
   })
 })

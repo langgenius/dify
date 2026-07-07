@@ -2,11 +2,11 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union
+from typing import Any, Union, override
 from urllib.parse import urlencode
 
 import httpx
-from graphon.file.file_manager import download
+from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -14,6 +14,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
+from graphon.file.file_manager import download
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
@@ -45,6 +46,7 @@ class ApiTool(Tool):
         self.api_bundle = api_bundle
         self.provider_id = provider_id
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime):
         """
         fork a new tool with metadata
@@ -77,6 +79,7 @@ class ApiTool(Tool):
         # For credential validation, always return as string
         return parsed_response.to_string()
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
 
@@ -357,15 +360,16 @@ class ApiTool(Tool):
                     if value is None:
                         return None
                 elif property["type"] == "object" or property["type"] == "array":
-                    if isinstance(value, str):
-                        try:
-                            return json.loads(value)
-                        except ValueError:
+                    match value:
+                        case str():
+                            try:
+                                return json.loads(value)
+                            except ValueError:
+                                return value
+                        case dict():
                             return value
-                    elif isinstance(value, dict):
-                        return value
-                    else:
-                        return value
+                        case _:
+                            return value
                 else:
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif "anyOf" in property and isinstance(property["anyOf"], list):
@@ -373,8 +377,10 @@ class ApiTool(Tool):
         except ValueError:
             return value
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

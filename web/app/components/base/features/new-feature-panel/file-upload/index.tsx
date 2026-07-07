@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -9,12 +10,11 @@ import FeatureCard from '@/app/components/base/features/new-feature-panel/featur
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
-import { Button } from '@/app/components/base/ui/button'
 
-type Props = {
+type Props = Readonly<{
   disabled: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const FileUpload = ({
   disabled,
@@ -52,7 +52,7 @@ const FileUpload = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-600 p-1 shadow-xs">
-          <FolderUpload className="h-4 w-4 text-text-primary-on-surface" />
+          <FolderUpload className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={t('feature.fileUpload.title', { ns: 'appDebug' })}
@@ -91,7 +91,7 @@ const FileUpload = ({
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                  <RiEqualizer2Line className="mr-1 size-4" />
                   {t('operation.settings', { ns: 'common' })}
                 </Button>
               </SettingModal>

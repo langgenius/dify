@@ -68,7 +68,7 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })
@@ -160,7 +160,7 @@ describe('useAsyncWindowOpen', () => {
 
     expect(close).toHaveBeenCalled()
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('No url resolved for new window')
   })
 
@@ -176,7 +176,7 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })

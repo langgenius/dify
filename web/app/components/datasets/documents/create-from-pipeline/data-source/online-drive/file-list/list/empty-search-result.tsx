@@ -1,7 +1,7 @@
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/knowledge'
-import { Button } from '@/app/components/base/ui/button'
 
 type EmptySearchResultProps = {
   onResetKeywords: () => void

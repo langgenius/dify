@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import type { HttpNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -66,7 +66,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
                 onClick={showAuthorization}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
-                {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
+                {!readOnly && <Settings01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.authorization.authorization`, { ns: 'workflow' })}
                   <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`, { ns: 'workflow' })}</span>
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
                 onClick={showCurlPanel}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2')}
               >
-                {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
+                {!readOnly && <FileArrow01 className="size-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.curl.title`, { ns: 'workflow' })}
                 </div>

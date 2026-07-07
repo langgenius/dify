@@ -1,33 +1,28 @@
 'use client'
-import type { FC } from 'react'
-import type { Item } from '@/app/components/base/select'
-import Checkbox from '@/app/components/base/checkbox'
+import type { SegmentStatusFilterOption, SegmentStatusFilterValue } from '../hooks/use-search-filter'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
 import DisplayToggle from '../display-toggle'
-import StatusItem from '../status-item'
 import s from '../style.module.css'
 
 type MenuBarProps = {
-  isAllSelected: boolean
-  isSomeSelected: boolean
-  onSelectedAll: () => void
+  hasSelectableSegments: boolean
   isLoading: boolean
   totalText: string
-  statusList: Item[]
-  selectDefaultValue: 'all' | 0 | 1
-  onChangeStatus: (item: Item) => void
+  statusList: SegmentStatusFilterOption[]
+  selectDefaultValue: SegmentStatusFilterValue
+  onChangeStatus: (item: SegmentStatusFilterOption) => void
   inputValue: string
   onInputChange: (value: string) => void
   isCollapsed: boolean
   toggleCollapsed: () => void
 }
 
-const MenuBar: FC<MenuBarProps> = ({
-  isAllSelected,
-  isSomeSelected,
-  onSelectedAll,
+function MenuBar({
+  hasSelectableSegments,
   isLoading,
   totalText,
   statusList,
@@ -37,28 +32,47 @@ const MenuBar: FC<MenuBarProps> = ({
   onInputChange,
   isCollapsed,
   toggleCollapsed,
-}) => {
+}: MenuBarProps) {
+  const { t } = useTranslation()
+  const selectedStatus = statusList.find(item => item.value === selectDefaultValue) ?? null
+
   return (
     <div className={s.docSearchWrapper}>
-      <Checkbox
-        className="shrink-0"
-        checked={isAllSelected}
-        indeterminate={!isAllSelected && isSomeSelected}
-        onCheck={onSelectedAll}
-        disabled={isLoading}
-      />
-      <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
-      <SimpleSelect
-        onSelect={onChangeStatus}
-        items={statusList}
-        defaultValue={selectDefaultValue}
-        className={s.select}
-        wrapperClassName="h-fit mr-2"
-        optionWrapClassName="w-[160px]"
-        optionClassName="p-0"
-        renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-        notClearable
-      />
+      {hasSelectableSegments
+        ? (
+            <Checkbox
+              className="shrink-0"
+              parent
+              aria-label={t('operation.selectAll', { ns: 'common' })}
+              disabled={isLoading}
+            />
+          )
+        : (
+            <span className="size-4 shrink-0" aria-hidden />
+          )}
+      <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">{totalText}</div>
+      <Select<SegmentStatusFilterValue>
+        value={selectedStatus?.value ?? null}
+        onValueChange={(nextValue) => {
+          if (nextValue == null)
+            return
+          const nextItem = statusList.find(item => item.value === nextValue)
+          if (nextItem)
+            onChangeStatus(nextItem)
+        }}
+      >
+        <SelectTrigger className="mr-2 w-[100px] shrink-0 shadow-none">
+          {selectedStatus?.name ?? ''}
+        </SelectTrigger>
+        <SelectContent popupClassName="w-[160px]">
+          {statusList.map(item => (
+            <SelectItem key={item.value} value={item.value}>
+              <SelectItemText>{item.name}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Input
         showLeftIcon
         showClearIcon

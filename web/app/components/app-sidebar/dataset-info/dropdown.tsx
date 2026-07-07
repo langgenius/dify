@@ -1,20 +1,4 @@
 import type { DataSet } from '@/models/datasets'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiMoreFill } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useRouter } from '@/next/navigation'
-import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
-import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
-import { downloadBlob } from '@/utils/download'
-import ActionButton from '../../base/action-button'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -23,30 +7,82 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '../../base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useRouter } from '@/next/navigation'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
+import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalid } from '@/service/use-base'
+import { useExportPipelineDSL } from '@/service/use-pipeline'
+import { downloadBlob } from '@/utils/download'
+import { getDatasetACLCapabilities } from '@/utils/permission'
+import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
+  triggerClassName?: string
+}
+
+type JsonErrorResponse = {
+  json: () => Promise<{ message?: string }>
+}
+
+const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
+  return typeof error === 'object'
+    && error !== null
+    && 'json' in error
+    && typeof error.json === 'function'
+}
+
+const getErrorMessage = async (error: unknown) => {
+  if (!isJsonErrorResponse(error))
+    return 'Unknown error'
+
+  const res = await error.json()
+  return res?.message || 'Unknown error'
 }
 
 const DropDown = ({
   expand,
+  triggerClassName,
 }: DropDownProps) => {
   const { t } = useTranslation()
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
-
-  const handleTrigger = useCallback(() => {
-    setOpen(prev => !prev)
-  }, [])
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canAccessConfig
+    || datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
@@ -57,9 +93,11 @@ const DropDown = ({
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setShowRenameModal(true)
-    handleTrigger()
-  }, [handleTrigger])
+    setOpen(false)
+    queueMicrotask(() => {
+      setShowRenameModal(true)
+    })
+  }, [])
 
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
@@ -67,7 +105,7 @@ const DropDown = ({
     const { pipeline_id, name } = dataset
     if (!pipeline_id)
       return
-    handleTrigger()
+    setOpen(false)
     try {
       const { data } = await exportPipelineConfig({
         pipelineId: pipeline_id,
@@ -77,24 +115,26 @@ const DropDown = ({
       downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [dataset, exportPipelineConfig, handleTrigger, t])
+  }, [dataset, exportPipelineConfig, t])
 
   const detectIsUsedByApp = useCallback(async () => {
+    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
       setShowConfirmDelete(true)
     }
-    catch (e: any) {
-      const res = await e.json()
-      toast(res?.message || 'Unknown error', { type: 'error' })
+    catch (e: unknown) {
+      toast.error(await getErrorMessage(e))
     }
-    finally {
-      handleTrigger()
-    }
-  }, [dataset.id, handleTrigger, t])
+  }, [dataset.id, t])
+
+  const openAccessConfig = useCallback(() => {
+    setOpen(false)
+    push(`/datasets/${dataset.id}/access-config`)
+  }, [dataset.id, push])
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -108,33 +148,41 @@ const DropDown = ({
     }
   }, [dataset.id, replace, invalidDatasetList, t])
 
+  if (!canShowOperations)
+    return null
+
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement={expand ? 'bottom-end' : 'right'}
-      offset={expand
-        ? {
-            mainAxis: 4,
-            crossAxis: 10,
-          }
-        : {
-            mainAxis: 4,
-          }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className="size-4" />
-        </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-60">
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            aria-label={t('operation.more', { ns: 'common' })}
+            size={expand ? 'l' : 'm'}
+            className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
+          />
+        )}
+      >
+        <span aria-hidden className="i-ri-more-fill size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement={expand ? 'bottom-end' : 'right-start'}
+        sideOffset={4}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <Menu
-          showDelete={!isCurrentWorkspaceDatasetOperator}
+          showEdit={datasetACLCapabilities.canEdit}
+          showDelete={datasetACLCapabilities.canDelete}
+          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
+          showAccessConfig={datasetACLCapabilities.canAccessConfig}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
+          openAccessConfig={openAccessConfig}
         />
-      </PortalToFollowElemContent>
+      </DropdownMenuContent>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -163,7 +211,7 @@ const DropDown = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-    </PortalToFollowElem>
+    </DropdownMenu>
   )
 }
 

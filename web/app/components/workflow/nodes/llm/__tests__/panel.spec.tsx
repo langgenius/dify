@@ -26,7 +26,27 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
+vi.mock('../_base/components/config-vision', () => ({
+  default: () => null,
+}))
+
 vi.mock('../../_base/components/variable/var-reference-picker', () => ({
+  default: () => null,
+}))
+
+vi.mock('../components/config-prompt', () => ({
+  default: () => null,
+}))
+
+vi.mock('../components/panel-memory-section', () => ({
+  default: () => null,
+}))
+
+vi.mock('../components/panel-output-section', () => ({
+  default: () => null,
+}))
+
+vi.mock('../components/reasoning-format-config', () => ({
   default: () => null,
 }))
 

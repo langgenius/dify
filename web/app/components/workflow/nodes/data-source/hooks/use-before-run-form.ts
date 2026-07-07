@@ -106,7 +106,7 @@ const useBeforeRunForm = ({
     const { currentCredentialId: credentialId } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.localFile) {
       const { localFileList } = dataSourceStore.getState()
-      const { id, name, type, size, extension, mime_type } = localFileList[0].file
+      const { id, name, type, size, extension, mime_type } = localFileList[0]!.file
       const documentInfo = {
         related_id: id,
         name,
@@ -121,7 +121,7 @@ const useBeforeRunForm = ({
     }
     if (datasourceType === DatasourceType.onlineDocument) {
       const { onlineDocuments } = dataSourceStore.getState()
-      const { workspace_id, ...rest } = onlineDocuments[0]
+      const { workspace_id, ...rest } = onlineDocuments[0]!
       const documentInfo = {
         workspace_id,
         page: rest,

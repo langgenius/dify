@@ -213,7 +213,7 @@ describe('usePipeline', () => {
         )
       })
 
-      const setNodesArg = mockSetNodes.mock.calls[0][0]
+      const setNodesArg = mockSetNodes.mock.calls[0]![0]
       expect(setNodesArg).toContain(dsNode)
       expect(setNodesArg).toContain(updatedNode2)
       expect(setNodesArg).toContain(node3)
@@ -277,7 +277,7 @@ describe('usePipeline', () => {
       const isUsed = result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
       expect(isUsed).toBe(true)
 
-      const nodesArg = mockFindUsedVarNodes.mock.calls[0][1] as Array<{ id: string }>
+      const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
       const nodeIds = nodesArg.map(n => n.id)
       expect(nodeIds).toContain('ds-1')
       expect(nodeIds).toContain('node-2')
@@ -312,7 +312,7 @@ describe('usePipeline', () => {
 
       result.current.isVarUsedInNodes(['rag', 'ds-1', 'var1'])
 
-      const nodesArg = mockFindUsedVarNodes.mock.calls[0][1] as Array<{ id: string }>
+      const nodesArg = mockFindUsedVarNodes.mock.calls[0]![1] as Array<{ id: string }>
       const nodeIds = nodesArg.map(n => n.id)
       const uniqueIds = [...new Set(nodeIds)]
       expect(nodeIds.length).toBe(uniqueIds.length)

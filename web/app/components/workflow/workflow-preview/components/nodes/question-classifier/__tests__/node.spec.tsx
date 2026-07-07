@@ -28,7 +28,7 @@ describe('workflow preview question classifier node', () => {
         title: 'Classifier',
         desc: '',
         classes: [
-          { id: 'class-1', name: 'Billing' },
+          { id: 'class-1', name: 'Billing', label: 'Billing label' },
           { id: 'class-2', name: 'Support' },
         ],
       } as never,
@@ -38,7 +38,8 @@ describe('workflow preview question classifier node', () => {
       <Node {...props} />,
     )
 
-    expect(getByText('workflow.nodes.questionClassifiers.class 1')).toBeInTheDocument()
+    expect(getByText('Billing label')).toBeInTheDocument()
+    expect(getByText('CLASS 2')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="class-1"]')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="class-2"]')).toBeInTheDocument()
   })

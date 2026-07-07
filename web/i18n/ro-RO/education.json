@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Ai un abonament activ. Poți folosi reducerea educațională după expirarea abonamentului. Confirmați abonamentul în <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "Nu ai permisiunea de plată în acest workspace. Te rugăm să treci la un workspace unde poți gestiona facturarea pentru a folosi reducerea educațională.",
+  "applied.noPaymentPermission.returnHome": "Înapoi la Dify",
+  "applied.step1.description": "Ai aplicat cu succes pentru reducerea educațională.",
+  "applied.step2.description": "Selectează workspace-ul pe care dorești să-l utilizezi cu reducerea educațională.",
   "currentSigned": "CONEXIUNE ÎN PREZENT CA",
+  "educationPricingConfirm.cancel": "Păstrează planul curent",
+  "educationPricingConfirm.continue": "Treci la Professional anual",
+  "educationPricingConfirm.description": "Reducerea educațională se aplică doar planului Professional anual. Dacă păstrezi planul curent, reducerea nu va fi inclusă.",
+  "educationPricingConfirm.title": "Planul selectat nu acceptă reducerea educațională",
   "emailLabel": "Emailul tău curent",
   "form.schoolName.placeholder": "Introduceți numele oficial, neabbreviat al școlii dumneavoastră",
   "form.schoolName.title": "Numele Școlii Tale",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Re-verificați acum pentru a obține un nou cupon pentru următorul an academic. Vom adăuga acest cupon în contul dvs. și îl puteți folosi pentru următoarea actualizare.",
   "notice.stillInEducation.isAboutToExpire": "Re-verifică acum pentru a obține un nou cupon pentru anul universitar următor. Va fi salvat în contul tău și gata de utilizat la următoarea reînnoire.",
   "notice.stillInEducation.title": "Încă în educație?",
+  "planNotSupportEducationDiscount": "Nu este eligibil pentru prețuri educaționale",
   "rejectContent": "Din păcate, nu ești eligibil pentru statutul de Verificat Educațional și, prin urmare, nu poți primi cuponul exclusiv de 100% pentru Planul Profesional Dify dacă folosești această adresă de email.",
   "rejectTitle": "Verificarea educațională Dify a fost respinsă",
   "submit": "Trimite",
   "submitError": "Trimiterea formularului a eşuat. Vă rugăm să încercați din nou mai târziu.",
-  "successContent": "Am emis un cupon de discount de 100% pentru planul Professional Dify pe contul dumneavoastră. Cuponul este valabil timp de un an, vă rugăm să îl utilizați în perioada de valabilitate.",
-  "successTitle": "Ai obținut educația Dify verificată",
   "toVerified": "Obțineți verificarea educației",
   "toVerifiedTip.coupon": "cupom exclusiv 100%",
   "toVerifiedTip.end": "pentru Planul Profesional Dify.",
-  "toVerifiedTip.front": "Sunteți acum eligibil pentru statutul de Educație Verificată. Vă rugăm să introduceți informațiile despre educația dumneavoastră mai jos pentru a finaliza procesul și a primi un"
+  "toVerifiedTip.front": "Sunteți acum eligibil pentru statutul de Educație Verificată. Vă rugăm să introduceți informațiile despre educația dumneavoastră mai jos pentru a finaliza procesul și a primi un",
+  "useEducationDiscount": "Folosește reducerea educațională"
 }

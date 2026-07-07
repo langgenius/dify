@@ -77,7 +77,7 @@ def _build_fake_tablestore_module():
 
 
 @pytest.fixture
-def tablestore_module(monkeypatch):
+def tablestore_module(monkeypatch: pytest.MonkeyPatch):
     fake_module = _build_fake_tablestore_module()
     monkeypatch.setitem(sys.modules, "tablestore", fake_module)
 
@@ -177,7 +177,7 @@ def test_get_by_ids_text_exists_delete_and_wrappers(tablestore_module):
     vector._delete_table_if_exist.assert_called_once()
 
 
-def test_create_collection_and_table_index_lifecycle(tablestore_module, monkeypatch):
+def test_create_collection_and_table_index_lifecycle(tablestore_module, monkeypatch: pytest.MonkeyPatch):
     vector = tablestore_module.TableStoreVector("collection_1", _config(tablestore_module))
     lock = MagicMock()
     lock.__enter__.return_value = None
@@ -289,7 +289,7 @@ def test_write_row_and_search_helpers(tablestore_module):
     assert "score" not in docs[0].metadata
 
 
-def test_tablestore_factory_uses_existing_or_generated_collection(tablestore_module, monkeypatch):
+def test_tablestore_factory_uses_existing_or_generated_collection(tablestore_module, monkeypatch: pytest.MonkeyPatch):
     factory = tablestore_module.TableStoreVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

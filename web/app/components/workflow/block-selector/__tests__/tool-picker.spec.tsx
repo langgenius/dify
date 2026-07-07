@@ -2,14 +2,13 @@ import type { ToolWithProvider } from '../../types'
 import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { createCustomCollection } from '@/service/tools'
@@ -25,11 +24,9 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 import { Theme } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import ToolPicker from '../tool-picker'
 
 const mockNotify = vi.fn()
-const mockSetSystemFeatures = vi.fn()
 const mockInvalidateBuiltInTools = vi.fn()
 const mockInvalidateCustomTools = vi.fn()
 const mockInvalidateWorkflowTools = vi.fn()
@@ -38,8 +35,8 @@ const mockCreateCustomCollection = vi.mocked(createCustomCollection)
 const mockInstallPackageFromMarketPlace = vi.fn()
 const mockCheckInstalled = vi.fn()
 const mockRefreshPluginList = vi.fn()
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseTags = vi.mocked(useTags)
@@ -54,12 +51,22 @@ const mockUseInvalidateAllWorkflowTools = vi.mocked(useInvalidateAllWorkflowTool
 const mockUseInvalidateAllMCPTools = vi.mocked(useInvalidateAllMCPTools)
 const mockUseFeaturedToolsRecommendations = vi.mocked(useFeaturedToolsRecommendations)
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+  }
+})
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -76,6 +83,10 @@ vi.mock('@/app/components/plugins/hooks', async (importOriginal) => {
 
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
 }))
 
 vi.mock('@/service/tools', () => ({
@@ -114,7 +125,7 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllMCPTools: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -188,7 +199,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/tools',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 
@@ -313,41 +324,26 @@ const mcpTools = [
 ]
 
 const renderToolPicker = (props: Partial<React.ComponentProps<typeof ToolPicker>> = {}) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ToolPicker
-        disabled={false}
-        trigger={<button type="button">open-picker</button>}
-        isShow={false}
-        onShowChange={vi.fn()}
-        onSelect={vi.fn()}
-        onSelectMultiple={vi.fn()}
-        selectedTools={[createToolValue()]}
-        {...props}
-      />
-    </QueryClientProvider>,
+  return renderWithSystemFeatures(
+    <ToolPicker
+      disabled={false}
+      trigger={<button type="button">open-picker</button>}
+      isShow={false}
+      onShowChange={vi.fn()}
+      onSelect={vi.fn()}
+      onSelectMultiple={vi.fn()}
+      selectedTools={[createToolValue()]}
+      {...props}
+    />,
+    { systemFeatures: { enable_marketplace: true } },
   )
 }
 
 describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['tool.manage']
 
-    mockUseGlobalPublicStore.mockImplementation(selector => selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        enable_marketplace: true,
-      },
-      setSystemFeatures: mockSetSystemFeatures,
-    }))
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseTags.mockReturnValue({
@@ -369,8 +365,12 @@ describe('ToolPicker', () => {
       page: 0,
     } as ReturnType<typeof useMarketplacePlugins>)
     mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<typeof useAllBuiltInTools>)
-    mockUseAllCustomTools.mockReturnValue({ data: customTools } as ReturnType<typeof useAllCustomTools>)
-    mockUseAllWorkflowTools.mockReturnValue({ data: workflowTools } as ReturnType<typeof useAllWorkflowTools>)
+    mockUseAllCustomTools.mockImplementation((enabled = true) => ({
+      data: enabled ? customTools : [],
+    } as ReturnType<typeof useAllCustomTools>))
+    mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
+      data: enabled ? workflowTools : [],
+    } as ReturnType<typeof useAllWorkflowTools>))
     mockUseAllMCPTools.mockReturnValue({ data: mcpTools } as ReturnType<typeof useAllMCPTools>)
     mockUseInvalidateAllBuiltInTools.mockReturnValue(mockInvalidateBuiltInTools)
     mockUseInvalidateAllCustomTools.mockReturnValue(mockInvalidateCustomTools)
@@ -400,16 +400,28 @@ describe('ToolPicker', () => {
 
     renderToolPicker({ onShowChange })
 
-    await user.click(screen.getByRole('button', { name: 'open-picker' }))
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    await user.click(screen.getByText('open-picker').closest('[role="button"]')!)
+    expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
       disabled: true,
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
+    await user.click(screen.getAllByText('open-picker')[1]!.closest('[role="button"]')!)
     expect(disabledOnShowChange).not.toHaveBeenCalled()
+  })
+
+  it('should link the find-more footer to the marketplace tool category', () => {
+    renderToolPicker({
+      isShow: true,
+      selectedTools: [],
+    })
+
+    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute(
+      'href',
+      'https://marketplace.test/plugins/tool',
+    )
   })
 
   it('should render real search and tool lists, then forward tool selections', async () => {
@@ -479,12 +491,12 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    const { container } = renderToolPicker({
+    renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
 
-    const addCustomToolButton = Array.from(container.querySelectorAll('button')).find((button) => {
+    const addCustomToolButton = Array.from(document.querySelectorAll('button')).find((button) => {
       return button.className.includes('bg-components-button-primary-bg')
     })
 
@@ -504,6 +516,24 @@ describe('ToolPicker', () => {
     })
     expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
+  })
+
+  it('should keep custom and workflow tools usable but hide custom create action without tool.manage', () => {
+    mockWorkspacePermissionKeys = []
+
+    renderToolPicker({
+      isShow: true,
+      supportAddCustomTool: true,
+    })
+
+    expect(mockUseAllCustomTools).toHaveBeenCalledWith(true)
+    expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(true)
+    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+    expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
+    expect(screen.getByText('MCP Provider')).toBeInTheDocument()
+    expect(Array.from(document.querySelectorAll('button')).some((button) => {
+      return button.className.includes('bg-components-button-primary-bg')
+    })).toBe(false)
   })
 
   it('should invalidate all tool collections after featured install succeeds', async () => {

@@ -1,14 +1,16 @@
 import type { PluginDetail } from '../../../../types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '../../../../types'
 import { useDetailHeaderState } from '../use-detail-header-state'
 
 let mockEnableMarketplace = true
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
-}))
+
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithSystemFeatures(callback, {
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+  })
 
 let mockAutoUpgradeInfo: {
   strategy_setting: string

@@ -12,10 +12,10 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
-type Props = {
+type Props = Readonly<{
   varList: { label: string, value: string }[]
   message_files: string[]
-}
+}>
 
 const VarPanel: FC<Props> = ({
   varList,
@@ -31,12 +31,12 @@ const VarPanel: FC<Props> = ({
         className={cn('flex cursor-pointer items-center gap-1 border-b border-divider-subtle px-3 pt-2.5 pb-2 text-text-secondary', isCollapse && 'border-0 pb-2.5')}
         onClick={toggleCollapse}
       >
-        <Variable02 className="h-4 w-4" />
+        <Variable02 className="size-4" />
         <div className="grow system-md-medium">{t('detail.variables', { ns: 'appLog' })}</div>
         {
           isCollapse
-            ? <RiArrowRightSLine className="h-4 w-4" />
-            : <RiArrowDownSLine className="h-4 w-4" />
+            ? <RiArrowRightSLine className="size-4" />
+            : <RiArrowDownSLine className="size-4" />
         }
       </div>
       {!isCollapse && (
@@ -59,7 +59,7 @@ const VarPanel: FC<Props> = ({
                 {message_files.map((url, index) => (
                   <div
                     key={index}
-                    className="ml-2.5 h-16 w-16 cursor-pointer rounded-lg bg-cover bg-center bg-no-repeat"
+                    className="ml-2.5 size-16 cursor-pointer rounded-lg bg-cover bg-center bg-no-repeat"
                     style={{ backgroundImage: `url(${url})` }}
                     onClick={() => setImagePreviewUrl(url)}
                   />

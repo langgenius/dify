@@ -1,7 +1,7 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { consoleQuery } from '@/service/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
@@ -12,14 +12,14 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const providerName = provider?.provider ?? ''
-  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+  const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
     input: {
       params: {
         provider: providerName,
       },
     },
   })
-  const { mutate: changePriority, isPending: isChangingPriority } = useMutation(consoleQuery.modelProviders.changePreferredProviderType.mutationOptions({
+  const { mutate: changePriority, isPending: isChangingPriority } = useMutation(consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions({
     onSuccess: () => {
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       queryClient.invalidateQueries({

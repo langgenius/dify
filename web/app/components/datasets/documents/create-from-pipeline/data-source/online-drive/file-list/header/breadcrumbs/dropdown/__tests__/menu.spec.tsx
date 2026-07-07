@@ -1,6 +1,18 @@
+import type { ReactElement } from 'react'
+import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Menu from '../menu'
+
+const renderMenu = (ui: ReactElement) => {
+  return render(
+    <DropdownMenu open>
+      <DropdownMenuContent>
+        {ui}
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  )
+}
 
 describe('Menu', () => {
   const defaultProps = {
@@ -16,7 +28,7 @@ describe('Menu', () => {
   // Rendering: verify all breadcrumb items are displayed
   describe('Rendering', () => {
     it('should render all breadcrumb items', () => {
-      render(<Menu {...defaultProps} />)
+      renderMenu(<Menu {...defaultProps} />)
 
       expect(screen.getByText('Folder A')).toBeInTheDocument()
       expect(screen.getByText('Folder B')).toBeInTheDocument()
@@ -36,7 +48,7 @@ describe('Menu', () => {
   // Index mapping: startIndex offsets are applied correctly
   describe('Index Mapping', () => {
     it('should pass correct index (startIndex + offset) to each item', () => {
-      render(<Menu {...defaultProps} />)
+      renderMenu(<Menu {...defaultProps} />)
 
       fireEvent.click(screen.getByText('Folder A'))
       expect(defaultProps.onBreadcrumbClick).toHaveBeenCalledWith(1)
@@ -49,7 +61,7 @@ describe('Menu', () => {
     })
 
     it('should offset from startIndex of zero', () => {
-      render(
+      renderMenu(
         <Menu
           breadcrumbs={['First', 'Second']}
           startIndex={0}
@@ -68,7 +80,7 @@ describe('Menu', () => {
   // User interactions: clicking items triggers the callback
   describe('User Interactions', () => {
     it('should call onBreadcrumbClick with correct index when item clicked', () => {
-      render(<Menu {...defaultProps} />)
+      renderMenu(<Menu {...defaultProps} />)
 
       fireEvent.click(screen.getByText('Folder B'))
 

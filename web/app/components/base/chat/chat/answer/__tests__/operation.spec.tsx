@@ -29,7 +29,7 @@ const {
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
 }))
 
@@ -150,6 +150,7 @@ const mockContextValue: ChatContextValue = {
   onAnnotationAdded: vi.fn(),
   onAnnotationEdited: vi.fn(),
   onAnnotationRemoved: vi.fn(),
+  readonly: false,
 }
 
 vi.mock('../../context', () => ({
@@ -205,6 +206,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationAdded = vi.fn()
     mockContextValue.onAnnotationEdited = vi.fn()
     mockContextValue.onAnnotationRemoved = vi.fn()
+    mockContextValue.readonly = false
     mockProviderContext.plan.usage.annotatedResponse = 0
     mockProviderContext.enableBilling = false
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
@@ -219,19 +221,19 @@ describe('Operation', () => {
 
     it('should show copy and regenerate buttons', () => {
       renderOperation()
-      expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
-      expect(screen.getByTestId('regenerate-btn')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.copy' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.regenerate' }))!.toBeInTheDocument()
     })
 
     it('should hide regenerate button when noChatInput is true', () => {
       renderOperation({ ...baseProps, noChatInput: true })
-      expect(screen.queryByTestId('regenerate-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.regenerate' })).not.toBeInTheDocument()
     })
 
     it('should show TTS button when text_to_speech is enabled', () => {
       mockContextValue.config = makeChatConfig({ text_to_speech: { enabled: true } })
       renderOperation()
-      expect(screen.getByTestId('audio-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('audio-btn'))!.toBeInTheDocument()
     })
 
     it('should show annotation button when config supports it', () => {
@@ -240,12 +242,43 @@ describe('Operation', () => {
         annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
       })
       renderOperation()
-      expect(screen.getByTestId('annotation-ctrl')).toBeInTheDocument()
+      expect(screen.getByTestId('annotation-ctrl'))!.toBeInTheDocument()
+    })
+
+    it('should hide annotation button when chat is readonly', () => {
+      mockContextValue.readonly = true
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+      })
+
+      renderOperation()
+
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
+    })
+
+    it('should hide annotation button when annotation callbacks are incomplete', () => {
+      mockContextValue.onAnnotationEdited = undefined
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+      })
+
+      renderOperation()
+
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
 
     it('should show prompt log when showPromptLog is true', () => {
       renderOperation({ ...baseProps, showPromptLog: true })
-      expect(screen.getByTestId('log-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('log-btn'))!.toBeInTheDocument()
+    })
+
+    it('should keep hover-only controls visible when a descendant popup is open', () => {
+      renderOperation({ ...baseProps, showPromptLog: true })
+
+      expect(screen.getByTestId('operation-actions')).toHaveClass('group-has-[[data-popup-open]]:flex')
+      expect(screen.getByTestId('log-btn').parentElement).toHaveClass('group-has-[[data-popup-open]]:block')
     })
 
     it('should not show prompt log for opening statements', () => {
@@ -259,7 +292,7 @@ describe('Operation', () => {
     it('should copy content on copy click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
@@ -274,7 +307,7 @@ describe('Operation', () => {
         ],
       }
       renderOperation({ ...baseProps, item })
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello World')
     })
   })
@@ -283,7 +316,7 @@ describe('Operation', () => {
     it('should call onRegenerate on regenerate click', async () => {
       const user = userEvent.setup()
       renderOperation()
-      await user.click(screen.getByTestId('regenerate-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.regenerate' }))
       expect(mockContextValue.onRegenerate).toHaveBeenCalledWith(baseItem)
     })
   })
@@ -299,7 +332,8 @@ describe('Operation', () => {
       const item = { ...baseItem, humanInputFormDataList: [{}] } as ChatItem
       renderOperation({ ...baseProps, item })
       expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('copy-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
   })
 
@@ -311,8 +345,8 @@ describe('Operation', () => {
     it('should show like/dislike buttons', () => {
       renderOperation()
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelector('.i-ri-thumb-up-line')).toBeInTheDocument()
-      expect(bar.querySelector('.i-ri-thumb-down-line')).toBeInTheDocument()
+      expect(bar.querySelector('.i-ri-thumb-up-line'))!.toBeInTheDocument()
+      expect(bar.querySelector('.i-ri-thumb-down-line'))!.toBeInTheDocument()
     })
 
     it('should call onFeedback with like on like click', async () => {
@@ -328,7 +362,7 @@ describe('Operation', () => {
       renderOperation()
       const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
       await user.click(thumbDown)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should submit dislike feedback from modal', async () => {
@@ -348,7 +382,7 @@ describe('Operation', () => {
       renderOperation()
       const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
       await user.click(thumbDown)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
       const cancelBtn = screen.getByText(/cancel/i)
       await user.click(cancelBtn)
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -405,14 +439,14 @@ describe('Operation', () => {
       const item = { ...baseItem, feedback: { rating: 'dislike' as const, content: 'Too slow' } }
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelector('.i-ri-thumb-down-line')).toBeInTheDocument()
+      expect(bar.querySelector('.i-ri-thumb-down-line'))!.toBeInTheDocument()
     })
 
     it('should show tooltip with only rating', () => {
       const item = { ...baseItem, feedback: { rating: 'like' as const } }
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelector('.i-ri-thumb-up-line')).toBeInTheDocument()
+      expect(bar.querySelector('.i-ri-thumb-up-line'))!.toBeInTheDocument()
     })
 
     it('should not show feedback bar for opening statements', () => {
@@ -441,8 +475,8 @@ describe('Operation', () => {
       renderOperation()
       const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
       await user.click(thumbDown)
-      // Check if modal title/labels fallback works
-      expect(screen.getByRole('tooltip')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Provide Feedback' }))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Feedback Content'))!.toBeInTheDocument()
       mockT.mockImplementation(key => key)
     })
   })
@@ -463,7 +497,7 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
-      const adminThumb = thumbs[thumbs.length - 1].closest('button')!
+      const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
       expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
     })
@@ -472,9 +506,9 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-down-line')
-      const adminThumb = thumbs[thumbs.length - 1].closest('button')!
+      const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should show user feedback read-only in admin bar when user has liked', () => {
@@ -488,7 +522,7 @@ describe('Operation', () => {
       const item = { ...baseItem, feedback: { rating: 'dislike' as const } }
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelector('.bg-components-actionbar-border')).toBeInTheDocument()
+      expect(bar.querySelector('.bg-components-actionbar-border'))!.toBeInTheDocument()
     })
 
     it('should show existing admin like feedback and allow undo', async () => {
@@ -513,12 +547,12 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
-      const adminThumb = thumbs[thumbs.length - 1].closest('button')!
+      const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
       expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: 'like', content: undefined })
 
       const thumbsUndo = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line')
-      const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1].closest('button')!
+      const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1]!.closest('button')!
       await user.click(adminThumbUndo)
       expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
     })
@@ -527,13 +561,13 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       const thumbs = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-down-line')
-      const adminThumb = thumbs[thumbs.length - 1].closest('button')!
+      const adminThumb = thumbs[thumbs.length - 1]!.closest('button')!
       await user.click(adminThumb)
       const submitBtn = screen.getByText(/submit/i)
       await user.click(submitBtn)
 
       const thumbsUndo = screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-down-line')
-      const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1].closest('button')!
+      const adminThumbUndo = thumbsUndo[thumbsUndo.length - 1]!.closest('button')!
       await user.click(adminThumbUndo)
       expect(mockContextValue.onFeedback).toHaveBeenCalledWith('msg-1', { rating: null, content: undefined })
     })
@@ -554,7 +588,9 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
       // the like/dislike regular ActionButtons should hit the Default state
-      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
+      // the like/dislike regular ActionButtons should hit the Default state
+      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
     })
   })
 
@@ -587,7 +623,7 @@ describe('Operation', () => {
       const item = { ...baseItem, feedback: { rating: 'like' as const }, adminFeedback: { rating: 'dislike' as const } }
       renderOperation({ ...baseProps, item, showPromptLog: true })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar).toBeInTheDocument()
+      expect(bar)!.toBeInTheDocument()
     })
 
     it('should show separator when user has feedback in admin mode', () => {
@@ -595,7 +631,7 @@ describe('Operation', () => {
       const item = { ...baseItem, feedback: { rating: 'like' as const } }
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelector('.bg-components-actionbar-border')).toBeInTheDocument()
+      expect(bar.querySelector('.bg-components-actionbar-border'))!.toBeInTheDocument()
     })
 
     it('should handle missing translation fallbacks in buildFeedbackTooltip', () => {
@@ -608,7 +644,7 @@ describe('Operation', () => {
       })
 
       renderOperation()
-      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
       // Reset to default behavior
       mockT.mockImplementation(key => key)
@@ -625,7 +661,7 @@ describe('Operation', () => {
       })
       const itemLike = { ...baseItem, feedback: { rating: 'like' as const, content: 'test content' } }
       const { rerender } = renderOperation({ ...baseProps, item: itemLike })
-      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
       const itemDislike = { ...baseItem, feedback: { rating: 'dislike' as const, content: 'test content' } }
       rerender(
@@ -633,7 +669,7 @@ describe('Operation', () => {
           <Operation {...baseProps} item={itemDislike} />
         </div>,
       )
-      expect(screen.getByTestId('operation-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
 
       mockT.mockImplementation(key => key)
     })
@@ -643,7 +679,7 @@ describe('Operation', () => {
       const item = { ...baseItem, feedback: { rating: null } as unknown as Record<string, unknown> } as unknown as ChatItem
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar).toBeInTheDocument()
+      expect(bar)!.toBeInTheDocument()
     })
 
     it('should handle missing onFeedback gracefully in handleFeedback', async () => {
@@ -703,7 +739,7 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
-      expect(screen.getByTestId('edit-reply-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-reply-modal'))!.toBeInTheDocument()
     })
 
     it('should call onAnnotationEdited from edit reply modal', async () => {
@@ -742,7 +778,7 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       const editBtn = screen.getByTestId('annotation-edit-btn')
       await user.click(editBtn)
-      expect(screen.getByTestId('edit-reply-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('edit-reply-modal'))!.toBeInTheDocument()
       await user.click(screen.getByTestId('modal-hide'))
       expect(screen.queryByTestId('edit-reply-modal')).not.toBeInTheDocument()
     })
@@ -755,7 +791,7 @@ describe('Operation', () => {
 
     it('should show audio play button when TTS enabled', () => {
       renderOperation()
-      expect(screen.getByTestId('audio-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('audio-btn'))!.toBeInTheDocument()
     })
 
     it('should not show audio button for humanInputFormDataList', () => {
@@ -791,44 +827,26 @@ describe('Operation', () => {
       const user = userEvent.setup()
       const item: ChatItem = { ...baseItem, agent_thoughts: [] }
       renderOperation({ ...baseProps, item })
-      await user.click(screen.getByTestId('copy-btn'))
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
-    it('should handle editing annotation missing onAnnotationEdited gracefully', async () => {
-      const user = userEvent.setup()
+    it('should hide cached annotation edit controls when chat is readonly', () => {
+      mockContextValue.readonly = true
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
         annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
         appId: 'test-app',
       })
-      mockContextValue.onAnnotationEdited = undefined
       const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+
       renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-edit'))
-      expect(mockContextValue.onAnnotationEdited).toBeUndefined()
+
+      expect(screen.queryByTestId('annotation-edit-btn')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-reply-modal')).not.toBeInTheDocument()
     })
 
-    it('should handle adding annotation missing onAnnotationAdded gracefully', async () => {
-      const user = userEvent.setup()
-      mockContextValue.config = makeChatConfig({
-        supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
-        appId: 'test-app',
-      })
-      mockContextValue.onAnnotationAdded = undefined
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
-      renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-add'))
-      expect(mockContextValue.onAnnotationAdded).toBeUndefined()
-    })
-
-    it('should handle removing annotation missing onAnnotationRemoved gracefully', async () => {
-      const user = userEvent.setup()
+    it('should hide cached annotation edit controls when mutation callbacks are missing', () => {
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
         annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
@@ -836,11 +854,11 @@ describe('Operation', () => {
       })
       mockContextValue.onAnnotationRemoved = undefined
       const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+
       renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-remove'))
-      expect(mockContextValue.onAnnotationRemoved).toBeUndefined()
+
+      expect(screen.queryByTestId('annotation-edit-btn')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-reply-modal')).not.toBeInTheDocument()
     })
   })
 })

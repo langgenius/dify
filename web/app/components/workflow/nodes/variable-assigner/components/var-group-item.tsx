@@ -2,6 +2,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -11,7 +12,6 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import { toast } from '@/app/components/base/ui/toast'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -25,7 +25,7 @@ type Payload = VarGroupItemType & {
   group_name?: string
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   payload: Payload
@@ -35,7 +35,7 @@ type Props = {
   canRemove?: boolean
   onRemove?: () => void
   availableVars: NodeOutPutVar[]
-}
+}>
 
 const VarGroupItem: FC<Props> = ({
   readOnly,
@@ -107,10 +107,10 @@ const VarGroupItem: FC<Props> = ({
         ? (
             <div className="flex items-center">
               <div className="flex items-center normal-case!">
-                <Folder className="mr-0.5 h-3.5 w-3.5" />
+                <Folder className="mr-0.5 size-3.5" />
                 {(!isEditGroupName)
                   ? (
-                      <div className="system-sm-semibold flex h-6 cursor-text items-center rounded-lg px-1 text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
+                      <div className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100" onClick={setEditGroupName}>
                         {payload.group_name}
                       </div>
                     )
@@ -133,11 +133,11 @@ const VarGroupItem: FC<Props> = ({
               </div>
               {canRemove && (
                 <div
-                  className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block"
+                  className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={onRemove}
                 >
                   <RiDeleteBinLine
-                    className="h-4 w-4"
+                    className="size-4"
                   />
                 </div>
               )}
@@ -145,9 +145,9 @@ const VarGroupItem: FC<Props> = ({
           )
         : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
       operations={(
-        <div className="flex h-6 items-center  space-x-2">
+        <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
-            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">{payload.output_type}</div>
+            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">{payload.output_type}</div>
           )}
           {
             !readOnly

@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { InstalledApp } from '@/models/explore'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import {
   AppSourceType,
   delConversation,
@@ -497,7 +497,7 @@ describe('useChatWithHistory', () => {
       expect(mockRenameConversation).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', 'conversation-1', 'New Name')
       expect(onSuccess).toHaveBeenCalledTimes(1)
       await waitFor(() => {
-        expect(result!.current.conversationList[0].name).toBe('New Name')
+        expect(result!.current.conversationList[0]!.name).toBe('New Name')
       })
     })
 
@@ -615,7 +615,7 @@ describe('useChatWithHistory', () => {
 
       // Assert: new item with empty id prepended
       await waitFor(() => {
-        expect(result!.current.conversationList[0].id).toBe('')
+        expect(result!.current.conversationList[0]!.id).toBe('')
       })
     })
   })
@@ -1076,6 +1076,10 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(answerNode?.workflow_run_id).toBe('wf-run-1')
     })
 
     it('should set workflow_run_id for normal messages with submitted human_input', async () => {
@@ -1114,6 +1118,75 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+    })
+
+    it('should parse human input payloads regardless of message status', async () => {
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1' })],
+      })
+      const chatListData = {
+        data: [
+          {
+            id: 'msg-status-agnostic',
+            query: 'Needs review',
+            answer: 'Pending follow-up',
+            message_files: [],
+            feedback: null,
+            retriever_resources: [],
+            agent_thoughts: null,
+            parent_message_id: null,
+            inputs: {},
+            status: 'error',
+            extra_contents: [
+              {
+                type: 'human_input',
+                submitted: true,
+                form_definition: {
+                  form_id: 'form-1',
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  form_content: '{{#$output.summary#}}',
+                  inputs: [],
+                  actions: [],
+                  form_token: 'token-1',
+                  resolved_default_values: {},
+                  display_in_ui: true,
+                  expiration_time: 0,
+                },
+                workflow_run_id: 'wf-run-status-agnostic',
+                form_submission_data: {
+                  node_id: 'node-1',
+                  node_title: 'Human Input',
+                  rendered_content: 'Submitted summary',
+                  action_id: 'submit',
+                  action_text: 'Submit',
+                  submitted_data: {
+                    summary: 'approved',
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue(chatListData)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
+      })
+
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.humanInputFormDataList).toHaveLength(0)
+      expect(answerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.form_content).toBe('{{#$output.summary#}}')
+      expect(answerNode?.humanInputFilledFormDataList?.[0]?.inputs).toEqual([])
+      expect(answerNode?.workflow_run_id).toBe('wf-run-status-agnostic')
     })
 
     it('should return empty appPrevChatTree when there is no currentConversationId', async () => {
@@ -1597,7 +1670,7 @@ describe('useChatWithHistory', () => {
       })
 
       // Assert
-      expect(result!.current.conversationList[0].id).toBe('conversation-1')
+      expect(result!.current.conversationList[0]!.id).toBe('conversation-1')
     })
   })
 
@@ -1835,6 +1908,15 @@ describe('useChatWithHistory', () => {
       expect(messageWithFiles?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files).toHaveLength(1)
+
+      const normalAnswerNode = messageWithFiles?.children?.[0]
+      const pausedAnswerNode = result!.current.appPrevChatTree.find(item => item.id === 'question-msg-paused-branch')?.children?.[0]
+
+      expect(normalAnswerNode?.humanInputFilledFormDataList).toHaveLength(1)
+      expect(normalAnswerNode?.humanInputFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.humanInputFormDataList).toHaveLength(1)
+      expect(pausedAnswerNode?.humanInputFilledFormDataList).toHaveLength(0)
+      expect(pausedAnswerNode?.workflow_run_id).toBe('wf-run-branch')
     })
   })
 
@@ -1857,7 +1939,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        expect(result!.current.conversationList[0].name).toBe('Updated Name')
+        expect(result!.current.conversationList[0]!.name).toBe('Updated Name')
       })
     })
   })

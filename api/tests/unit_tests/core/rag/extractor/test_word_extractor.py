@@ -1,11 +1,14 @@
 """Primarily used for testing merged cell scenarios"""
 
 import io
+import logging
 import os
 import tempfile
 from collections import UserDict
+from collections.abc import Generator
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Protocol, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,6 +18,14 @@ from docx.oxml.ns import qn
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
+
+
+class _TextOxmlElement(Protocol):
+    text: str | None
+
+
+def _set_oxml_text(element: object, text: str) -> None:
+    cast(_TextOxmlElement, element).text = text
 
 
 def _generate_table_with_merged_cells():
@@ -61,14 +72,14 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
-def test_init_downloads_via_ssrf_proxy(monkeypatch):
+def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
     buf = io.BytesIO()
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[str, object]] = []
+    calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
 
     class FakeResponse:
         status_code = 200
@@ -77,17 +88,20 @@ def test_init_downloads_via_ssrf_proxy(monkeypatch):
         def close(self) -> None:
             calls.append(("close", None))
 
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         calls.append(("get", (url, kwargs)))
         return FakeResponse()
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
 
     extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
     try:
         assert calls
         assert calls[0][0] == "get"
-        url, kwargs = calls[0][1]
+        first_call = calls[0][1]
+        assert first_call is not None
+        url, kwargs = first_call
         assert url == "https://example.com/test.docx"
         assert kwargs.get("timeout") is None
         assert extractor.web_path == "https://example.com/test.docx"
@@ -97,7 +111,7 @@ def test_init_downloads_via_ssrf_proxy(monkeypatch):
         extractor.temp_file.close()
 
 
-def test_extract_images_from_docx(monkeypatch):
+def test_extract_images_from_docx(monkeypatch: pytest.MonkeyPatch):
     external_bytes = b"ext-bytes"
     internal_bytes = b"int-bytes"
 
@@ -139,11 +153,12 @@ def test_extract_images_from_docx(monkeypatch):
     monkeypatch.setattr(we, "UploadFile", FakeUploadFile)
 
     # Patch external image fetcher
-    def fake_get(url: str, **kwargs):
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
         assert url == "https://example.com/image.png"
         return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
 
     # A hashable internal part object with a blob attribute
     class HashablePart:
@@ -185,8 +200,8 @@ def test_extract_images_from_docx_uses_internal_files_url():
     from configs import dify_config
 
     # Mock the configuration values
-    original_files_url = getattr(dify_config, "FILES_URL", None)
-    original_internal_files_url = getattr(dify_config, "INTERNAL_FILES_URL", None)
+    original_files_url = dify_config.FILES_URL
+    original_internal_files_url = dify_config.INTERNAL_FILES_URL
 
     try:
         # Set both URLs - INTERNAL should take precedence
@@ -210,7 +225,7 @@ def test_extract_images_from_docx_uses_internal_files_url():
         dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
-def test_extract_hyperlinks(monkeypatch):
+def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch):
     # Mock db and storage to avoid issues during image extraction (even if no images are present)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
@@ -228,7 +243,7 @@ def test_extract_hyperlinks(monkeypatch):
 
     new_run = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     new_run.append(t)
     hyperlink.append(new_run)
     p._p.append(hyperlink)
@@ -255,7 +270,7 @@ def test_extract_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch):
+def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch):
     # Mock db and storage
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
@@ -281,7 +296,7 @@ def test_extract_legacy_hyperlinks(monkeypatch):
 
     run2 = OxmlElement("w:r")
     instrText = OxmlElement("w:instrText")
-    instrText.text = ' HYPERLINK "http://example.com" '
+    _set_oxml_text(instrText, ' HYPERLINK "http://example.com" ')
     run2.append(instrText)
     p._p.append(run2)
 
@@ -293,7 +308,7 @@ def test_extract_legacy_hyperlinks(monkeypatch):
 
     run4 = OxmlElement("w:r")
     t4 = OxmlElement("w:t")
-    t4.text = "Example"
+    _set_oxml_text(t4, "Example")
     run4.append(t4)
     p._p.append(run4)
 
@@ -317,7 +332,7 @@ def test_extract_legacy_hyperlinks(monkeypatch):
             os.remove(tmp_path)
 
 
-def test_init_rejects_invalid_url_status(monkeypatch):
+def test_init_rejects_invalid_url_status(monkeypatch: pytest.MonkeyPatch):
     class FakeResponse:
         status_code = 404
         content = b""
@@ -327,7 +342,7 @@ def test_init_rejects_invalid_url_status(monkeypatch):
             self.closed = True
 
     fake_response = FakeResponse()
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=lambda url, **kwargs: fake_response))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=lambda method, url, **kwargs: fake_response))
 
     with pytest.raises(ValueError, match="returned status code 404"):
         WordExtractor("https://example.com/missing.docx", "tenant", "user")
@@ -335,7 +350,7 @@ def test_init_rejects_invalid_url_status(monkeypatch):
     assert fake_response.closed is True
 
 
-def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
+def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path: Path):
     target_file = tmp_path / "expanded.docx"
     target_file.write_bytes(b"docx")
 
@@ -354,16 +369,52 @@ def test_init_expands_home_path_and_invalid_local_path(monkeypatch, tmp_path):
         WordExtractor("not-a-file", "tenant", "user")
 
 
-def test_del_closes_temp_file():
+def test_close_closes_temp_file():
     extractor = object.__new__(WordExtractor)
+    extractor._closed = False
     extractor.temp_file = MagicMock()
 
-    WordExtractor.__del__(extractor)
+    extractor.close()
 
     extractor.temp_file.close.assert_called_once()
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch):
+def test_close_is_idempotent():
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+
+    extractor.close()
+    extractor.close()
+
+    extractor.temp_file.close.assert_called_once()
+
+
+def test_close_closes_awaitable_close_result():
+    class FakeAwaitable:
+        closed: bool = False
+
+        def __await__(self) -> Generator[None, None, None]:
+            if False:
+                yield None
+            return None
+
+        def close(self) -> None:
+            self.closed = True
+
+    extractor = object.__new__(WordExtractor)
+    extractor._closed = False
+    extractor.temp_file = MagicMock()
+    close_result = FakeAwaitable()
+    extractor.temp_file.close = MagicMock(return_value=close_result)
+
+    extractor.close()
+
+    assert close_result.closed is True
+    extractor.temp_file.close.assert_called_once()
+
+
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
     class FakeTargetRef:
         def __contains__(self, item):
             return item == "image"
@@ -387,12 +438,13 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch):
         )
     )
 
-    def fake_get(url, **kwargs):
+    def fake_make_request(method, url, **kwargs):
+        assert method == "GET"
         if "image-error" in url:
             raise RuntimeError("network")
         return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
-    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+    monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
     db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=MagicMock()))
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
@@ -408,7 +460,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch):
     db_stub.session.commit.assert_called_once()
 
 
-def test_table_to_markdown_and_parse_helpers(monkeypatch):
+def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
 
     table = SimpleNamespace(
@@ -471,7 +523,35 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch):
     assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch):
+def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
+    doc = Document()
+    doc.add_paragraph("Before table")
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Header A"
+    table.cell(0, 1).text = "Header B"
+    table.cell(1, 0).text = "Cell A"
+    table.cell(1, 1).text = "Cell B"
+    doc.add_paragraph("After table")
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    extractor = object.__new__(WordExtractor)
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
+
+    try:
+        assert extractor.parse_docx(tmp_path) == (
+            "Before table\n| Header A | Header B |\n| --- | --- |\n| Cell A | Cell B |\nAfter table"
+        )
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"
@@ -483,6 +563,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     shape_internal_part = object()
 
     class Rels(UserDict):
+        @override
         def get(self, key, default=None):
             if key == "link-bad":
                 raise RuntimeError("cannot resolve relation")
@@ -584,8 +665,15 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             self.element = element
             self.text = getattr(element, "text", "")
 
-    paragraph_main = SimpleNamespace(
-        _element=[
+    class FakeParagraph:
+        def __init__(self, children):
+            self._element = children
+
+    class FakeTable:
+        rows: list[object] = []
+
+    paragraph_main = FakeParagraph(
+        [
             FakeChild(
                 qn("w:r"),
                 text="run-text",
@@ -610,25 +698,23 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
             ),
         ]
     )
-    paragraph_empty = SimpleNamespace(_element=[FakeChild(qn("w:r"), text="   ")])
+    paragraph_empty = FakeParagraph([FakeChild(qn("w:r"), text="   ")])
+    table = FakeTable()
 
     fake_doc = SimpleNamespace(
         part=SimpleNamespace(rels=rels, related_parts={int_embed_id: internal_part}),
-        paragraphs=[paragraph_main, paragraph_empty],
-        tables=[SimpleNamespace(rows=[])],
-        element=SimpleNamespace(
-            body=[SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:p"), SimpleNamespace(tag="w:tbl")]
-        ),
+        iter_inner_content=lambda: iter([paragraph_main, paragraph_empty, table]),
     )
 
+    monkeypatch.setattr(we, "Paragraph", FakeParagraph)
+    monkeypatch.setattr(we, "Table", FakeTable)
     monkeypatch.setattr(we, "DocxDocument", lambda _: fake_doc)
     monkeypatch.setattr(we, "Run", FakeRun)
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: image_map)
     monkeypatch.setattr(extractor, "_table_to_markdown", lambda table, image_map: "TABLE-MARKDOWN")
-    logger_exception = MagicMock()
-    monkeypatch.setattr(we.logger, "exception", logger_exception)
 
-    content = extractor.parse_docx("dummy.docx")
+    with caplog.at_level(logging.ERROR, logger="core.rag.extractor.word_extractor"):
+        content = extractor.parse_docx("dummy.docx")
 
     assert "[EXT]" in content
     assert "[INT]" in content
@@ -636,7 +722,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     assert "[LinkText](https://example.com)" in content
     assert "BrokenLink" in content
     assert "TABLE-MARKDOWN" in content
-    logger_exception.assert_called_once()
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
@@ -652,7 +738,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "Dify"
+    _set_oxml_text(t, "Dify")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)
@@ -692,7 +778,7 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
 
     run_elem = OxmlElement("w:r")
     t = OxmlElement("w:t")
-    t.text = "john@test.com"
+    _set_oxml_text(t, "john@test.com")
     run_elem.append(t)
     hyperlink.append(run_elem)
     p._p.append(hyperlink)

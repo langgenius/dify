@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { PlusIcon } from '@heroicons/react/24/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import s from '../style.module.css'
 import { FolderPlusIcon, NotionIcon, ThreeDotsIcon } from './icons'
 
@@ -12,7 +12,7 @@ type EmptyElementProps = {
   type?: 'upload' | 'sync'
 }
 
-const EmptyElement: FC<EmptyElementProps> = ({ canAdd = true, onClick, type = 'upload' }) => {
+const EmptyElement: FC<EmptyElementProps> = ({ canAdd = false, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
   return (
     <div className={s.emptyWrapper}>

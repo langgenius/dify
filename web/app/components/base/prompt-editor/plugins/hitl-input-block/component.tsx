@@ -45,8 +45,14 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
 }) => {
   const [ref] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
   const payload = formInputs.find(item => item.output_variable_name === varName)
+  const unavailableVariableNames = formInputs
+    .map(item => item.output_variable_name)
+    .filter(name => name !== varName)
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
+    if (newPayload.output_variable_name !== varName && unavailableVariableNames.includes(newPayload.output_variable_name))
+      return
+
     if (!payload) {
       onChange([...formInputs, newPayload])
       return
@@ -58,17 +64,18 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
       return
     }
     onChange(formInputs.map(item => item.output_variable_name === varName ? newPayload : item))
-  }, [formInputs, onChange, payload, varName])
+  }, [formInputs, onChange, payload, unavailableVariableNames, varName])
 
   return (
     <div
       ref={ref}
-      className="w-full pb-1 pt-3"
+      className="w-full pt-3 pb-1"
     >
       <ComponentUi
         nodeId={nodeId}
         varName={varName}
         formInput={payload}
+        unavailableVariableNames={unavailableVariableNames}
         onChange={handleChange}
         onRename={onRename}
         onRemove={onRemove}

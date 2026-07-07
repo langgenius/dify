@@ -3,20 +3,6 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 from typing import Any
 
-from graphon.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-)
-from graphon.model_runtime.entities.message_entities import (
-    PromptMessage,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelType
-
 from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
@@ -33,6 +19,19 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
+from graphon.model_runtime.entities.message_entities import (
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 
 
@@ -393,7 +392,7 @@ Here is the extra instruction you need to follow:
             else:
                 if len(messages[-1]) + len(line) < max_tokens * 0.5:
                     messages[-1] += line
-                if get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
+                elif get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
                     messages.append(line)
                 else:
                     messages[-1] += line

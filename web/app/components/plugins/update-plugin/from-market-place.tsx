@@ -1,37 +1,36 @@
 'use client'
-import type { FC } from 'react'
 import type { UpdateFromMarketPlacePayload } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { Button } from '@/app/components/base/ui/button'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { updateFromMarketPlace } from '@/service/plugins'
-import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
+import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningModal from './downgrade-warning'
 
 const i18nPrefix = 'upgrade'
 
-type Props = {
+type Props = Readonly<{
   payload: UpdateFromMarketPlacePayload
   pluginId?: string
   onSave: () => void
   onCancel: () => void
   isShowDowngradeWarningModal?: boolean
-}
+}>
 
 type FailedUpgradeResponse = {
   task?: {
@@ -43,19 +42,21 @@ type FailedUpgradeResponse = {
   }
 }
 
-enum UploadStep {
-  notStarted = 'notStarted',
-  upgrading = 'upgrading',
-  installed = 'installed',
-}
+const UploadStep = {
+  notStarted: 'notStarted',
+  upgrading: 'upgrading',
+  installed: 'installed',
+} as const
 
-const UpdatePluginModal: FC<Props> = ({
+type UploadStep = typeof UploadStep[keyof typeof UploadStep]
+
+const UpdatePluginModal = ({
   payload,
   pluginId,
   onSave,
   onCancel,
   isShowDowngradeWarningModal,
-}) => {
+}: Props) => {
   const {
     originalPackageInfo,
     targetPackageInfo,
@@ -79,7 +80,7 @@ const UpdatePluginModal: FC<Props> = ({
   }
 
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
 
   const configBtnText = useMemo(() => {
     return ({
@@ -115,7 +116,7 @@ const UpdatePluginModal: FC<Props> = ({
           onSave()
           return
         }
-        handleRefetch()
+        handleInstallTaskStart(response)
         const { status, error } = await check({
           taskId,
           pluginUniqueIdentifier: targetPackageInfo.id,
@@ -135,17 +136,16 @@ const UpdatePluginModal: FC<Props> = ({
     }
     if (uploadStep === UploadStep.installed)
       onSave()
-  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, t, targetPackageInfo.id])
+  }, [onSave, uploadStep, check, originalPackageInfo.id, handleInstallTaskStart, t, targetPackageInfo.id])
 
   const { mutateAsync } = useRemoveAutoUpgrade()
-  const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const handleExcludeAndDownload = async () => {
     if (pluginId) {
       await mutateAsync({
         plugin_id: pluginId,
+        category: payload.category,
       })
     }
-    invalidateReferenceSettings()
     handleConfirm()
   }
   const doShowDowngradeWarningModal = isShowDowngradeWarningModal && uploadStep === UploadStep.notStarted

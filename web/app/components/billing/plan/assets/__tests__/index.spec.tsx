@@ -73,36 +73,36 @@ describe('Billing Plan Assets - Integration Tests', () => {
       const { container } = render(<Sandbox />)
       const svg = container.querySelector('svg')
 
-      expect(svg).toBeInTheDocument()
-      expect(svg).toHaveAttribute('width', '32')
-      expect(svg).toHaveAttribute('height', '32')
+      expect(svg)!.toBeInTheDocument()
+      expect(svg)!.toHaveAttribute('width', '32')
+      expect(svg)!.toHaveAttribute('height', '32')
     })
 
     it('should render Professional component correctly', () => {
       const { container } = render(<Professional />)
       const svg = container.querySelector('svg')
 
-      expect(svg).toBeInTheDocument()
-      expect(svg).toHaveAttribute('width', '32')
-      expect(svg).toHaveAttribute('height', '32')
+      expect(svg)!.toBeInTheDocument()
+      expect(svg)!.toHaveAttribute('width', '32')
+      expect(svg)!.toHaveAttribute('height', '32')
     })
 
     it('should render Team component correctly', () => {
       const { container } = render(<Team />)
       const svg = container.querySelector('svg')
 
-      expect(svg).toBeInTheDocument()
-      expect(svg).toHaveAttribute('width', '32')
-      expect(svg).toHaveAttribute('height', '32')
+      expect(svg)!.toBeInTheDocument()
+      expect(svg)!.toHaveAttribute('width', '32')
+      expect(svg)!.toHaveAttribute('height', '32')
     })
 
     it('should render Enterprise component correctly', () => {
       const { container } = render(<Enterprise />)
       const svg = container.querySelector('svg')
 
-      expect(svg).toBeInTheDocument()
-      expect(svg).toHaveAttribute('width', '32')
-      expect(svg).toHaveAttribute('height', '32')
+      expect(svg)!.toBeInTheDocument()
+      expect(svg)!.toHaveAttribute('width', '32')
+      expect(svg)!.toHaveAttribute('height', '32')
     })
   })
 
@@ -119,9 +119,9 @@ describe('Billing Plan Assets - Integration Tests', () => {
         const { container } = render(component)
         const svg = container.querySelector('svg')
 
-        expect(svg).toHaveAttribute('width', '32')
-        expect(svg).toHaveAttribute('height', '32')
-        expect(svg).toHaveAttribute('viewBox', '0 0 32 32')
+        expect(svg)!.toHaveAttribute('width', '32')
+        expect(svg)!.toHaveAttribute('height', '32')
+        expect(svg)!.toHaveAttribute('viewBox', '0 0 32 32')
       })
     })
 
@@ -148,8 +148,9 @@ describe('Billing Plan Assets - Integration Tests', () => {
       const svg2 = container2.querySelector('svg')
 
       // Components should not affect each other
-      expect(svg1).toBeInTheDocument()
-      expect(svg2).toBeInTheDocument()
+      // Components should not affect each other
+      expect(svg1)!.toBeInTheDocument()
+      expect(svg2)!.toBeInTheDocument()
       expect(svg1).not.toBe(svg2)
     })
 
@@ -158,7 +159,7 @@ describe('Billing Plan Assets - Integration Tests', () => {
       const { container } = render(<Team />)
       const svg = container.querySelector('svg')
 
-      expect(svg).toBeInTheDocument()
+      expect(svg)!.toBeInTheDocument()
     })
   })
 
@@ -179,7 +180,7 @@ describe('Billing Plan Assets - Integration Tests', () => {
         // Component can be function or object (React.memo wraps it)
         expect(['function', 'object']).toContain(typeof Component)
         const { container } = render(<Component />)
-        expect(container.querySelector('svg')).toBeInTheDocument()
+        expect(container.querySelector('svg'))!.toBeInTheDocument()
       })
     })
   })
@@ -299,7 +300,7 @@ describe('Billing Plan Assets - Integration Tests', () => {
         <div>
           {Array.from({ length: 20 }).map((_, i) => {
             const components = [Sandbox, Professional, Team, Enterprise]
-            const Component = components[i % 4]
+            const Component = components[i % 4]!
             return <Component key={i} />
           })}
         </div>,

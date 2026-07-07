@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiPlayList2Line,
   RiSparklingFill,
@@ -16,7 +18,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
-import { toast } from '@/app/components/base/ui/toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
@@ -178,7 +179,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     // eslint-disable-next-line react/set-state-in-effect
     setCurrentTab(getDefaultGenerationTab(workflowProcessData))
   }, [workflowProcessData])
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: { inputs: Record<string, string>, action: string }) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     if (appSourceType === AppSourceType.installedApp)
       await submitHumanInputFormService(formToken, formData)
     else
@@ -214,7 +215,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               />
               {!workflowProcessData && taskId && (
                 <div className={cn('sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
-                  <RiPlayList2Line className="mr-1 h-3 w-3" />
+                  <RiPlayList2Line className="mr-1 size-3" />
                   <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
@@ -281,7 +282,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   isMobile ? 'top-[3.5px]' : 'top-2',
                 )}
                 >
-                  <RiSparklingFill className="h-3 w-3 text-text-primary-on-surface" />
+                  <RiSparklingFill className="size-3 text-text-primary-on-surface" />
                 </div>
               </div>
             )}

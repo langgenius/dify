@@ -1,7 +1,7 @@
 import pytest
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 def test_validate_inputs_with_zero():
@@ -369,7 +369,7 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
 
 
 class TestBaseAppGeneratorExtras:
-    def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch):
+    def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch: pytest.MonkeyPatch):
         base_app_generator = BaseAppGenerator()
 
         variables = [
@@ -476,9 +476,8 @@ class TestBaseAppGeneratorExtras:
         assert converted[1] == "event: ping\n\n"
 
     def test_get_draft_var_saver_factory_debugger(self):
-        from graphon.enums import BuiltinNodeTypes
-
         from core.app.entities.app_invoke_entities import InvokeFrom
+        from graphon.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()

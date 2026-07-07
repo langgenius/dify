@@ -172,7 +172,7 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
     })
 
     it('renders reset button when conversation exists', () => {
@@ -193,7 +193,7 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.resetChat' })).toBeInTheDocument()
     })
 
     it('calls handleNewConversation when reset button is clicked', () => {
@@ -214,7 +214,7 @@ describe('TryApp (chat.tsx)', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
 
       expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith('test-app-id')
       expect(mockHandleNewConversation).toHaveBeenCalled()

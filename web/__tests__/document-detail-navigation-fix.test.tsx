@@ -146,7 +146,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       fireEvent.click(screen.getByTestId('back-button-fixed'))
 
       // URLSearchParams will normalize the encoding, but preserve all parameters
-      const expectedCall = mockPush.mock.calls[0][0]
+      const expectedCall = mockPush.mock.calls[0]![0]
       expect(expectedCall).toMatch(/^\/datasets\/dataset-123\/documents\?/)
       expect(expectedCall).toMatch(/page=1/)
       expect(expectedCall).toMatch(/limit=50/)
@@ -257,7 +257,7 @@ describe('Document Detail Navigation Fix Verification', () => {
 
       // Should still attempt navigation (URLSearchParams will clean up the parameters)
       expect(mockPush).toHaveBeenCalled()
-      const navigationPath = mockPush.mock.calls[0][0]
+      const navigationPath = mockPush.mock.calls[0]![0]
       expect(navigationPath).toMatch(/^\/datasets\/dataset-123\/documents/)
 
       console.log('✅ Malformed parameters handled gracefully:', navigationPath)

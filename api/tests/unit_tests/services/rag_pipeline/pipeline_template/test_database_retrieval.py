@@ -1,10 +1,12 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates(mocker) -> None:
+def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     built_in_template = SimpleNamespace(
         id="tpl-1",
         name="Template 1",
@@ -19,13 +21,9 @@ def test_get_pipeline_templates(mocker) -> None:
     scalars_mock.all.return_value = [built_in_template]
     session_mock = mocker.Mock()
     session_mock.scalars.return_value = scalars_mock
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US")
+    result = retrieval.get_pipeline_templates(session_mock, "en-US")
 
     assert retrieval.get_type() == PipelineTemplateType.DATABASE
     assert result == {
@@ -44,7 +42,7 @@ def test_get_pipeline_templates(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
+def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
@@ -54,13 +52,9 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
         chunk_structure="general",
         yaml_content="workflow:\n  graph:\n    nodes: []",
     )
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1")
+    detail = retrieval.get_pipeline_template_detail(session_mock, "tpl-1")
 
     assert detail == {
         "id": "tpl-1",
@@ -73,15 +67,11 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker) -> None:
+def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.database.database_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("missing")
+    result = retrieval.get_pipeline_template_detail(session_mock, "missing")
 
     assert result is None

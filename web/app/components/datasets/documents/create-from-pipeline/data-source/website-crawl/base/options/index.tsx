@@ -1,5 +1,7 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect, useMemo } from 'react'
@@ -8,8 +10,6 @@ import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { CrawlStep } from '@/models/datasets'
 
@@ -43,7 +43,7 @@ const Options = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }
@@ -88,7 +88,7 @@ const Options = ({
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}
           </span>
-          <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
+          <ArrowDownRoundFill className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
         </div>
         <Button
           variant="primary"

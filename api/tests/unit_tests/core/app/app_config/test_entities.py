@@ -1,10 +1,10 @@
 import pytest
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 from core.app.app_config.entities import (
     DatasetRetrieveConfigEntity,
     PromptTemplateEntity,
 )
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 
 
 class TestAppConfigEntities:

@@ -5,24 +5,72 @@ from __future__ import annotations
 import mimetypes
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Literal, NotRequired, TypedDict, assert_never, cast
 
-from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers, standardize_file_type
 from sqlalchemy import select
 
 from core.app.file_access import FileAccessControllerProtocol
+from core.db.session_factory import session_factory
 from core.workflow.file_reference import build_file_reference
-from extensions.ext_database import db
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers, standardize_file_type
 from models import ToolFile, UploadFile
 
 from .common import resolve_mapping_file_id
 from .remote import get_remote_file_info
 from .validation import is_file_valid_with_config
 
+type FileTypeValue = FileType | Literal["image", "document", "audio", "video", "custom"]
+
+type _LocalFileTransferMethod = Literal["local_file", FileTransferMethod.LOCAL_FILE]
+type _RemoteUrlTransferMethod = Literal["remote_url", FileTransferMethod.REMOTE_URL]
+type _ToolFileTransferMethod = Literal["tool_file", FileTransferMethod.TOOL_FILE]
+type _DatasourceFileTransferMethod = Literal["datasource_file", FileTransferMethod.DATASOURCE_FILE]
+
+
+class LocalFileMapping(TypedDict):
+    transfer_method: _LocalFileTransferMethod
+    id: NotRequired[str | None]  # Read as the graph-layer File.file_id.
+    type: NotRequired[FileTypeValue | None]  # Read for type override and upload config validation.
+    upload_file_id: NotRequired[str | None]  # File id lookup priority 1.
+    reference: NotRequired[str | None]  # File id lookup priority 2; may be an opaque file reference.
+    related_id: NotRequired[str | None]  # File id lookup priority 3; legacy persisted field.
+
+
+class RemoteUrlMapping(TypedDict):
+    transfer_method: _RemoteUrlTransferMethod
+    id: NotRequired[str | None]  # Read as the graph-layer File.file_id.
+    type: NotRequired[FileTypeValue | None]  # Read for type override and upload config validation.
+    upload_file_id: NotRequired[str | None]  # Persisted UploadFile lookup priority 1.
+    reference: NotRequired[str | None]  # Persisted UploadFile lookup priority 2; may be an opaque file reference.
+    related_id: NotRequired[str | None]  # Persisted UploadFile lookup priority 3; legacy persisted field.
+    url: NotRequired[str | None]  # External URL lookup priority 1 when no UploadFile id is resolved.
+    remote_url: NotRequired[str | None]  # External URL lookup priority 2 when no UploadFile id is resolved.
+
+
+class ToolFileMapping(TypedDict):
+    transfer_method: _ToolFileTransferMethod
+    id: NotRequired[str | None]  # Read as the graph-layer File.file_id.
+    type: NotRequired[FileTypeValue | None]  # Read for type override and upload config validation.
+    tool_file_id: NotRequired[str | None]  # ToolFile lookup priority 1.
+    reference: NotRequired[str | None]  # ToolFile lookup priority 2; may be an opaque file reference.
+    related_id: NotRequired[str | None]  # ToolFile lookup priority 3; legacy persisted field.
+
+
+class DatasourceFileMapping(TypedDict):
+    transfer_method: _DatasourceFileTransferMethod
+    type: NotRequired[FileTypeValue | None]  # Read for type override and upload config validation.
+    datasource_file_id: NotRequired[str | None]  # UploadFile lookup priority 1 for datasource-backed files.
+    reference: NotRequired[str | None]  # UploadFile lookup priority 2; may be an opaque file reference.
+    related_id: NotRequired[str | None]  # UploadFile lookup priority 3; legacy persisted field.
+
+
+type FileMapping = LocalFileMapping | RemoteUrlMapping | ToolFileMapping | DatasourceFileMapping
+type FileMappingInput = FileMapping | Mapping[str, Any]
+
 
 def build_from_mapping(
     *,
-    mapping: Mapping[str, Any],
+    mapping: FileMappingInput,
     tenant_id: str,
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
@@ -32,18 +80,45 @@ def build_from_mapping(
     if not transfer_method_value:
         raise ValueError("transfer_method is required in file mapping")
 
-    transfer_method = FileTransferMethod.value_of(transfer_method_value)
-    build_func = _get_build_function(transfer_method)
-    file = build_func(
-        mapping=mapping,
-        tenant_id=tenant_id,
-        transfer_method=transfer_method,
-        strict_type_validation=strict_type_validation,
-        access_controller=access_controller,
-    )
+    transfer_method = FileTransferMethod.value_of(str(transfer_method_value))
+    match transfer_method:
+        case FileTransferMethod.LOCAL_FILE:
+            file = _build_from_local_file(
+                mapping=cast(LocalFileMapping, mapping),
+                tenant_id=tenant_id,
+                transfer_method=transfer_method,
+                strict_type_validation=strict_type_validation,
+                access_controller=access_controller,
+            )
+        case FileTransferMethod.REMOTE_URL:
+            file = _build_from_remote_url(
+                mapping=cast(RemoteUrlMapping, mapping),
+                tenant_id=tenant_id,
+                transfer_method=transfer_method,
+                strict_type_validation=strict_type_validation,
+                access_controller=access_controller,
+            )
+        case FileTransferMethod.TOOL_FILE:
+            file = _build_from_tool_file(
+                mapping=cast(ToolFileMapping, mapping),
+                tenant_id=tenant_id,
+                transfer_method=transfer_method,
+                strict_type_validation=strict_type_validation,
+                access_controller=access_controller,
+            )
+        case FileTransferMethod.DATASOURCE_FILE:
+            file = _build_from_datasource_file(
+                mapping=cast(DatasourceFileMapping, mapping),
+                tenant_id=tenant_id,
+                transfer_method=transfer_method,
+                strict_type_validation=strict_type_validation,
+                access_controller=access_controller,
+            )
+        case _:
+            assert_never(transfer_method)
 
     if config and not is_file_valid_with_config(
-        input_file_type=mapping.get("type", FileType.CUSTOM),
+        input_file_type=mapping.get("type") or FileType.CUSTOM,
         file_extension=file.extension or "",
         file_transfer_method=file.transfer_method,
         config=config,
@@ -87,36 +162,33 @@ def build_from_mappings(
     return files
 
 
-def _get_build_function(transfer_method: FileTransferMethod):
-    build_functions = {
-        FileTransferMethod.LOCAL_FILE: _build_from_local_file,
-        FileTransferMethod.REMOTE_URL: _build_from_remote_url,
-        FileTransferMethod.TOOL_FILE: _build_from_tool_file,
-        FileTransferMethod.DATASOURCE_FILE: _build_from_datasource_file,
-    }
-    build_func = build_functions.get(transfer_method)
-    if build_func is None:
-        raise ValueError(f"Invalid file transfer method: {transfer_method}")
-    return build_func
-
-
 def _resolve_file_type(
     *,
     detected_file_type: FileType,
-    specified_type: str | None,
+    specified_type: FileTypeValue | str | None,
     strict_type_validation: bool,
 ) -> FileType:
-    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+    """Resolve the graph file type from detected metadata and submitted form type.
+
+    ``custom`` is a configured extension bucket rather than a MIME-derived type,
+    so strict validation must leave extension checks to the upload config.
+    """
+    if not specified_type:
+        return detected_file_type
+
+    specified_file_type = FileType(specified_type)
+    if specified_file_type == FileType.CUSTOM:
+        return FileType.CUSTOM
+
+    if strict_type_validation and detected_file_type != specified_file_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    if specified_type and specified_type != "custom":
-        return FileType(specified_type)
-    return detected_file_type
+    return specified_file_type
 
 
 def _build_from_local_file(
     *,
-    mapping: Mapping[str, Any],
+    mapping: LocalFileMapping,
     tenant_id: str,
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
@@ -135,34 +207,35 @@ def _build_from_local_file(
         UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
     )
-    row = db.session.scalar(access_controller.apply_upload_file_filters(stmt))
-    if row is None:
-        raise ValueError("Invalid upload file")
+    with session_factory.create_session() as session:
+        row = session.scalar(access_controller.apply_upload_file_filters(stmt))
+        if row is None:
+            raise ValueError("Invalid upload file")
 
-    detected_file_type = standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
-    file_type = _resolve_file_type(
-        detected_file_type=detected_file_type,
-        specified_type=mapping.get("type", "custom"),
-        strict_type_validation=strict_type_validation,
-    )
+        detected_file_type = standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
+        file_type = _resolve_file_type(
+            detected_file_type=detected_file_type,
+            specified_type=mapping.get("type"),
+            strict_type_validation=strict_type_validation,
+        )
 
-    return File(
-        id=mapping.get("id"),
-        filename=row.name,
-        extension="." + row.extension,
-        mime_type=row.mime_type,
-        type=file_type,
-        transfer_method=transfer_method,
-        remote_url=row.source_url,
-        reference=build_file_reference(record_id=str(row.id)),
-        size=row.size,
-        storage_key=row.key,
-    )
+        return File(
+            file_id=mapping.get("id"),
+            filename=row.name,
+            extension="." + row.extension,
+            mime_type=row.mime_type,
+            file_type=file_type,
+            transfer_method=transfer_method,
+            remote_url=row.source_url,
+            reference=build_file_reference(record_id=str(row.id)),
+            size=row.size,
+            storage_key=row.key,
+        )
 
 
 def _build_from_remote_url(
     *,
-    mapping: Mapping[str, Any],
+    mapping: RemoteUrlMapping,
     tenant_id: str,
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
@@ -179,32 +252,33 @@ def _build_from_remote_url(
             UploadFile.id == upload_file_id,
             UploadFile.tenant_id == tenant_id,
         )
-        upload_file = db.session.scalar(access_controller.apply_upload_file_filters(stmt))
-        if upload_file is None:
-            raise ValueError("Invalid upload file")
+        with session_factory.create_session() as session:
+            upload_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
+            if upload_file is None:
+                raise ValueError("Invalid upload file")
 
-        detected_file_type = standardize_file_type(
-            extension="." + upload_file.extension,
-            mime_type=upload_file.mime_type,
-        )
-        file_type = _resolve_file_type(
-            detected_file_type=detected_file_type,
-            specified_type=mapping.get("type"),
-            strict_type_validation=strict_type_validation,
-        )
+            detected_file_type = standardize_file_type(
+                extension="." + upload_file.extension,
+                mime_type=upload_file.mime_type,
+            )
+            file_type = _resolve_file_type(
+                detected_file_type=detected_file_type,
+                specified_type=mapping.get("type"),
+                strict_type_validation=strict_type_validation,
+            )
 
-        return File(
-            id=mapping.get("id"),
-            filename=upload_file.name,
-            extension="." + upload_file.extension,
-            mime_type=upload_file.mime_type,
-            type=file_type,
-            transfer_method=transfer_method,
-            remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
-            reference=build_file_reference(record_id=str(upload_file.id)),
-            size=upload_file.size,
-            storage_key=upload_file.key,
-        )
+            return File(
+                file_id=mapping.get("id"),
+                filename=upload_file.name,
+                extension="." + upload_file.extension,
+                mime_type=upload_file.mime_type,
+                file_type=file_type,
+                transfer_method=transfer_method,
+                remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
+                reference=build_file_reference(record_id=str(upload_file.id)),
+                size=upload_file.size,
+                storage_key=upload_file.key,
+            )
 
     url = mapping.get("url") or mapping.get("remote_url")
     if not url:
@@ -220,9 +294,9 @@ def _build_from_remote_url(
     )
 
     return File(
-        id=mapping.get("id"),
+        file_id=mapping.get("id"),
         filename=filename,
-        type=file_type,
+        file_type=file_type,
         transfer_method=transfer_method,
         remote_url=url,
         mime_type=mime_type,
@@ -233,7 +307,7 @@ def _build_from_remote_url(
 
 def _build_from_tool_file(
     *,
-    mapping: Mapping[str, Any],
+    mapping: ToolFileMapping,
     tenant_id: str,
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
@@ -247,35 +321,36 @@ def _build_from_tool_file(
         ToolFile.id == tool_file_id,
         ToolFile.tenant_id == tenant_id,
     )
-    tool_file = db.session.scalar(access_controller.apply_tool_file_filters(stmt))
-    if tool_file is None:
-        raise ValueError(f"ToolFile {tool_file_id} not found")
+    with session_factory.create_session() as session:
+        tool_file = session.scalar(access_controller.apply_tool_file_filters(stmt))
+        if tool_file is None:
+            raise ValueError(f"ToolFile {tool_file_id} not found")
 
-    extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
-    detected_file_type = standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
-    file_type = _resolve_file_type(
-        detected_file_type=detected_file_type,
-        specified_type=mapping.get("type"),
-        strict_type_validation=strict_type_validation,
-    )
+        extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
+        detected_file_type = standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
+        file_type = _resolve_file_type(
+            detected_file_type=detected_file_type,
+            specified_type=mapping.get("type"),
+            strict_type_validation=strict_type_validation,
+        )
 
-    return File(
-        id=mapping.get("id"),
-        filename=tool_file.name,
-        type=file_type,
-        transfer_method=transfer_method,
-        remote_url=tool_file.original_url,
-        reference=build_file_reference(record_id=str(tool_file.id)),
-        extension=extension,
-        mime_type=tool_file.mimetype,
-        size=tool_file.size,
-        storage_key=tool_file.file_key,
-    )
+        return File(
+            file_id=mapping.get("id"),
+            filename=tool_file.name,
+            file_type=file_type,
+            transfer_method=transfer_method,
+            remote_url=tool_file.original_url,
+            reference=build_file_reference(record_id=str(tool_file.id)),
+            extension=extension,
+            mime_type=tool_file.mimetype,
+            size=tool_file.size,
+            storage_key=tool_file.file_key,
+        )
 
 
 def _build_from_datasource_file(
     *,
-    mapping: Mapping[str, Any],
+    mapping: DatasourceFileMapping,
     tenant_id: str,
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
@@ -289,31 +364,32 @@ def _build_from_datasource_file(
         UploadFile.id == datasource_file_id,
         UploadFile.tenant_id == tenant_id,
     )
-    datasource_file = db.session.scalar(access_controller.apply_upload_file_filters(stmt))
-    if datasource_file is None:
-        raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
+    with session_factory.create_session() as session:
+        datasource_file = session.scalar(access_controller.apply_upload_file_filters(stmt))
+        if datasource_file is None:
+            raise ValueError(f"DatasourceFile {mapping.get('datasource_file_id')} not found")
 
-    extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
-    detected_file_type = standardize_file_type(extension="." + extension, mime_type=datasource_file.mime_type)
-    file_type = _resolve_file_type(
-        detected_file_type=detected_file_type,
-        specified_type=mapping.get("type"),
-        strict_type_validation=strict_type_validation,
-    )
+        extension = "." + datasource_file.key.split(".")[-1] if "." in datasource_file.key else ".bin"
+        detected_file_type = standardize_file_type(extension=extension, mime_type=datasource_file.mime_type)
+        file_type = _resolve_file_type(
+            detected_file_type=detected_file_type,
+            specified_type=mapping.get("type"),
+            strict_type_validation=strict_type_validation,
+        )
 
-    return File(
-        id=mapping.get("datasource_file_id"),
-        filename=datasource_file.name,
-        type=file_type,
-        transfer_method=FileTransferMethod.TOOL_FILE,
-        remote_url=datasource_file.source_url,
-        reference=build_file_reference(record_id=str(datasource_file.id)),
-        extension=extension,
-        mime_type=datasource_file.mime_type,
-        size=datasource_file.size,
-        storage_key=datasource_file.key,
-        url=datasource_file.source_url,
-    )
+        return File(
+            file_id=mapping.get("datasource_file_id"),
+            filename=datasource_file.name,
+            file_type=file_type,
+            transfer_method=transfer_method,
+            remote_url=datasource_file.source_url,
+            reference=build_file_reference(record_id=str(datasource_file.id)),
+            extension=extension,
+            mime_type=datasource_file.mime_type,
+            size=datasource_file.size,
+            storage_key=datasource_file.key,
+            url=datasource_file.source_url,
+        )
 
 
 def _is_valid_mapping(mapping: Mapping[str, Any]) -> bool:

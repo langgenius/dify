@@ -1,79 +1,12 @@
-@import './preflight.css' layer(base);
+@import './tailwind-core.css';
 
-@import '@langgenius/dify-ui/styles.css';
-@import '../../themes/manual-light.css' layer(base);
-@import '../../themes/manual-dark.css' layer(base);
-@import './monaco-sticky-fix.css' layer(base);
-
-@import '../components/base/action-button/index.css';
-@import '../components/base/badge/index.css';
-@import '../components/base/premium-badge/index.css';
-@import '../components/base/segmented-control/index.css';
-
-@import 'tailwindcss';
-
-@config '../../tailwind.config.ts';
-
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-}
-
-@layer components {
-  html {
-    color-scheme: light;
-  }
-
-  html[data-theme='dark'] {
-    color-scheme: dark;
-  }
-
-  html[data-changing-theme] * {
-    transition: none !important;
-  }
-
-  [class*='code-'] {
-    @apply font-mono;
-  }
-
-  .text-gradient {
-    background: linear-gradient(91.58deg, #2250f2 -29.55%, #0ebcf3 75.22%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-fill-color: transparent;
-  }
-
-  [data-theme='dark'] [data-hide-on-theme='dark'],
-  [data-theme='light'] [data-hide-on-theme='light'] {
-    display: none;
-  }
-
-  /* Shiki code block line numbers */
-  .shiki-line-numbers code {
-    counter-reset: line;
-  }
-  .shiki-line-numbers .line::before {
-    counter-increment: line;
-    content: counter(line);
-    display: inline-block;
-    width: 1rem;
-    margin-right: 0.75rem;
-    text-align: right;
-    color: var(--color-text-quaternary);
-    user-select: none;
-  }
-}
+@source '../../app';
+@source '../../context';
+@source '../../hooks';
+@source '../../../packages/dify-ui/src';
+@source '../../node_modules/streamdown/dist';
+@source '../../node_modules/@streamdown/math/dist';
+@source not '../../**/*.{spec,test}.{js,ts,jsx,tsx}';
+@source not '../../**/*.stories.{js,ts,jsx,tsx}';
+@source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
+@source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';

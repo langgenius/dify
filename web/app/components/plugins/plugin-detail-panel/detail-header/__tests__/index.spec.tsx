@@ -1,7 +1,10 @@
+import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import DetailHeader from '../index'
 
 const mockSetTargetVersion = vi.fn()
@@ -9,6 +12,14 @@ const mockSetVersionPickerOpen = vi.fn()
 const mockHandleUpdate = vi.fn()
 const mockHandleUpdatedFromMarketplace = vi.fn()
 const mockHandleDelete = vi.fn()
+
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
+  return renderWithSystemFeatures(ui, {
+    queryClient,
+    systemFeatures: { enable_marketplace: true },
+  })
+}
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -45,7 +56,7 @@ vi.mock('@/app/components/base/action-button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),
@@ -57,7 +68,7 @@ vi.mock('@/app/components/base/badge', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/tooltip', () => ({
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -70,10 +81,6 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
     <div data-testid="plugin-auth">{pluginPayload.provider}</div>
   ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () => ({
-  default: ({ detailUrl }: { detailUrl: string }) => <div data-testid="operation-dropdown">{detailUrl}</div>,
 }))
 
 vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
@@ -124,6 +131,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
         upgrade_time_of_day: 0,
       },
     },
+    canUpdate: true,
   }),
 }))
 
@@ -227,7 +235,8 @@ describe('DetailHeader', () => {
     expect(screen.getByTestId('description')).toHaveTextContent('Tool plugin description')
     expect(screen.getByTestId('source-badge')).toHaveTextContent('marketplace')
     expect(screen.getByTestId('plugin-auth')).toHaveTextContent('tool-plugin/provider-a')
-    expect(screen.getByTestId('operation-dropdown')).toHaveTextContent('https://marketplace.example.com/plugins/acme/provider-a')
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+    expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', 'https://marketplace.example.com/plugins/acme/provider-a')
     expect(screen.getByTestId('header-modals')).toBeInTheDocument()
   })
 

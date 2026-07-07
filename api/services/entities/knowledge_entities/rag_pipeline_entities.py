@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -73,18 +73,11 @@ class KnowledgeConfiguration(BaseModel):
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
     # add summary index setting
-    summary_index_setting: dict[str, Any] | None = None
+    summary_index_setting: dict[str, object] | None = None
 
-    @field_validator("embedding_model_provider", mode="before")
+    @field_validator("embedding_model_provider", "embedding_model", mode="before")
     @classmethod
-    def validate_embedding_model_provider(cls, v):
-        if v is None:
-            return ""
-        return v
-
-    @field_validator("embedding_model", mode="before")
-    @classmethod
-    def validate_embedding_model(cls, v):
+    def validate_embedding_model_fields(cls, v: str | None) -> str:
         if v is None:
             return ""
         return v

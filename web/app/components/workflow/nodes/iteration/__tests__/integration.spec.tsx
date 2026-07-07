@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { IterationNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '../../../types'
 import AddBlock from '../add-block'
@@ -15,7 +15,7 @@ const mockHandleNodeAdd = vi.fn()
 const mockHandleNodeIterationRerender = vi.fn()
 let mockNodesReadOnly = false
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -237,8 +237,8 @@ describe('iteration path', () => {
     await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
     await user.click(screen.getAllByRole('switch')[0]!)
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
-    await user.click(screen.getByRole('button', { name: /workflow.nodes.iteration.ErrorMethod.operationTerminated/i }))
-    await user.click(screen.getByText('workflow.nodes.iteration.ErrorMethod.continueOnError'))
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }))
     await user.click(screen.getAllByRole('switch')[1]!)
 
     expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', { type: VarType.arrayString })

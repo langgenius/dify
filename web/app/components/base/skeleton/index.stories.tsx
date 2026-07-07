@@ -9,7 +9,7 @@ import {
 const SkeletonDemo = () => {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Loading skeletons</div>
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Loading skeletons</div>
       <div className="space-y-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
         <SkeletonContainer>
           <SkeletonRow>
@@ -27,7 +27,7 @@ const SkeletonDemo = () => {
       </div>
       <div className="space-y-3 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
         <SkeletonRow className="items-start">
-          <SkeletonRectangle className="mr-4 h-10 w-10 rounded-full" />
+          <SkeletonRectangle className="mr-4 size-10 rounded-full" />
           <SkeletonContainer className="w-full">
             <SkeletonRectangle className="h-3 w-1/3" />
             <SkeletonRectangle className="h-3 w-full" />

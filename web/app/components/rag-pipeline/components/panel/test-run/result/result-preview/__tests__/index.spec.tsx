@@ -119,8 +119,8 @@ describe('formatPreviewChunks', () => {
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
       expect(result).toHaveLength(20)
-      expect((result as GeneralChunks)[0].content).toBe('Chunk content 1')
-      expect((result as GeneralChunks)[19].content).toBe('Chunk content 20')
+      expect((result as GeneralChunks)[0]!.content).toBe('Chunk content 1')
+      expect((result as GeneralChunks)[19]!.content).toBe('Chunk content 20')
     })
 
     it('should handle empty preview array for general chunks', () => {
@@ -167,7 +167,7 @@ describe('formatPreviewChunks', () => {
 
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
-      expect((result as GeneralChunks)[0].content).toHaveLength(10000)
+      expect((result as GeneralChunks)[0]!.content).toHaveLength(10000)
     })
   })
 
@@ -210,7 +210,7 @@ describe('formatPreviewChunks', () => {
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
-        expect(result.parent_child_chunks[0].child_contents).toHaveLength(50)
+        expect(result.parent_child_chunks[0]!.child_contents).toHaveLength(50)
       })
 
       it('should handle empty child_chunks in paragraph mode', () => {
@@ -220,7 +220,7 @@ describe('formatPreviewChunks', () => {
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
-        expect(result.parent_child_chunks[0].child_contents).toEqual([])
+        expect(result.parent_child_chunks[0]!.child_contents).toEqual([])
       })
     })
 
@@ -234,8 +234,8 @@ describe('formatPreviewChunks', () => {
 
         expect(result.parent_mode).toBe('full-doc')
         expect(result.parent_child_chunks).toHaveLength(1)
-        expect(result.parent_child_chunks[0].parent_content).toBe('Full Doc Parent')
-        expect(result.parent_child_chunks[0].child_contents).toEqual(['Child 1', 'Child 2', 'Child 3'])
+        expect(result.parent_child_chunks[0]!.parent_content).toBe('Full Doc Parent')
+        expect(result.parent_child_chunks[0]!.child_contents).toEqual(['Child 1', 'Child 2', 'Child 3'])
       })
 
       it('should NOT limit parent chunks in full-doc mode', () => {
@@ -253,9 +253,9 @@ describe('formatPreviewChunks', () => {
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
-        expect(result.parent_child_chunks[0].child_contents).toHaveLength(20)
-        expect(result.parent_child_chunks[0].child_contents[0]).toBe('Child 1')
-        expect(result.parent_child_chunks[0].child_contents[19]).toBe('Child 20')
+        expect(result.parent_child_chunks[0]!.child_contents).toHaveLength(20)
+        expect(result.parent_child_chunks[0]!.child_contents[0]).toBe('Child 1')
+        expect(result.parent_child_chunks[0]!.child_contents[19]).toBe('Child 20')
       })
 
       it('should handle multiple parents with many children in full-doc mode', () => {
@@ -266,8 +266,8 @@ describe('formatPreviewChunks', () => {
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
-        expect(result.parent_child_chunks[0].child_contents).toHaveLength(20)
-        expect(result.parent_child_chunks[1].child_contents).toHaveLength(20)
+        expect(result.parent_child_chunks[0]!.child_contents).toHaveLength(20)
+        expect(result.parent_child_chunks[1]!.child_contents).toHaveLength(20)
       })
     })
 
@@ -324,10 +324,10 @@ describe('formatPreviewChunks', () => {
 
       const result = formatPreviewChunks(outputs) as QAChunks
 
-      expect(result.qa_chunks[0].question).toBe('')
-      expect(result.qa_chunks[0].answer).toBe('Answer without question')
-      expect(result.qa_chunks[1].question).toBe('Question without answer')
-      expect(result.qa_chunks[1].answer).toBe('')
+      expect(result.qa_chunks[0]!.question).toBe('')
+      expect(result.qa_chunks[0]!.answer).toBe('Answer without question')
+      expect(result.qa_chunks[1]!.question).toBe('Question without answer')
+      expect(result.qa_chunks[1]!.answer).toBe('')
     })
 
     it('should preserve all properties when spreading chunk', () => {
@@ -406,27 +406,27 @@ describe('ResultPreview', () => {
     it('should render without crashing with minimal props', () => {
       render(<ResultPreview onSwitchToDetail={vi.fn()} />)
 
-      expect(document.body).toBeInTheDocument()
+      expect(document.body)!.toBeInTheDocument()
     })
 
     it('should render loading state when isRunning and no outputs', () => {
       render(<ResultPreview {...defaultProps} isRunning={true} outputs={undefined} />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
     })
 
     it('should render loading spinner icon when loading', () => {
       const { container } = render(<ResultPreview {...defaultProps} isRunning={true} outputs={undefined} />)
 
       const spinner = container.querySelector('.animate-spin')
-      expect(spinner).toBeInTheDocument()
+      expect(spinner)!.toBeInTheDocument()
     })
 
     it('should render error state when not running and error exists', () => {
       render(<ResultPreview {...defaultProps} isRunning={false} error="Something went wrong" />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /pipeline\.result\.resultPreview\.viewDetails/i })).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /pipeline\.result\.resultPreview\.viewDetails/i }))!.toBeInTheDocument()
     })
 
     it('should render outputs when available', () => {
@@ -434,7 +434,7 @@ describe('ResultPreview', () => {
 
       render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should render footer tip when outputs available', () => {
@@ -442,7 +442,7 @@ describe('ResultPreview', () => {
 
       render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
-      expect(screen.getByText(/pipeline\.result\.resultPreview\.footerTip/)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline\.result\.resultPreview\.footerTip/))!.toBeInTheDocument()
     })
 
     it('should not render loading when outputs exist even if isRunning', () => {
@@ -451,13 +451,13 @@ describe('ResultPreview', () => {
       render(<ResultPreview {...defaultProps} isRunning={true} outputs={outputs} />)
 
       expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should not render error when isRunning is true', () => {
       render(<ResultPreview {...defaultProps} isRunning={true} error="Error message" outputs={undefined} />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
       expect(screen.queryByText('pipeline.result.resultPreview.error')).not.toBeInTheDocument()
     })
   })
@@ -467,7 +467,7 @@ describe('ResultPreview', () => {
       it('should show loading when isRunning=true and no outputs', () => {
         render(<ResultPreview {...defaultProps} isRunning={true} />)
 
-        expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+        expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
       })
 
       it('should not show loading when isRunning=false', () => {
@@ -482,7 +482,7 @@ describe('ResultPreview', () => {
         render(<ResultPreview {...defaultProps} isRunning={true} outputs={outputs} />)
 
         expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
-        expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+        expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
       })
     })
 
@@ -493,7 +493,7 @@ describe('ResultPreview', () => {
         render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
         const chunkList = screen.getByTestId('chunk-card-list')
-        expect(chunkList).toHaveAttribute('data-chunk-type', ChunkingMode.text)
+        expect(chunkList)!.toHaveAttribute('data-chunk-type', ChunkingMode.text)
       })
 
       it('should format and pass previewChunks to ChunkCardList', () => {
@@ -520,7 +520,7 @@ describe('ResultPreview', () => {
         render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
         const chunkList = screen.getByTestId('chunk-card-list')
-        expect(chunkList).toHaveAttribute('data-chunk-type', ChunkingMode.parentChild)
+        expect(chunkList)!.toHaveAttribute('data-chunk-type', ChunkingMode.parentChild)
       })
 
       it('should handle QA outputs', () => {
@@ -531,7 +531,7 @@ describe('ResultPreview', () => {
         render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
         const chunkList = screen.getByTestId('chunk-card-list')
-        expect(chunkList).toHaveAttribute('data-chunk-type', ChunkingMode.qa)
+        expect(chunkList)!.toHaveAttribute('data-chunk-type', ChunkingMode.qa)
       })
     })
 
@@ -539,7 +539,7 @@ describe('ResultPreview', () => {
       it('should show error state when error is a non-empty string', () => {
         render(<ResultPreview {...defaultProps} error="Network error" />)
 
-        expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+        expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
       })
 
       it('should show error state when error is an empty string', () => {
@@ -553,8 +553,8 @@ describe('ResultPreview', () => {
 
         render(<ResultPreview {...defaultProps} outputs={outputs} error="Error" />)
 
-        expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-        expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+        expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
+        expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
       })
     })
 
@@ -584,7 +584,7 @@ describe('ResultPreview', () => {
         const { rerender } = render(<ResultPreview {...defaultProps} />)
         rerender(<ResultPreview {...defaultProps} />)
 
-        expect(document.body).toBeInTheDocument()
+        expect(document.body)!.toBeInTheDocument()
       })
 
       it('should update when props change', () => {
@@ -592,7 +592,7 @@ describe('ResultPreview', () => {
 
         rerender(<ResultPreview {...defaultProps} isRunning={true} />)
 
-        expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+        expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
       })
 
       it('should update when outputs change', () => {
@@ -744,45 +744,45 @@ describe('ResultPreview', () => {
   describe('Integration', () => {
     it('should transition from loading to output state', () => {
       const { rerender } = render(<ResultPreview {...defaultProps} isRunning={true} />)
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
 
       const outputs = createGeneralChunkOutputs([{ content: 'Loaded data' }])
       rerender(<ResultPreview {...defaultProps} isRunning={false} outputs={outputs} />)
 
       expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should transition from loading to error state', () => {
       const { rerender } = render(<ResultPreview {...defaultProps} isRunning={true} />)
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
 
       rerender(<ResultPreview {...defaultProps} isRunning={false} error="Failed to load" />)
 
       expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
     })
 
     it('should render both error and outputs when both props provided', () => {
       const { rerender } = render(<ResultPreview {...defaultProps} error="Initial error" />)
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
 
       const outputs = createGeneralChunkOutputs([{ content: 'Success data' }])
       rerender(<ResultPreview {...defaultProps} error="Initial error" outputs={outputs} />)
 
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should hide error when error prop is cleared', () => {
       const { rerender } = render(<ResultPreview {...defaultProps} error="Initial error" />)
-      expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
 
       const outputs = createGeneralChunkOutputs([{ content: 'Success data' }])
       rerender(<ResultPreview {...defaultProps} outputs={outputs} />)
 
       expect(screen.queryByText('pipeline.result.resultPreview.error')).not.toBeInTheDocument()
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
 
     it('should handle complete flow: empty -> loading -> outputs', () => {
@@ -790,12 +790,12 @@ describe('ResultPreview', () => {
       expect(container.firstChild).toBeNull()
 
       rerender(<ResultPreview {...defaultProps} isRunning={true} />)
-      expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+      expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
 
       const outputs = createGeneralChunkOutputs([{ content: 'Final data' }])
       rerender(<ResultPreview {...defaultProps} isRunning={false} outputs={outputs} />)
 
-      expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
     })
   })
 
@@ -804,14 +804,14 @@ describe('ResultPreview', () => {
       const { container } = render(<ResultPreview {...defaultProps} isRunning={true} />)
 
       const loadingContainer = container.querySelector('.flex.grow.flex-col.items-center.justify-center')
-      expect(loadingContainer).toBeInTheDocument()
+      expect(loadingContainer)!.toBeInTheDocument()
     })
 
     it('should have correct container classes for error state', () => {
       const { container } = render(<ResultPreview {...defaultProps} error="Error" />)
 
       const errorContainer = container.querySelector('.flex.grow.flex-col.items-center.justify-center')
-      expect(errorContainer).toBeInTheDocument()
+      expect(errorContainer)!.toBeInTheDocument()
     })
 
     it('should have correct container classes for outputs state', () => {
@@ -820,7 +820,7 @@ describe('ResultPreview', () => {
       const { container } = render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
       const outputContainer = container.querySelector('.flex.grow.flex-col.bg-background-body')
-      expect(outputContainer).toBeInTheDocument()
+      expect(outputContainer)!.toBeInTheDocument()
     })
 
     it('should have gradient dividers in footer', () => {
@@ -838,7 +838,7 @@ describe('ResultPreview', () => {
       render(<ResultPreview {...defaultProps} error="Error" />)
 
       const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
+      expect(button)!.toBeInTheDocument()
     })
 
     it('should have title attribute on footer tip for long text', () => {
@@ -847,7 +847,7 @@ describe('ResultPreview', () => {
       const { container } = render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
       const footerTip = container.querySelector('[title]')
-      expect(footerTip).toBeInTheDocument()
+      expect(footerTip)!.toBeInTheDocument()
     })
   })
 })
@@ -884,17 +884,17 @@ describe('State Transition Matrix', () => {
           expect(container.firstChild).toBeNull()
           break
         case 'loading':
-          expect(screen.getByText('pipeline.result.resultPreview.loading')).toBeInTheDocument()
+          expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
           break
         case 'error':
-          expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
+          expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
           break
         case 'outputs':
-          expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+          expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
           break
         case 'both':
-          expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-          expect(screen.getByTestId('chunk-card-list')).toBeInTheDocument()
+          expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
+          expect(screen.getByTestId('chunk-card-list'))!.toBeInTheDocument()
           break
       }
     },

@@ -56,19 +56,19 @@ describe('Moderation', () => {
   it('should render the moderation title', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.moderation\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.title/))!.toBeInTheDocument()
   })
 
   it('should render description when not enabled', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.moderation\.description/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.description/))!.toBeInTheDocument()
   })
 
   it('should render a switch toggle', () => {
     renderWithProvider()
 
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('switch'))!.toBeInTheDocument()
   })
 
   it('should open moderation setting modal when enabled without type', () => {
@@ -91,7 +91,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))!.toBeInTheDocument()
   })
 
   it('should show provider info when enabled with keywords type', () => {
@@ -106,7 +106,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
   })
 
   it('should show allEnabled when both inputs and outputs are enabled', () => {
@@ -121,7 +121,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.allEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.allEnabled/))!.toBeInTheDocument()
   })
 
   it('should show inputEnabled when only inputs are enabled', () => {
@@ -136,7 +136,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.inputEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.inputEnabled/))!.toBeInTheDocument()
   })
 
   it('should show outputEnabled when only outputs are enabled', () => {
@@ -151,7 +151,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/feature\.moderation\.outputEnabled/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.outputEnabled/))!.toBeInTheDocument()
   })
 
   it('should show settings button when hovering over enabled feature', () => {
@@ -168,7 +168,7 @@ describe('Moderation', () => {
     const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
 
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
+    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
 
   it('should open moderation modal when settings button is clicked', () => {
@@ -218,7 +218,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText(/apiBasedExtension\.selector\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/apiBasedExtension\.selector\.title/))!.toBeInTheDocument()
   })
 
   it('should disable moderation and call onChange when switch is toggled off', () => {
@@ -260,7 +260,7 @@ describe('Moderation', () => {
     fireEvent.click(screen.getByRole('switch'))
 
     // Extract the onSaveCallback from the modal call
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(modalCall.onSaveCallback).toBeDefined()
     expect(modalCall.onCancelCallback).toBeDefined()
   })
@@ -281,7 +281,7 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     modalCall.onCancelCallback()
 
     expect(onChange).toHaveBeenCalled()
@@ -302,7 +302,7 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(() => modalCall.onCancelCallback()).not.toThrow()
   })
 
@@ -322,7 +322,7 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })
 
     expect(onChange).toHaveBeenCalled()
@@ -343,7 +343,7 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(() => modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })).not.toThrow()
   })
 
@@ -359,7 +359,8 @@ describe('Moderation', () => {
     })
 
     // For unknown types, falls back to codeBasedExtensionList label or '-'
-    expect(screen.getByText('-')).toBeInTheDocument()
+    // For unknown types, falls back to codeBasedExtensionList label or '-'
+    expect(screen.getByText('-'))!.toBeInTheDocument()
   })
 
   it('should show code-based extension label when custom type is configured', () => {
@@ -379,7 +380,7 @@ describe('Moderation', () => {
       },
     })
 
-    expect(screen.getByText('Custom Moderation')).toBeInTheDocument()
+    expect(screen.getByText('Custom Moderation'))!.toBeInTheDocument()
   })
 
   it('should not show enable content text when both input and output moderation are disabled', () => {
@@ -422,7 +423,7 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     // Execute the onSaveCallback
     modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })
 
@@ -434,7 +435,7 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(() => modalCall.onSaveCallback({ enabled: true, type: 'keywords', config: {} })).not.toThrow()
   })
 
@@ -444,7 +445,7 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     // Execute the onCancelCallback
     modalCall.onCancelCallback()
 
@@ -456,7 +457,7 @@ describe('Moderation', () => {
 
     fireEvent.click(screen.getByRole('switch'))
 
-    const modalCall = mockSetShowModerationSettingModal.mock.calls[0][0]
+    const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
     expect(() => modalCall.onCancelCallback()).not.toThrow()
   })
 
@@ -510,12 +511,14 @@ describe('Moderation', () => {
     const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
 
     // Info is visible before hover
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    // Info is visible before hover
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
 
     fireEvent.mouseEnter(card)
 
     // Info hidden, settings button shown
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
+    // Info hidden, settings button shown
+    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
 
   it('should show info display again when mouse leaves', () => {
@@ -534,6 +537,6 @@ describe('Moderation', () => {
     fireEvent.mouseEnter(card)
     fireEvent.mouseLeave(card)
 
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
   })
 })

@@ -2,9 +2,9 @@
 import type { Mock } from 'vitest'
 import type { AnnotationItem } from '../type'
 import type { App } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
@@ -41,6 +41,10 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 vi.mock('../filter', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="filter">{children}</div>
@@ -67,7 +71,7 @@ vi.mock('../header-opts', () => ({
 let latestListProps: any
 
 vi.mock('../list', () => ({
-  default: (props: any) => {
+  List: (props: any) => {
     latestListProps = props
     if (!props.list.length)
       return <div data-testid="list-empty" />
@@ -197,6 +201,9 @@ describe('Annotation', () => {
   it('should render empty element when no annotations are returned', async () => {
     renderComponent()
 
+    expect(screen.getByRole('heading', { name: 'appAnnotation.title' })).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.noData.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/annotation-reply')
     expect(await screen.findByTestId('empty-element')).toBeInTheDocument()
     expect(fetchAnnotationListMock).toHaveBeenCalledWith(appDetail.id, expect.objectContaining({
       page: 1,
@@ -440,7 +447,7 @@ describe('Annotation', () => {
       latestListProps.onSelectedIdsChange([annotation.id])
     })
     await act(async () => {
-      latestListProps.onCancel()
+      latestListProps.onSelectedIdsChange([])
     })
 
     expect(latestListProps.selectedIds).toEqual([])

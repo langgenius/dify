@@ -1,27 +1,31 @@
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDefaultVisualConfig } from './constants'
 
 const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const { userProfile } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const frontendPayload = useMemo(() => {
     return {
       ...payload,
       mode: payload.mode || 'visual',
       frequency: payload.frequency || 'daily',
-      timezone: payload.timezone || userProfile.timezone || 'UTC',
+      timezone: payload.timezone || timezone || 'UTC',
       visual_config: {
         ...getDefaultVisualConfig(),
         ...payload.visual_config,
       },
     }
-  }, [payload, userProfile.timezone])
+  }, [payload, timezone])
 
   const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
 

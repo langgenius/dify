@@ -22,7 +22,7 @@ const StepIndicator = ({
         return (
           <div
             key={step.value}
-            className={cn('h-1 w-1 rounded-lg bg-divider-solid', isActive && 'w-2 bg-state-accent-solid')}
+            className={cn('size-1 rounded-lg bg-divider-solid', isActive && 'w-2 bg-state-accent-solid')}
           />
         )
       })}

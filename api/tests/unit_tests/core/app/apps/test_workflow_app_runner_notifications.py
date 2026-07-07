@@ -1,11 +1,12 @@
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.graph_events import GraphRunPausedEvent
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
+from graphon.graph_events import GraphRunPausedEvent
 
 
 class _DummyQueueManager:
@@ -17,6 +18,8 @@ class _DummyQueueManager:
 
 
 class _DummyRuntimeState:
+    variable_pool = object()
+
     def get_paused_nodes(self):
         return ["node-1"]
 
@@ -36,7 +39,11 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
     workflow_entry = _DummyWorkflowEntry()
 
-    reason = HumanInputRequired(
+    graph_reason = HitlRequired(session_id="form-123", node_id="node-1", node_title="Review")
+    event = GraphRunPausedEvent(reasons=[graph_reason], outputs={})
+
+    email_task = MagicMock()
+    enriched_reason = HumanInputRequired(
         form_id="form-123",
         form_content="content",
         inputs=[],
@@ -44,9 +51,10 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
         node_id="node-1",
         node_title="Review",
     )
-    event = GraphRunPausedEvent(reasons=[reason], outputs={})
-
-    email_task = MagicMock()
+    monkeypatch.setattr(
+        "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
+        lambda **_: [enriched_reason],
+    )
     monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
 
     runner._handle_event(workflow_entry, event)

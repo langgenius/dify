@@ -33,7 +33,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
 
 vi.mock('../structure-output', () => ({
   __esModule: true,
-  default: (props: { className?: string, value?: StructuredOutput, onChange: (value: StructuredOutput) => void }) => {
+  StructureOutput: (props: { className?: string, value?: StructuredOutput, onChange: (value: StructuredOutput) => void }) => {
     mockStructureOutput(props)
     return <div data-testid="structure-output">structured-output</div>
   },

@@ -1,23 +1,19 @@
+import type { ReactElement } from 'react'
 import type { ChatWithHistoryContextValue } from '../../context'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { expectLoadingButton } from '@/test/button'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
 
-// Type for mocking the global public store selector
-type GlobalPublicStoreMock = {
-  systemFeatures: {
-    branding: {
-      enabled: boolean
-      workspace_logo: string | null
-    }
-  }
-  setSystemFeatures?: (features: unknown) => void
-}
+let mockBranding: { enabled: boolean, workspace_logo: string } = { enabled: false, workspace_logo: '' }
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { branding: { ...mockBranding } },
+})
 
 function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
   const originalUseTranslation = ReactI18next.useTranslation
@@ -36,19 +32,6 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
       }) as typeof translation.t,
     }
   })
-}
-
-// Helper to create properly-typed mock store state
-function createMockStoreState(overrides: Partial<GlobalPublicStoreMock>): GlobalPublicStoreMock {
-  return {
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-    ...overrides,
-  }
 }
 
 // Mock List to allow us to trigger operations
@@ -74,36 +57,21 @@ vi.mock('../../context', () => ({
   useChatWithHistoryContext: vi.fn(),
 }))
 
-// Mock global public store
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(selector => selector({
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-  })),
-}))
-
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
 
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="modal">
-        {!!title && <div data-testid="modal-title">{title}</div>}
-        {children}
-      </div>
-    )
-  },
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="modal">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="modal-title">{children}</div>
+  ),
 }))
 
 describe('Sidebar Index', () => {
@@ -139,8 +107,8 @@ describe('Sidebar Index', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBranding = { enabled: false, workspace_logo: '' }
     vi.mocked(useChatWithHistoryContext).mockReturnValue(mockContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(createMockStoreState({}) as never))
   })
 
   describe('Basic Rendering', () => {
@@ -520,7 +488,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('rename-1'))
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
     })
 
     it('should pass correct props to rename modal', async () => {
@@ -529,7 +497,9 @@ describe('Sidebar Index', () => {
 
       await user.click(screen.getByTestId('rename-1'))
       // The modal should have title and save/cancel
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
 
     it('should call handleRenameConversation with new name', async () => {
@@ -561,13 +531,13 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('rename-1'))
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
 
       const cancelButton = screen.getByText('common.operation.cancel')
       await user.click(cancelButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
       })
     })
 
@@ -581,7 +551,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))
       const saveButton = screen.getByText('common.operation.save').closest('button')
-      expect(saveButton).toBeDisabled()
+      expectLoadingButton(saveButton)
     })
 
     it('should handle rename for different items', async () => {
@@ -658,17 +628,7 @@ describe('Sidebar Index', () => {
     })
 
     it('should use system branding logo when enabled', () => {
-      const mockStoreState = createMockStoreState({
-        systemFeatures: {
-          branding: {
-            enabled: true,
-            workspace_logo: 'http://example.com/workspace-logo.png',
-          },
-        },
-      })
-
-      vi.mocked(useGlobalPublicStore).mockClear()
-      vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(mockStoreState as never))
+      mockBranding = { enabled: true, workspace_logo: 'http://example.com/workspace-logo.png' }
 
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
@@ -922,8 +882,7 @@ describe('RenameModal', () => {
       />,
     )
 
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('common.chat.renameConversation')
+    expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
   })
 
   it('should handle empty placeholder translation fallback', () => {

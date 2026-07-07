@@ -1,32 +1,32 @@
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteTheme } from '../../../types'
-import ColorPicker, { COLOR_LIST } from '../color-picker'
+import ColorPicker from '../color-picker'
+
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 describe('NoteEditor ColorPicker', () => {
   it('should open the palette and apply the selected theme', async () => {
     const onThemeChange = vi.fn()
-    const { container } = render(
+    render(
       <ColorPicker theme={NoteTheme.blue} onThemeChange={onThemeChange} />,
     )
 
-    const trigger = container.querySelector('[data-state="closed"]') as HTMLElement
+    fireEvent.click(screen.getByTestId('popover-trigger'))
 
-    fireEvent.click(trigger)
-
-    const popup = document.body.querySelector('[role="tooltip"]')
+    const popup = screen.getByTestId('popover-content')
 
     expect(popup).toBeInTheDocument()
 
-    const options = popup?.querySelectorAll('.group.relative')
+    const options = popup.querySelectorAll('.group.relative')
 
-    expect(options).toHaveLength(COLOR_LIST.length)
+    expect(options).toHaveLength(6)
 
-    fireEvent.click(options?.[COLOR_LIST.length - 1] as Element)
+    fireEvent.click(options[5] as Element)
 
     expect(onThemeChange).toHaveBeenCalledWith(NoteTheme.violet)
 
     await waitFor(() => {
-      expect(document.body.querySelector('[role="tooltip"]')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 })

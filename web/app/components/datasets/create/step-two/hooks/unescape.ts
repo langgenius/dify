@@ -47,7 +47,7 @@ const unescape = (str: string) => {
     else if (python !== undefined)
       return fromHex(python)
     else
-      return usualEscapeSequences[specialCharacter]
+      return usualEscapeSequences[specialCharacter]!
   })
 }
 

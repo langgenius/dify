@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import dynamic from '@/next/dynamic'
@@ -26,7 +26,7 @@ export type PanelProps = {
  */
 const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number => {
   if (entry.borderBoxSize?.length > 0)
-    return entry.borderBoxSize[0].inlineSize
+    return entry.borderBoxSize[0]!.inlineSize
 
   if (entry.contentRect.width > 0)
     return entry.contentRect.width
@@ -34,35 +34,50 @@ const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number
   return element.getBoundingClientRect().width
 }
 
-const useResizeObserver = (
-  callback: (width: number) => void,
-  dependencies: React.DependencyList = [],
-) => {
+const useResizeObserver = (callback: (width: number) => void) => {
   const elementRef = useRef<HTMLDivElement>(null)
-
-  const stableCallback = useCallback(callback, [callback])
+  const widthRef = useRef<number | undefined>(undefined)
+  const animationFrameRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     const element = elementRef.current
     if (!element)
       return
 
+    widthRef.current = undefined
+
+    const updateWidth = (width: number) => {
+      if (widthRef.current === width)
+        return
+
+      widthRef.current = width
+      if (animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current)
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        animationFrameRef.current = undefined
+        callback(width)
+      })
+    }
+
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = getEntryWidth(entry, element)
-        stableCallback(width)
-      }
+      for (const entry of entries)
+        updateWidth(getEntryWidth(entry, element))
     })
 
     resizeObserver.observe(element)
 
     const initialWidth = element.getBoundingClientRect().width
-    stableCallback(initialWidth)
+    updateWidth(initialWidth)
 
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = undefined
+      }
       resizeObserver.disconnect()
     }
-  }, [stableCallback, ...dependencies])
+  }, [callback])
   return elementRef
 }
 
@@ -113,19 +128,14 @@ const Panel: FC<PanelProps> = ({
   const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
   const setOtherPanelWidth = useStore(s => s.setOtherPanelWidth)
 
-  const rightPanelRef = useResizeObserver(
-    setRightPanelWidth,
-    [setRightPanelWidth, selectedNode, showEnvPanel, showWorkflowVersionHistoryPanel],
-  )
+  const rightPanelRef = useResizeObserver(setRightPanelWidth)
 
-  const otherPanelRef = useResizeObserver(
-    setOtherPanelWidth,
-    [setOtherPanelWidth, showEnvPanel, showWorkflowVersionHistoryPanel],
-  )
+  const otherPanelRef = useResizeObserver(setOtherPanelWidth)
 
   return (
     <div
       ref={rightPanelRef}
+      data-workflow-right-panel
       tabIndex={-1}
       className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
       key={`${isRestoring}`}

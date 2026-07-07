@@ -6,6 +6,12 @@ on:
       - "main"
     paths:
       - api/Dockerfile
+      - api/Dockerfile.dockerignore
+      - api/pyproject.toml
+      - api/uv.lock
+      - dify-agent/pyproject.toml
+      - dify-agent/README.md
+      - dify-agent/src/**
       - web/Dockerfile
 
 concurrency:
@@ -14,40 +20,69 @@ concurrency:
 
 jobs:
   build-docker:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.runs_on }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
-            context: "{{defaultContext}}:api"
-            file: "Dockerfile"
+            runs_on: depot-ubuntu-24.04-4
+            context: "{{defaultContext}}"
+            file: "api/Dockerfile"
           - service_name: "api-arm64"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
-            context: "{{defaultContext}}:api"
-            file: "Dockerfile"
+            runs_on: depot-ubuntu-24.04-4
+            context: "{{defaultContext}}"
+            file: "api/Dockerfile"
           - service_name: "web-amd64"
             platform: linux/amd64
-            runs_on: ubuntu-latest
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
           - service_name: "web-arm64"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
+            runs_on: depot-ubuntu-24.04-4
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
     steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - name: Set up Depot CLI
+        uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
 
       - name: Build Docker Image
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
         with:
+          project: ${{ vars.DEPOT_PROJECT_ID }}
           push: false
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+  build-docker-fork:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - service_name: "api-amd64"
+            context: "{{defaultContext}}"
+            file: "api/Dockerfile"
+          - service_name: "web-amd64"
+            context: "{{defaultContext}}"
+            file: "web/Dockerfile"
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          push: false
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64

@@ -69,7 +69,7 @@ describe('useModelFormSchemas', () => {
 
     const { result: custom } = renderHook(() => useModelFormSchemas(mockProvider, false))
     expect(custom.current.modelNameAndTypeFormSchemas).toHaveLength(2)
-    expect(custom.current.modelNameAndTypeFormSchemas[0].variable).toBe('__model_name')
+    expect(custom.current.modelNameAndTypeFormSchemas[0]!.variable).toBe('__model_name')
 
     const mockModel = { model: 'custom', model_type: 'text' } as unknown as CustomModelCredential
     const { result: customWithVal } = renderHook(() => useModelFormSchemas(mockProvider, false, undefined, undefined, mockModel))

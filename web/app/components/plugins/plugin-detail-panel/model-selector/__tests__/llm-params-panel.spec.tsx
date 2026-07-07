@@ -75,14 +75,58 @@ vi.mock('@/config', () => ({
 
 // Mock PresetsParameter component
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter', () => ({
-  default: ({ onSelect }: { onSelect: (toneId: number) => void }) => (
-    <div data-testid="presets-parameter">
-      <button data-testid="preset-creative" onClick={() => onSelect(1)}>Creative</button>
-      <button data-testid="preset-balanced" onClick={() => onSelect(2)}>Balanced</button>
-      <button data-testid="preset-precise" onClick={() => onSelect(3)}>Precise</button>
-      <button data-testid="preset-custom" onClick={() => onSelect(4)}>Custom</button>
-    </div>
-  ),
+  default: ({ onSelect, supportedParameterNames }: { onSelect: (toneId: number) => void, supportedParameterNames?: string[] }) => {
+    const hasSupportedParameter = !supportedParameterNames || supportedParameterNames.some(name => ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty'].includes(name))
+    if (!hasSupportedParameter)
+      return null
+
+    return (
+      <div data-testid="presets-parameter">
+        <button data-testid="preset-creative" onClick={() => onSelect(1)}>Creative</button>
+        <button data-testid="preset-balanced" onClick={() => onSelect(2)}>Balanced</button>
+        <button data-testid="preset-precise" onClick={() => onSelect(3)}>Precise</button>
+        <button data-testid="preset-custom" onClick={() => onSelect(4)}>Custom</button>
+      </div>
+    )
+  },
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter-utils', () => ({
+  getSupportedPresetConfig: (toneId: number, supportedParameterNames?: string[]) => {
+    const toneConfigMap: Record<number, Record<string, number> | undefined> = {
+      1: {
+        temperature: 0.8,
+        top_p: 0.9,
+        presence_penalty: 0.1,
+        frequency_penalty: 0.1,
+      },
+      2: {
+        temperature: 0.5,
+        top_p: 0.85,
+        presence_penalty: 0.2,
+        frequency_penalty: 0.3,
+      },
+      3: {
+        temperature: 0.2,
+        top_p: 0.75,
+        presence_penalty: 0.5,
+        frequency_penalty: 0.5,
+      },
+    }
+    const toneConfig = toneConfigMap[toneId]
+    if (!toneConfig)
+      return {}
+
+    if (!supportedParameterNames)
+      return toneConfig
+
+    return Object.entries(toneConfig).reduce<Record<string, number>>((acc, [key, value]) => {
+      if (supportedParameterNames.includes(key))
+        acc[key] = value
+
+      return acc
+    }, {})
+  },
 }))
 
 // Mock ParameterItem component
@@ -148,10 +192,12 @@ const createDefaultProps = (overrides: Partial<{
 const setupModelParameterRulesMock = (config: {
   data?: ModelParameterRule[]
   isPending?: boolean
+  isLoading?: boolean
 } = {}) => {
   mockUseModelParameterRules.mockReturnValue({
     data: config.data ? { data: config.data } : undefined,
     isPending: config.isPending ?? false,
+    isLoading: config.isLoading ?? config.isPending ?? false,
   })
 }
 
@@ -188,6 +234,19 @@ describe('LLMParamsPanel', () => {
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
+    it('should not render loading state when model is not configured and parameter rules query is pending but disabled', () => {
+      // Arrange
+      setupModelParameterRulesMock({ isPending: true, isLoading: false })
+      const props = createDefaultProps({ provider: '', modelId: '' })
+
+      // Act
+      render(<LLMParamsPanel {...props} />)
+
+      // Assert
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+    })
+
     it('should render parameters header', () => {
       // Arrange
       setupModelParameterRulesMock({ data: [], isPending: false })
@@ -202,7 +261,7 @@ describe('LLMParamsPanel', () => {
 
     it('should render PresetsParameter for openai provider', () => {
       // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
+      setupModelParameterRulesMock({ data: [createParameterRule({ name: 'temperature' })], isPending: false })
       const props = createDefaultProps({ provider: 'langgenius/openai/openai' })
 
       // Act
@@ -214,7 +273,7 @@ describe('LLMParamsPanel', () => {
 
     it('should render PresetsParameter for azure_openai provider', () => {
       // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
+      setupModelParameterRulesMock({ data: [createParameterRule({ name: 'temperature' })], isPending: false })
       const props = createDefaultProps({ provider: 'langgenius/azure_openai/azure_openai' })
 
       // Act
@@ -222,6 +281,18 @@ describe('LLMParamsPanel', () => {
 
       // Assert
       expect(screen.getByTestId('presets-parameter')).toBeInTheDocument()
+    })
+
+    it('should not render PresetsParameter when no visible parameter supports presets', () => {
+      // Arrange
+      setupModelParameterRulesMock({ data: [createParameterRule({ name: 'max_tokens', type: 'int' })], isPending: false })
+      const props = createDefaultProps({ provider: 'langgenius/openai/openai' })
+
+      // Act
+      render(<LLMParamsPanel {...props} />)
+
+      // Assert
+      expect(screen.queryByTestId('presets-parameter')).not.toBeInTheDocument()
     })
 
     it('should not render PresetsParameter for non-preset providers', () => {
@@ -360,7 +431,15 @@ describe('LLMParamsPanel', () => {
       it('should apply Creative preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({ data: [], isPending: false })
+        setupModelParameterRulesMock({
+          data: [
+            createParameterRule({ name: 'temperature' }),
+            createParameterRule({ name: 'top_p' }),
+            createParameterRule({ name: 'presence_penalty' }),
+            createParameterRule({ name: 'frequency_penalty' }),
+          ],
+          isPending: false,
+        })
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -384,7 +463,15 @@ describe('LLMParamsPanel', () => {
       it('should apply Balanced preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({ data: [], isPending: false })
+        setupModelParameterRulesMock({
+          data: [
+            createParameterRule({ name: 'temperature' }),
+            createParameterRule({ name: 'top_p' }),
+            createParameterRule({ name: 'presence_penalty' }),
+            createParameterRule({ name: 'frequency_penalty' }),
+          ],
+          isPending: false,
+        })
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -407,7 +494,15 @@ describe('LLMParamsPanel', () => {
       it('should apply Precise preset config', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({ data: [], isPending: false })
+        setupModelParameterRulesMock({
+          data: [
+            createParameterRule({ name: 'temperature' }),
+            createParameterRule({ name: 'top_p' }),
+            createParameterRule({ name: 'presence_penalty' }),
+            createParameterRule({ name: 'frequency_penalty' }),
+          ],
+          isPending: false,
+        })
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -430,7 +525,7 @@ describe('LLMParamsPanel', () => {
       it('should apply empty config for Custom preset (spreads undefined)', () => {
         // Arrange
         const onCompletionParamsChange = vi.fn()
-        setupModelParameterRulesMock({ data: [], isPending: false })
+        setupModelParameterRulesMock({ data: [createParameterRule({ name: 'temperature' })], isPending: false })
         const props = createDefaultProps({
           provider: 'langgenius/openai/openai',
           onCompletionParamsChange,
@@ -443,6 +538,27 @@ describe('LLMParamsPanel', () => {
 
         // Assert - Custom preset has no config, so only existing params are kept
         expect(onCompletionParamsChange).toHaveBeenCalledWith({ existing: 'value' })
+      })
+
+      it('should apply only preset config keys supported by visible parameters', () => {
+        // Arrange
+        const onCompletionParamsChange = vi.fn()
+        setupModelParameterRulesMock({ data: [createParameterRule({ name: 'temperature' })], isPending: false })
+        const props = createDefaultProps({
+          provider: 'langgenius/openai/openai',
+          onCompletionParamsChange,
+          completionParams: { existing: 'value' },
+        })
+
+        // Act
+        render(<LLMParamsPanel {...props} />)
+        fireEvent.click(screen.getByTestId('preset-creative'))
+
+        // Assert
+        expect(onCompletionParamsChange).toHaveBeenCalledWith({
+          existing: 'value',
+          temperature: 0.8,
+        })
       })
     })
 

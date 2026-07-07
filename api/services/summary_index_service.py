@@ -6,10 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
@@ -18,6 +16,8 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.models.document import Document
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
@@ -123,7 +123,7 @@ class SummaryIndexService:
                 # Update existing record
                 existing_summary.summary_content = summary_content
                 existing_summary.status = status
-                existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
+                existing_summary.error = None  # Clear any previous errors
                 # Re-enable if it was disabled
                 if not existing_summary.enabled:
                     existing_summary.enabled = True
@@ -349,7 +349,6 @@ class SummaryIndexService:
                                     summary_record_id,
                                 )
                                 summary_record_in_session = DocumentSegmentSummary(
-                                    id=summary_record_id,  # Use the same ID if available
                                     dataset_id=dataset.id,
                                     document_id=segment.document_id,
                                     chunk_id=segment.id,
@@ -360,6 +359,9 @@ class SummaryIndexService:
                                     status=SummaryStatus.COMPLETED,
                                     enabled=True,
                                 )
+                                if summary_record_in_session is None:
+                                    raise RuntimeError("summary_record_in_session should not be None at this point")
+                                summary_record_in_session.id = summary_record_id
                                 session.add(summary_record_in_session)
                                 logger.info(
                                     "Created new summary record (id=%s) for segment %s after vectorization",
@@ -581,7 +583,7 @@ class SummaryIndexService:
                 if existing_summary:
                     # Update existing record
                     existing_summary.status = status
-                    existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
+                    existing_summary.error = None  # Clear any previous errors
                     if not existing_summary.enabled:
                         existing_summary.enabled = True
                         existing_summary.disabled_at = None
@@ -683,7 +685,7 @@ class SummaryIndexService:
 
                 # Update status to "generating"
                 summary_record_in_session.status = SummaryStatus.GENERATING
-                summary_record_in_session.error = None  # type: ignore[assignment]
+                summary_record_in_session.error = None
                 session.add(summary_record_in_session)
                 # Don't flush here - wait until after vectorization succeeds
 
@@ -1125,7 +1127,7 @@ class SummaryIndexService:
                     # Update summary content
                     summary_record.summary_content = summary_content
                     summary_record.status = SummaryStatus.GENERATING
-                    summary_record.error = None  # type: ignore[assignment]  # Clear any previous errors
+                    summary_record.error = None  # Clear any previous errors
                     session.add(summary_record)
                     # Flush to ensure summary_content is saved before vectorize_summary queries it
                     session.flush()
@@ -1405,6 +1407,7 @@ class SummaryIndexService:
     def get_document_summary_status_detail(
         document_id: str,
         dataset_id: str,
+        session: Session | scoped_session,
     ) -> DocumentSummaryStatusDetailDict:
         """
         Get detailed summary status for a document.
@@ -1412,6 +1415,7 @@ class SummaryIndexService:
         Args:
             document_id: Document ID
             dataset_id: Dataset ID
+            session: SQLAlchemy session used for segment lookup
 
         Returns:
             Dictionary containing:
@@ -1429,6 +1433,7 @@ class SummaryIndexService:
         segments = SegmentService.get_segments_by_document_and_dataset(
             document_id=document_id,
             dataset_id=dataset_id,
+            session=session,
             status="completed",
             enabled=True,
         )

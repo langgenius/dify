@@ -264,8 +264,8 @@ describe('if-else path', () => {
       await user.click(screen.getByText('Variable'))
       fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
 
-      expect(onSelect).toHaveBeenCalledWith(ComparisonOperator.is)
-      expect(onNumberVarTypeChange).toHaveBeenCalledWith(NumberVarType.variable)
+      expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
+      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(NumberVarType.variable)
       expect(onValueChange).toHaveBeenCalledWith('42')
     })
 

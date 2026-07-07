@@ -305,6 +305,18 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
+  }
+}
+
+export type ReasoningChunkResponse = {
+  task_id: string
+  event: string
+  data: {
+    message_id: string
+    reasoning: string
+    node_id?: string
+    is_final?: boolean
   }
 }
 
@@ -331,7 +343,7 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string
-  resolved_default_values: Record<string, string>
+  resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
   expiration_time: number
 }
@@ -343,12 +355,19 @@ export type HumanInputRequiredResponse = {
   data: HumanInputFormData
 }
 
+export type HumanInputFormValue = string | FileResponse | FileResponse[]
+
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
 export type HumanInputFilledFormData = {
   node_id: string
   node_title: string
   rendered_content: string
   action_id: string
   action_text: string
+  form_content?: string
+  inputs?: FormInputItem[]
+  submitted_data?: Record<string, HumanInputFormValue>
 }
 
 export type HumanInputFormFilledResponse = {
@@ -427,6 +446,8 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
+export type WorkflowKind = 'standard'
+
 export type UpdateWorkflowParams = {
   url: string
   title: string
@@ -453,7 +474,7 @@ export const VarInInspectType = {
 } as const
 export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
 
-export type FullContent = {
+type FullContent = {
   size_bytes: number
   download_url: string
 }

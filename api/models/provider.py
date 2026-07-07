@@ -3,18 +3,19 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
+from typing import override
 from uuid import uuid4
 
 import sqlalchemy as sa
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.db.session_factory import session_factory
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
-from .engine import db
-from .enums import CredentialSourceType, PaymentStatus, ProviderQuotaType
+from .enums import CredentialSourceType, PaymentStatus, PermissionEnum, ProviderQuotaType
 from .types import EnumText, LongText, StringUUID
 
 
@@ -73,6 +74,7 @@ class Provider(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
+    @override
     def __repr__(self):
         return (
             f"<Provider(id={self.id}, tenant_id={self.tenant_id}, provider_name='{self.provider_name}',"
@@ -82,7 +84,8 @@ class Provider(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
+            with session_factory.create_session() as session:
+                return session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
 
     @property
     def credential_name(self):
@@ -145,9 +148,10 @@ class ProviderModel(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.scalar(
-                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
-            )
+            with session_factory.create_session() as session:
+                return session.scalar(
+                    select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
+                )
 
     @property
     def credential_name(self):
@@ -318,6 +322,13 @@ class ProviderCredential(TypeBase):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False)
+    user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

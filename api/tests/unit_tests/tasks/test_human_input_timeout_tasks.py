@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from tasks import human_input_timeout_tasks as task_module
 
 
@@ -63,6 +63,7 @@ class _FakeFormRepo:
         return SimpleNamespace(
             form_id=form_id,
             workflow_run_id=getattr(form, "workflow_run_id", None),
+            conversation_id=getattr(form, "conversation_id", None),
             node_id=getattr(form, "node_id", None),
         )
 
@@ -70,10 +71,14 @@ class _FakeFormRepo:
 class _FakeService:
     def __init__(self, _session_factory, form_repository=None):
         self.enqueued: list[str] = []
+        self.agent_app_resumed: list[tuple[str, str]] = []
 
     def enqueue_resume(self, workflow_run_id: str | None) -> None:
         if workflow_run_id is not None:
             self.enqueued.append(workflow_run_id)
+
+    def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
+        self.agent_app_resumed.append((conversation_id, form_id))
 
 
 def _build_form(
@@ -84,6 +89,7 @@ def _build_form(
     expiration_time: datetime,
     workflow_run_id: str | None,
     node_id: str,
+    conversation_id: str | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=form_id,
@@ -91,6 +97,7 @@ def _build_form(
         created_at=created_at,
         expiration_time=expiration_time,
         workflow_run_id=workflow_run_id,
+        conversation_id=conversation_id,
         node_id=node_id,
         status=HumanInputFormStatus.WAITING,
     )
@@ -208,3 +215,45 @@ def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled
     assert stmt is not None
     stmt_text = str(stmt)
     assert "created_at <=" not in stmt_text
+
+
+def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to_agent_app_resume(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # ENG-635 (review): a conversation-owned Agent v2 chat ask_human form has no
+    # workflow_run_id. On timeout it must enqueue the Agent App resume (so the
+    # timeout is threaded back as the ask_human result), instead of asserting on
+    # workflow_run_id — which previously raised and was swallowed by the except.
+    now = datetime(2025, 1, 1, 12, 0, 0)
+    monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
+    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
+
+    forms = [
+        _build_form(
+            form_id="form-chat",
+            form_kind=HumanInputFormKind.RUNTIME,
+            created_at=now - timedelta(minutes=5),
+            expiration_time=now - timedelta(seconds=1),
+            workflow_run_id=None,
+            conversation_id="conv-1",
+            node_id="agent",
+        ),
+    ]
+    capture: dict[str, Any] = {}
+    monkeypatch.setattr(task_module, "sessionmaker", lambda *args, **kwargs: _FakeSessionFactory(forms, capture))
+
+    repo = _FakeFormRepo(form_map={form.id: form for form in forms})
+    service = _FakeService(None)
+    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
+    monkeypatch.setattr(task_module, "HumanInputService", lambda *_args, **_kwargs: service)
+    monkeypatch.setattr(task_module, "_handle_global_timeout", lambda **_kwargs: None)
+
+    task_module.check_and_handle_human_input_timeouts(limit=100)
+
+    # Node timeout (conversation forms are never "global"), routed to Agent App resume.
+    assert repo.calls == [
+        {"form_id": "form-chat", "timeout_status": HumanInputFormStatus.TIMEOUT, "reason": "node_timeout"}
+    ]
+    assert service.agent_app_resumed == [("conv-1", "form-chat")]
+    assert service.enqueued == []

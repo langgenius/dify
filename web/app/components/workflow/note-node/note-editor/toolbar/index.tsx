@@ -18,7 +18,11 @@ const Toolbar = ({
   onShowAuthorChange,
 }: ToolbarProps) => {
   return (
-    <div className="inline-flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-sm">
+    <div
+      className="nodrag nopan nowheel inline-flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-sm"
+      onMouseDown={event => event.stopPropagation()}
+      onClick={event => event.stopPropagation()}
+    >
       <ColorPicker
         theme={theme}
         onThemeChange={onThemeChange}

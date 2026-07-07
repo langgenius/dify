@@ -1,5 +1,6 @@
 import type { Item } from '../index'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import Chip from '../index'
 
@@ -27,40 +28,52 @@ describe('Chip', () => {
 
   // Helper function to render Chip with default props
   const renderChip = (props: Partial<React.ComponentProps<typeof Chip>> = {}) => {
-    return render(
-      <Chip
-        value="all"
-        items={items}
-        onSelect={onSelect}
-        onClear={onClear}
-        {...props}
-      />,
-    )
+    const user = userEvent.setup()
+    return {
+      user,
+      ...render(
+        <Chip
+          value="all"
+          items={items}
+          onSelect={onSelect}
+          onClear={onClear}
+          {...props}
+        />,
+      ),
+    }
   }
 
   // Helper function to get the trigger element
   const getTrigger = (container: HTMLElement) => {
-    return container.querySelector('[data-state]')
+    return container.querySelector('button[role="combobox"]') as HTMLElement | null
   }
 
   // Helper function to open dropdown panel
-  const openPanel = (container: HTMLElement) => {
+  const openPanel = async (user: ReturnType<typeof userEvent.setup>, container: HTMLElement) => {
     const trigger = getTrigger(container)
-    if (trigger)
-      fireEvent.click(trigger)
+    expect(trigger).toBeInTheDocument()
+    await user.click(trigger!)
+    return screen.findByRole('listbox')
+  }
+
+  const expectPanelClosed = async (trigger: HTMLElement | null) => {
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute('data-popup-open')
+    })
   }
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderChip()
 
-      expect(screen.getByText('All Items')).toBeInTheDocument()
+      expect(screen.getByText('All Items'))!.toBeInTheDocument()
     })
 
     it('should display current selected item name', () => {
       renderChip({ value: 'active' })
 
-      expect(screen.getByText('Active')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Active' }))!.toBeInTheDocument()
     })
 
     it('should display empty content when value does not match any item', () => {
@@ -76,7 +89,7 @@ describe('Chip', () => {
   describe('Props', () => {
     it('should update displayed item name when value prop changes', () => {
       const { rerender } = renderChip({ value: 'all' })
-      expect(screen.getByText('All Items')).toBeInTheDocument()
+      expect(screen.getByText('All Items'))!.toBeInTheDocument()
 
       rerender(
         <Chip
@@ -86,27 +99,41 @@ describe('Chip', () => {
           onClear={onClear}
         />,
       )
-      expect(screen.getByText('Archived')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Archived' }))!.toBeInTheDocument()
+    })
+
+    it('should use triggerName only for the closed trigger label', async () => {
+      const { container, user } = renderChip({
+        items: [
+          { value: 'all', name: 'All Items', triggerName: 'Item Types' },
+          { value: 'active', name: 'Active' },
+        ],
+        value: 'all',
+      })
+
+      expect(screen.getByRole('combobox', { name: 'Item Types' }))!.toBeInTheDocument()
+
+      await openPanel(user, container)
+
+      expect(await screen.findByRole('option', { name: 'All Items' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Item Types' })).not.toBeInTheDocument()
     })
 
     it('should show left icon by default', () => {
       const { container } = renderChip()
 
-      // The filter icon should be visible
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
+      const icon = container.querySelector('.i-ri-filter-3-line')
+      expect(icon).toBeInTheDocument()
+      expect(icon).toHaveAttribute('aria-hidden')
     })
 
     it('should hide left icon when showLeftIcon is false', () => {
-      renderChip({ showLeftIcon: false })
+      renderChip({ showLeftIcon: false, value: '' })
 
       // When showLeftIcon is false, there should be no filter icon before the text
-      const textElement = screen.getByText('All Items')
-      const parent = textElement.closest('div[data-state]')
-      const icons = parent?.querySelectorAll('svg')
-
-      // Should only have the arrow icon, not the filter icon
-      expect(icons?.length).toBe(1)
+      const trigger = getTrigger(document.body)
+      expect(trigger?.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
+      expect(trigger?.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
 
     it('should render custom left icon', () => {
@@ -114,7 +141,8 @@ describe('Chip', () => {
 
       renderChip({ leftIcon: <CustomIcon /> })
 
-      expect(screen.getByTestId('custom-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-icon'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-icon').closest('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
     it('should apply custom className to trigger', () => {
@@ -123,125 +151,108 @@ describe('Chip', () => {
       const { container } = renderChip({ className: customClass })
 
       const chipElement = container.querySelector(`.${customClass}`)
-      expect(chipElement).toBeInTheDocument()
+      expect(chipElement)!.toBeInTheDocument()
     })
 
-    it('should apply custom panelClassName to dropdown panel', () => {
+    it('should apply custom panelClassName to dropdown panel', async () => {
       const customPanelClass = 'custom-panel-class'
 
-      const { container } = renderChip({ panelClassName: customPanelClass })
-      openPanel(container)
+      const { container, user } = renderChip({ panelClassName: customPanelClass })
+      await openPanel(user, container)
 
       // Panel is rendered in a portal, so check document.body
       const panel = document.body.querySelector(`.${customPanelClass}`)
-      expect(panel).toBeInTheDocument()
+      expect(panel)!.toBeInTheDocument()
     })
   })
 
   describe('State Management', () => {
-    it('should toggle dropdown panel on trigger click', () => {
-      const { container } = renderChip()
+    it('should toggle dropdown panel on trigger click', async () => {
+      const { container, user } = renderChip()
 
-      // Initially closed - check data-state attribute
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute('data-popup-open')
 
-      // Open panel
-      openPanel(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
-      // Panel items should be visible
-      expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
+      const listbox = await openPanel(user, container)
+      expect(trigger).toHaveAttribute('data-popup-open')
+      expect(within(listbox).getByRole('option', { name: 'All Items' })).toBeInTheDocument()
 
-      // Close panel
       if (trigger)
-        fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+        await user.click(trigger)
+      await expectPanelClosed(trigger)
     })
 
-    it('should close panel after selecting an item', () => {
-      const { container } = renderChip()
+    it('should close panel after selecting an item', async () => {
+      const { container, user } = renderChip()
 
-      openPanel(container)
+      const listbox = await openPanel(user, container)
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+      expect(trigger).toHaveAttribute('data-popup-open')
 
-      // Click on an item in the dropdown panel
-      const activeItems = screen.getAllByText('Active')
-      // The second one should be in the dropdown
-      fireEvent.click(activeItems[activeItems.length - 1])
+      await user.click(within(listbox).getByRole('option', { name: 'Active' }))
 
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      await expectPanelClosed(trigger)
     })
   })
 
   describe('Event Handlers', () => {
-    it('should call onSelect with correct item when item is clicked', () => {
-      const { container } = renderChip()
+    it('should call onSelect with correct item when item is clicked', async () => {
+      const { container, user } = renderChip()
 
-      openPanel(container)
-      // Get all "Active" texts and click the one in the dropdown (should be the last one)
-      const activeItems = screen.getAllByText('Active')
-      fireEvent.click(activeItems[activeItems.length - 1])
+      const listbox = await openPanel(user, container)
+      await user.click(within(listbox).getByRole('option', { name: 'Active' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
       expect(onSelect).toHaveBeenCalledWith(items[1])
     })
 
-    it('should call onClear when clear button is clicked', () => {
-      const { container } = renderChip({ value: 'active' })
+    it('should call onClear when clear button is clicked', async () => {
+      const { user } = renderChip({ value: 'active' })
 
-      // Find the close icon (last SVG in the trigger) and click its parent
-      const trigger = getTrigger(container)
-      const svgs = trigger?.querySelectorAll('svg')
-      // The close icon should be the last SVG element
-      const closeIcon = svgs?.[svgs.length - 1]
-      const clearButton = closeIcon?.parentElement
+      const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
+      expect(clearButton).toHaveAccessibleName(/Active/)
+      expect(clearButton.querySelector('.i-ri-close-circle-fill')).toHaveAttribute('aria-hidden')
 
-      expect(clearButton).toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      await user.click(clearButton)
 
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
-    it('should stop event propagation when clear button is clicked', () => {
-      const { container } = renderChip({ value: 'active' })
+    it('should stop event propagation when clear button is clicked', async () => {
+      const { container, user } = renderChip({ value: 'active' })
 
       const trigger = getTrigger(container)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute('data-popup-open')
 
-      // Find the close icon (last SVG) and click its parent
-      const svgs = trigger?.querySelectorAll('svg')
-      const closeIcon = svgs?.[svgs.length - 1]
-      const clearButton = closeIcon?.parentElement
+      const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
 
-      if (clearButton)
-        fireEvent.click(clearButton)
+      await user.click(clearButton)
 
-      // Panel should remain closed
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute('data-popup-open')
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
-    it('should handle multiple rapid clicks on trigger', () => {
-      const { container } = renderChip()
+    it('should handle multiple rapid clicks on trigger', async () => {
+      const { container, user } = renderChip()
 
       const trigger = getTrigger(container)
 
-      // Click 1: open
       if (trigger)
-        fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+        await user.click(trigger)
+      expect(await screen.findByRole('listbox')).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('data-popup-open')
 
-      // Click 2: close
       if (trigger)
-        fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+        await user.click(trigger)
+      await expectPanelClosed(trigger)
 
-      // Click 3: open again
       if (trigger)
-        fireEvent.click(trigger)
-      expect(trigger).toHaveAttribute('data-state', 'open')
+        await user.click(trigger)
+      expect(await screen.findByRole('listbox')).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('data-popup-open')
     })
   })
 
@@ -249,17 +260,13 @@ describe('Chip', () => {
     it('should show arrow down icon when no value is selected', () => {
       const { container } = renderChip({ value: '' })
 
-      // Should have SVG icons (filter icon and arrow down icon)
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
 
     it('should show clear button when value is selected', () => {
       const { container } = renderChip({ value: 'active' })
 
-      // When value is selected, there should be an icon (the close icon)
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-close-circle-fill')).toBeInTheDocument()
     })
 
     it('should not show clear button when no value is selected', () => {
@@ -267,56 +274,43 @@ describe('Chip', () => {
 
       const trigger = getTrigger(container)
 
-      // When value is empty, the trigger should only have 2 SVGs (filter icon + arrow)
-      // When value is selected, it would have 2 SVGs (filter icon + close icon)
-      const svgs = trigger?.querySelectorAll('svg')
-      // Arrow icon should be present, close icon should not
-      expect(svgs?.length).toBe(2)
+      expect(trigger?.querySelector('.i-ri-filter-3-line')).toBeInTheDocument()
+      expect(trigger?.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-close-circle-fill')).not.toBeInTheDocument()
 
       // Verify onClear hasn't been called
       expect(onClear).not.toHaveBeenCalled()
     })
 
-    it('should show dropdown content only when panel is open', () => {
-      const { container } = renderChip()
+    it('should show dropdown content only when panel is open', async () => {
+      const { container, user } = renderChip()
 
       const trigger = getTrigger(container)
 
-      // Closed by default
-      expect(trigger).toHaveAttribute('data-state', 'closed')
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute('data-popup-open')
 
-      openPanel(container)
-      expect(trigger).toHaveAttribute('data-state', 'open')
-      // Items should be duplicated (once in trigger, once in panel)
-      expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
+      const listbox = await openPanel(user, container)
+      expect(trigger).toHaveAttribute('data-popup-open')
+      expect(within(listbox).getByRole('option', { name: 'All Items' })).toBeInTheDocument()
     })
 
-    it('should show check icon on selected item in dropdown', () => {
-      const { container } = renderChip({ value: 'active' })
+    it('should show check icon on selected item in dropdown', async () => {
+      const { container, user } = renderChip({ value: 'active' })
 
-      openPanel(container)
+      const listbox = await openPanel(user, container)
 
-      // Find the dropdown panel items
-      const allActiveTexts = screen.getAllByText('Active')
-      // The dropdown item should be the last one
-      const dropdownItem = allActiveTexts[allActiveTexts.length - 1]
-      const parentContainer = dropdownItem.parentElement
-
-      // The check icon should be a sibling within the parent
-      const checkIcon = parentContainer?.querySelector('svg')
-      expect(checkIcon).toBeInTheDocument()
+      expect(within(listbox).getByRole('option', { name: 'Active' })).toHaveAttribute('aria-selected', 'true')
     })
 
-    it('should render all items in dropdown when open', () => {
-      const { container } = renderChip()
+    it('should render all items in dropdown when open', async () => {
+      const { container, user } = renderChip()
 
-      openPanel(container)
+      const listbox = await openPanel(user, container)
 
-      // Each item should appear at least twice (once in potential selected state, once in dropdown)
-      // Use getAllByText to handle multiple occurrences
-      expect(screen.getAllByText('All Items').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Active').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Archived').length).toBeGreaterThan(0)
+      expect(within(listbox).getByRole('option', { name: 'All Items' })).toBeInTheDocument()
+      expect(within(listbox).getByRole('option', { name: 'Active' })).toBeInTheDocument()
+      expect(within(listbox).getByRole('option', { name: 'Archived' })).toBeInTheDocument()
     })
   })
 
@@ -325,68 +319,77 @@ describe('Chip', () => {
       const { container } = renderChip({ items: [], value: '' })
 
       // Trigger should still render
-      const trigger = container.querySelector('[data-state]')
-      expect(trigger).toBeInTheDocument()
+      const trigger = getTrigger(container)
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should handle value not in items list', () => {
       const { container } = renderChip({ value: 'nonexistent' })
 
       const trigger = getTrigger(container)
-      expect(trigger).toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
 
       // The trigger should not display any item name text
       expect(trigger?.textContent?.trim()).toBeFalsy()
+      expect(screen.queryByRole('button', { name: /common\.operation\.clear/ })).not.toBeInTheDocument()
     })
 
-    it('should allow selecting already selected item', () => {
-      const { container } = renderChip({ value: 'active' })
+    it('should allow selecting already selected item', async () => {
+      const { container, user } = renderChip({ value: 'active' })
 
-      openPanel(container)
+      const listbox = await openPanel(user, container)
 
-      // Click on the already selected item in the dropdown
-      const activeItems = screen.getAllByText('Active')
-      fireEvent.click(activeItems[activeItems.length - 1])
+      await user.click(within(listbox).getByRole('option', { name: 'Active' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
       expect(onSelect).toHaveBeenCalledWith(items[1])
     })
 
-    it('should handle numeric values', () => {
+    it('should handle numeric values', async () => {
       const numericItems: Item[] = [
         { value: 1, name: 'First' },
         { value: 2, name: 'Second' },
         { value: 3, name: 'Third' },
       ]
 
-      const { container } = renderChip({ value: 2, items: numericItems })
+      const { container, user } = renderChip({ value: 2, items: numericItems })
 
-      expect(screen.getByText('Second')).toBeInTheDocument()
+      expect(screen.getByText('Second'))!.toBeInTheDocument()
 
       // Open panel and select Third
-      openPanel(container)
+      const listbox = await openPanel(user, container)
 
-      const thirdItems = screen.getAllByText('Third')
-      fireEvent.click(thirdItems[thirdItems.length - 1])
+      await user.click(within(listbox).getByRole('option', { name: 'Third' }))
 
       expect(onSelect).toHaveBeenCalledWith(numericItems[2])
     })
 
-    it('should handle items with additional properties', () => {
+    it('should treat numeric zero as a selected value', () => {
+      const numericItems: Item[] = [
+        { value: 0, name: 'Zero' },
+        { value: 1, name: 'One' },
+      ]
+
+      renderChip({ value: 0, items: numericItems })
+
+      expect(screen.getByRole('combobox', { name: 'Zero' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.clear/ })).toBeInTheDocument()
+    })
+
+    it('should handle items with additional properties', async () => {
       const itemsWithExtra: Item[] = [
         { value: 'a', name: 'Item A', customProp: 'extra1' },
         { value: 'b', name: 'Item B', customProp: 'extra2' },
       ]
 
-      const { container } = renderChip({ value: 'a', items: itemsWithExtra })
+      const { container, user } = renderChip({ value: 'a', items: itemsWithExtra })
 
-      expect(screen.getByText('Item A')).toBeInTheDocument()
+      expect(screen.getByText('Item A'))!.toBeInTheDocument()
 
       // Open panel and select Item B
-      openPanel(container)
+      const listbox = await openPanel(user, container)
 
-      const itemBs = screen.getAllByText('Item B')
-      fireEvent.click(itemBs[itemBs.length - 1])
+      await user.click(within(listbox).getByRole('option', { name: 'Item B' }))
 
       expect(onSelect).toHaveBeenCalledWith(itemsWithExtra[1])
     })

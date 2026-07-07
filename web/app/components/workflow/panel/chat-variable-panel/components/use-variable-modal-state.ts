@@ -11,6 +11,7 @@ import {
   getEditorMinHeight,
   getPlaceholderByType,
   getTypeChangeState,
+  MAX_DESCRIPTION_LENGTH,
   parseEditorContent,
   validateVariableName,
 } from './variable-modal.helpers'
@@ -193,6 +194,17 @@ export const useVariableModalState = ({
 
     if (state.type === ChatVarType.Object && state.objectValue.some(item => !item.key && item.value !== undefined && item.value !== '')) {
       notify({ type: 'error', message: t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }) })
+      return
+    }
+
+    if (state.description.length > MAX_DESCRIPTION_LENGTH) {
+      notify({
+        type: 'error',
+        message: t('chatVariable.modal.descriptionTooLong', {
+          maxLength: MAX_DESCRIPTION_LENGTH,
+          ns: 'workflow',
+        }),
+      })
       return
     }
 

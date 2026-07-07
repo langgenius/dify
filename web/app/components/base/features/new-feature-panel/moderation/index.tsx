@@ -1,4 +1,5 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
@@ -7,15 +8,14 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
-import { Button } from '@/app/components/base/ui/button'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCodeBasedExtensions } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const Moderation = ({
   disabled,
@@ -127,7 +127,7 @@ const Moderation = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-          <ContentModeration className="h-4 w-4 text-text-primary-on-surface" />
+          <ContentModeration className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={t('feature.moderation.title', { ns: 'appDebug' })}
@@ -158,7 +158,7 @@ const Moderation = ({
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenModerationSettingModal} disabled={disabled}>
-                <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                <RiEqualizer2Line className="mr-1 size-4" />
                 {t('operation.settings', { ns: 'common' })}
               </Button>
             )}

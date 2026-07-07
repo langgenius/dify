@@ -9,7 +9,8 @@ from models import Account
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
-from services.app_service import AppService
+from services.app_ref_service import AnnotationRef
+from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -81,21 +82,22 @@ class TestAnnotationService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Setup app creation arguments
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         # Create app
         app_service = AppService()
@@ -117,6 +119,10 @@ class TestAnnotationService:
             mock_external_service_dependencies["current_user"],
             tenant_id,
         )
+
+    @staticmethod
+    def _annotation_ref(app, annotation_id: str) -> AnnotationRef:
+        return AnnotationRef(tenant_id=app.tenant_id, app_id=app.id, annotation_id=annotation_id)
 
     def _create_test_conversation(self, db_session_with_containers: Session, app, account, fake):
         """
@@ -280,7 +286,11 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id)
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(
+            updated_args,
+            self._annotation_ref(app, annotation.id),
+            db_session_with_containers,
+        )
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
@@ -567,7 +577,7 @@ class TestAnnotationService:
         annotation_id = annotation.id
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(self._annotation_ref(app, annotation_id), db_session_with_containers)
 
         # Verify annotation was deleted
 
@@ -580,22 +590,27 @@ class TestAnnotationService:
         # Note: In this test, no annotation setting exists, so task should not be called
         mock_external_service_dependencies["delete_task"].delay.assert_not_called()
 
-    def test_delete_app_annotation_app_not_found(
+    def test_delete_app_annotation_annotation_not_found_for_wrong_app(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test deletion of app annotation when app is not found.
+        Test deletion of app annotation when the annotation does not belong to the supplied app ref.
         """
         fake = Faker()
         non_existent_app_id = fake.uuid4()
         annotation_id = fake.uuid4()
+        app_ref = AnnotationRef(
+            tenant_id=fake.uuid4(),
+            app_id=non_existent_app_id,
+            annotation_id=annotation_id,
+        )
 
         # Mock random current user to avoid dependency issues
         self._mock_current_user(mock_external_service_dependencies, fake.uuid4(), fake.uuid4())
 
-        # Try to delete annotation with non-existent app
-        with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.delete_app_annotation(non_existent_app_id, annotation_id)
+        # Try to delete annotation with a ref that cannot match any annotation row
+        with pytest.raises(NotFound, match="Annotation not found"):
+            AppAnnotationService.delete_app_annotation(app_ref, db_session_with_containers)
 
     def test_delete_app_annotation_annotation_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -609,7 +624,10 @@ class TestAnnotationService:
 
         # Try to delete non-existent annotation
         with pytest.raises(NotFound, match="Annotation not found"):
-            AppAnnotationService.delete_app_annotation(app.id, non_existent_annotation_id)
+            AppAnnotationService.delete_app_annotation(
+                self._annotation_ref(app, non_existent_annotation_id),
+                db_session_with_containers,
+            )
 
     def test_enable_app_annotation_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -728,7 +746,9 @@ class TestAnnotationService:
 
         # Get hit histories
         hit_histories, total = AppAnnotationService.get_annotation_hit_histories(
-            app.id, annotation.id, page=1, limit=10
+            self._annotation_ref(app, annotation.id),
+            page=1,
+            limit=10,
         )
 
         # Verify results
@@ -1225,7 +1245,11 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id)
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(
+            updated_args,
+            self._annotation_ref(app, annotation.id),
+            db_session_with_containers,
+        )
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
@@ -1295,7 +1319,7 @@ class TestAnnotationService:
         mock_external_service_dependencies["delete_task"].delay.reset_mock()
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(self._annotation_ref(app, annotation_id), db_session_with_containers)
 
         # Verify annotation was deleted
         deleted_annotation = (

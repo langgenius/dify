@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
@@ -10,7 +11,6 @@ import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
-import { Button } from '@/app/components/base/ui/button'
 import { TransferMethod } from '../../base/text-generation/types'
 import { useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -25,15 +25,16 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 
-type Props = {
+type Props = Readonly<{
   onRun: () => void
-}
+}>
 
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
+  const canRunWorkflow = useHooksStore(s => s.accessControl.canRun)
   const nodes = useNodes<StartNodeType>()
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -51,7 +52,7 @@ const InputsPanel = ({ onRun }: Props) => {
         if (variable.default)
           result[variable.variable] = variable.default
         if (inputs[variable.variable] !== undefined)
-          result[variable.variable] = inputs[variable.variable]
+          result[variable.variable] = inputs[variable.variable]!
       })
     }
     return result
@@ -92,16 +93,19 @@ const InputsPanel = ({ onRun }: Props) => {
     }
   }
 
+  const canRun = useMemo(() => {
+    const canUploadReady = !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
+    return canRunWorkflow && canUploadReady
+  }, [canRunWorkflow, files])
+
   const doRun = useCallback(() => {
+    if (!canRun)
+      return
     if (!checkInputsForm(initialInputs, variables as any))
       return
     onRun()
     handleRun({ inputs: getProcessedInputs(initialInputs, variables as any), files })
-  }, [files, handleRun, initialInputs, onRun, variables, checkInputsForm])
-
-  const canRun = useMemo(() => {
-    return !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
-  }, [files])
+  }, [canRun, files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   return (
     <>

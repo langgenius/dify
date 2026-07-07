@@ -1,18 +1,20 @@
-from typing import Any
-
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
+from configs import dify_config
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.error import AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
-from services.account_service import RegisterService
+from models.account import TenantAccountJoin, TenantAccountRole
+from services.account_service import RegisterService, TenantService
+from services.billing_service import BillingService
 
 
 class ActivateCheckQuery(BaseModel):
@@ -25,50 +27,71 @@ class ActivatePayload(BaseModel):
     workspace_id: str | None = Field(default=None)
     email: EmailStr | None = Field(default=None)
     token: str
-    name: str = Field(..., max_length=30)
-    interface_language: str = Field(...)
-    timezone: str = Field(...)
+    name: str | None = Field(default=None, max_length=30)
+    interface_language: str | None = Field(default=None)
+    timezone: str | None = Field(default=None)
 
     @field_validator("interface_language")
     @classmethod
-    def validate_lang(cls, value: str) -> str:
+    def validate_lang(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return supported_language(value)
 
     @field_validator("timezone")
     @classmethod
-    def validate_tz(cls, value: str) -> str:
+    def validate_tz(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return timezone(value)
-
-
-class ActivationCheckResponse(BaseModel):
-    is_valid: bool = Field(description="Whether token is valid")
-    data: dict[str, Any] | None = Field(default=None, description="Activation data if valid")
 
 
 class ActivationResponse(BaseModel):
     result: str = Field(description="Operation result")
 
 
-register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse)
+class ActivationCheckData(BaseModel):
+    workspace_name: str | None
+    workspace_id: str | None
+    email: str | None
+    account_status: str | None = None
+    requires_setup: bool | None = None
+
+
+class ActivationCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether token is valid")
+    data: ActivationCheckData | None = Field(default=None, description="Activation data if valid")
+
+
+register_schema_models(
+    console_ns,
+    ActivateCheckQuery,
+    ActivatePayload,
+    ActivationCheckData,
+    ActivationCheckResponse,
+    ActivationResponse,
+)
 
 
 @console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
-    @console_ns.expect(console_ns.models[ActivateCheckQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ActivateCheckQuery))
     @console_ns.response(
         200,
         "Success",
         console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
         token = args.token
 
-        invitation = RegisterService.get_invitation_with_case_fallback(workspaceId, args.email, token)
+        invitation = RegisterService.get_invitation_with_case_fallback(
+            workspaceId, args.email, token, session=db.session
+        )
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
@@ -82,9 +105,20 @@ class ActivateCheckApi(Resource):
             workspace_name = tenant.name if tenant else None
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None
+            account = invitation.get("account")
+            account_status = account.status if account else None
+            requires_setup = data.get("requires_setup")
+            if requires_setup is None:
+                requires_setup = account_status == AccountStatus.PENDING
             return {
                 "is_valid": invitation is not None,
-                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
+                "data": {
+                    "workspace_name": workspace_name,
+                    "workspace_id": workspace_id,
+                    "email": invitee_email,
+                    "account_status": account_status,
+                    "requires_setup": requires_setup,
+                },
             }
         else:
             return {"is_valid": False}
@@ -105,20 +139,55 @@ class ActivateApi(Resource):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None
-        invitation = RegisterService.get_invitation_with_case_fallback(args.workspace_id, args.email, args.token)
+        invitation = RegisterService.get_invitation_with_case_fallback(
+            args.workspace_id, args.email, args.token, session=db.session
+        )
         if invitation is None:
             raise AlreadyActivateError()
 
+        account = invitation["account"]
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(account.email):
+            raise AccountInFreezeError()
+
+        tenant = invitation["tenant"]
+        raw_role = invitation["data"].get("role")
+        try:
+            role = TenantAccountRole(raw_role) if raw_role else TenantAccountRole.NORMAL
+        except ValueError:
+            role = TenantAccountRole.NORMAL
+        if not TenantAccountRole.is_non_owner_role(role):
+            role = TenantAccountRole.NORMAL
+
+        membership_id = db.session.scalar(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account.id,
+            )
+        )
+
+        requires_setup = invitation["data"].get("requires_setup")
+        if requires_setup is None:
+            requires_setup = account.status == AccountStatus.PENDING
+
+        setup_fields: tuple[str, str, str] | None = None
+        if requires_setup:
+            if not args.name or not args.interface_language or not args.timezone:
+                raise AlreadyActivateError()
+            setup_fields = (args.name, args.interface_language, args.timezone)
+
         RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
-        account = invitation["account"]
-        account.name = args.name
+        if membership_id is None:
+            TenantService.create_tenant_member(tenant, account, db.session, role=role)
 
-        account.interface_language = args.interface_language
-        account.timezone = args.timezone
-        account.interface_theme = "light"
-        account.status = AccountStatus.ACTIVE
-        account.initialized_at = naive_utc_now()
-        db.session.commit()
+        if setup_fields:
+            account.name = setup_fields[0]
+            account.interface_language = setup_fields[1]
+            account.timezone = setup_fields[2]
+            account.interface_theme = "light"
+            account.status = AccountStatus.ACTIVE
+            account.initialized_at = naive_utc_now()
+
+        TenantService.switch_tenant(account, tenant.id, session=db.session)
 
         return {"result": "success"}

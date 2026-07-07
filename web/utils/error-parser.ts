@@ -35,7 +35,7 @@ export const parsePluginErrorMessage = async (error: any): Promise<string> => {
 
   if (match) {
     try {
-      const errorData = JSON.parse(match[1])
+      const errorData = JSON.parse(match[1]!)
       // Return the inner message if exists
       if (errorData.message)
         return errorData.message

@@ -1,5 +1,6 @@
 'use client'
 import type { VersionHistory } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -7,8 +8,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
@@ -31,6 +34,7 @@ export type VersionHistoryPanelProps = {
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
+
 export const VersionHistoryPanel = ({
   getVersionListUrl,
   deleteVersionUrl,
@@ -42,8 +46,11 @@ export const VersionHistoryPanel = ({
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
+  const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const { plan, enableBilling } = useProviderContext()
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -53,6 +60,7 @@ export const VersionHistoryPanel = ({
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
@@ -106,10 +114,14 @@ export const VersionHistoryPanel = ({
     setIsOnlyShowNamedVersions(false)
   }, [])
 
-  const handleClickMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+  const handleClickActionMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
     setOperatedItem(item)
     switch (operation) {
       case VersionHistoryContextMenuOptions.restore:
+        if (!canUseWorkflowVersionAction) {
+          setIsRestorePlanUpgradeModalOpen(true)
+          break
+        }
         setRestoreConfirmOpen(true)
         break
       case VersionHistoryContextMenuOptions.edit:
@@ -123,10 +135,16 @@ export const VersionHistoryPanel = ({
         toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
+        if (!canUseWorkflowVersionAction) {
+          setIsRestorePlanUpgradeModalOpen(true)
+          break
+        }
+        if (!canImportExportDSL)
+          return
         handleExportDSL?.(false, item.id)
         break
     }
-  }, [t, handleExportDSL])
+  }, [canUseWorkflowVersionAction, canImportExportDSL, t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
@@ -142,11 +160,56 @@ export const VersionHistoryPanel = ({
     }
   }, [])
 
+  const emitRestoreIntent = useCallback(async (item: VersionHistory) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreIntent({
+        versionId: item.id,
+        versionName: item.marked_name,
+        initiatorUserId: userProfile.id,
+        initiatorName: userProfile.name,
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore intent:', error)
+    }
+  }, [userProfile.id, userProfile.name])
+
+  const emitRestoreComplete = useCallback(async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    try {
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreComplete({
+        versionId: item.id,
+        success,
+        ...(errorMessage ? { error: errorMessage } : {}),
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore complete:', error)
+    }
+  }, [])
+
+  const emitWorkflowUpdate = useCallback(async () => {
+    try {
+      const appId = configsMap?.flowId
+      if (!appId)
+        return
+
+      const { collaborationManager } = await import('../../collaboration/core/collaboration-manager')
+      collaborationManager.emitWorkflowUpdate(appId)
+    }
+    catch (error) {
+      console.error('Failed to emit workflow update:', error)
+    }
+  }, [configsMap?.flowId])
+
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
   const handleRestore = useCallback(async (item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
+    await emitRestoreIntent(item)
+
     try {
       await restoreWorkflow(restoreVersionUrl(item.id))
       setCurrentVersion(item)
@@ -156,14 +219,17 @@ export const VersionHistoryPanel = ({
       toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
       deleteAllInspectVars()
       invalidAllLastRun()
+      await emitRestoreComplete(item, true)
+      await emitWorkflowUpdate()
     }
     catch {
       toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      await emitRestoreComplete(item, false, 'restore failed')
     }
     finally {
       resetWorkflowVersionHistory()
     }
-  }, [setShowWorkflowVersionHistoryPanel, setCurrentVersion, workflowStore, restoreWorkflow, restoreVersionUrl, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
+  }, [setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, setCurrentVersion, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 
@@ -210,7 +276,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -219,10 +285,10 @@ export const VersionHistoryPanel = ({
         />
         <Divider type="vertical" className="mx-1 h-3.5" />
         <div
-          className="flex h-6 w-6 cursor-pointer items-center justify-center p-0.5"
+          className="flex size-6 cursor-pointer items-center justify-center p-0.5"
           onClick={handleClose}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </div>
       </div>
       <div className="flex h-0 flex-1 flex-col">
@@ -243,13 +309,14 @@ export const VersionHistoryPanel = ({
                           currentVersion={currentVersion}
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
-                          handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                          handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
+                          canImportExportDSL={canImportExportDSL}
                           isLast={isLast}
                         />
                       )
                     })
                   ))}
-                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0]!.items.length) && (
                     <Empty onResetFilter={handleResetFilter} />
                   )}
                 </>
@@ -263,10 +330,10 @@ export const VersionHistoryPanel = ({
             >
               <div className="item-center flex justify-center p-0.5">
                 {isFetching
-                  ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
-                  : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
+                  ? <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
+                  : <RiArrowDownDoubleLine className="size-3.5 text-text-accent" />}
               </div>
-              <div className="system-xs-medium-uppercase py-px text-text-accent">
+              <div className="py-px system-xs-medium-uppercase text-text-accent">
                 {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>
@@ -279,6 +346,14 @@ export const VersionHistoryPanel = ({
           versionInfo={operatedItem!}
           onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.restore)}
           onRestore={handleRestore}
+        />
+      )}
+      {isRestorePlanUpgradeModalOpen && (
+        <PlanUpgradeModal
+          show
+          onClose={() => setIsRestorePlanUpgradeModalOpen(false)}
+          title={t('upgrade.workflowRestore.title', { ns: 'billing' })!}
+          description={t('upgrade.workflowRestore.description', { ns: 'billing' })!}
         />
       )}
       {deleteConfirmOpen && (

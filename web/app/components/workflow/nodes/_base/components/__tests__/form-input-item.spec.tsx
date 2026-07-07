@@ -6,6 +6,18 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+  }),
+}))
+
 const createSchema = (
   overrides: Partial<CredentialFormSchema & {
     _type?: FormTypeEnum

@@ -50,7 +50,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             ).all()
 
             if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
+                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                 segment_ids = [segment.id for segment in segments]
 
                 # Collect image file IDs from segment content

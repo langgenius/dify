@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { SavedMessage } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiClipboardLine,
   RiDeleteBinLine,
@@ -12,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import { toast } from '@/app/components/base/ui/toast'
 import NoData from './no-data'
 
 export type ISavedItemsProps = {
@@ -63,13 +63,13 @@ const SavedItems: FC<ISavedItemsProps> = ({
                         toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                       >
-                        <RiClipboardLine className="h-4 w-4" />
+                        <RiClipboardLine className="size-4" />
                       </ActionButton>
                       <ActionButton onClick={() => {
                         onRemove(id)
                       }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4" />
+                        <RiDeleteBinLine className="size-4" />
                       </ActionButton>
                     </div>
                   </div>

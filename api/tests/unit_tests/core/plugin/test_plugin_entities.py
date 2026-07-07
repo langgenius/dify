@@ -4,13 +4,8 @@ from enum import StrEnum
 
 import pytest
 from flask import Response
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    SystemPromptMessage,
-    ToolPromptMessage,
-    UserPromptMessage,
-)
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
@@ -31,10 +26,16 @@ from core.plugin.entities.request import (
 )
 from core.plugin.utils.http_parser import serialize_response
 from core.tools.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 
 
 class TestEndpointEntity:
-    def test_endpoint_entity_with_instance_renders_url(self, mocker):
+    def test_endpoint_entity_with_instance_renders_url(self, mocker: MockerFixture):
         mocker.patch("core.plugin.entities.endpoint.dify_config.ENDPOINT_URL_TEMPLATE", "https://dify.test/{hook_id}")
         now = datetime.datetime.now(datetime.UTC)
 

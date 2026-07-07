@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import sessionmaker
 
@@ -15,6 +14,7 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -41,6 +41,7 @@ class WorkflowToolManageService:
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
         labels: list[str] | None = None,
+        import_id: str = "",
     ):
         # check if the name is unique
         existing_workflow_tool_provider: WorkflowToolProvider | None = None
@@ -92,7 +93,8 @@ class WorkflowToolManageService:
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
-
+        if import_id:
+            workflow_tool_provider.id = import_id
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiBookmark3Line,
   RiClipboardLine,
@@ -16,7 +17,6 @@ import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import { toast } from '@/app/components/base/ui/toast'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { getCopyContent, MAX_GENERATION_DEPTH } from './utils'
 
@@ -79,7 +79,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
             title={t('operation.log', { ns: 'common' })}
             onClick={onOpenLogModal}
           >
-            <RiFileList3Line className="h-4 w-4" />
+            <RiFileList3Line className="size-4" />
           </ActionButton>
         </div>
       )}
@@ -92,7 +92,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
             title={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
             onClick={onMoreLikeThis}
           >
-            <RiSparklingLine className="h-4 w-4" />
+            <RiSparklingLine className="size-4" />
           </ActionButton>
         )}
         {isShowTextToSpeech && !isTryApp && (
@@ -115,7 +115,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="h-4 w-4" />
+            <RiClipboardLine className="size-4" />
           </ActionButton>
         )}
         {isInWebApp && isError && (
@@ -124,7 +124,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
             title={t('generation.batchFailed.retry', { ns: 'share' })}
             onClick={onRetry}
           >
-            <RiResetLeftLine className="h-4 w-4" />
+            <RiResetLeftLine className="size-4" />
           </ActionButton>
         )}
         {isInWebApp && !isWorkflow && !isTryApp && (
@@ -134,7 +134,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
             title={t('operation.save', { ns: 'common' })}
             onClick={() => { onSave?.(messageId as string) }}
           >
-            <RiBookmark3Line className="h-4 w-4" />
+            <RiBookmark3Line className="size-4" />
           </ActionButton>
         )}
       </div>
@@ -147,14 +147,14 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
                 title={t('operation.agree', { ns: 'appDebug' })}
                 onClick={() => onFeedback?.({ rating: 'like' })}
               >
-                <RiThumbUpLine className="h-4 w-4" />
+                <RiThumbUpLine className="size-4" />
               </ActionButton>
               <ActionButton
                 aria-label={t('operation.disagree', { ns: 'appDebug' })}
                 title={t('operation.disagree', { ns: 'appDebug' })}
                 onClick={() => onFeedback?.({ rating: 'dislike' })}
               >
-                <RiThumbDownLine className="h-4 w-4" />
+                <RiThumbDownLine className="size-4" />
               </ActionButton>
             </>
           )}
@@ -165,7 +165,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               title={t('operation.cancelAgree', { ns: 'appDebug' })}
               onClick={() => onFeedback?.({ rating: null })}
             >
-              <RiThumbUpLine className="h-4 w-4" />
+              <RiThumbUpLine className="size-4" />
             </ActionButton>
           )}
           {feedback?.rating === 'dislike' && (
@@ -175,7 +175,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               title={t('operation.cancelDisagree', { ns: 'appDebug' })}
               onClick={() => onFeedback?.({ rating: null })}
             >
-              <RiThumbDownLine className="h-4 w-4" />
+              <RiThumbDownLine className="size-4" />
             </ActionButton>
           )}
         </div>

@@ -43,7 +43,7 @@ describe('OptionListItem', () => {
         </OptionListItem>,
       )
 
-      const item = screen.getByRole('listitem')
+      const item = screen.getByRole('button')
       expect(item).toHaveClass('bg-components-button-ghost-bg-hover')
     })
 
@@ -54,7 +54,7 @@ describe('OptionListItem', () => {
         </OptionListItem>,
       )
 
-      const item = screen.getByRole('listitem')
+      const item = screen.getByRole('button')
       expect(item).not.toHaveClass('bg-components-button-ghost-bg-hover')
     })
   })
@@ -100,7 +100,7 @@ describe('OptionListItem', () => {
           Clickable
         </OptionListItem>,
       )
-      fireEvent.click(screen.getByRole('listitem'))
+      fireEvent.click(screen.getByRole('button'))
 
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
@@ -111,7 +111,7 @@ describe('OptionListItem', () => {
           Item
         </OptionListItem>,
       )
-      fireEvent.click(screen.getByRole('listitem'))
+      fireEvent.click(screen.getByRole('button'))
 
       expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
     })
@@ -126,7 +126,7 @@ describe('OptionListItem', () => {
         </OptionListItem>,
       )
 
-      const item = screen.getByRole('listitem')
+      const item = screen.getByRole('button')
       fireEvent.click(item)
       fireEvent.click(item)
       fireEvent.click(item)

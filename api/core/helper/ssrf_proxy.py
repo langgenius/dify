@@ -1,5 +1,13 @@
-"""
-Proxy requests to avoid SSRF
+"""SSRF-protected HTTP client for generic outbound requests.
+
+Use this module when the URL represents a normal external HTTP interaction that
+must go through network/proxy policy exactly as requested, such as HTTP Request
+nodes, provider/API integrations, auth discovery, or custom tool calls.
+
+Do not use this directly for "remote file" retrieval. File downloads, probes,
+and metadata checks should use `core.file.remote_fetcher` instead so Dify-signed
+file URLs can be resolved through DB + storage before falling back to this SSRF
+client.
 """
 
 import logging
@@ -12,6 +20,7 @@ from pydantic import TypeAdapter, ValidationError
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from core.tools.errors import ToolSSRFError
+from graphon.http.response import HttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +51,16 @@ request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
 
-def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
+def _create_proxy_mounts(verify: bool) -> dict[str, httpx.HTTPTransport]:
+    """Build per-scheme proxy transports with the same TLS policy as the SSRF client."""
     return {
         "http://": httpx.HTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTP_URL,
+            verify=verify,
         ),
         "https://": httpx.HTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTPS_URL,
+            verify=verify,
         ),
     }
 
@@ -63,7 +75,7 @@ def _build_ssrf_client(verify: bool) -> httpx.Client:
 
     if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
         return httpx.Client(
-            mounts=_create_proxy_mounts(),
+            mounts=_create_proxy_mounts(verify=verify),
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
@@ -267,4 +279,47 @@ class SSRFProxy:
         return patch(url=url, max_retries=max_retries, **kwargs)
 
 
+def _to_graphon_http_response(response: httpx.Response) -> HttpResponse:
+    """Convert an ``httpx`` response into Graphon's transport-agnostic wrapper."""
+    return HttpResponse(
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        content=response.content,
+        url=str(response.url) if response.url else None,
+        reason_phrase=response.reason_phrase,
+        fallback_text=response.text,
+    )
+
+
+class GraphonSSRFProxy:
+    """Adapter exposing SSRF helpers behind Graphon's ``HttpClientProtocol``."""
+
+    @property
+    def max_retries_exceeded_error(self) -> type[Exception]:
+        return max_retries_exceeded_error
+
+    @property
+    def request_error(self) -> type[Exception]:
+        return request_error
+
+    def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(get(url=url, max_retries=max_retries, **kwargs))
+
+    def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(head(url=url, max_retries=max_retries, **kwargs))
+
+    def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(post(url=url, max_retries=max_retries, **kwargs))
+
+    def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(put(url=url, max_retries=max_retries, **kwargs))
+
+    def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(delete(url=url, max_retries=max_retries, **kwargs))
+
+    def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
+        return _to_graphon_http_response(patch(url=url, max_retries=max_retries, **kwargs))
+
+
 ssrf_proxy = SSRFProxy()
+graphon_ssrf_proxy = GraphonSSRFProxy()

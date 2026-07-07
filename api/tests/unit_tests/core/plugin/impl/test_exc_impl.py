@@ -1,11 +1,13 @@
 import json
 
+from pytest_mock import MockerFixture
+
 from core.plugin.impl import exc as exc_module
 from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError
 
 
 class TestPluginImplExceptions:
-    def test_plugin_daemon_error_str_contains_request_id(self, mocker):
+    def test_plugin_daemon_error_str_contains_request_id(self, mocker: MockerFixture):
         mocker.patch("core.plugin.impl.exc.get_request_id", return_value="req-123")
         error = PluginDaemonError("bad")
 
@@ -21,7 +23,7 @@ class TestPluginImplExceptions:
         assert "RateLimit" in friendly
         assert "too many" in friendly
 
-    def test_plugin_invoke_error_invalid_json_and_fallback(self, mocker):
+    def test_plugin_invoke_error_invalid_json_and_fallback(self, mocker: MockerFixture):
         err = PluginInvokeError("plain text")
 
         assert err._get_error_object() == {}
@@ -32,7 +34,7 @@ class TestPluginImplExceptions:
         err2 = PluginInvokeError("plain text")
         assert err2.get_error_message() == "plain text"
 
-    def test_plugin_invoke_error_get_error_object_handles_adapter_exception(self, mocker):
+    def test_plugin_invoke_error_get_error_object_handles_adapter_exception(self, mocker: MockerFixture):
         adapter = mocker.patch.object(exc_module, "TypeAdapter")
         adapter.return_value.validate_json.side_effect = RuntimeError("invalid")
 

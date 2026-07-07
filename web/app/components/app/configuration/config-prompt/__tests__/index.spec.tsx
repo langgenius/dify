@@ -144,8 +144,8 @@ describe('Prompt config component', () => {
     renderComponent({ onChange }, { isAdvancedMode: false })
 
     const simplePrompt = screen.getByTestId('simple-prompt-input')
-    expect(simplePrompt).toBeInTheDocument()
-    expect(simplePrompt).toHaveAttribute('data-mode', AppModeEnum.CHAT)
+    expect(simplePrompt)!.toBeInTheDocument()
+    expect(simplePrompt)!.toHaveAttribute('data-mode', AppModeEnum.CHAT)
     expect(mockSimplePromptInputProps?.promptTemplate).toBe('initial template')
     fireEvent.click(simplePrompt)
     expect(onChange).toHaveBeenCalledWith('mocked prompt', defaultPromptVariables)
@@ -171,9 +171,9 @@ describe('Prompt config component', () => {
 
     const renderedMessages = screen.getAllByTestId('advanced-message-input')
     expect(renderedMessages).toHaveLength(2)
-    expect(renderedMessages[0]).toHaveAttribute('data-context-missing', 'true')
-    fireEvent.click(screen.getAllByText('hide-context')[0])
-    expect(screen.getAllByTestId('advanced-message-input')[0]).toHaveAttribute('data-context-missing', 'false')
+    expect(renderedMessages[0])!.toHaveAttribute('data-context-missing', 'true')
+    fireEvent.click(screen.getAllByText('hide-context')[0]!)
+    expect(screen.getAllByTestId('advanced-message-input')[0])!.toHaveAttribute('data-context-missing', 'false')
   })
 
   // Chat message mutations
@@ -193,7 +193,7 @@ describe('Prompt config component', () => {
       },
     )
 
-    fireEvent.click(screen.getAllByText('change')[0])
+    fireEvent.click(screen.getAllByText('change')[0]!)
     expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
       [
         { role: PromptRole.user, text: 'updated text' },
@@ -219,7 +219,7 @@ describe('Prompt config component', () => {
       },
     )
 
-    fireEvent.click(screen.getAllByText('type')[1])
+    fireEvent.click(screen.getAllByText('type')[1]!)
     expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
       [
         { role: PromptRole.user, text: 'first' },
@@ -244,7 +244,7 @@ describe('Prompt config component', () => {
       },
     )
 
-    fireEvent.click(screen.getAllByText('delete')[0])
+    fireEvent.click(screen.getAllByText('delete')[0]!)
     expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([{ role: PromptRole.assistant, text: 'second' }])
   })
 

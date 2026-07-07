@@ -1,8 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { RiAlertFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import AgentLogItem from './agent-log-item'
-import AgentLogNav from './agent-log-nav'
+import { AgentLogNav } from './agent-log-nav'
 
 type AgentResultPanelProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]
@@ -16,7 +15,7 @@ const AgentResultPanel = ({
 }: AgentResultPanelProps) => {
   const { t } = useTranslation()
   const top = agentOrToolLogItemStack[agentOrToolLogItemStack.length - 1]
-  const list = agentOrToolLogListMap[top.message_id]
+  const list = agentOrToolLogListMap[top!.message_id]
 
   return (
     <div className="overflow-y-auto bg-background-section">
@@ -26,7 +25,7 @@ const AgentResultPanel = ({
       />
       <div className="space-y-1 p-2">
         {
-          list.map(item => (
+          list!.map(item => (
             <AgentLogItem
               key={item.message_id}
               item={item}
@@ -36,7 +35,7 @@ const AgentResultPanel = ({
         }
       </div>
       {
-        top.hasCircle && (
+        top!.hasCircle && (
           <div className="mt-1 flex items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-3 pr-2 shadow-md">
             <div
               className="absolute inset-0 rounded-xl opacity-[0.4]"
@@ -45,7 +44,7 @@ const AgentResultPanel = ({
               }}
             >
             </div>
-            <RiAlertFill className="mr-1.5 h-4 w-4 text-text-warning-secondary" />
+            <span aria-hidden className="mr-1.5 i-ri-alert-fill size-4 text-text-warning-secondary" />
             <div className="system-xs-medium text-text-primary">
               {t('circularInvocationTip', { ns: 'runLog' })}
             </div>

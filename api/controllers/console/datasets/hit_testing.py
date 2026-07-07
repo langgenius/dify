@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import Field, field_validator
+from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_models
-from fields.base import ResponseModel
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
+from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from fields.hit_testing_fields import HitTestingResponse
+from libs.helper import dump_response
 from libs.login import login_required
+from models import Account
 
 from .. import console_ns
 from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
@@ -16,94 +19,12 @@ from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
-class HitTestingDocument(ResponseModel):
-    id: str | None = None
-    data_source_type: str | None = None
-    name: str | None = None
-    doc_type: str | None = None
-    doc_metadata: Any | None = None
-
-
-class HitTestingSegment(ResponseModel):
-    id: str | None = None
-    position: int | None = None
-    document_id: str | None = None
-    content: str | None = None
-    sign_content: str | None = None
-    answer: str | None = None
-    word_count: int | None = None
-    tokens: int | None = None
-    keywords: list[str] = Field(default_factory=list)
-    index_node_id: str | None = None
-    index_node_hash: str | None = None
-    hit_count: int | None = None
-    enabled: bool | None = None
-    disabled_at: int | None = None
-    disabled_by: str | None = None
-    status: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    indexing_at: int | None = None
-    completed_at: int | None = None
-    error: str | None = None
-    stopped_at: int | None = None
-    document: HitTestingDocument | None = None
-
-    @field_validator("disabled_at", "created_at", "indexing_at", "completed_at", "stopped_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
-
-
-class HitTestingChildChunk(ResponseModel):
-    id: str | None = None
-    content: str | None = None
-    position: int | None = None
-    score: float | None = None
-
-
-class HitTestingFile(ResponseModel):
-    id: str | None = None
-    name: str | None = None
-    size: int | None = None
-    extension: str | None = None
-    mime_type: str | None = None
-    source_url: str | None = None
-
-
-class HitTestingRecord(ResponseModel):
-    segment: HitTestingSegment | None = None
-    child_chunks: list[HitTestingChildChunk] = Field(default_factory=list)
-    score: float | None = None
-    tsne_position: Any | None = None
-    files: list[HitTestingFile] = Field(default_factory=list)
-    summary: str | None = None
-
-
-class HitTestingResponse(ResponseModel):
-    query: str
-    records: list[HitTestingRecord] = Field(default_factory=list)
-
-
-register_schema_models(
-    console_ns,
-    HitTestingPayload,
-    HitTestingDocument,
-    HitTestingSegment,
-    HitTestingChildChunk,
-    HitTestingFile,
-    HitTestingRecord,
-    HitTestingResponse,
-)
+register_schema_models(console_ns, HitTestingPayload)
+register_response_schema_models(console_ns, HitTestingResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
@@ -123,12 +44,20 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id):
+    @with_current_tenant_id
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @with_session
+    def post(
+        self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID
+    ) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
-        dataset = self.get_and_validate_dataset(dataset_id_str)
-        payload = HitTestingPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
+        args = self.parse_args(console_ns.payload)
         self.hit_testing_args_check(args)
 
-        return HitTestingResponse.model_validate(self.perform_hit_testing(dataset, args)).model_dump(mode="json")
+        return dump_response(
+            HitTestingResponse,
+            self.perform_hit_testing(session, dataset, args, current_user, current_tenant_id),
+        )

@@ -1,12 +1,12 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
@@ -164,8 +164,8 @@ const ChangePasswordForm = () => {
       {showSuccess && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className="h-6 w-6 text-text-success" />
+            <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
+              <RiCheckboxCircleFill className="size-6 text-text-success" />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('passwordChangedTip', { ns: 'login' })}

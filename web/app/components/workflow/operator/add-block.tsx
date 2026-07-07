@@ -1,5 +1,6 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type {
+  Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -10,7 +11,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import {
+  useStoreApi,
+} from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   BlockEnum,
@@ -28,16 +31,23 @@ import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
+  getNodesWithSameDefaultDataType,
 } from '../utils'
 import TipPopup from './tip-popup'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
+  renderTriggerAsButtonRoot?: boolean
   offset?: OffsetOptions
+  onClose?: () => void
+  isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
+  renderTriggerAsButtonRoot,
   offset,
+  onClose,
+  isolateKeyboardEvents,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -54,22 +64,22 @@ const AddBlock = ({
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
     if (!open)
-      handlePaneContextmenuCancel()
-  }, [handlePaneContextmenuCancel])
+      (onClose ?? handlePaneContextmenuCancel)()
+  }, [handlePaneContextmenuCancel, onClose])
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     const {
       getNodes,
     } = store.getState()
-    const nodes = getNodes()
-    const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const {
       defaultValue,
     } = nodesMetaDataMap![type]
+    const nodes = getNodes()
+    const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, type, defaultValue)
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
-        ...(defaultValue as any),
+        ...(defaultValue as Node['data']),
         title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...pluginDefaultValue,
         _isCandidate: true,
@@ -90,12 +100,12 @@ const AddBlock = ({
         title={t('common.addBlock', { ns: 'workflow' })}
       >
         <div className={cn(
-          'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
           `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           open && 'bg-state-accent-active text-text-accent',
         )}
         >
-          <RiAddCircleFill className="h-4 w-4" />
+          <RiAddCircleFill className="size-4" />
         </div>
       </TipPopup>
     )
@@ -113,9 +123,11 @@ const AddBlock = ({
         crossAxis: -8,
       }}
       trigger={renderTrigger || renderTriggerElement}
+      renderTriggerAsButtonRoot={renderTriggerAsButtonRoot}
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
+      isolateKeyboardEvents={isolateKeyboardEvents}
     />
   )
 }

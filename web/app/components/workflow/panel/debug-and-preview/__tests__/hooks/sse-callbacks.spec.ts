@@ -26,7 +26,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -213,6 +213,50 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       const question = result.current.chatList.find(item => !item.isAnswer)
       expect(question!.id).toBe('question-msg-first')
+    })
+  })
+
+  describe('onReasoning', () => {
+    const findAnswer = (result: any) =>
+      result.current.chatList.find((item: any) => item.isAnswer && !item.isOpeningStatement)
+
+    it('should accumulate reasoning per node without leaking into content', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' } })
+      })
+
+      const answer = findAnswer(result)
+      expect(answer!.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(answer!.reasoningFinished).toBeUndefined()
+      expect(answer!.content).toBe('')
+    })
+
+    it('should key reasoning by node and fall back to "_" when node_id is absent', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'c' } })
+      })
+
+      expect(findAnswer(result)!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', '_': 'c' })
+    })
+
+    it('should ignore empty reasoning and mark finished when is_final is set', () => {
+      const { result } = setupAndSend()
+
+      act(() => {
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'done', node_id: 'llm' } })
+        capturedCallbacks.onReasoning({ data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true } })
+      })
+
+      const answer = findAnswer(result)
+      expect(answer!.reasoningContent).toEqual({ llm: 'done' })
+      expect(answer!.reasoningFinished).toBe(true)
     })
   })
 
@@ -478,6 +522,19 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
+
+    it('should store workflow finished error on workflow process', () => {
+      const { result } = setupAndSend()
+      startWorkflow()
+
+      act(() => {
+        capturedCallbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
+    })
   })
 
   describe('onIterationStart / onIterationFinish', () => {
@@ -494,9 +551,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('iter-1')
-      expect(trace.node_id).toBe('n-iter')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('iter-1')
+      expect(trace!.node_id).toBe('n-iter')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update matching tracing on finish', () => {
@@ -558,9 +615,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('loop-1')
-      expect(trace.node_id).toBe('n-loop')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('loop-1')
+      expect(trace!.node_id).toBe('n-loop')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update matching tracing on finish', () => {
@@ -582,8 +639,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('loop-1')
-      expect(trace.node_id).toBe('n-loop')
+      expect(trace!.id).toBe('loop-1')
+      expect(trace!.node_id).toBe('n-loop')
       expect((trace as any).output).toBe('done')
     })
 
@@ -618,9 +675,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.node_id).toBe('node-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.node_id).toBe('node-1')
+      expect(trace!.status).toBe('running')
     })
 
     it('should update existing tracing entry with same node_id', () => {
@@ -632,9 +689,9 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1-v2')
-      expect(trace.node_id).toBe('node-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1-v2')
+      expect(trace!.node_id).toBe('node-1')
+      expect(trace!.status).toBe('running')
     })
 
     it('should push retry data to tracing', () => {
@@ -650,8 +707,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('retry-1')
-      expect(trace.node_id).toBe('node-1')
+      expect(trace!.id).toBe('retry-1')
+      expect(trace!.node_id).toBe('node-1')
       expect((trace as any).retry_index).toBe(1)
     })
 
@@ -669,8 +726,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.status).toBe('succeeded')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.status).toBe('succeeded')
       expect((trace as any).outputs).toEqual({ text: 'done' })
     })
 
@@ -688,8 +745,8 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       const trace = answer!.workflowProcess!.tracing[0]
-      expect(trace.id).toBe('trace-1')
-      expect(trace.status).toBe('running')
+      expect(trace!.id).toBe('trace-1')
+      expect(trace!.status).toBe('running')
     })
   })
 
@@ -784,13 +841,13 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(1)
-      expect(answer!.humanInputFormDataList![0].node_id).toBe('human-node')
+      expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node')
       expect((answer!.humanInputFormDataList![0] as any).form_token).toBe('token-1')
     })
 
@@ -801,7 +858,7 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
@@ -834,8 +891,8 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(2)
-      expect(answer!.humanInputFormDataList![0].node_id).toBe('human-node-1')
-      expect(answer!.humanInputFormDataList![1].node_id).toBe('human-node-2')
+      expect(answer!.humanInputFormDataList![0]!.node_id).toBe('human-node-1')
+      expect(answer!.humanInputFormDataList![1]!.node_id).toBe('human-node-2')
     })
 
     it('should set tracing node status to Paused when tracing index found', () => {
@@ -862,21 +919,25 @@ describe('useChat – handleSend SSE callbacks', () => {
 
       act(() => {
         capturedCallbacks.onHumanInputRequired({
-          data: { node_id: 'human-node', form_token: 'token-1' },
+          data: { node_id: 'human-node', form_token: 'token-1', form_content: '{{#$output.answer#}}', inputs: [] },
         })
       })
 
       act(() => {
         capturedCallbacks.onHumanInputFormFilled({
-          data: { node_id: 'human-node', form_data: { answer: 'yes' } },
+          data: { node_id: 'human-node', submitted_data: { answer: 'yes' } },
         })
       })
 
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
-      expect(answer!.humanInputFilledFormDataList![0].node_id).toBe('human-node')
-      expect((answer!.humanInputFilledFormDataList![0] as any).form_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]!.node_id).toBe('human-node')
+      expect(answer!.humanInputFilledFormDataList![0]!.submitted_data).toEqual({ answer: 'yes' })
+      expect(answer!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
     })
   })
 

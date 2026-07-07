@@ -17,8 +17,7 @@ describe('CreateFromPipelinePreviewLoading', () => {
 
     expect(container.firstElementChild).toHaveClass(
       'flex',
-      'h-full',
-      'w-full',
+      'size-full',
       'flex-col',
       'overflow-hidden',
       'px-6',

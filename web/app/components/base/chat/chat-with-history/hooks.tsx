@@ -3,13 +3,13 @@ import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
 import type { InstalledApp } from '@/models/explore'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
-import { useLocalStorageState } from 'ahooks'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useConversationIdInfo, useWebAppSidebarCollapseState } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -18,7 +18,7 @@ import { AppSourceType, delConversation, pinConversation, renameConversation, un
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
-import { CONVERSATION_ID_INFO } from '../constants'
+import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -36,21 +36,30 @@ function getFormattedChatList(messages: any[]) {
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
-    if (item.status === 'paused') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && !content.submitted) {
-          humanInputFormDataList.push(content.form_definition)
-          workflowRunId = content.workflow_run_id
-        }
-      })
-    }
-    else if (item.status === 'normal') {
-      item.extra_contents?.forEach((content: ExtraContent) => {
-        if (content.type === 'human_input' && content.submitted) {
-          humanInputFilledFormDataList.push(content.form_submission_data)
-        }
-      })
-    }
+    item.extra_contents?.forEach((content: ExtraContent) => {
+      if (content.type !== 'human_input')
+        return
+
+      const formDefinition = 'form_definition' in content ? content.form_definition : undefined
+      if (!content.submitted) {
+        if (!formDefinition)
+          return
+        humanInputFormDataList.push(formDefinition)
+        workflowRunId = content.workflow_run_id || workflowRunId
+        return
+      }
+
+      if (!('form_submission_data' in content) || !content.form_submission_data)
+        return
+      const currentFormIndex = humanInputFormDataList.findIndex(item => item.node_id === content.form_submission_data.node_id)
+      const requiredFormData = formDefinition || (currentFormIndex > -1
+        ? humanInputFormDataList[currentFormIndex]
+        : undefined)
+      if (currentFormIndex > -1)
+        humanInputFormDataList.splice(currentFormIndex, 1)
+      workflowRunId = content.workflow_run_id || workflowRunId
+      humanInputFilledFormDataList.push(enrichSubmittedHumanInputFormData(content.form_submission_data, requiredFormData))
+    })
     newChatList.push({
       id: item.id,
       content: item.answer,
@@ -58,6 +67,8 @@ function getFormattedChatList(messages: any[]) {
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
+      reasoningContent: item.metadata?.reasoning,
+      reasoningFinished: true,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
       humanInputFormDataList,
@@ -87,6 +98,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,
@@ -116,34 +128,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
     setLocaleFromProps()
   }, [appData])
-  const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const localState = localStorage.getItem('webappSidebarCollapse')
-        return localState === 'collapsed'
-      }
-      catch {
-        // localStorage may be disabled in private browsing mode or by security settings
-        // fallback to default value
-        return false
-      }
-    }
-    return false
-  })
+  const [storedSidebarCollapseState, setStoredSidebarCollapseState] = useWebAppSidebarCollapseState()
+  const sidebarCollapseState = storedSidebarCollapseState === 'collapsed'
   const handleSidebarCollapse = useCallback((state: boolean) => {
-    if (appId) {
-      setSidebarCollapseState(state)
-      try {
-        localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
-      }
-      catch {
-        // localStorage may be disabled, continue without persisting state
-      }
-    }
-  }, [appId, setSidebarCollapseState])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
-    defaultValue: {},
-  })
+    if (appId)
+      setStoredSidebarCollapseState(state ? 'collapsed' : 'expanded')
+  }, [appId, setStoredSidebarCollapseState])
+  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
@@ -211,6 +202,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
+    // eslint-disable-next-line react/set-state-in-effect -- This handler intentionally syncs derived input defaults when called from the reset effect below.
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -307,6 +299,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
+      // eslint-disable-next-line react/set-state-in-effect -- Conversation query results intentionally replace the local editable list.
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
@@ -323,6 +316,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [originConversationList, showNewConversationItemInList, t])
   useEffect(() => {
     if (newConversation) {
+      // eslint-disable-next-line react/set-state-in-effect -- Newly resolved conversation names intentionally patch the local list cache.
       setOriginConversationList(produce((draft) => {
         const index = draft.findIndex(item => item.id === newConversation.id)
         if (index > -1)
@@ -346,6 +340,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
     if (currentConversationItem)
+      // eslint-disable-next-line react/set-state-in-effect -- Selected conversation changes intentionally resync the editable input snapshot.
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
   const checkInputsRequired = useCallback((silent?: boolean) => {
@@ -452,7 +447,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setOriginConversationList(produce((draft) => {
         const index = originConversationList.findIndex(item => item.id === conversationId)
-        const item = draft[index]
+        const item = draft[index]!
         draft[index] = {
           ...item,
           name: newName,

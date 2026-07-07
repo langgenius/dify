@@ -4,15 +4,24 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import cast, overload
+from typing import Protocol, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
+from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from configs import dify_config
+from controllers.service_api.schema import (
+    USER_FETCH_FROM_ATTR,
+    USER_FORM_PARAM,
+    USER_QUERY_PARAM,
+    USER_REQUIRED_ATTR,
+)
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -25,6 +34,12 @@ from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
+
+
+class _RestxDocumentedView(Protocol):
+    """Callable view object carrying Flask-RESTX documentation metadata."""
+
+    __apidoc__: dict[str, object]
 
 
 class WhereisUserArg(StrEnum):
@@ -40,6 +55,35 @@ class WhereisUserArg(StrEnum):
 class FetchUserArg(BaseModel):
     fetch_from: WhereisUserArg
     required: bool = False
+
+
+APP_TOKEN_FORBIDDEN_RESPONSE = {
+    403: "Forbidden - token scope, app, dataset, or workspace access denied",
+}
+
+DATASET_TOKEN_AUTH_RESPONSES = {
+    401: "Unauthorized - invalid API token",
+    403: "Forbidden - dataset API access or workspace access denied",
+}
+
+
+def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+    doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
+    if fetch_user_arg is not None:
+        setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
+        setattr(view_func, USER_REQUIRED_ATTR, fetch_user_arg.required)
+        match fetch_user_arg.fetch_from:
+            case WhereisUserArg.QUERY:
+                doc["params"] = {"user": {**USER_QUERY_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.FORM:
+                doc["params"] = {"user": {**USER_FORM_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.JSON:
+                pass
+
+    cast(_RestxDocumentedView, view_func).__apidoc__ = cast(
+        dict[str, object],
+        merge(getattr(view_func, "__apidoc__", {}), doc),
+    )
 
 
 @overload
@@ -125,6 +169,7 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
+        _document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
@@ -140,20 +185,26 @@ def cloud_edition_billing_resource_check[**P, R](
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            if resource == "vector_space":
+                if not dify_config.BILLING_ENABLED:
+                    return view(*args, **kwargs)
+
+                vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                if 0 < vector_space.limit <= vector_space.size:
+                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+                return view(*args, **kwargs)
+
+            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
 
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
-                vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
                     raise Forbidden("The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     raise Forbidden("The number of apps has reached the limit of your subscription.")
-                elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
@@ -174,7 +225,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id)
+            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
@@ -219,8 +270,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
+                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                            session.add(rate_limit_log)
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
@@ -336,6 +387,8 @@ def validate_and_get_api_token(scope: str | None = None):
 
 
 class DatasetApiResource(Resource):
+    __apidoc__ = {"responses": DATASET_TOKEN_AUTH_RESPONSES}
+
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:

@@ -292,6 +292,12 @@ describe('InstallFromLocalPackage', () => {
       expect(screen.getByTestId('is-bundle')).toHaveTextContent('true')
     })
 
+    it('should constrain dialog height so bundle dependency lists can scroll', () => {
+      render(<InstallFromLocalPackage {...defaultProps} file={createMockBundleFile()} />)
+
+      expect(screen.getByRole('dialog')).toHaveClass('max-h-[calc(100dvh-48px)]')
+    })
+
     it('should identify package file correctly', () => {
       render(<InstallFromLocalPackage {...defaultProps} />)
 
@@ -347,7 +353,7 @@ describe('InstallFromLocalPackage', () => {
       fireEvent.click(screen.getByTestId('bundle-step-installed-btn'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -1044,7 +1050,7 @@ describe('InstallFromLocalPackage', () => {
       })
       fireEvent.click(screen.getByTestId('bundle-step-installed-btn'))
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
   })
@@ -2006,7 +2012,7 @@ describe('Complete Installation Flows', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('bundle-step')).toHaveTextContent('installed')
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 

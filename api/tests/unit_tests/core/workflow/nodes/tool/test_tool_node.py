@@ -8,22 +8,30 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment
-
-from core.workflow.system_variables import build_system_variables
-from tests.workflow_test_utils import build_test_graph_init_params
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from graphon.nodes.tool.tool_node import ToolNode
 
 
 class _StubToolRuntime:
-    def get_runtime(self, *, node_id: str, node_data: Any, variable_pool: Any) -> ToolRuntimeHandle:
+    def get_runtime(
+        self,
+        *,
+        node_id: str,
+        node_data: Any,
+        variable_pool: Any,
+        node_execution_id: str | None = None,
+    ) -> ToolRuntimeHandle:
         raise NotImplementedError
 
     def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:
@@ -98,33 +106,33 @@ def tool_node(monkeypatch) -> ToolNode:
         call_depth=0,
     )
 
-    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user-id"))
+    variable_pool = build_test_variable_pool(variables=build_system_variables(user_id="user-id"))
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
 
-    # Provide a stub ToolFileManager to satisfy the updated ToolNode constructor
-    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+    # Provide a stub ToolFileManager to satisfy the ToolNode constructor.
+    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
     runtime = _StubToolRuntime()
 
     node = ToolNode(
-        id="node-instance",
-        config=config,
+        node_id="node-instance",
+        data=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        tool_file_manager_factory=tool_file_manager_factory,
+        tool_file_manager=tool_file_manager,
         runtime=runtime,
     )
     return node
 
 
-def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
+def _collect_events(generator: Generator) -> list[Any]:
     events: list[Any] = []
     try:
         while True:
             events.append(next(generator))
-    except StopIteration as stop:
-        return events, stop.value
+    except StopIteration:
+        return events
 
 
 def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[list[Any], LLMUsage]:
@@ -135,12 +143,15 @@ def _run_transform(tool_node: ToolNode, message: ToolRuntimeMessage) -> tuple[li
         node_id=tool_node._node_id,
         tool_runtime=ToolRuntimeHandle(raw=object()),
     )
-    return _collect_events(generator)
+    events = _collect_events(generator)
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert completed_events
+    return events, completed_events[-1].node_run_result.llm_usage
 
 
 def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
     file_obj = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="file-id",
         filename="demo.pdf",
@@ -195,7 +206,7 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
 
 def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
     file_obj = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
         related_id="file-id",
         filename="demo.pdf",
@@ -204,7 +215,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
         size=123,
         storage_key="file-key",
     )
-    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.return_value = (
+    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.return_value = (
         None,
         SimpleNamespace(mime_type="application/pdf"),
     )
@@ -217,9 +228,28 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
 
     events, _ = _run_transform(tool_node, message)
 
-    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     files_segment = completed_events[0].node_run_result.outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
     assert files_segment.value == [file_obj]
+
+
+def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: ToolNode):
+    runtime_handle = ToolRuntimeHandle(raw=object())
+    tool_node._runtime.get_runtime = MagicMock(return_value=runtime_handle)
+    tool_node.ensure_execution_id = MagicMock(return_value="node-execution-id")
+
+    result = tool_node._get_tool_runtime(
+        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        node_execution_id="node-execution-id",
+    )
+
+    assert result is runtime_handle
+    tool_node._runtime.get_runtime.assert_called_once_with(
+        node_id="node-instance",
+        node_data=tool_node.node_data,
+        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        node_execution_id="node-execution-id",
+    )

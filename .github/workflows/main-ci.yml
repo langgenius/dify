@@ -6,8 +6,6 @@ on:
   merge_group:
     branches: ["main"]
     types: [checks_requested]
-  push:
-    branches: ["main"]
 
 permissions:
   actions: write
@@ -23,7 +21,7 @@ concurrency:
 jobs:
   pre_job:
     name: Skip Duplicate Checks
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
     steps:
@@ -39,37 +37,48 @@ jobs:
     name: Check Changed Files
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
+      cli-changed: ${{ steps.changes.outputs.cli }}
       e2e-changed: ${{ steps.changes.outputs.e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: changes
         with:
           filters: |
             api:
               - 'api/**'
               - '.github/workflows/api-tests.yml'
-              - '.github/workflows/expose_service_ports.sh'
               - 'docker/.env.example'
-              - 'docker/middleware.env.example'
+              - 'docker/envs/middleware.env.example'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/docker-compose-template.yaml'
               - 'docker/generate_docker_compose'
               - 'docker/ssrf_proxy/**'
               - 'docker/volumes/sandbox/conf/**'
+            cli:
+              - 'cli/**'
+              - 'packages/tsconfig/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - '.npmrc'
+              - '.nvmrc'
+              - '.github/workflows/cli-tests.yml'
+              - '.github/workflows/cli-docker-build.yml'
+              - '.github/actions/setup-web/**'
             web:
               - 'web/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
@@ -83,20 +92,21 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - '.npmrc'
               - '.nvmrc'
               - 'docker/docker-compose.middleware.yaml'
-              - 'docker/middleware.env.example'
+              - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'api/tests/integration_tests/vdb/**'
+              - 'api/conftest.py'
+              - 'api/tests/pytest_dify.py'
               - 'api/providers/vdb/*/tests/**'
               - '.github/workflows/vdb-tests.yml'
-              - '.github/workflows/expose_service_ports.sh'
               - 'docker/.env.example'
-              - 'docker/middleware.env.example'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/docker-compose.pytest.ports.yaml'
               - 'docker/docker-compose.yaml'
               - 'docker/docker-compose-template.yaml'
               - 'docker/generate_docker_compose'
@@ -116,9 +126,8 @@ jobs:
               - 'api/migrations/**'
               - 'api/.env.example'
               - '.github/workflows/db-migration-test.yml'
-              - '.github/workflows/expose_service_ports.sh'
               - 'docker/.env.example'
-              - 'docker/middleware.env.example'
+              - 'docker/envs/middleware.env.example'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/docker-compose-template.yaml'
               - 'docker/generate_docker_compose'
@@ -141,7 +150,7 @@ jobs:
       - pre_job
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.api-changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped API tests
         run: echo "No API-related changes detected; skipping API tests."
@@ -154,7 +163,7 @@ jobs:
       - check-changes
       - api-tests-run
       - api-tests-skip
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize API Tests status
         env:
@@ -186,6 +195,66 @@ jobs:
           echo "API tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1
 
+  cli-tests-run:
+    name: Run CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed == 'true'
+    uses: ./.github/workflows/cli-tests.yml
+    secrets: inherit
+
+  cli-tests-skip:
+    name: Skip CLI Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.cli-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped CLI tests
+        run: echo "No CLI-related changes detected; skipping CLI tests."
+
+  cli-tests:
+    name: CLI Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - cli-tests-run
+      - cli-tests-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize CLI Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.cli-changed }}
+          RUN_RESULT: ${{ needs.cli-tests-run.result }}
+          SKIP_RESULT: ${{ needs.cli-tests-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "CLI tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "CLI tests ran successfully."
+              exit 0
+            fi
+
+            echo "CLI tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "CLI tests were skipped because no CLI-related files changed."
+            exit 0
+          fi
+
+          echo "CLI tests were not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
   web-tests-run:
     name: Run Web Tests
     needs:
@@ -201,7 +270,7 @@ jobs:
       - pre_job
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.web-changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped web tests
         run: echo "No web-related changes detected; skipping web tests."
@@ -214,7 +283,7 @@ jobs:
       - check-changes
       - web-tests-run
       - web-tests-skip
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Tests status
         env:
@@ -253,6 +322,7 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
     uses: ./.github/workflows/web-e2e.yml
+    secrets: inherit
 
   web-e2e-skip:
     name: Skip Web Full-Stack E2E
@@ -260,7 +330,7 @@ jobs:
       - pre_job
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped web full-stack e2e
         run: echo "No E2E-related changes detected; skipping web full-stack E2E."
@@ -273,7 +343,7 @@ jobs:
       - check-changes
       - web-e2e-run
       - web-e2e-skip
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize Web Full-Stack E2E status
         env:
@@ -325,7 +395,7 @@ jobs:
       - pre_job
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.vdb-changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped VDB tests
         run: echo "No VDB-related changes detected; skipping VDB tests."
@@ -338,7 +408,7 @@ jobs:
       - check-changes
       - vdb-tests-run
       - vdb-tests-skip
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize VDB Tests status
         env:
@@ -384,7 +454,7 @@ jobs:
       - pre_job
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.migration-changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped DB migration tests
         run: echo "No migration-related changes detected; skipping DB migration tests."
@@ -397,7 +467,7 @@ jobs:
       - check-changes
       - db-migration-test-run
       - db-migration-test-skip
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Finalize DB Migration Test status
         env:

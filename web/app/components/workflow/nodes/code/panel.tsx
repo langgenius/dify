@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { CodeNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
@@ -75,17 +75,22 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                   <div className="flex gap-2">
                     <Tooltip>
                       <TooltipTrigger
-                        className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover"
+                        className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                         onClick={handleSyncFunctionSignature}
-                        data-testid="sync-button"
+                        aria-label={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}
                       >
-                        <span className="i-ri-refresh-line h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-refresh-line size-4 text-text-tertiary" aria-hidden="true" />
                       </TooltipTrigger>
                       <TooltipContent>{t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}</TooltipContent>
                     </Tooltip>
-                    <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddVariable} data-testid="add-button">
-                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}`}
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={handleAddVariable}
+                    >
+                      <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                    </button>
                   </div>
                 )
               : undefined
@@ -124,9 +129,14 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}
           operations={(
-            <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddOutputVariable} data-testid="add-button">
-              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-            </div>
+            <button
+              type="button"
+              aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}`}
+              className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={handleAddOutputVariable}
+            >
+              <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+            </button>
           )}
           required
         >

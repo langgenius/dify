@@ -5,10 +5,13 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from flask.testing import FlaskClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from models import Account
+from models.account import AccountStatus, TenantAccountRole
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
 from tests.test_containers_integration_tests.controllers.console.helpers import (
@@ -57,6 +60,24 @@ class TestAppApiKeyListResource:
         assert data["token"].startswith("app-")
         assert data["id"] is not None
 
+    def test_create_api_key_persists_authenticated_tenant(
+        self,
+        setup_app: tuple[FlaskClient, dict[str, str], App],
+        db_session_with_containers: Session,
+    ) -> None:
+        client, headers, app = setup_app
+        tenant_id = app.tenant_id
+
+        resp = client.post(f"/console/api/apps/{app.id}/api-keys", headers=headers)
+
+        assert resp.status_code == 201
+        assert resp.json is not None
+        api_token = db_session_with_containers.scalar(select(ApiToken).where(ApiToken.id == resp.json["id"]))
+        assert api_token is not None
+        assert api_token.tenant_id == tenant_id
+        assert api_token.app_id == app.id
+        assert api_token.type == ApiTokenType.APP
+
     def test_get_keys_after_create(self, setup_app: tuple[FlaskClient, dict[str, str], App]) -> None:
         client, headers, app = setup_app
         client.post(f"/console/api/apps/{app.id}/api-keys", headers=headers)
@@ -90,6 +111,21 @@ class TestAppApiKeyListResource:
             "/console/api/apps/00000000-0000-0000-0000-000000000000/api-keys",
             headers=headers,
         )
+        assert resp.status_code == 404
+
+    def test_get_foreign_app_keys_not_found(
+        self,
+        setup_app: tuple[FlaskClient, dict[str, str], App],
+        db_session_with_containers: Session,
+    ) -> None:
+        client, headers, _ = setup_app
+        foreign_account, foreign_tenant = create_console_account_and_tenant(db_session_with_containers)
+        foreign_app = create_console_app(
+            db_session_with_containers, foreign_tenant.id, foreign_account.id, AppMode.CHAT
+        )
+
+        resp = client.get(f"/console/api/apps/{foreign_app.id}/api-keys", headers=headers)
+
         assert resp.status_code == 404
 
 
@@ -126,7 +162,7 @@ class TestAppApiKeyResource:
 
     def test_delete_forbidden_for_non_admin(
         self,
-        flask_app_with_containers,
+        flask_app_with_containers: Flask,
     ) -> None:
         """A non-admin member cannot delete API keys via the controller permission check."""
         from werkzeug.exceptions import Forbidden
@@ -138,16 +174,13 @@ class TestAppApiKeyResource:
         resource.resource_model = MagicMock()
         resource.resource_id_field = "app_id"
 
-        non_admin = MagicMock()
-        non_admin.is_admin_or_owner = False
+        non_admin = Account(name="Normal User", email="normal@example.com", status=AccountStatus.ACTIVE)
+        non_admin.id = "normal-user"
+        non_admin.role = TenantAccountRole.NORMAL
 
         with (
             flask_app_with_containers.test_request_context("/"),
-            patch(
-                "controllers.console.apikey.current_account_with_tenant",
-                return_value=(non_admin, "tenant-id"),
-            ),
             patch("controllers.console.apikey._get_resource"),
         ):
             with pytest.raises(Forbidden):
-                BaseApiKeyResource.delete(resource, "rid", "kid")
+                BaseApiKeyResource.delete(resource, "rid", "kid", "tenant-id", non_admin)

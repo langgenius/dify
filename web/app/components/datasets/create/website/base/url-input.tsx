@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
-import Input from './input'
+import Input from './text-input'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   isRunning: boolean
   onRun: (url: string) => void
-}
+}>
 
 const UrlInput: FC<Props> = ({
   isRunning,

@@ -168,7 +168,7 @@ const NotionSelectorPreview = () => {
         canPreview
       />
       <div className="rounded-xl border border-divider-subtle bg-background-default-subtle p-4 text-xs text-text-secondary">
-        <div className="mb-2 font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+        <div className="mb-2 font-semibold tracking-[0.18em] text-text-tertiary uppercase">
           Debug state
         </div>
         <p className="mb-1">

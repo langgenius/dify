@@ -1,12 +1,10 @@
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType
-
 from core.entities.execution_extra_content import (
     ExecutionExtraContentDomainModel,
     HumanInputContent,
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
 
@@ -17,8 +15,8 @@ def test_human_input_content_defaults_and_domain_alias() -> None:
         node_id="node-1",
         node_title="Human Input",
         form_content="Please confirm",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="answer")],
-        actions=[UserAction(id="confirm", title="Confirm")],
+        inputs=[ParagraphInputConfig(output_variable_name="answer")],
+        actions=[UserActionConfig(id="confirm", title="Confirm")],
         resolved_default_values={"answer": "yes"},
         expiration_time=1_700_000_000,
     )
@@ -28,6 +26,7 @@ def test_human_input_content_defaults_and_domain_alias() -> None:
         rendered_content="Please confirm",
         action_id="confirm",
         action_text="Confirm",
+        submitted_data={"answer": "yes"},
     )
 
     # Act
@@ -43,4 +42,5 @@ def test_human_input_content_defaults_and_domain_alias() -> None:
     assert content.type == ExecutionContentType.HUMAN_INPUT
     assert content.form_definition is form_definition
     assert content.form_submission_data is submission_data
+    assert content.form_submission_data.submitted_data == {"answer": "yes"}
     assert ExecutionExtraContentDomainModel is HumanInputContent

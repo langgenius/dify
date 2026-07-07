@@ -1,24 +1,25 @@
 import type { Inputs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 
-type Props = {
+type Props = Readonly<{
   inputs: Inputs
-}
+}>
 
 const ChatUserInput = ({
   inputs,
 }: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs, readonly } = useContext(ConfigContext)
+  const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
+  const debugInputReadonly = !canTestAndRun
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -51,6 +52,8 @@ const ChatUserInput = ({
   }, [promptVariables, inputs, setInputs])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
+    if (debugInputReadonly)
+      return
     if (!(key in promptVariableObj))
       return
 
@@ -88,27 +91,41 @@ const ChatUserInput = ({
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length}
-                    readOnly={readonly}
+                    readOnly={debugInputReadonly}
                   />
                 )}
                 {type === 'paragraph' && (
                   <Textarea
                     className="h-[120px] grow"
+                    aria-label={name || key}
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                    readOnly={readonly}
+                    onValueChange={(value) => { handleInputValueChange(key, value) }}
+                    readOnly={debugInputReadonly}
                   />
                 )}
                 {type === 'select' && (
-                  <Select
-                    className="w-full"
-                    defaultValue={inputs[key] as string}
-                    onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                    items={(options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
-                    disabled={readonly}
-                  />
+                  <Select<string>
+                    value={typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null}
+                    disabled={debugInputReadonly}
+                    onValueChange={(nextValue) => {
+                      if (nextValue == null || nextValue === '')
+                        return
+                      handleInputValueChange(key, nextValue)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t('placeholder.select', { ns: 'common' })}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(options || []).map(option => (
+                        <SelectItem key={option} value={option}>
+                          <SelectItemText>{option}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {type === 'number' && (
                   <Input
@@ -118,7 +135,7 @@ const ChatUserInput = ({
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length}
-                    readOnly={readonly}
+                    readOnly={debugInputReadonly}
                   />
                 )}
                 {type === 'checkbox' && (
@@ -127,7 +144,7 @@ const ChatUserInput = ({
                     value={!!inputs[key]}
                     required={required}
                     onChange={(value) => { handleInputValueChange(key, value) }}
-                    readonly={readonly}
+                    readonly={debugInputReadonly}
                   />
                 )}
               </div>

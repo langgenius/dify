@@ -1,14 +1,11 @@
 import type { EntityMatch } from '@lexical/text'
 import type {
-  ElementNode,
   Klass,
   LexicalEditor,
   LexicalNode,
-  RangeSelection,
   TextNode,
 } from 'lexical'
 import type { MenuTextMatch } from './types'
-import { $isAtNodeEnd } from '@lexical/selection'
 import {
   $createTextNode,
   $getSelection,
@@ -16,23 +13,6 @@ import {
   $isTextNode,
 } from 'lexical'
 import { CustomTextNode } from './plugins/custom-text/node'
-
-export function getSelectedNode(
-  selection: RangeSelection,
-): TextNode | ElementNode {
-  const anchor = selection.anchor
-  const focus = selection.focus
-  const anchorNode = selection.anchor.getNode()
-  const focusNode = selection.focus.getNode()
-  if (anchorNode === focusNode)
-    return anchorNode
-
-  const isBackward = selection.isBackward()
-  if (isBackward)
-    return $isAtNodeEnd(focus) ? anchorNode : focusNode
-  else
-    return $isAtNodeEnd(anchor) ? anchorNode : focusNode
-}
 
 export function registerLexicalTextEntity<T extends TextNode>(
   editor: LexicalEditor,
@@ -140,13 +120,13 @@ export function registerLexicalTextEntity<T extends TextNode>(
       let nodeToReplace
 
       if (match.start === 0)
-        [nodeToReplace, currentNode] = currentNode.splitText(match.end)
+        [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [TextNode, TextNode]
       else
-        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
+        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [TextNode, TextNode, TextNode]
 
-      const replacementNode = createNode(nodeToReplace)
-      replacementNode.setFormat(nodeToReplace.getFormat())
-      nodeToReplace.replace(replacementNode)
+      const replacementNode = createNode(nodeToReplace!)
+      replacementNode.setFormat(nodeToReplace!.getFormat())
+      nodeToReplace!.replace(replacementNode)
 
       if (currentNode == null)
         return
@@ -194,6 +174,9 @@ export const decoratorTransform = (
   node: CustomTextNode,
   getMatch: (text: string) => null | EntityMatch,
   createNode: (textNode: TextNode) => LexicalNode,
+  options?: {
+    allowAdjacentMatches?: boolean
+  },
 ) => {
   if (!node.isSimpleText())
     return
@@ -227,7 +210,7 @@ export const decoratorTransform = (
     else {
       const nextMatch = getMatch(nextText)
 
-      if (nextMatch !== null && nextMatch.start === 0)
+      if (!options?.allowAdjacentMatches && nextMatch !== null && nextMatch.start === 0)
         return
     }
 
@@ -240,12 +223,12 @@ export const decoratorTransform = (
     let nodeToReplace
 
     if (match.start === 0)
-      [nodeToReplace, currentNode] = currentNode.splitText(match.end)
+      [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [CustomTextNode, CustomTextNode]
     else
-      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
+      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [CustomTextNode, CustomTextNode, CustomTextNode]
 
-    const replacementNode = createNode(nodeToReplace)
-    nodeToReplace.replace(replacementNode)
+    const replacementNode = createNode(nodeToReplace!)
+    nodeToReplace!.replace(replacementNode)
 
     if (currentNode == null)
       return
@@ -292,7 +275,7 @@ export function $splitNodeContainingQuery(match: MenuTextMatch): TextNode | null
   else
     [, newNode] = anchorNode.splitText(startOffset, selectionOffset)
 
-  return newNode
+  return newNode!
 }
 
 export function textToEditorState(text: string) {

@@ -3,6 +3,7 @@ import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 import { AppSourceType, audioToText } from '@/service/share'
 import s from './index.module.css'
@@ -96,7 +97,7 @@ const VoiceInput = ({
       isPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         url = `/installed-apps/${params.appId}/audio-to-text`
       else
         url = `/apps/${params.appId}/audio-to-text`
@@ -164,7 +165,7 @@ const VoiceInput = ({
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
         {
-          startConvert && <div className="mr-2 i-ri-loader-2-line h-4 w-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
+          startConvert && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
         }
         <div className="grow">
           {
@@ -185,22 +186,22 @@ const VoiceInput = ({
         {
           startRecord && (
             <div
-              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
+              className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
               onClick={handleStopRecorder}
               data-testid="voice-input-stop"
             >
-              <div className="i-ri-stop-circle-line h-5 w-5 text-primary-600" />
+              <div className="i-ri-stop-circle-line size-5 text-primary-600" />
             </div>
           )
         }
         {
           startConvert && (
             <div
-              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
+              className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
               onClick={onCancel}
               data-testid="voice-input-cancel"
             >
-              <div className="i-ri-close-line h-4 w-4 text-gray-500" />
+              <div className="i-ri-close-line size-4 text-gray-500" />
             </div>
           )
         }

@@ -1,3 +1,4 @@
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -7,6 +8,7 @@ export enum TabsEnum {
   Blocks = 'blocks',
   Tools = 'tools',
   Sources = 'sources',
+  Snippets = 'snippets',
 }
 
 export enum ToolTypeEnum {
@@ -47,6 +49,7 @@ export type TriggerDefaultValue = PluginCommonDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginCommonDefaultValue & {
+  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description: string
@@ -74,11 +77,38 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
   plugin_unique_identifier?: string
 }
 
+export type AgentRosterNodeData = Pick<
+  AgentInviteOptionResponse,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name' | 'role'
+>
+
+type AgentRosterBinding = {
+  binding_type: 'roster_agent'
+  agent_id: string
+}
+
+export type AgentInlineBinding = {
+  binding_type: 'inline_agent'
+  agent_id?: string | null
+  current_snapshot_id?: string | null
+}
+
+export type AgentBinding = AgentRosterBinding | AgentInlineBinding
+
+type AgentDefaultValue = {
+  agent_binding: AgentBinding
+  agent_node_kind: 'dify_agent'
+  version: '2'
+}
+
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
+
+export type BlockDefaultValue = PluginDefaultValue | AgentDefaultValue
 
 export type ToolValue = {
   provider_name: string
   provider_show_name?: string
+  plugin_id?: string
   tool_name: string
   tool_label: string
   tool_description?: string
@@ -124,7 +154,7 @@ export type DataSourceItem = {
   is_authorized: boolean
 }
 
-export type TriggerCredentialField = {
+type TriggerCredentialField = {
   type: 'secret-input' | 'text-input' | 'select' | 'boolean'
     | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
@@ -226,14 +256,14 @@ export type TriggerLogEntity = {
   created_at: string
 }
 
-export type LogRequest = {
+type LogRequest = {
   method: string
   url: string
   headers: LogRequestHeaders
   data: string
 }
 
-export type LogRequestHeaders = {
+type LogRequestHeaders = {
   'Host': string
   'User-Agent': string
   'Content-Length': string
@@ -251,13 +281,13 @@ export type LogRequestHeaders = {
   [key: string]: string
 }
 
-export type LogResponse = {
+type LogResponse = {
   status_code: number
   headers: LogResponseHeaders
   data: string
 }
 
-export type LogResponseHeaders = {
+type LogResponseHeaders = {
   'Content-Type': string
   'Content-Length': string
   [key: string]: string

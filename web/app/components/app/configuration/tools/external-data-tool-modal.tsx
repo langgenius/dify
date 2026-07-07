@@ -2,6 +2,10 @@ import type { FC } from 'react'
 import type {
   ExternalDataTool,
 } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,11 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
-import { toast } from '@/app/components/base/ui/toast'
-import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
+import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import {
@@ -116,7 +116,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('apiBasedExtension.type', { ns: 'common' })}
           </div>
           <Select
@@ -129,14 +129,15 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <SelectContent popupClassName="w-[354px]">
               {providers.map(option => (
                 <SelectItem key={option.key} value={option.key}>
-                  {option.name}
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
           </div>
           <div className="flex items-center">
@@ -156,7 +157,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
         </div>
         <div className="py-2">
-          <div className="text-sm leading-9 font-medium text-text-primary">
+          <div className="text-sm/9 font-medium text-text-primary">
             {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
           </div>
           <input
@@ -177,7 +178,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                   rel="noopener noreferrer"
                   className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
                 >
-                  <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent" />
+                  <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
                   {t('apiBasedExtension.link', { ns: 'common' })}
                 </a>
               </div>
@@ -216,13 +217,10 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         {
           showEmojiPicker && (
             <EmojiPicker
+              open={showEmojiPicker}
+              onOpenChange={setShowEmojiPicker}
               onSelect={(icon, icon_background) => {
                 handleValueChange({ icon, icon_background })
-                setShowEmojiPicker(false)
-              }}
-              onClose={() => {
-                handleValueChange({ icon: '', icon_background: '' })
-                setShowEmojiPicker(false)
               }}
             />
           )

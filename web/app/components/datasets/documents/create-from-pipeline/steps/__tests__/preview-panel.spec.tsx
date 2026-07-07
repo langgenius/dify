@@ -231,8 +231,9 @@ describe('StepTwoPreview', () => {
   describe('Props Passing', () => {
     it('should render preview button when isIdle is true', () => {
       render(<StepTwoPreview {...defaultProps} isIdle={true} />)
-      // ChunkPreview shows a preview button when idle
-      const previewButton = screen.queryByRole('button')
+      const previewButton = screen.getByRole('button', {
+        name: 'datasetPipeline.addDocuments.stepTwo.previewChunks',
+      })
       expect(previewButton).toBeInTheDocument()
     })
 
@@ -240,13 +241,13 @@ describe('StepTwoPreview', () => {
       const onPreview = vi.fn()
       render(<StepTwoPreview {...defaultProps} isIdle={true} onPreview={onPreview} />)
 
-      // Find and click the preview button
-      const buttons = screen.getAllByRole('button')
-      const previewButton = buttons.find(btn => btn.textContent?.toLowerCase().includes('preview'))
-      if (previewButton) {
-        previewButton.click()
-        expect(onPreview).toHaveBeenCalled()
-      }
+      const previewButton = screen.getByRole('button', {
+        name: 'datasetPipeline.addDocuments.stepTwo.previewChunks',
+      })
+
+      previewButton.click()
+
+      expect(onPreview).toHaveBeenCalled()
     })
   })
 

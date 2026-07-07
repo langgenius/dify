@@ -46,7 +46,7 @@ describe('FileUploadSettings (setting-modal)', () => {
       </FileUploadSettings>,
     )
 
-    expect(screen.getByText('Upload Settings')).toBeInTheDocument()
+    expect(screen.getByText('Upload Settings'))!.toBeInTheDocument()
   })
 
   it('should render SettingContent in portal', async () => {
@@ -57,11 +57,11 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/feature\.fileUpload\.modalTitle/)).toBeInTheDocument()
+      expect(screen.getByText(/feature\.fileUpload\.modalTitle/))!.toBeInTheDocument()
     })
   })
 
-  it('should call onOpen with toggle function when trigger is clicked', () => {
+  it('should call onOpen with true when trigger is clicked', () => {
     const onOpen = vi.fn()
     renderWithProvider(
       <FileUploadSettings open={false} onOpen={onOpen}>
@@ -71,12 +71,7 @@ describe('FileUploadSettings (setting-modal)', () => {
 
     fireEvent.click(screen.getByText('Upload Settings'))
 
-    expect(onOpen).toHaveBeenCalled()
-    // The toggle function should flip the open state
-    const toggleFn = onOpen.mock.calls[0][0]
-    expect(typeof toggleFn).toBe('function')
-    expect(toggleFn(false)).toBe(true)
-    expect(toggleFn(true)).toBe(false)
+    expect(onOpen).toHaveBeenCalledWith(true)
   })
 
   it('should not call onOpen when disabled', () => {
@@ -101,7 +96,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/ }))
 
@@ -118,7 +113,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/operation\.save/)).toBeInTheDocument()
+      expect(screen.getByText(/operation\.save/))!.toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /operation\.save/ }))
 
@@ -134,7 +129,7 @@ describe('FileUploadSettings (setting-modal)', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText(/feature\.imageUpload\.modalTitle/)).toBeInTheDocument()
+      expect(screen.getByText(/feature\.imageUpload\.modalTitle/))!.toBeInTheDocument()
     })
   })
 })

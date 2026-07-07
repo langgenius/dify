@@ -56,42 +56,42 @@ describe('StepThreeContent', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<StepThreeContent {...defaultProps} />)
-      expect(screen.getByTestId('embedding-process')).toBeInTheDocument()
+      expect(screen.getByTestId('embedding-process'))!.toBeInTheDocument()
     })
 
     it('should render Processing component', () => {
       render(<StepThreeContent {...defaultProps} />)
-      expect(screen.getByTestId('embedding-process')).toBeInTheDocument()
+      expect(screen.getByTestId('embedding-process'))!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should pass batchId to Processing component', () => {
       render(<StepThreeContent {...defaultProps} />)
-      expect(screen.getByTestId('batch-id')).toHaveTextContent('test-batch-id')
+      expect(screen.getByTestId('batch-id'))!.toHaveTextContent('test-batch-id')
     })
 
     it('should pass documents to Processing component', () => {
       render(<StepThreeContent {...defaultProps} />)
-      expect(screen.getByTestId('documents-count')).toHaveTextContent('2')
+      expect(screen.getByTestId('documents-count'))!.toHaveTextContent('2')
     })
 
     it('should handle empty documents array', () => {
       render(<StepThreeContent batchId="test-batch-id" documents={[]} />)
-      expect(screen.getByTestId('documents-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('documents-count'))!.toHaveTextContent('0')
     })
   })
 
   describe('Edge Cases', () => {
     it('should render with different batchId', () => {
       render(<StepThreeContent batchId="another-batch-id" documents={mockDocuments} />)
-      expect(screen.getByTestId('batch-id')).toHaveTextContent('another-batch-id')
+      expect(screen.getByTestId('batch-id'))!.toHaveTextContent('another-batch-id')
     })
 
     it('should render with single document', () => {
-      const singleDocument = [mockDocuments[0]]
+      const singleDocument = [mockDocuments[0]!]
       render(<StepThreeContent batchId="test-batch-id" documents={singleDocument} />)
-      expect(screen.getByTestId('documents-count')).toHaveTextContent('1')
+      expect(screen.getByTestId('documents-count'))!.toHaveTextContent('1')
     })
   })
 })

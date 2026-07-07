@@ -414,7 +414,7 @@ describe('Mermaid Flowchart Component', () => {
       })
 
       // Wait for image preview to appear
-      const cancelBtn = await screen.findByTestId('image-preview-close-button')
+      const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
       expect(cancelBtn).toBeInTheDocument()
 
       await act(async () => {
@@ -423,7 +423,7 @@ describe('Mermaid Flowchart Component', () => {
 
       await waitFor(() => {
         expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
-        expect(screen.queryByTestId('image-preview-close-button')).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'common.operation.cancel' })).not.toBeInTheDocument()
       })
     })
 

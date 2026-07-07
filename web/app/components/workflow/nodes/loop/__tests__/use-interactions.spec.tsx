@@ -68,7 +68,7 @@ describe('useNodeLoopInteractions', () => {
     result.current.handleNodeLoopRerender('loop-node')
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const updatedNodes = mockSetNodes.mock.calls[0][0]
+    const updatedNodes = mockSetNodes.mock.calls[0]![0]
     const updatedLoopNode = updatedNodes.find((node: Node) => node.id === 'loop-node')
     expect(updatedLoopNode.width).toBe(100 + 60 + LOOP_PADDING.right)
     expect(updatedLoopNode.height).toBe(90 + 40 + LOOP_PADDING.bottom)

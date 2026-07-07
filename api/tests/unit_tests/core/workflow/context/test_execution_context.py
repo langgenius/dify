@@ -20,15 +20,6 @@ from context.execution_context import (
 )
 
 
-class TestAppContext:
-    """Test AppContext abstract base class."""
-
-    def test_app_context_is_abstract(self):
-        """Test that AppContext cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            AppContext()  # type: ignore
-
-
 class TestNullAppContext:
     """Test NullAppContext implementation."""
 

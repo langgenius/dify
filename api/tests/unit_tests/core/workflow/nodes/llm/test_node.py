@@ -5,6 +5,19 @@ from collections.abc import Sequence
 from unittest import mock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.llm.model_access import (
+    DifyCredentialsProvider,
+    DifyModelFactory,
+    build_dify_model_access,
+    fetch_model_config,
+)
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -34,7 +47,12 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
+from graphon.node_events import (
+    ModelInvokeCompletedEvent,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamReasoningEvent,
+)
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import (
@@ -63,23 +81,11 @@ from graphon.nodes.llm.node import (
     _render_jinja2_message,
 )
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.reasoning import split_reasoning
 from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-
-from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
-from core.app.llm.model_access import (
-    DifyCredentialsProvider,
-    DifyModelFactory,
-    build_dify_model_access,
-    fetch_model_config,
-)
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.system_variables import default_system_variables
 from models.provider import ProviderType
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -140,8 +146,8 @@ def _build_image_file(
     mime_type: str = "image/png",
 ) -> File:
     return File(
-        id=file_id,
-        type=FileType.IMAGE,
+        file_id=file_id,
+        file_type=FileType.IMAGE,
         filename=f"{file_id}{extension}",
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url=remote_url,
@@ -187,7 +193,7 @@ def graph_init_params() -> GraphInitParams:
 
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
         user_inputs={},
     )
@@ -205,14 +211,10 @@ def llm_node(
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
     mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -226,7 +228,7 @@ def llm_node(
 
 
 @pytest.fixture
-def model_config(monkeypatch):
+def model_config(monkeypatch: pytest.MonkeyPatch):
     from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
 
     def mock_model_providers(_self):
@@ -245,9 +247,10 @@ def model_config(monkeypatch):
     )
 
     # Create actual provider and model type instances
-    model_provider_factory = ModelProviderFactory(model_runtime=create_plugin_model_runtime(tenant_id="test"))
+    model_assembly = create_plugin_model_assembly(tenant_id="test")
+    model_provider_factory = model_assembly.model_provider_factory
     provider_instance = model_provider_factory.get_model_provider("openai")
-    model_type_instance = model_provider_factory.get_model_type_instance("openai", ModelType.LLM)
+    model_type_instance = model_assembly.create_model_type_instance(provider="openai", model_type=ModelType.LLM)
 
     # Create a ProviderModelBundle
     provider_model_bundle = ProviderModelBundle(
@@ -348,6 +351,62 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
     provider_model.raise_for_status.assert_called_once()
 
 
+def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
+    model_config: ModelConfigWithCredentialsEntity,
+):
+    mock_provider_manager = mock.MagicMock()
+    mock_configurations = mock.MagicMock()
+    mock_provider_configuration = mock.MagicMock()
+    mock_provider_model = mock.MagicMock()
+    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
+
+    mock_configurations.get.return_value = mock_provider_configuration
+    mock_provider_configuration.get_provider_model.return_value = mock_provider_model
+    mock_provider_configuration.get_current_credentials.return_value = {"api_key": "test"}
+    mock_provider_manager.get_configurations.return_value = mock_configurations
+
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+    credentials_provider = DifyCredentialsProvider(
+        run_context=run_context,
+        provider_manager=mock_provider_manager,
+    )
+
+    model_instance = mock.MagicMock(
+        model_type_instance=model_config.provider_model_bundle.model_type_instance,
+        provider_model_bundle=model_config.provider_model_bundle,
+    )
+    mock_model_factory.init_model_instance.return_value = model_instance
+
+    with mock.patch.object(
+        model_instance.model_type_instance.__class__,
+        "get_model_schema",
+        return_value=model_config.model_schema,
+        autospec=True,
+    ):
+        fetch_model_config(
+            node_data_model=ModelConfig(
+                provider="openai",
+                name="gpt-3.5-turbo",
+                mode="chat",
+                completion_params={},
+            ),
+            credentials_provider=credentials_provider,
+            model_factory=mock_model_factory,
+        )
+
+    mock_provider_configuration.get_provider_model.assert_called_once_with(
+        model_type=ModelType.LLM,
+        model="gpt-3.5-turbo",
+    )
+    mock_provider_model.raise_for_status.assert_called_once()
+
+
 def test_dify_model_access_adapters_call_managers():
     mock_provider_manager = mock.MagicMock()
     mock_model_manager = mock.MagicMock()
@@ -403,8 +462,8 @@ def test_dify_model_access_adapters_call_managers():
 
 def test_fetch_files_with_file_segment():
     file = File(
-        id="1",
-        type=FileType.IMAGE,
+        file_id="1",
+        file_type=FileType.IMAGE,
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="1",
@@ -420,16 +479,16 @@ def test_fetch_files_with_file_segment():
 def test_fetch_files_with_array_file_segment():
     files = [
         File(
-            id="1",
-            type=FileType.IMAGE,
+            file_id="1",
+            file_type=FileType.IMAGE,
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="1",
             storage_key="",
         ),
         File(
-            id="2",
-            type=FileType.IMAGE,
+            file_id="2",
+            file_type=FileType.IMAGE,
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="2",
@@ -1174,14 +1233,10 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
     mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -1203,8 +1258,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/png",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -1222,7 +1277,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         mock_file_saver.save_binary_string.assert_called_once_with(
-            data=b"test-data", mime_type="image/png", file_type=FileType.IMAGE
+            data=b"test-data",
+            mime_type="image/png",
+            file_type=FileType.IMAGE,
+            extension_override=".png",
         )
 
     def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
@@ -1233,8 +1291,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/jpg",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -1256,8 +1314,9 @@ class TestLLMNodeSaveMultiModalImageOutput:
 
 def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
     mock_file = mock.MagicMock(spec=File)
+    mock_file.type = FileType.IMAGE
     mock_file.generate_url.return_value = "https://example.com/image.png"
-    markdown = llm_node._image_file_to_markdown(mock_file)
+    markdown = llm_node._saved_file_to_markdown(mock_file)
     assert markdown == "![](https://example.com/image.png)"
 
 
@@ -1284,15 +1343,15 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch):
+    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch: pytest.MonkeyPatch):
         llm_node, mock_file_saver = llm_node_for_multimodal
 
         image_raw_data = b"PNG_DATA"
         image_b64_data = base64.b64encode(image_raw_data).decode()
 
         mock_saved_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             filename="test.png",
             extension=".png",
@@ -1329,6 +1388,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
             data=image_raw_data,
             mime_type="image/png",
             file_type=FileType.IMAGE,
+            extension_override=".png",
         )
         assert mock_saved_file in llm_node._file_outputs
 
@@ -1341,7 +1401,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog: pytest.LogCaptureFixture):
         llm_node, mock_file_saver = llm_node_for_multimodal
         unknown_item = self._UnknownItem()
 
@@ -1376,7 +1436,7 @@ class TestReasoningFormat:
         </think>Dify is an open source AI platform.
         """
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "separated")
+        clean_text, reasoning_content = split_reasoning(text_with_think, "separated")
 
         assert clean_text == "Dify is an open source AI platform."
         assert reasoning_content == "I need to explain what Dify is. It's an open source AI platform."
@@ -1389,7 +1449,7 @@ class TestReasoningFormat:
         </think>Dify is an open source AI platform.
         """
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, "tagged")
+        clean_text, reasoning_content = split_reasoning(text_with_think, "tagged")
 
         # Original text unchanged
         assert clean_text == text_with_think
@@ -1401,7 +1461,7 @@ class TestReasoningFormat:
 
         text_without_think = "This is a simple answer without any thinking blocks."
 
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_without_think, "separated")
+        clean_text, reasoning_content = split_reasoning(text_without_think, "separated")
 
         assert clean_text == text_without_think
         assert reasoning_content == ""
@@ -1422,7 +1482,7 @@ class TestReasoningFormat:
         <think>I need to explain what Dify is. It's an open source AI platform.
         </think>Dify is an open source AI platform.
         """
-        clean_text, reasoning_content = LLMNode._split_reasoning(text_with_think, node_data.reasoning_format)
+        clean_text, reasoning_content = split_reasoning(text_with_think, node_data.reasoning_format)
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
@@ -1457,7 +1517,6 @@ def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enable
                 file_saver=file_saver,
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 reasoning_format="separated",
             )
         )
@@ -1514,7 +1573,6 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
                 file_saver=mock.MagicMock(spec=LLMFileSaver),
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 model_instance=_build_prepared_llm_mock(),
                 reasoning_format="separated",
                 request_start_time=1.0,
@@ -1522,10 +1580,14 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
         )
 
     assert events[0] == first_chunk
-    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="<think>plan</think>", is_final=False)
+
+    assert events[1] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="plan", is_final=False)
+
     assert events[2] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
 
-    completed = events[3]
+    assert events[3] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="", is_final=True)
+
+    completed = events[4]
     assert isinstance(completed, ModelInvokeCompletedEvent)
     assert completed.text == "answer"
     assert completed.reasoning_content == "plan"
@@ -1552,7 +1614,6 @@ def test_handle_invoke_result_wraps_structured_output_parse_errors():
                 file_saver=mock.MagicMock(spec=LLMFileSaver),
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 model_instance=model_instance,
             )
         )

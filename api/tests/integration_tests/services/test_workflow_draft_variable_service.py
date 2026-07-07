@@ -1,12 +1,9 @@
 import json
 import unittest
 import uuid
+from typing import override
 
 import pytest
-from graphon.nodes import BuiltinNodeTypes
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
-from graphon.variables.variables import StringVariable
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -15,6 +12,10 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import StringVariable
 from libs import datetime_utils
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -36,6 +37,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
     _node2_id = "test_node_2"
     _node_exec_id = str(uuid.uuid4())
 
+    @override
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
         self._test_user_id = str(uuid.uuid4())
@@ -102,6 +104,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
     def _get_test_srv(self) -> WorkflowDraftVariableService:
         return WorkflowDraftVariableService(session=self._session)
 
+    @override
     def tearDown(self):
         self._session.rollback()
 
@@ -213,7 +216,7 @@ class TestDraftVariableLoader(unittest.TestCase):
     # @pytest.fixture
     # def node_var(self, session):
     #     pass
-
+    @override
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
         self._test_tenant_id = str(uuid.uuid4())
@@ -255,6 +258,7 @@ class TestDraftVariableLoader(unittest.TestCase):
         self._sys_var_id = sys_var.id
         self._conv_var_id = conv_var.id
 
+    @override
     def tearDown(self):
         with Session(bind=db.engine, expire_on_commit=False) as session:
             session.execute(delete(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == self._test_app_id))
@@ -568,6 +572,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
     _node_exec_id: str
     _workflow_node_exec_id: str
 
+    @override
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
         self._test_tenant_id = str(uuid.uuid4())
@@ -676,6 +681,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         self._node_var_missing_exec_id = self._node_var_missing_exec.id
         self._conv_var_id = self._conv_var.id
 
+    @override
     def tearDown(self):
         self._session.rollback()
         with Session(db.engine) as session, session.begin():

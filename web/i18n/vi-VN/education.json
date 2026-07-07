@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Bạn có một gói đăng ký đang hoạt động. Bạn có thể sử dụng giảm giá giáo dục sau khi gói đăng ký hết hạn. Xác nhận gói đăng ký của bạn trên <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "Bạn không có quyền thanh toán trong workspace này. Vui lòng chuyển sang workspace mà bạn có thể quản lý thanh toán để sử dụng giảm giá giáo dục.",
+  "applied.noPaymentPermission.returnHome": "Quay lại Dify",
+  "applied.step1.description": "Bạn đã đăng ký giảm giá giáo dục thành công.",
+  "applied.step2.description": "Chọn workspace bạn muốn sử dụng với giảm giá giáo dục.",
   "currentSigned": "HIỆN ĐANG ĐĂNG NHẬP VÀO",
+  "educationPricingConfirm.cancel": "Giữ gói hiện tại",
+  "educationPricingConfirm.continue": "Chuyển sang Professional hằng năm",
+  "educationPricingConfirm.description": "Giảm giá giáo dục chỉ áp dụng cho gói Professional hằng năm. Nếu giữ gói hiện tại, giảm giá sẽ không được áp dụng.",
+  "educationPricingConfirm.title": "Gói bạn chọn không hỗ trợ giảm giá giáo dục",
   "emailLabel": "Email hiện tại của bạn",
   "form.schoolName.placeholder": "Nhập tên chính thức, không viết tắt của trường bạn",
   "form.schoolName.title": "Tên Trường Của Bạn",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Chúng tôi sẽ thêm nó vào tài khoản của bạn và bạn có thể sử dụng nó cho lần nâng cấp tiếp theo.",
   "notice.stillInEducation.isAboutToExpire": "Xác minh lại ngay bây giờ để nhận một phiếu giảm giá mới cho năm học sắp tới. Nó sẽ được lưu vào tài khoản của bạn và sẵn sàng sử dụng khi bạn gia hạn tiếp theo.",
   "notice.stillInEducation.title": "Vẫn đang học tập?",
+  "planNotSupportEducationDiscount": "Không đủ điều kiện cho giá giáo dục",
   "rejectContent": "Rất tiếc, bạn không đủ điều kiện để nhận trạng thái Xác minh Giáo dục và do đó không thể nhận được mã giảm giá độc quyền 100% cho Kế hoạch Chuyên nghiệp Dify nếu bạn sử dụng địa chỉ email này.",
   "rejectTitle": "Yêu cầu xác minh giáo dục Dify của bạn đã bị từ chối",
   "submit": "Gửi",
   "submitError": "Gửi mẫu không thành công. Vui lòng thử lại sau.",
-  "successContent": "Chúng tôi đã phát hành một phiếu giảm giá 100% cho gói Dify Professional vào tài khoản của bạn. Phiếu giảm giá có hiệu lực trong một năm, vui lòng sử dụng nó trong thời gian hiệu lực.",
-  "successTitle": "Bạn đã được xác minh giáo dục Dify",
   "toVerified": "Xác thực giáo dục",
   "toVerifiedTip.coupon": "mã giảm giá độc quyền 100%",
   "toVerifiedTip.end": "cho Kế hoạch Chuyên nghiệp Dify.",
-  "toVerifiedTip.front": "Bạn hiện đủ điều kiện để có trạng thái Xác minh Giáo dục. Vui lòng nhập thông tin giáo dục của bạn bên dưới để hoàn tất quá trình và nhận một"
+  "toVerifiedTip.front": "Bạn hiện đủ điều kiện để có trạng thái Xác minh Giáo dục. Vui lòng nhập thông tin giáo dục của bạn bên dưới để hoàn tất quá trình và nhận một",
+  "useEducationDiscount": "Sử dụng giảm giá giáo dục"
 }

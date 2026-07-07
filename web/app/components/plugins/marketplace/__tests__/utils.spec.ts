@@ -118,22 +118,6 @@ describe('getPluginLinkInMarketplace', () => {
   })
 })
 
-describe('getPluginDetailLinkInMarketplace', () => {
-  it('should return correct detail link for regular plugin', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-    const link = getPluginDetailLinkInMarketplace(plugin)
-    expect(link).toBe('/plugins/test-org/test-plugin')
-  })
-
-  it('should return correct detail link for bundle', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-    const link = getPluginDetailLinkInMarketplace(bundle)
-    expect(link).toBe('/bundles/test-org/test-bundle')
-  })
-})
-
 describe('getMarketplaceListCondition', () => {
   it('should return category condition for tool', async () => {
     const { getMarketplaceListCondition } = await import('../utils')
@@ -264,7 +248,7 @@ describe('getMarketplacePluginsByCollectionId', () => {
 
     expect(mockCollectionPlugins).toHaveBeenCalled()
     const call = mockCollectionPlugins.mock.calls[0]
-    expect(call[1]).toMatchObject({ signal: controller.signal })
+    expect(call![1]).toMatchObject({ signal: controller.signal })
   })
 })
 
@@ -313,7 +297,7 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 
     expect(mockCollections).toHaveBeenCalled()
     const call = mockCollections.mock.calls[0]
-    expect(call[0]).toMatchObject({ query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }) })
+    expect(call![0]).toMatchObject({ query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }) })
   })
 })
 
@@ -393,7 +377,7 @@ describe('getMarketplacePlugins', () => {
 
     expect(result.plugins).toHaveLength(1)
     const call = mockSearchAdvanced.mock.calls[0]
-    expect(call[0].params.kind).toBe('bundles')
+    expect(call![0].params.kind).toBe('bundles')
   })
 
   it('should use empty category when category is all', async () => {
@@ -408,7 +392,7 @@ describe('getMarketplacePlugins', () => {
     }, 1)
 
     const call = mockSearchAdvanced.mock.calls[0]
-    expect(call[0].body.category).toBe('')
+    expect(call![0].body.category).toBe('')
   })
 
   it('should handle API error and return empty result', async () => {
@@ -437,7 +421,7 @@ describe('getMarketplacePlugins', () => {
     await getMarketplacePlugins({ query: 'test' }, 1, controller.signal)
 
     const call = mockSearchAdvanced.mock.calls[0]
-    expect(call[1]).toMatchObject({ signal: controller.signal })
+    expect(call![1]).toMatchObject({ signal: controller.signal })
   })
 
   it('should default page_size to 40 when not provided', async () => {

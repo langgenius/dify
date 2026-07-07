@@ -12,7 +12,7 @@ permissions: {}
 jobs:
   comment:
     name: Comment PR with type coverage
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -21,10 +21,10 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].head.repo.full_name != github.repository }}
     steps:
       - name: Checkout default branch (trusted code)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
 
@@ -63,8 +63,8 @@ jobs:
         id: render
         run: |
           comment_body="$(uv run --directory api python libs/pyrefly_type_coverage.py \
-            --base base_report.json \
-            < pr_report.json)"
+            --base "$GITHUB_WORKSPACE/base_report.json" \
+            < "$GITHUB_WORKSPACE/pr_report.json")"
 
           {
             echo "### Pyrefly Type Coverage"

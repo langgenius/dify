@@ -9,38 +9,31 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useStoreApi,
-} from 'reactflow'
+
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { updateConversationVariables } from '@/service/workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
+  const appId = useStore(s => s.appId) as string
   const {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
-  const handleVarChanged = useCallback(() => {
-    doSyncWorkflowDraft(false, {
-      onSuccess() {
-        invalidateConversationVarValues()
-      },
-    })
-  }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
@@ -48,40 +41,63 @@ const ChatVariablePanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<ConversationVariable>()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const getEffectedNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     return findUsedVarNodes(
       ['conversation', chatVar.name],
       allNodes,
     )
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const effectedNodes = getEffectedNodes(chatVar)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (effectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['conversation', chatVar.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getEffectedNodes, store])
+  }, [getEffectedNodes, collaborativeWorkflow])
 
   const handleEdit = (chatVar: ConversationVariable) => {
     setCurrentVar(chatVar)
     setShowVariableModal(true)
   }
 
-  const handleDelete = useCallback((chatVar: ConversationVariable) => {
+  const handleDelete = useCallback(async (chatVar: ConversationVariable) => {
     removeUsedVarInNodes(chatVar)
-    updateChatVarList(varList.filter(v => v.id !== chatVar.id))
+    const newVarList = varList.filter(v => v.id !== chatVar.id)
+    updateChatVarList(newVarList)
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    handleVarChanged()
-  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
+
+    // Use new dedicated conversation variables API instead of workflow draft sync
+    try {
+      await updateConversationVariables({
+        appId,
+        conversationVariables: newVarList,
+      })
+
+      // Emit update event to other connected clients
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
+      }
+
+      invalidateConversationVarValues()
+    }
+    catch (error) {
+      console.error('Failed to update conversation variables:', error)
+      // Revert local state on error
+      updateChatVarList(varList)
+    }
+  }, [removeUsedVarInNodes, updateChatVarList, varList, appId, invalidateConversationVarValues])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -95,30 +111,77 @@ const ChatVariablePanel = () => {
   }, [getEffectedNodes, handleDelete])
 
   const handleSave = useCallback(async (chatVar: ConversationVariable) => {
-    // add chatVar
+    let newList: ConversationVariable[]
+
     if (!currentVar) {
-      const newList = [chatVar, ...varList]
+      // Adding new conversation variable
+      newList = [chatVar, ...varList]
       updateChatVarList(newList)
-      handleVarChanged()
+
+      // Use new dedicated conversation variables API
+      try {
+        await updateConversationVariables({
+          appId,
+          conversationVariables: newList,
+        })
+
+        const socket = webSocketClient.getSocket(appId)
+        if (socket) {
+          socket.emit('collaboration_event', {
+            type: 'vars_and_features_update',
+          })
+        }
+
+        invalidateConversationVarValues()
+      }
+      catch (error) {
+        console.error('Failed to update conversation variables:', error)
+        // Revert local state on error
+        updateChatVarList(varList)
+      }
       return
     }
-    // edit chatVar
-    const newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
+
+    // Updating existing conversation variable
+    newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
     updateChatVarList(newList)
-    // side effects of rename env
+
+    // side effects of rename conversation variable
     if (currentVar.name !== chatVar.name) {
-      const { getNodes, setNodes } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const effectedNodes = getEffectedNodes(currentVar)
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, ['conversation', currentVar.name], ['conversation', chatVar.name])
 
         return node
       })
       setNodes(newNodes)
+      setControlPromptEditorRerenderKey(Date.now())
     }
-    handleVarChanged()
-  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
+
+    // Use new dedicated conversation variables API
+    try {
+      await updateConversationVariables({
+        appId,
+        conversationVariables: newList,
+      })
+
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
+      }
+
+      invalidateConversationVarValues()
+    }
+    catch (error) {
+      console.error('Failed to update conversation variables:', error)
+      // Revert local state on error
+      updateChatVarList(varList)
+    }
+  }, [currentVar, getEffectedNodes, collaborativeWorkflow, updateChatVarList, varList, appId, invalidateConversationVarValues, setControlPromptEditorRerenderKey])
 
   return (
     <div
@@ -130,13 +193,13 @@ const ChatVariablePanel = () => {
         {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
-            <RiBookOpenLine className="h-4 w-4" />
+            <RiBookOpenLine className="size-4" />
           </ActionButton>
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -149,7 +212,7 @@ const ChatVariablePanel = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
-                <BubbleX className="mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700" />
+                <BubbleX className="mb-1 size-4 shrink-0 text-util-colors-teal-teal-700" />
                 <div className="system-xs-semibold text-text-secondary">conversation_var</div>
                 <div className="system-2xs-regular text-text-tertiary">String</div>
               </div>

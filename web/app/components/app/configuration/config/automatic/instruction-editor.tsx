@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { GeneratorType } from './types'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -11,7 +12,7 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
-type Props = {
+type Props = Readonly<{
   editorKey: string
   value: string
   onChange: (text: string) => void
@@ -24,7 +25,7 @@ type Props = {
   }) => Type
   isShowCurrentBlock: boolean
   isShowLastRunBlock: boolean
-}
+}>
 
 const i18nPrefix = 'generate'
 
@@ -111,9 +112,15 @@ const InstructionEditor: FC<Props> = ({
       />
       <div className="absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 system-xs-regular text-components-input-text-placeholder">
         <span>{t('generate.press', { ns: 'appDebug' })}</span>
-        <span className="flex h-4 w-3.5 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</span>
+        <Kbd className="text-text-placeholder">/</Kbd>
         <span>{t('generate.to', { ns: 'appDebug' })}</span>
-        <span onClick={handleInsertVariable} className="ml-1! cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary">{t('generate.insertContext', { ns: 'appDebug' })}</span>
+        <button
+          type="button"
+          className="ml-1! cursor-pointer border-none bg-transparent p-0 text-left hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleInsertVariable}
+        >
+          {t('generate.insertContext', { ns: 'appDebug' })}
+        </button>
       </div>
     </div>
   )

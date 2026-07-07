@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -14,7 +14,7 @@ import PromptToast from './prompt-toast'
 import { GeneratorType } from './types'
 import VersionSelector from './version-selector'
 
-type Props = {
+type Props = Readonly<{
   isBasicMode?: boolean
   nodeId?: string
   current: GenRes
@@ -23,7 +23,7 @@ type Props = {
   versions: GenRes[]
   onApply: () => void
   generatorType: GeneratorType
-}
+}>
 
 const Result: FC<Props> = ({
   isBasicMode,
@@ -57,7 +57,7 @@ const Result: FC<Props> = ({
               toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="h-4 w-4 text-text-secondary" />
+            <RiClipboardLine className="size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
             {t('generate.apply', { ns: 'appDebug' })}

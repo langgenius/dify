@@ -16,7 +16,7 @@ concurrency:
 jobs:
   api-unit:
     name: API Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-unit
     defaults:
@@ -29,13 +29,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -48,10 +48,23 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run dify config tests
-        run: uv run --project api dev/pytest/pytest_config_tests.py
+        run: uv run --project api pytest api/tests/unit_tests/configs/test_env_consistency.py
 
       - name: Run Unit Tests
-        run: uv run --project api bash dev/pytest/pytest_unit_tests.sh
+        run: |
+          uv run --project api pytest \
+            -p no:benchmark \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
+            api/tests/unit_tests \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests \
+            --ignore=api/tests/unit_tests/controllers
+          # Controller tests register Flask routes at import time, so keep them out of xdist.
+          uv run --project api pytest \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            --cov-append \
+            api/tests/unit_tests/controllers
 
       - name: Upload unit coverage data
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -62,7 +75,7 @@ jobs:
 
   api-integration:
     name: API Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-integration
       STORAGE_TYPE: opendal
@@ -78,13 +91,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -96,32 +109,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Set up dotenvs
-        run: |
-          cp docker/.env.example docker/.env
-          cp docker/middleware.env.example docker/middleware.env
-
-      - name: Expose Service Ports
-        run: sh .github/workflows/expose_service_ports.sh
-
-      - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
-        with:
-          compose-file: |
-            docker/docker-compose.middleware.yaml
-          services: |
-            db_postgres
-            redis
-            sandbox
-            ssrf_proxy
-
-      - name: setup test config
-        run: |
-          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
-
       - name: Run Integration Tests
         run: |
           uv run --project api pytest \
+            -p no:benchmark \
+            --start-middleware \
             -n auto \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
@@ -137,7 +129,7 @@ jobs:
 
   api-coverage:
     name: API Coverage
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
       - api-integration
@@ -150,13 +142,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -203,7 +195,7 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage.xml
           disable_search: true

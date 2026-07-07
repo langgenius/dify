@@ -1,8 +1,20 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
+
+// Item uses useAppContextWithSelector(state => state.userProfile) for the
+// borrowed-row heuristic; provide a minimal mock so the selector resolves.
+const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+    }),
+}))
 
 // ==================== Test Utilities ====================
 
@@ -53,15 +65,17 @@ describe('Item Component', () => {
 
       render(<Item credential={credential} />)
 
-      expect(screen.getByText('Enterprise')).toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.enterprise')).toBeInTheDocument()
     })
 
-    it('should not render enterprise badge when from_enterprise is false', () => {
-      const credential = createCredential({ from_enterprise: false })
+    it('should not render personal/shared badge — the Personal/Shared tag was removed per product feedback', () => {
+      const credential = createCredential({ from_enterprise: false, visibility: 'only_me' })
 
       render(<Item credential={credential} />)
 
-      expect(screen.queryByText('Enterprise')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.personal')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.shared')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.enterprise')).not.toBeInTheDocument()
     })
 
     it('should render selected icon when showSelectedIcon is true and credential is selected', () => {
@@ -75,8 +89,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
     })
 
     it('should not render selected icon when credential is not selected', () => {
@@ -89,7 +102,8 @@ describe('Item Component', () => {
           selectedCredentialId="sel-id"
         />,
       )
-      const selectedSvgCount = selectedContainer.querySelectorAll('svg').length
+      const selectedIcon = selectedContainer.querySelector('.i-ri-check-line')
+      expect(selectedIcon).not.toBeNull()
 
       cleanup()
 
@@ -100,9 +114,9 @@ describe('Item Component', () => {
           selectedCredentialId="other-id"
         />,
       )
-      const unselectedSvgCount = unselectedContainer.querySelectorAll('svg').length
+      const unselectedIcon = unselectedContainer.querySelector('.i-ri-check-line')
 
-      expect(unselectedSvgCount).toBeLessThan(selectedSvgCount)
+      expect(unselectedIcon).not.toBeInTheDocument()
     })
 
     it('should render with disabled appearance when not_allowed_to_use is true', () => {
@@ -110,7 +124,7 @@ describe('Item Component', () => {
 
       const { container } = render(<Item credential={credential} />)
 
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('cursor-not-allowed', 'opacity-50')
     })
 
     it('should not call onItemClick when disabled is true', () => {
@@ -340,7 +354,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const editButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const editButton = container.querySelector('.i-ri-equalizer-2-line')?.closest('button') as HTMLElement
       fireEvent.click(editButton)
       expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
         api_key: 'secret',
@@ -404,7 +418,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
@@ -521,7 +535,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalled()
     })

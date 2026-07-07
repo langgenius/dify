@@ -1,7 +1,7 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
@@ -12,7 +12,7 @@ const Form = () => {
   const {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -26,9 +26,9 @@ const Form = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
+    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,
@@ -66,26 +66,27 @@ const Form = () => {
   } = useFormState()
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  const readonly = !canEditSettings
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
         showAppIconPicker={showAppIconPicker}
+        setShowAppIconPicker={setShowAppIconPicker}
         handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
-        handleCloseAppIconPicker={handleCloseAppIconPicker}
         permission={permission}
         setPermission={setPermission}
         selectedMemberIDs={selectedMemberIDs}
         setSelectedMemberIDs={setSelectedMemberIDs}
         memberList={memberList}
+        readonly={readonly}
       />
 
       {isExternalProvider
@@ -96,6 +97,7 @@ const Form = () => {
               scoreThreshold={scoreThreshold}
               scoreThresholdEnabled={scoreThresholdEnabled}
               handleSettingsChange={handleSettingsChange}
+              readonly={readonly}
             />
           )
         : (
@@ -113,6 +115,7 @@ const Form = () => {
               summaryIndexSetting={summaryIndexSetting}
               handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
               showMultiModalTip={showMultiModalTip}
+              readonly={readonly}
             />
           )}
 
@@ -126,7 +129,7 @@ const Form = () => {
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading}
+            disabled={loading || readonly}
             onClick={handleSave}
           >
             {t('form.save', { ns: 'datasetSettings' })}

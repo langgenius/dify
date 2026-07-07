@@ -3,7 +3,7 @@ import json
 import logging
 import re
 import uuid
-from typing import Any
+from typing import Any, TypedDict, override
 
 import jieba.posseg as pseg  # type: ignore
 import numpy
@@ -23,6 +23,18 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 oracledb.defaults.fetch_lobs = False
+
+
+class _OraclePoolParams(TypedDict, total=False):
+    user: str
+    password: str
+    dsn: str
+    min: int
+    max: int
+    increment: int
+    config_dir: str | None
+    wallet_location: str | None
+    wallet_password: str | None
 
 
 class OracleVectorConfig(BaseModel):
@@ -75,6 +87,7 @@ class OracleVector(BaseVector):
         self.table_name = f"embedding_{collection_name}"
         self.config = config
 
+    @override
     def get_type(self) -> str:
         return VectorType.ORACLE
 
@@ -127,29 +140,27 @@ class OracleVector(BaseVector):
             return connection
 
     def _create_connection_pool(self, config: OracleVectorConfig):
-        pool_params = {
-            "user": config.user,
-            "password": config.password,
-            "dsn": config.dsn,
-            "min": 1,
-            "max": 5,
-            "increment": 1,
-        }
+        pool_params = _OraclePoolParams(
+            user=config.user,
+            password=config.password,
+            dsn=config.dsn,
+            min=1,
+            max=5,
+            increment=1,
+        )
         if config.is_autonomous:
-            pool_params.update(
-                {
-                    "config_dir": config.config_dir,
-                    "wallet_location": config.wallet_location,
-                    "wallet_password": config.wallet_password,
-                }
-            )
+            pool_params["config_dir"] = config.config_dir
+            pool_params["wallet_location"] = config.wallet_location
+            pool_params["wallet_password"] = config.wallet_password
         return oracledb.create_pool(**pool_params)
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         values = []
         pks = []
@@ -188,6 +199,7 @@ class OracleVector(BaseVector):
             conn.close()
         return pks
 
+    @override
     def text_exists(self, id: str) -> bool:
         with self._get_connection() as conn:
             with conn.cursor() as cur:
@@ -209,6 +221,7 @@ class OracleVector(BaseVector):
             conn.close()
         return docs
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
@@ -219,6 +232,7 @@ class OracleVector(BaseVector):
             conn.commit()
             conn.close()
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
@@ -226,6 +240,7 @@ class OracleVector(BaseVector):
             conn.commit()
             conn.close()
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Search the nearest neighbors to a vector.
@@ -269,6 +284,7 @@ class OracleVector(BaseVector):
             conn.close()
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # lazy import
         import nltk  # type: ignore
@@ -339,6 +355,7 @@ class OracleVector(BaseVector):
         else:
             return [Document(page_content="", metadata={})]
 
+    @override
     def delete(self):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
@@ -365,6 +382,7 @@ class OracleVector(BaseVector):
 
 
 class OracleVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OracleVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "لديك اشتراك نشط. يمكنك استخدام الخصم التعليمي بعد انتهاء صلاحية اشتراكك. تأكيد اشتراكك في <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "ليس لديك صلاحية الدفع في هذه مساحة العمل. يرجى التبديل إلى مساحة عمل حيث يمكنك إدارة الفوترة لاستخدام الخصم التعليمي.",
+  "applied.noPaymentPermission.returnHome": "العودة إلى Dify",
+  "applied.step1.description": "لقد قدمت بنجاح طلباً للحصول على الخصم التعليمي.",
+  "applied.step2.description": "اختر مساحة العمل التي تريد استخدامها مع الخصم التعليمي.",
   "currentSigned": "تم تسجيل الدخول حاليًا باسم",
+  "educationPricingConfirm.cancel": "الاحتفاظ بالخطة الحالية",
+  "educationPricingConfirm.continue": "التبديل إلى Professional السنوية",
+  "educationPricingConfirm.description": "ينطبق الخصم التعليمي على خطة Professional السنوية فقط. الاحتفاظ بخطتك الحالية لن يتضمن الخصم.",
+  "educationPricingConfirm.title": "الخطة التي اخترتها لا تدعم الخصم التعليمي",
   "emailLabel": "بريدك الإلكتروني الحالي",
   "form.schoolName.placeholder": "أدخل الاسم الرسمي الكامل لمدرستك",
   "form.schoolName.title": "اسم مدرستك",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "تحقق مرة أخرى الآن للحصول على كوبون جديد للعام الدراسي القادم. سنضيفه إلى حسابك ويمكنك استخدامه للترقية التالية.",
   "notice.stillInEducation.isAboutToExpire": "تحقق مرة أخرى الآن للحصول على كوبون جديد للعام الدراسي القادم. سيتم حفظه في حسابك وجاهز للاستخدام في تجديدك التالي.",
   "notice.stillInEducation.title": "هل ما زلت في التعليم؟",
+  "planNotSupportEducationDiscount": "غير مؤهل لأسعار التعليم",
   "rejectContent": "لسوء الحظ، أنت غير مؤهل للحصول على حالة التحقق التعليمي وبالتالي لا يمكنك الحصول على كوبون حصري 100٪ لخطة Dify Professional إذا كنت تستخدم عنوان البريد الإلكتروني هذا.",
   "rejectTitle": "تم رفض التحقق التعليمي الخاص بك في Dify",
   "submit": "إرسال",
   "submitError": "فشل إرسال النموذج. يرجى المحاولة مرة أخرى لاحقًا.",
-  "successContent": "لقد أصدرنا كوبون خصم 100٪ لخطة Dify Professional لحسابك. الكوبون ساري لمدة عام واحد، يرجى استخدامه خلال فترة الصلاحية.",
-  "successTitle": "لقد حصلت على التحقق التعليمي من Dify",
   "toVerified": "احصل على التحقق التعليمي",
   "toVerifiedTip.coupon": "كوبون حصري 100٪",
   "toVerifiedTip.end": "لخطة Dify الاحترافية.",
-  "toVerifiedTip.front": "أنت الآن مؤهل للحصول على حالة التحقق التعليمي. يرجى إدخال معلومات التعليم الخاصة بك أدناه لإكمال العملية والحصول على"
+  "toVerifiedTip.front": "أنت الآن مؤهل للحصول على حالة التحقق التعليمي. يرجى إدخال معلومات التعليم الخاصة بك أدناه لإكمال العملية والحصول على",
+  "useEducationDiscount": "استخدام الخصم التعليمي"
 }

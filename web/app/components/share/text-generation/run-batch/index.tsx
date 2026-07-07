@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
@@ -7,7 +8,6 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'
@@ -50,7 +50,7 @@ const RunBatch: FC<IRunBatchProps> = ({
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >
-          <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 h-4 w-4 shrink-0')} aria-hidden="true" />
+          <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')} aria-hidden="true" />
           <span className="text-[13px] uppercase">{t('generation.run', { ns: 'share' })}</span>
         </Button>
       </div>

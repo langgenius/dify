@@ -36,19 +36,12 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged(
 
     read_at = datetime(2026, 2, 9, 0, 0, 0)
 
-    with (
-        patch(
-            "controllers.console.app.conversation.current_account_with_tenant",
-            return_value=(account, tenant.id),
-            autospec=True,
-        ),
-        patch(
-            "controllers.console.app.conversation.naive_utc_now",
-            return_value=read_at,
-            autospec=True,
-        ),
+    with patch(
+        "controllers.console.app.conversation.naive_utc_now",
+        return_value=read_at,
+        autospec=True,
     ):
-        loaded = _get_conversation(app, conversation.id)
+        loaded = _get_conversation(account, app, conversation.id)
 
     db_session_with_containers.refresh(conversation)
 
@@ -64,10 +57,5 @@ def test_get_conversation_raises_not_found_for_missing_conversation(
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
 
-    with patch(
-        "controllers.console.app.conversation.current_account_with_tenant",
-        return_value=(account, tenant.id),
-        autospec=True,
-    ):
-        with pytest.raises(NotFound):
-            _get_conversation(app, "00000000-0000-0000-0000-000000000000")
+    with pytest.raises(NotFound):
+        _get_conversation(account, app, "00000000-0000-0000-0000-000000000000")

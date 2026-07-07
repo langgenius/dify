@@ -11,18 +11,19 @@ import type {
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { Button } from '@/app/components/base/ui/button'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
@@ -167,7 +168,10 @@ const AllTools = ({
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
 
   useEffect(() => {
     if (!enable_marketplace)
@@ -201,6 +205,17 @@ const AllTools = ({
       return
     onSelect(type, pluginDefaultValue as ToolDefaultValue)
   }, [onSelect])
+  const toolsListTitle = useMemo(() => {
+    if (activeTab === ToolTypeEnum.BuiltIn)
+      return t('allToolPlugins', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Custom)
+      return t('allSwaggerAPIAsTool', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Workflow)
+      return t('allWorkflowAsTool', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.MCP)
+      return t('allMCP', { ns: 'tools' })
+    return t('allTools', { ns: 'tools' })
+  }, [activeTab, t])
 
   return (
     <div className={cn('max-w-[500px]', className)}>
@@ -260,7 +275,7 @@ const AllTools = ({
             {hasToolsListContent && (
               <>
                 <div className="px-3 pt-2 pb-1">
-                  <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
+                  <span className="system-xs-medium text-text-primary">{toolsListTitle}</span>
                 </div>
                 <Tools
                   className={toolContentClassName}
@@ -291,7 +306,7 @@ const AllTools = ({
 
           {shouldShowEmptyState && (
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
-              <SearchMenu className="h-8 w-8 text-text-quaternary" />
+              <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
                 {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
@@ -313,11 +328,11 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}
       </div>

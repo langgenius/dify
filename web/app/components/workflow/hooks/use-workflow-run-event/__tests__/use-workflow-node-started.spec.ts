@@ -22,7 +22,7 @@ describe('useWorkflowNodeStarted', () => {
 
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(1)
-    expect(tracing[0].status).toBe(NodeRunningStatus.Running)
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
 
     await waitFor(() => {
       const transform = result.current.reactFlowStore.getState().transform
@@ -75,6 +75,6 @@ describe('useWorkflowNodeStarted', () => {
 
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(2)
-    expect(tracing[1].status).toBe(NodeRunningStatus.Running)
+    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
   })
 })

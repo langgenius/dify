@@ -1,6 +1,7 @@
 import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import TriggerCard from '../trigger-card'
 
 vi.mock('react-i18next', () => ({
@@ -16,6 +17,10 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
+  }),
+  useSelector: <T,>(selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -73,13 +78,14 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
     <button
       data-testid="switch"
       data-checked={checked ? 'true' : 'false'}
       data-disabled={disabled ? 'true' : 'false'}
-      onClick={() => onCheckedChange(!checked)}
+      disabled={disabled}
+      onClick={() => !disabled && onCheckedChange(!checked)}
     >
       Switch
     </button>
@@ -99,6 +105,7 @@ describe('TriggerCard', () => {
     updated_at: Date.now(),
     enable_site: true,
     enable_api: true,
+    permission_keys: [AppACLPermission.Edit],
   } as AppDetailResponse
 
   const mockOnToggleResult = vi.fn()
@@ -341,7 +348,7 @@ describe('TriggerCard', () => {
     })
   })
 
-  describe('Editor Permissions', () => {
+  describe('App ACL Permissions', () => {
     it('should render switches for triggers', () => {
       mockTriggers = [
         {
@@ -357,6 +364,32 @@ describe('TriggerCard', () => {
 
       const switchBtn = screen.getByTestId('switch')
       expect(switchBtn).toBeInTheDocument()
+    })
+
+    it('should disable switches and skip updates without app edit permission', () => {
+      mockTriggers = [
+        {
+          id: 'trigger-1',
+          node_id: 'node-1',
+          title: 'Test Trigger',
+          trigger_type: 'trigger-webhook',
+          status: 'enabled',
+        },
+      ]
+      const appInfoWithoutEditPermission = {
+        ...mockAppInfo,
+        permission_keys: [],
+      } as AppDetailResponse
+
+      render(<TriggerCard appInfo={appInfoWithoutEditPermission} onToggleResult={mockOnToggleResult} />)
+
+      const switchBtn = screen.getByTestId('switch')
+      expect(switchBtn).toHaveAttribute('data-disabled', 'true')
+
+      fireEvent.click(switchBtn)
+
+      expect(mockUpdateTriggerStatus).not.toHaveBeenCalled()
+      expect(mockSetTriggerStatus).not.toHaveBeenCalled()
     })
   })
 

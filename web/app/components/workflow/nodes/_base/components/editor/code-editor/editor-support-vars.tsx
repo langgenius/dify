@@ -13,11 +13,11 @@ import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
 
-type Props = {
+type Props = Readonly<{
   availableVars: NodeOutPutVar[]
   varList: Variable[]
   onAddVar?: (payload: Variable) => void
-} & EditorProps
+}> & EditorProps
 
 const CodeEditor: FC<Props> = ({
   availableVars,
@@ -110,7 +110,7 @@ const CodeEditor: FC<Props> = ({
     }
     const varName = varValue.slice(-1)[0]
     return {
-      name: getUniqVarName(varName),
+      name: getUniqVarName(varName!),
       isExist: false,
     }
   }

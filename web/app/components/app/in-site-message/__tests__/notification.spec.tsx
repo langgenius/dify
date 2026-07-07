@@ -29,18 +29,22 @@ vi.mock(import('@/config'), async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     notification: {
-      queryOptions: (options?: Record<string, unknown>) => ({
-        queryKey: ['console', 'notification'],
-        queryFn: (...args: unknown[]) => mockNotification(...args),
-        ...options,
-      }),
-    },
-    notificationDismiss: {
-      mutationOptions: (options?: Record<string, unknown>) => ({
-        mutationKey: ['console', 'notificationDismiss'],
-        mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
-        ...options,
-      }),
+      get: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'notification', 'get'],
+          queryFn: (...args: unknown[]) => mockNotification(...args),
+          ...options,
+        }),
+      },
+      dismiss: {
+        post: {
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+            ...options,
+          }),
+        },
+      },
     },
   },
 }))
@@ -116,6 +120,7 @@ describe('InSiteMessageNotification', () => {
               main: 'Parsed body main',
               actions: [
                 { action: 'link', data: 'https://example.com/docs', text: 'Visit docs', type: 'primary' },
+                { action: 'close', text: 'Outline close', type: 'outline' },
                 { action: 'close', text: 'Dismiss now', type: 'default' },
                 { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },
               ],
@@ -132,6 +137,7 @@ describe('InSiteMessageNotification', () => {
         expect(screen.getByText('Parsed body main')).toBeInTheDocument()
       })
       expect(screen.getByRole('button', { name: 'Visit docs' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
 
@@ -147,7 +153,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })
@@ -185,7 +191,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })

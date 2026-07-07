@@ -6,8 +6,8 @@ import type {
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
@@ -23,16 +23,12 @@ import {
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleNodeIterationRerender = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
 
-    const nodes = getNodes()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const childrenNodes = nodes.filter(n => n.parentId === nodeId)
     const resize = getIterationContainerResize(currentNode, getIterationContainerBounds(childrenNodes))
@@ -55,30 +51,27 @@ export const useNodeIterationInteractions = () => {
 
       setNodes(newNodes)
     }
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeIterationChildDrag = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
 
     return {
       restrictPosition: getRestrictedIterationPosition(node, nodes.find(n => n.id === node.parentId)),
     }
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeIterationChildSizeChange = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(n => n.id === nodeId)!
     const parentId = currentNode.parentId
 
     if (parentId)
       handleNodeIterationRerender(parentId)
-  }, [store, handleNodeIterationRerender])
+  }, [collaborativeWorkflow, handleNodeIterationRerender])
 
   const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const childrenNodes = getIterationChildren(nodes, nodeId)
     const newIdMapping = { ...idMapping }
     const childNodeTypeCount: ChildNodeTypeCount = {}
@@ -110,7 +103,7 @@ export const useNodeIterationInteractions = () => {
       copyChildren,
       newIdMapping,
     }
-  }, [nodesMetaDataMap, store, t])
+  }, [nodesMetaDataMap, collaborativeWorkflow, t])
 
   return {
     handleNodeIterationRerender,

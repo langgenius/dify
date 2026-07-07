@@ -4,6 +4,7 @@ import sys
 import types
 from collections import UserDict
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,6 +69,7 @@ def _build_fake_qdrant_modules():
             self.text = text
 
     class _Distance(UserDict):
+        @override
         def __getitem__(self, key):
             return key
 
@@ -121,7 +123,7 @@ def _build_fake_qdrant_modules():
 
 
 @pytest.fixture
-def qdrant_module(monkeypatch):
+def qdrant_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_qdrant_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -170,7 +172,7 @@ def test_init_and_basic_behaviour(qdrant_module):
     vector.add_texts.assert_called_once()
 
 
-def test_create_collection_and_add_texts(qdrant_module, monkeypatch):
+def test_create_collection_and_add_texts(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
     lock = MagicMock()
     lock.__enter__.return_value = None
@@ -288,7 +290,7 @@ def test_search_and_helper_methods(qdrant_module):
     assert doc.page_content == "doc"
 
 
-def test_qdrant_factory_paths(qdrant_module, monkeypatch):
+def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     factory = qdrant_module.QdrantVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-1",

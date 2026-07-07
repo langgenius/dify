@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -532,7 +533,10 @@ def test_vectorize_summary_error_handler_tries_chunk_id_lookup_and_can_warn_not_
     error_session.commit.assert_not_called()
 
 
-def test_update_summary_record_error_warns_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_summary_record_error_warns_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     dataset = _dataset()
     segment = _segment()
 
@@ -544,14 +548,15 @@ def test_update_summary_record_error_warns_when_missing(monkeypatch: pytest.Monk
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
     )
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "logger", logger_mock)
-
-    SummaryIndexService.update_summary_record_error(segment, dataset, "err")
-    logger_mock.warning.assert_called_once()
+    with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
+        SummaryIndexService.update_summary_record_error(segment, dataset, "err")
+        assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
-def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     dataset = _dataset()
     segment = _segment()
 
@@ -567,12 +572,10 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(mo
     monkeypatch.setattr(SummaryIndexService, "generate_summary_for_segment", MagicMock(return_value=("sum", usage)))
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "logger", logger_mock)
-
-    result = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True})
-    assert result.status in {SummaryStatus.GENERATING, SummaryStatus.COMPLETED}
-    logger_mock.info.assert_called()
+    with caplog.at_level(logging.INFO, logger="services.summary_index_service"):
+        result = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True})
+        assert result.status in {SummaryStatus.GENERATING, SummaryStatus.COMPLETED}
+        assert any(r.levelno >= logging.INFO for r in caplog.records)
 
 
 def test_generate_summaries_for_document_skip_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -759,6 +762,7 @@ def test_enable_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mon
 
 def test_enable_summaries_for_segments_skips_segment_or_content_and_handles_vectorize_error(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     dataset = _dataset()
     summary1 = _summary_record(summary_content="sum", node_id="n1")
@@ -786,12 +790,11 @@ def test_enable_summaries_for_segments_skips_segment_or_content_and_handles_vect
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
     )
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "logger", logger_mock)
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
-    SummaryIndexService.enable_summaries_for_segments(dataset)
-    logger_mock.exception.assert_called_once()
+    with caplog.at_level(logging.ERROR, logger="services.summary_index_service"):
+        SummaryIndexService.enable_summaries_for_segments(dataset)
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
     session.commit.assert_called_once()
 
 
@@ -859,7 +862,10 @@ def test_update_summary_for_segment_empty_content_deletes_existing(monkeypatch: 
     session.commit.assert_called_once()
 
 
-def test_update_summary_for_segment_empty_content_delete_vector_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_summary_for_segment_empty_content_delete_vector_warns(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     dataset = _dataset()
     segment = _segment()
     record = _summary_record(summary_content="old", node_id="n1")
@@ -875,11 +881,10 @@ def test_update_summary_for_segment_empty_content_delete_vector_warns(monkeypatc
     vector_instance = MagicMock()
     vector_instance.delete_by_ids.side_effect = RuntimeError("boom")
     monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector_instance))
-    logger_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "logger", logger_mock)
 
-    assert SummaryIndexService.update_summary_for_segment(segment, dataset, "") is None
-    logger_mock.warning.assert_called()
+    with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
+        assert SummaryIndexService.update_summary_for_segment(segment, dataset, "") is None
+        assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
 def test_update_summary_for_segment_empty_content_no_record_noop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -923,7 +928,10 @@ def test_update_summary_for_segment_updates_existing_and_vectorizes(monkeypatch:
     session.commit.assert_called()
 
 
-def test_update_summary_for_segment_existing_vector_delete_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_summary_for_segment_existing_vector_delete_warns(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     dataset = _dataset()
     segment = _segment()
     record = _summary_record(summary_content="old", node_id="n1")
@@ -940,11 +948,10 @@ def test_update_summary_for_segment_existing_vector_delete_warns(monkeypatch: py
     vector_instance.delete_by_ids.side_effect = RuntimeError("boom")
     monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector_instance))
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
-    logger_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "logger", logger_mock)
 
-    SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
-    logger_mock.warning.assert_called()
+    with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
+        SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+        assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
 def test_update_summary_for_segment_existing_vectorize_failure_returns_error_record(
@@ -1162,7 +1169,7 @@ def test_get_document_summary_status_detail_counts_and_previews(monkeypatch: pyt
 
     monkeypatch.setattr(SummaryIndexService, "get_document_summaries", MagicMock(return_value=[summary1]))
 
-    detail = SummaryIndexService.get_document_summary_status_detail("doc-1", "dataset-1")
+    detail = SummaryIndexService.get_document_summary_status_detail("doc-1", "dataset-1", MagicMock())
     assert detail["total_segments"] == 2
     assert detail["summary_status"]["completed"] == 1
     assert detail["summary_status"]["not_started"] == 1

@@ -38,6 +38,7 @@ const createAppContextValue = (): AppContextValue => {
     langGeniusVersionInfo: initialLangGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector(value)
   value = {

@@ -9,9 +9,9 @@ import { retryErrorDocs } from '@/service/datasets'
 import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import StatusWithAction from './status-with-action'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
-}
+}>
 type IIndexState = {
   value: string
 }

@@ -2,17 +2,19 @@ import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../../base/modal', () => ({
-  default: ({ children, title, isShow }: { children: React.ReactNode, title: string, isShow: boolean }) => (
-    isShow
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => (
+    open !== false
       ? (
           <div data-testid="modal">
-            <div data-testid="modal-title">{title}</div>
             {children}
           </div>
         )
       : null
   ),
+  DialogContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div data-testid="modal-title">{children}</div>,
+  DialogCloseButton: () => <button type="button">Close</button>,
 }))
 
 vi.mock('../../base/key-value-item', () => ({

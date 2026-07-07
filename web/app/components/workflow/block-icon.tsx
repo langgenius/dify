@@ -45,6 +45,7 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
 
 const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: string }>> = {
   [BlockEnum.Start]: Home,
+  [BlockEnum.StartPlaceholder]: Home,
   [BlockEnum.LLM]: Llm,
   [BlockEnum.Code]: Code,
   [BlockEnum.End]: End,
@@ -67,6 +68,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.DocExtractor]: DocsExtractor,
   [BlockEnum.ListFilter]: ListFilter,
   [BlockEnum.Agent]: Agent,
+  [BlockEnum.AgentV2]: Agent,
   [BlockEnum.KnowledgeBase]: KnowledgeBase,
   [BlockEnum.DataSource]: Datasource,
   [BlockEnum.DataSourceEmpty]: () => null,
@@ -96,6 +98,7 @@ const normalizeToolIconUrl = (toolIcon: string) => {
 
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
+  [BlockEnum.StartPlaceholder]: 'bg-util-colors-blue-brand-blue-brand-500',
   [BlockEnum.LLM]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.Code]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.End]: 'bg-util-colors-warning-warning-500',
@@ -116,6 +119,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
+  [BlockEnum.AgentV2]: 'bg-util-colors-indigo-indigo-500',
   [BlockEnum.HumanInput]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
@@ -129,11 +133,45 @@ const BlockIcon: FC<BlockIconProps> = ({
   className,
   toolIcon,
 }) => {
+  const isStart = type === BlockEnum.Start
+  const isStartPlaceholder = type === BlockEnum.StartPlaceholder
   const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
   const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
   const resolvedToolIcon = typeof toolIcon === 'string'
     ? normalizeToolIconUrl(toolIcon)
     : toolIcon
+
+  if (isStart) {
+    return (
+      <div className={cn(
+        'flex items-center justify-center border-[0.5px] border-white/2 bg-util-colors-blue-brand-blue-brand-500 text-white',
+        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+        className,
+      )}
+      >
+        <span
+          aria-hidden
+          className={cn('i-custom-vender-workflow-user-input', size === 'xs' ? 'size-4' : 'size-4')}
+        />
+      </div>
+    )
+  }
+
+  if (isStartPlaceholder) {
+    return (
+      <div className={cn(
+        'flex items-center justify-center border border-dashed border-components-panel-border bg-state-base-hover text-text-tertiary shadow-none',
+        ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
+        className,
+      )}
+      >
+        <span
+          aria-hidden
+          className={cn('i-custom-vender-workflow-start-placeholder text-text-primary opacity-30', size === 'xs' ? 'size-3' : 'size-3.5')}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className={
@@ -160,7 +198,7 @@ const BlockIcon: FC<BlockIconProps> = ({
               typeof resolvedToolIcon === 'string'
                 ? (
                     <div
-                      className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+                      className="size-full shrink-0 rounded-md bg-cover bg-center"
                       style={{
                         backgroundImage: `url(${resolvedToolIcon})`,
                       }}
@@ -169,7 +207,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                   )
                 : (
                     <AppIcon
-                      className="h-full! w-full! shrink-0"
+                      className="size-full! shrink-0"
                       size="tiny"
                       icon={resolvedToolIcon?.content}
                       background={resolvedToolIcon?.background}

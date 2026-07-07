@@ -1,4 +1,4 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { LanguagesSupported } from '@/i18n-config/language'
@@ -9,49 +9,64 @@ import type {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
+import type { WorkflowKind } from '@/types/workflow'
 
-export enum Theme {
-  light = 'light',
-  dark = 'dark',
-  system = 'system',
-}
+export type Theme = 'light' | 'dark' | 'system'
+export const Theme = {
+  light: 'light' as Theme,
+  dark: 'dark' as Theme,
+  system: 'system' as Theme,
+} as const
 
-export enum ModelModeType {
-  chat = 'chat',
-  completion = 'completion',
-  unset = '',
-}
+export type ModelModeType = 'chat' | 'completion' | ''
+export const ModelModeType = {
+  chat: 'chat' as ModelModeType,
+  completion: 'completion' as ModelModeType,
+  unset: '' as ModelModeType,
+} as const
 
-export enum RETRIEVE_TYPE {
-  oneWay = 'single',
-  multiWay = 'multiple',
-}
+export type RETRIEVE_TYPE = 'single' | 'multiple'
+export const RETRIEVE_TYPE = {
+  oneWay: 'single' as RETRIEVE_TYPE,
+  multiWay: 'multiple' as RETRIEVE_TYPE,
+} as const
 
-export enum RETRIEVE_METHOD {
-  semantic = 'semantic_search',
-  fullText = 'full_text_search',
-  hybrid = 'hybrid_search',
-  invertedIndex = 'invertedIndex',
-  keywordSearch = 'keyword_search',
-}
+export type RETRIEVE_METHOD
+  = | 'semantic_search'
+    | 'full_text_search'
+    | 'hybrid_search'
+    | 'invertedIndex'
+    | 'keyword_search'
+export const RETRIEVE_METHOD = {
+  semantic: 'semantic_search' as RETRIEVE_METHOD,
+  fullText: 'full_text_search' as RETRIEVE_METHOD,
+  hybrid: 'hybrid_search' as RETRIEVE_METHOD,
+  invertedIndex: 'invertedIndex' as RETRIEVE_METHOD,
+  keywordSearch: 'keyword_search' as RETRIEVE_METHOD,
+} as const
 
 /**
  * App modes
  */
-export enum AppModeEnum {
-  COMPLETION = 'completion',
-  WORKFLOW = 'workflow',
-  CHAT = 'chat',
-  ADVANCED_CHAT = 'advanced-chat',
-  AGENT_CHAT = 'agent-chat',
-}
+export type AppModeEnum
+  = | 'completion'
+    | 'workflow'
+    | 'chat'
+    | 'advanced-chat'
+    | 'agent-chat'
+export const AppModeEnum = {
+  COMPLETION: 'completion' as AppModeEnum,
+  WORKFLOW: 'workflow' as AppModeEnum,
+  CHAT: 'chat' as AppModeEnum,
+  ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
+  AGENT_CHAT: 'agent-chat' as AppModeEnum,
+} as const
 export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
 /**
  * Variable type
  */
-export const VariableTypes = ['string', 'number', 'select'] as const
-export type VariableType = typeof VariableTypes[number]
+type VariableType = 'string' | 'number' | 'select'
 
 /**
  * Prompt variable parameter
@@ -69,23 +84,48 @@ export type PromptVariable = {
   max_length?: number
 }
 
-export type TextTypeFormItem = {
-  default: string
+type TextTypeFormItem = {
+  default?: string
   label: string
   variable: string
   required: boolean
-  max_length: number
-  hide: boolean
+  max_length?: number
+  hide?: boolean
 }
 
-export type SelectTypeFormItem = {
-  default: string
+type SelectTypeFormItem = {
+  default?: string
   label: string
   variable: string
   required: boolean
-  options: string[]
-  hide: boolean
+  options?: string[]
+  hide?: boolean
 }
+
+type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | number
+  max_length?: number
+}
+
+type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | boolean
+}
+
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> & Partial<UploadFileSetting> & {
+  max_length?: number
+}
+
+type ExternalDataToolFormItem = ExternalDataTool & {
+  label: string
+  variable: string
+  required?: boolean
+  hide?: boolean
+}
+
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+  json_schema?: string | Record<string, unknown>
+}
+
 /**
  * User Input Form Item
  */
@@ -95,6 +135,18 @@ export type UserInputFormItem = {
   select: SelectTypeFormItem
 } | {
   paragraph: TextTypeFormItem
+} | {
+  number: NumberTypeFormItem
+} | {
+  checkbox: CheckboxTypeFormItem
+} | {
+  file: FileTypeFormItem
+} | {
+  'file-list': FileTypeFormItem
+} | {
+  external_data_tool: ExternalDataToolFormItem
+} | {
+  json_object: JsonObjectFormItem
 }
 
 export type AgentTool = {
@@ -103,7 +155,7 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: Record<string, any>
+  tool_parameters: Record<string, unknown>
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
@@ -123,10 +175,11 @@ export type ToolItem = {
   }
 } | AgentTool
 
-export enum AgentStrategy {
-  functionCall = 'function_call',
-  react = 'react',
-}
+export type AgentStrategy = 'function_call' | 'react'
+export const AgentStrategy = {
+  functionCall: 'function_call' as AgentStrategy,
+  react: 'react' as AgentStrategy,
+} as const
 
 export type CompletionParams = {
   /** Maximum number of tokens in the answer message returned by Completion */
@@ -200,6 +253,8 @@ export type ModelConfig = {
   }
   suggested_questions_after_answer: {
     enabled: boolean
+    model?: Model
+    prompt?: string
   }
   speech_to_text: {
     enabled: boolean
@@ -284,6 +339,8 @@ export type SiteConfig = {
   privacy_policy: string
   /** Custom Disclaimer */
   custom_disclaimer: string
+  /** Custom placeholder text for the chat input box. Empty means fall back to the default. */
+  input_placeholder: string
 
   icon_type: AppIconType | null
   icon: string
@@ -335,11 +392,17 @@ export type App = {
   api_rph: number
   /** Whether it's a demo app */
   is_demo: boolean
+  /** Whether the current account starred this app */
+  is_starred?: boolean
   /** Model configuration */
   model_config: ModelConfig
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Creator account ID */
+  created_by?: string
+  /** Resource maintainer account ID */
+  maintainer?: string
   /** Timestamp of update */
   updated_at: number
   /** Web Application Configuration */
@@ -354,33 +417,40 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
+  deleted_tools?: Array<{ type: string, provider_id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null
   /** whether workflow trigger has un-published draft */
   has_draft_trigger?: boolean
+  /** Type */
+  workflow_kind?: WorkflowKind | null
+  /** ACL permission keys */
+  permission_keys?: string[]
 }
 
 export type AppSSO = {
   enable_sso: boolean
 }
 
-export enum Resolution {
-  low = 'low',
-  high = 'high',
-}
+export type Resolution = 'low' | 'high'
+export const Resolution = {
+  low: 'low' as Resolution,
+  high: 'high' as Resolution,
+} as const
 
-export enum TransferMethod {
-  all = 'all',
-  local_file = 'local_file',
-  remote_url = 'remote_url',
-}
+export type TransferMethod = 'all' | 'local_file' | 'remote_url'
+export const TransferMethod = {
+  all: 'all' as TransferMethod,
+  local_file: 'local_file' as TransferMethod,
+  remote_url: 'remote_url' as TransferMethod,
+} as const
 
-export enum TtsAutoPlay {
-  enabled = 'enabled',
-  disabled = 'disabled',
-}
+export type TtsAutoPlay = 'enabled' | 'disabled'
+export const TtsAutoPlay = {
+  enabled: 'enabled' as TtsAutoPlay,
+  disabled: 'disabled' as TtsAutoPlay,
+} as const
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 

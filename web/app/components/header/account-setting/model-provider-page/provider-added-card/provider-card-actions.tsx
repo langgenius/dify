@@ -1,33 +1,36 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Button } from '@/app/components/base/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
-import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
   onUpdate?: () => void
-}
+}>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
+  const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
 
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
   const name = detail.declaration?.name ?? detail.name
+  const isDebuggingPlugin = source === PluginSource.debugging
 
   const {
     modalStates,
@@ -47,6 +50,8 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     modalStates,
     versionPicker,
     isFromMarketplace,
+    canDeletePlugin,
+    canUpdatePlugin,
     onUpdate,
   })
 
@@ -76,34 +81,44 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   return (
     <>
       {!!version && (
-        <PluginVersionPicker
-          disabled={!isFromMarketplace}
-          isShow={versionPicker.isShow}
-          onShowChange={versionPicker.setIsShow}
-          pluginID={detail.plugin_id}
-          currentVersion={version}
-          onSelect={handleVersionSelect}
-          sideOffset={4}
-          alignOffset={0}
-          trigger={(
+        <>
+          <PluginVersionPicker
+            disabled={!isFromMarketplace || !canUpdatePlugin}
+            isShow={versionPicker.isShow}
+            onShowChange={versionPicker.setIsShow}
+            pluginID={detail.plugin_id}
+            currentVersion={version}
+            onSelect={handleVersionSelect}
+            sideOffset={4}
+            alignOffset={0}
+            trigger={(
+              <Badge
+                className={cn(
+                  canUpdatePlugin && isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
+                )}
+                uppercase={false}
+                text={(
+                  <>
+                    <span>{version}</span>
+                    {canUpdatePlugin && isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line size-3" />}
+                  </>
+                )}
+                hasRedCornerMark={hasNewVersion}
+              />
+            )}
+          />
+          {isDebuggingPlugin && (
             <Badge
-              className={cn(
-                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
-              )}
+              className="border-state-warning-active bg-state-warning-hover text-text-warning"
+              size="xs"
               uppercase={false}
-              text={(
-                <>
-                  <span>{version}</span>
-                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3" />}
-                </>
-              )}
-              hasRedCornerMark={hasNewVersion}
+              text={t('operation.debugConfig', { ns: 'appDebug' })}
             />
           )}
-        />
+        </>
       )}
 
-      {(hasNewVersion || isFromGitHub) && (
+      {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
         <Tooltip>
           <TooltipTrigger
             delay={300}
@@ -131,6 +146,9 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
+        destructiveRemove
+        showCheckVersion={canUpdatePlugin}
+        showRemove={canDeletePlugin}
       />
 
       <HeaderModals

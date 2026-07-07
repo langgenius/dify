@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
 import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
 import CodeEditor from '../code-editor'
 import ErrorMessage from '../error-message'
@@ -68,9 +68,14 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
           </div>
         ) : (
           <>
-            <div className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center" onClick={onClose}>
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-            </div>
+            <button
+              type="button"
+              aria-label={t('operation.close', { ns: 'common' })}
+              className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
+              onClick={onClose}
+            >
+              <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            </button>
             {/* Title */}
             <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
               <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
@@ -95,7 +100,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             {/* Footer */}
             <div className="flex items-center justify-between p-4 pt-2">
               <Button variant="secondary" className="flex items-center gap-x-0.5" onClick={onBack}>
-                <RiArrowLeftLine className="h-4 w-4" />
+                <RiArrowLeftLine className="size-4" />
                 <span>{t('nodes.llm.jsonSchema.back', { ns: 'workflow' })}</span>
               </Button>
               <div className="flex items-center gap-x-2">
@@ -104,7 +109,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
                   className="flex items-center gap-x-0.5"
                   onClick={onRegenerate}
                 >
-                  <RiSparklingLine className="h-4 w-4" />
+                  <RiSparklingLine className="size-4" />
                   <span>{t('nodes.llm.jsonSchema.regenerate', { ns: 'workflow' })}</span>
                 </Button>
                 <Button variant="primary" onClick={handleApply}>

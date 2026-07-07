@@ -25,7 +25,7 @@ const EmptyState: FC<EmptyStateProps> = ({
     return (
       <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
         <div className="flex items-center gap-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+          <div className="size-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
           <span className="text-sm">{t('gotoAnything.searching', { ns: 'app' })}</span>
         </div>
       </div>

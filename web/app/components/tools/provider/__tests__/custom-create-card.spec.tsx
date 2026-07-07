@@ -2,22 +2,20 @@ import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
-import CustomCreateCard from '../custom-create-card'
+import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
-// Mock workspace manager state
-let mockIsWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-// Mock useAppContext
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsWorkspaceManager,
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
 // Mock useLocale and useDocLink
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
+  useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
 // Mock getLanguage
@@ -72,7 +70,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },
@@ -83,28 +81,23 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
 
-  // Tests for conditional rendering based on workspace manager status
-  describe('Workspace Manager Conditional Rendering', () => {
-    it('should render card when user is workspace manager', () => {
-      mockIsWorkspaceManager = true
-
+  describe('tool.manage conditional rendering', () => {
+    it('should render card when user has tool.manage', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Card should be visible with create text
-      expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
+      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
     })
 
-    it('should not render anything when user is not workspace manager', () => {
-      mockIsWorkspaceManager = false
+    it('should not render anything when user does not have tool.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Container should be empty (firstChild is null when nothing renders)
       expect(container.firstChild).toBeNull()
     })
   })
@@ -114,23 +107,58 @@ describe('CustomCreateCard', () => {
     it('should render without crashing', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
+      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
     })
 
     it('should render add icon', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // RiAddCircleFill icon should be present
-      const iconContainer = document.querySelector('.h-10.w-10')
+      const iconContainer = document.querySelector('.size-10')
       expect(iconContainer).toBeInTheDocument()
     })
 
     it('should have proper card styling', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const card = document.querySelector('.min-h-\\[135px\\]')
+      const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
-      expect(card).toHaveClass('cursor-pointer')
+      expect(card).toHaveClass('h-[120px]', 'border-[0.5px]', 'border-components-panel-border', 'shadow-md')
+      expect(card).toHaveClass('min-w-0')
+      expect(card).not.toHaveClass('flex-1')
+    })
+
+    it('should render documentation link with Swagger API as Tool text', () => {
+      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+
+      const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
+      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute('target', '_blank')
+      expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+  })
+
+  describe('Toolbar Button Rendering', () => {
+    it('should render toolbar add button when user has tool.manage', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      expect(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i })).toBeInTheDocument()
+    })
+
+    it('should not render toolbar add button when user does not have tool.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      const { container } = render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('should open modal when toolbar add button is clicked', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }))
+
+      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
     })
   })
 
@@ -140,7 +168,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Click on the card area (the group div)
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
@@ -150,7 +178,7 @@ describe('CustomCreateCard', () => {
     it('should pass null payload to modal', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       expect(screen.getByTestId('modal-payload')).toHaveTextContent('null')
@@ -160,7 +188,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
 
@@ -176,7 +204,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -191,7 +219,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -206,7 +234,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
 
@@ -222,7 +250,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -237,7 +265,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -262,7 +290,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -283,7 +311,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Close modal without submitting
@@ -295,7 +323,7 @@ describe('CustomCreateCard', () => {
     it('should handle rapid open/close of modal', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
 
       // Rapid open/close
       fireEvent.click(cardClickArea!)
@@ -311,14 +339,15 @@ describe('CustomCreateCard', () => {
     it('should have hover styles on card', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const card = document.querySelector('.transition-all.duration-200')
+      const card = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       expect(card).toBeInTheDocument()
+      expect(card).toHaveClass('hover:bg-components-panel-on-panel-item-bg-hover')
     })
 
     it('should have group hover styles on icon container', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const iconContainer = document.querySelector('.group-hover\\:border-state-accent-hover-alt')
+      const iconContainer = document.querySelector('.group-hover\\:text-text-accent')
       expect(iconContainer).toBeInTheDocument()
     })
   })

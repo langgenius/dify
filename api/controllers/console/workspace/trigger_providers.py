@@ -1,22 +1,31 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, RootModel, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
-from controllers.web.error import NotFoundError
+from controllers.common.errors import NotFoundError
+from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from core.entities.parameter_entities import AppSelectorScope, ModelSelectorScope, ToolSelectorScope
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.trigger.entities.entities import SubscriptionBuilderUpdater
+from core.tools.entities.common_entities import I18nObject
+from core.trigger.entities.api_entities import (
+    SubscriptionBuilderApiEntity,
+    TriggerProviderApiEntity,
+    TriggerProviderSubscriptionApiEntity,
+)
+from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
-from libs.login import current_user, login_required
+from fields.base import ResponseModel
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.login import login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
@@ -26,10 +35,15 @@ from services.trigger.trigger_subscription_operator_service import TriggerSubscr
 
 from .. import console_ns
 from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,9 +59,9 @@ class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     name: str | None = None
-    parameters: dict[str, Any] | None = None
-    properties: dict[str, Any] | None = None
-    credentials: dict[str, Any] | None = None
+    parameters: dict[str, Any] | None = Field(default=None)
+    properties: dict[str, Any] | None = Field(default=None)
+    credentials: dict[str, Any] | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_at_least_one_field(self):
@@ -57,8 +71,75 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 
 class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, Any] | None = Field(default=None)
     enabled: bool | None = None
+
+
+class TriggerOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str
+    subscription_builder_id: str
+    subscription_builder: SubscriptionBuilderApiEntity
+
+
+class TriggerProviderConfigOptionResponse(BaseModel):
+    value: str = Field(..., description="The value of the option")
+    label: I18nObject = Field(..., description="The label of the option")
+
+
+class TriggerProviderConfigResponse(BaseModel):
+    type: Literal[
+        "secret-input",
+        "text-input",
+        "select",
+        "boolean",
+        "app-selector",
+        "model-selector",
+        "array[tools]",
+    ] = Field(..., description="The type of the credentials")
+    name: str = Field(..., description="The name of the credentials")
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
+    required: bool = False
+    default: int | str | float | bool | None = None
+    options: list[TriggerProviderConfigOptionResponse] | None = None
+    multiple: bool = False
+    label: I18nObject | None = None
+    help: I18nObject | None = None
+    url: str | None = None
+    placeholder: I18nObject | None = None
+
+
+class TriggerOAuthClientResponse(BaseModel):
+    configured: bool
+    system_configured: bool
+    custom_configured: bool
+    oauth_client_schema: list[TriggerProviderConfigResponse]
+    custom_enabled: bool
+    redirect_uri: str
+    params: dict[str, Any]
+
+
+class TriggerProviderOpaqueResponse(RootModel[Any]):
+    root: Any
+
+
+class TriggerProviderListResponse(RootModel[list[TriggerProviderApiEntity]]):
+    root: list[TriggerProviderApiEntity]
+
+
+class TriggerSubscriptionListResponse(RootModel[list[TriggerProviderSubscriptionApiEntity]]):
+    root: list[TriggerProviderSubscriptionApiEntity]
+
+
+class TriggerSubscriptionBuilderCreateResponse(ResponseModel):
+    subscription_builder: SubscriptionBuilderApiEntity
+
+
+class TriggerSubscriptionBuilderVerifyResponse(ResponseModel):
+    verified: bool
+
+
+class TriggerSubscriptionBuilderLogsResponse(ResponseModel):
+    logs: list[RequestLog]
 
 
 register_schema_models(
@@ -68,64 +149,79 @@ register_schema_models(
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerOAuthClientPayload,
 )
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    RedirectResponse,
+    SimpleResultResponse,
+    TriggerOAuthAuthorizeResponse,
+    TriggerOAuthClientResponse,
+    TriggerProviderOpaqueResponse,
+    TriggerProviderApiEntity,
+    TriggerProviderListResponse,
+    TriggerProviderSubscriptionApiEntity,
+    TriggerSubscriptionListResponse,
+    SubscriptionBuilderApiEntity,
+    TriggerSubscriptionBuilderCreateResponse,
+    TriggerSubscriptionBuilderVerifyResponse,
+    RequestLog,
+    TriggerSubscriptionBuilderLogsResponse,
+)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
 class TriggerProviderIconApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-
-        return TriggerManager.get_trigger_plugin_icon(tenant_id=user.current_tenant_id, provider_id=provider)
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
+        return TriggerManager.get_trigger_plugin_icon(tenant_id=tenant_id, provider_id=provider)
 
 
 @console_ns.route("/workspaces/current/triggers")
 class TriggerProviderListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         """List all trigger providers for the current tenant"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-        return jsonable_encoder(TriggerProviderService.list_trigger_providers(user.current_tenant_id))
+        return jsonable_encoder(TriggerProviderService.list_trigger_providers(tenant_id))
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/info")
 class TriggerProviderInfoApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderApiEntity.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         """Get info for a trigger provider"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-        return jsonable_encoder(
-            TriggerProviderService.get_trigger_provider(user.current_tenant_id, TriggerProviderID(provider))
-        )
+        return jsonable_encoder(TriggerProviderService.get_trigger_provider(tenant_id, TriggerProviderID(provider)))
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 class TriggerSubscriptionListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionListResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
         """List all trigger subscriptions for the current tenant's provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         try:
             return jsonable_encoder(
                 TriggerProviderService.list_trigger_provider_subscriptions(
-                    tenant_id=user.current_tenant_id, provider_id=TriggerProviderID(provider)
+                    tenant_id=tenant_id,
+                    provider_id=TriggerProviderID(provider),
+                    user=user,
                 )
             )
         except ValueError as e:
@@ -140,21 +236,22 @@ class TriggerSubscriptionListApi(Resource):
 )
 class TriggerSubscriptionBuilderCreateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderCreateResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, provider):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str):
         """Add a new subscription instance for a trigger provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         payload = TriggerSubscriptionBuilderCreatePayload.model_validate(console_ns.payload or {})
 
         try:
             credential_type = CredentialType.of(payload.credential_type)
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 credential_type=credential_type,
@@ -169,11 +266,13 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderGetApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SubscriptionBuilderApiEntity.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
         return jsonable_encoder(
             TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
@@ -185,21 +284,22 @@ class TriggerSubscriptionBuilderGetApi(Resource):
 )
 class TriggerSubscriptionBuilderVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderVerifyResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Verify and update a subscription instance for a trigger provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         payload = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             # Use atomic update_and_verify to prevent race conditions
             return TriggerSubscriptionBuilderService.update_and_verify_builder(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
@@ -217,21 +317,20 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
 )
 class TriggerSubscriptionBuilderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SubscriptionBuilderApiEntity.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str, subscription_builder_id: str):
         """Update a subscription instance for a trigger provider"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-
         payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
         try:
             return jsonable_encoder(
                 TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     provider_id=TriggerProviderID(provider),
                     subscription_builder_id=subscription_builder_id,
                     subscription_builder_updater=SubscriptionBuilderUpdater(
@@ -251,16 +350,14 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/logs/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderLogsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderLogsResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider, subscription_builder_id):
+    def get(self, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-
         try:
             logs = TriggerSubscriptionBuilderService.list_logs(subscription_builder_id)
             return jsonable_encoder({"logs": [log.model_dump(mode="json") for log in logs]})
@@ -274,19 +371,21 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, provider, subscription_builder_id):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Build a subscription instance for a trigger provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
         payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
         try:
             # Use atomic update_and_build to prevent race conditions
             TriggerSubscriptionBuilderService.update_and_build_builder(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
@@ -307,19 +406,19 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
 )
 class TriggerSubscriptionUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, subscription_id: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, subscription_id: str):
         """Update a subscription instance"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         request = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
 
         subscription = TriggerProviderService.get_subscription_by_id(
-            tenant_id=user.current_tenant_id,
+            tenant_id=tenant_id,
             subscription_id=subscription_id,
         )
         if not subscription:
@@ -336,7 +435,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             manually_created = subscription.credential_type == CredentialType.UNAUTHORIZED
             if rename or manually_created:
                 TriggerProviderService.update_trigger_subscription(
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     subscription_id=subscription_id,
                     name=request.name,
                     properties=request.properties,
@@ -346,7 +445,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             # For the rest cases(API_KEY, OAUTH2)
             # we need to call third party provider(e.g. GitHub) to rebuild the subscription
             TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 name=request.name,
                 provider_id=provider_id,
                 subscription_id=subscription_id,
@@ -365,27 +464,27 @@ class TriggerSubscriptionUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/delete",
 )
 class TriggerSubscriptionDeleteApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, subscription_id: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, subscription_id: str):
         """Delete a subscription instance"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         try:
             with sessionmaker(db.engine).begin() as session:
                 # Delete trigger provider subscription
                 TriggerProviderService.delete_trigger_provider(
                     session=session,
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     subscription_id=subscription_id,
                 )
                 # Delete plugin triggers
                 TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
                     session=session,
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     subscription_id=subscription_id,
                 )
             return {"result": "success"}
@@ -398,20 +497,22 @@ class TriggerSubscriptionDeleteApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
 class TriggerOAuthAuthorizeApi(Resource):
+    @console_ns.response(
+        200,
+        "Authorization URL retrieved successfully",
+        console_ns.models[TriggerOAuthAuthorizeResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
         """Initiate OAuth authorization flow for a trigger provider"""
-        user = current_user
-        assert isinstance(user, Account)
-        assert user.current_tenant_id is not None
-
         try:
             provider_id = TriggerProviderID(provider)
             plugin_id = provider_id.plugin_id
             provider_name = provider_id.provider_name
-            tenant_id = user.current_tenant_id
 
             # Get OAuth client configuration
             oauth_client_params = TriggerProviderService.get_oauth_client(
@@ -482,8 +583,13 @@ class TriggerOAuthAuthorizeApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
+    @console_ns.response(
+        302,
+        "Redirect to console OAuth callback page",
+        console_ns.models[RedirectResponse.__name__],
+    )
     @setup_required
-    def get(self, provider):
+    def get(self, provider: str):
         """Handle OAuth callback for trigger provider"""
         context_id = request.cookies.get("context_id")
         if not context_id:
@@ -547,34 +653,34 @@ class TriggerOAuthCallbackApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")
 class TriggerOAuthClientManageApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerOAuthClientResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider):
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         """Get OAuth client configuration for a provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         try:
             provider_id = TriggerProviderID(provider)
 
             # Get custom OAuth client params if exists
             custom_params = TriggerProviderService.get_custom_oauth_client_params(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider_id=provider_id,
             )
 
             # Check if custom client is enabled
             is_custom_enabled = TriggerProviderService.is_oauth_custom_client_enabled(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider_id=provider_id,
             )
             system_client_exists = TriggerProviderService.is_oauth_system_client_exists(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider_id=provider_id,
             )
-            provider_controller = TriggerManager.get_trigger_provider(user.current_tenant_id, provider_id)
+            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
             redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
             return jsonable_encoder(
                 {
@@ -593,21 +699,21 @@ class TriggerOAuthClientManageApi(Resource):
             raise
 
     @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, provider):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         """Configure custom OAuth client for a provider"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         payload = TriggerOAuthClientPayload.model_validate(console_ns.payload or {})
 
         try:
             provider_id = TriggerProviderID(provider)
             return TriggerProviderService.save_custom_oauth_client_params(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider_id=provider_id,
                 client_params=payload.client_params,
                 enabled=payload.enabled,
@@ -622,17 +728,17 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def delete(self, provider):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, provider: str):
         """Remove custom OAuth client configuration"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         try:
             provider_id = TriggerProviderID(provider)
 
             return TriggerProviderService.delete_custom_oauth_client_params(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider_id=provider_id,
             )
         except ValueError as e:
@@ -647,20 +753,21 @@ class TriggerOAuthClientManageApi(Resource):
 )
 class TriggerSubscriptionVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderVerifyResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, provider, subscription_id):
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account, provider: str, subscription_id: str):
         """Verify credentials for an existing subscription (edit mode only)"""
-        user = current_user
-        assert user.current_tenant_id is not None
-
         verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_id=subscription_id,

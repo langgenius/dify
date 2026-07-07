@@ -1,17 +1,22 @@
-import type { FC } from 'react'
+import type { FC, MouseEvent } from 'react'
 import type { ModelProvider } from '../declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
+import { IS_CLOUD_EDITION } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/client'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
@@ -24,6 +29,37 @@ const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map(key => ({
   Icon: providerIconMap[key],
 }))
 
+type QuotaInfotipProps = {
+  tipText: string
+}
+
+const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        aria-label={tipText}
+        onClick={handleClick}
+        className="ml-0.5 inline-flex size-3 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+      >
+        <span aria-hidden className="i-ri-information-2-line size-3 text-text-tertiary hover:text-text-secondary" />
+      </PopoverTrigger>
+      <PopoverContent
+        placement="top"
+        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+      >
+        {tipText}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 type QuotaPanelProps = {
   providers: ModelProvider[]
 }
@@ -32,8 +68,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
-  const { data: systemFeatures } = useSystemFeaturesQuery()
-  const trialModels = systemFeatures?.trial_models ?? []
+  const { data: trialModels = [] } = useQuery(consoleQuery.trialModels.get.queryOptions({
+    enabled: IS_CLOUD_EDITION,
+    select: data => data.trial_models,
+  }))
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -49,11 +87,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const selectedPluginIdRef = useRef<string | null>(null)
 
   const handleIconClick = useCallback((key: ModelProviderQuotaGetPaid) => {
     const isInstalled = providerMap.get(key)
-    if (!isInstalled && allPlugins) {
+    if (!isInstalled && allPlugins && canInstallPlugin) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
       if (plugin) {
@@ -62,7 +101,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         showInstallFromMarketplace()
       }
     }
-  }, [allPlugins, providerMap, showInstallFromMarketplace])
+  }, [allPlugins, canInstallPlugin, providerMap, showInstallFromMarketplace])
 
   useEffect(() => {
     if (isShowInstallModal && selectedPluginIdRef.current) {
@@ -81,7 +120,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 
   if (isLoading) {
     return (
-      <div className="my-2 flex min-h-[72px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
+      <div className="flex h-16 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
         <Loading />
       </div>
     )
@@ -89,7 +128,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 
   return (
     <div className={cn(
-      'relative my-2 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
+      'relative h-16 min-w-[72px] shrink-0 overflow-hidden rounded-xl border-[0.5px] pt-3 pr-2.5 pb-2.5 pl-4 shadow-xs',
       isExhausted
         ? 'border-state-destructive-border hover:bg-state-destructive-hover'
         : 'border-components-panel-border bg-third-party-model-bg-default',
@@ -97,44 +136,34 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     >
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
-        <div className="mb-2 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t('modelProvider.quota', { ns: 'common' })}
-          <Tooltip>
-            <TooltipTrigger
-              aria-label={tipText}
-              delay={0}
-              render={(
-                <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {tipText}
-            </TooltipContent>
-          </Tooltip>
+        <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
+          {t('modelProvider.quotaLabel', { ns: 'common' })}
+          <QuotaInfotip tipText={tipText} />
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xs text-text-tertiary">
+        <div className="flex h-6 items-center justify-between">
+          <div className="flex items-center gap-1">
             {credits > 0
               ? <span className="mr-0.5 system-xl-semibold text-text-secondary">{formatNumber(credits)}</span>
               : <span className="mr-0.5 system-xl-semibold text-text-destructive">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
-            {nextCreditResetDate
-              ? (
-                  <>
-                    <span>·</span>
-                    <span>
-                      {t('modelProvider.resetDate', {
-                        ns: 'common',
-                        date: formatTime(nextCreditResetDate, t('dateFormat', { ns: 'appLog' })),
-                        interpolation: { escapeValue: false },
-                      })}
-                    </span>
-                  </>
-                )
-              : null}
+            <div className="flex h-[18px] items-start gap-1 pt-0.5 system-xs-regular text-text-tertiary">
+              <span>{t('modelProvider.credits', { ns: 'common' })}</span>
+              {nextCreditResetDate
+                ? (
+                    <>
+                      <span className="text-text-quaternary">·</span>
+                      <span>
+                        {t('modelProvider.resetDate', {
+                          ns: 'common',
+                          date: formatTime(nextCreditResetDate, 'YYYY-MM-DD'),
+                          interpolation: { escapeValue: false },
+                        })}
+                      </span>
+                    </>
+                  )
+                : null}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {allProviders.filter(({ key }) => trialModels.includes(key)).map(({ key, Icon }) => {
               const providerType = providerMap.get(key)
               const isConfigured = (installedProvidersMap.get(key)?.length ?? 0) > 0
@@ -150,13 +179,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                 <Tooltip key={key}>
                   <TooltipTrigger
                     aria-label={tooltipText}
-                    delay={0}
                     render={(
                       <div
-                        className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                        className={cn('relative size-6', !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80')}
                         onClick={() => handleIconClick(key)}
                       >
-                        <Icon className="h-6 w-6 rounded-lg" />
+                        <Icon className="size-6 rounded-lg" />
                         {!providerType && (
                           <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                         )}
@@ -172,13 +200,19 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
           </div>
         </div>
       </div>
-      {isShowInstallModal && selectedPlugin && (
-        <InstallFromMarketplace
-          manifest={selectedPlugin}
-          uniqueIdentifier={selectedPlugin.latest_package_identifier}
-          onClose={hideInstallFromMarketplace}
-          onSuccess={hideInstallFromMarketplace}
-        />
+      {isShowInstallModal && selectedPlugin && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          canUpdatePlugin={canUpdatePlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            manifest={selectedPlugin}
+            uniqueIdentifier={selectedPlugin.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </div>
   )

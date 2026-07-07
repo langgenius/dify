@@ -1,4 +1,4 @@
-/* eslint-disable react/no-create-ref, ts/no-explicit-any */
+/* eslint-disable ts/no-explicit-any */
 import type { ReactNode, RefObject } from 'react'
 import type { DebugWithSingleModelRefType } from '../index'
 import type { ChatItem } from '@/app/components/base/chat/types'
@@ -164,6 +164,8 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock complex context providers
 const mockDebugConfigContext = {
+  readonly: false,
+  canTestAndRun: true,
   appId: 'test-app-id',
   isAPIKeySet: true,
   isTrailFinished: false,
@@ -405,6 +407,7 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
 }))
 
 type MockChatProps = {
+  readonly?: boolean
   chatList?: ChatItem[]
   isResponding?: boolean
   onSend?: (message: string, files?: FileEntity[]) => void
@@ -418,6 +421,9 @@ type MockChatProps = {
   onAnnotationRemoved?: (index: number) => void
   switchSibling?: (siblingMessageId: string) => void
   onFeatureBarClick?: (state: boolean) => void
+  showFeatureBar?: boolean
+  featureBarReadonly?: boolean
+  inputDisabled?: boolean
 }
 
 const mockFile: FileEntity = {
@@ -434,6 +440,7 @@ const mockFile: FileEntity = {
 // This is a pragmatic mock that tests the integration at DebugWithSingleModel level
 vi.mock('@/app/components/base/chat/chat', () => ({
   default: function MockChat({
+    readonly,
     chatList,
     isResponding,
     onSend,
@@ -447,6 +454,9 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationRemoved,
     switchSibling,
     onFeatureBarClick,
+    showFeatureBar,
+    featureBarReadonly,
+    inputDisabled,
   }: MockChatProps) {
     const items = chatList || []
     const suggested = suggestedQuestions ?? []
@@ -464,6 +474,8 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         <textarea
           data-testid="chat-input"
           placeholder="Type a message"
+          readOnly={readonly}
+          disabled={inputDisabled}
           onChange={() => {
             // Simulate input change
           }}
@@ -471,14 +483,14 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         <button
           data-testid="send-button"
           onClick={() => onSend?.('test message', [])}
-          disabled={isResponding}
+          disabled={isResponding || readonly || inputDisabled}
         >
           Send
         </button>
         <button
           data-testid="send-with-files"
           onClick={() => onSend?.('test message', [mockFile])}
-          disabled={isResponding}
+          disabled={isResponding || readonly || inputDisabled}
         >
           Send With Files
         </button>
@@ -518,9 +530,10 @@ vi.mock('@/app/components/base/chat/chat', () => ({
             Switch
           </button>
         )}
-        {onFeatureBarClick && (
+        {showFeatureBar && onFeatureBarClick && (
           <button
             data-testid="feature-bar-button"
+            disabled={featureBarReadonly}
             onClick={() => onFeatureBarClick(true)}
           >
             Features
@@ -591,9 +604,10 @@ describe('DebugWithSingleModel', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Verify Chat component is rendered
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
-      expect(screen.getByTestId('chat-input')).toBeInTheDocument()
-      expect(screen.getByTestId('send-button')).toBeInTheDocument()
+      // Verify Chat component is rendered
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input'))!.toBeInTheDocument()
+      expect(screen.getByTestId('send-button'))!.toBeInTheDocument()
     })
 
     it('should render with custom checkCanSend prop', () => {
@@ -601,7 +615,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -620,7 +634,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      expect(mockSsePost.mock.calls[0][0]).toBe('apps/test-app-id/chat-messages')
+      expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
     })
 
     it('should prevent send when checkCanSend returns false', async () => {
@@ -648,6 +662,46 @@ describe('DebugWithSingleModel', () => {
 
       expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
     })
+
+    it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', async () => {
+      mockUseDebugConfigurationContext.mockReturnValue({
+        ...mockDebugConfigContext,
+        readonly: true,
+        canTestAndRun: true,
+      })
+
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      expect(screen.getByTestId('chat-input')).not.toHaveAttribute('readonly')
+      expect(screen.getByTestId('feature-bar-button')).toBeDisabled()
+      expect(screen.queryByTestId('add-annotation-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-annotation-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('remove-annotation-button')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      await waitFor(() => {
+        expect(mockSsePost).toHaveBeenCalled()
+      })
+    })
+
+    it('should block sending when test/run permission is missing', () => {
+      mockUseDebugConfigurationContext.mockReturnValue({
+        ...mockDebugConfigContext,
+        readonly: false,
+        canTestAndRun: false,
+      })
+
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      expect(screen.getByTestId('chat-input')).toHaveAttribute('readonly')
+      expect(screen.getByTestId('chat-input')).toBeDisabled()
+      expect(screen.getByTestId('send-button')).toBeDisabled()
+      expect(screen.getByTestId('feature-bar-button')).toBeInTheDocument()
+      expect(screen.queryByTestId('add-annotation-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-annotation-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('remove-annotation-button')).not.toBeInTheDocument()
+    })
   })
 
   // Model Configuration Tests
@@ -666,7 +720,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.model_config.opening_statement).toBe('Hello!')
       expect(body.model_config.suggested_questions).toEqual(['Q1'])
     })
@@ -685,7 +739,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.model_config.opening_statement).toBe('')
       expect(body.model_config.suggested_questions).toEqual([])
     })
@@ -717,7 +771,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing model in provider list', () => {
@@ -735,7 +789,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -759,7 +813,8 @@ describe('DebugWithSingleModel', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Component should render successfully with filtered variables
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      // Component should render successfully with filtered variables
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle empty prompt variables', () => {
@@ -775,7 +830,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -784,7 +839,7 @@ describe('DebugWithSingleModel', () => {
     it('should map tool icons from collection list', () => {
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle empty tools list', () => {
@@ -802,7 +857,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing collection for tool', () => {
@@ -829,7 +884,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -843,7 +898,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing user profile', () => {
@@ -859,7 +914,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle null completion params', () => {
@@ -870,7 +925,7 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
   })
 
@@ -940,7 +995,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.files).toEqual([])
     })
 
@@ -989,7 +1044,7 @@ describe('DebugWithSingleModel', () => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
-      const body = mockSsePost.mock.calls[0][1].body
+      const body = mockSsePost.mock.calls[0]![1].body
       expect(body.files).toHaveLength(1)
     })
   })

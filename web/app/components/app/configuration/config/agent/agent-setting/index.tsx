@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Slider } from '@langgenius/dify-ui/slider'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
@@ -8,18 +11,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
-import { Button } from '@/app/components/base/ui/button'
-import { Slider } from '@/app/components/base/ui/slider'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
-type Props = {
+type Props = Readonly<{
   isChatModel: boolean
   payload: AgentConfig
   isFunctionCall: boolean
   onCancel: () => void
   onSave: (payload: any) => void
-}
+}>
 
 const maxIterationsMin = 1
 
@@ -34,6 +35,7 @@ const AgentSetting: FC<Props> = ({
   const [tempPayload, setTempPayload] = useState(payload)
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
+  const maximumIterationsLabel = t('agent.setting.maximumIterations.name', { ns: 'appDebug' })
 
   useClickAway(() => {
     if (mounted)
@@ -66,15 +68,15 @@ const AgentSetting: FC<Props> = ({
           <div className="flex items-center">
             <div
               onClick={onCancel}
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              className="flex size-6 cursor-pointer items-center justify-center"
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
         </div>
         {/* Body */}
         <div
-          className="grow overflow-y-auto border-b p-6 pt-5 pb-[68px]"
+          className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]"
           style={{
             borderBottom: 'rgba(0, 0, 0, 0.05)',
           }}
@@ -83,7 +85,7 @@ const AgentSetting: FC<Props> = ({
           <ItemPanel
             className="mb-4"
             icon={
-              <CuteRobot className="h-4 w-4 text-indigo-600" />
+              <CuteRobot className="size-4 text-indigo-600" />
             }
             name={t('agent.agentMode', { ns: 'appDebug' })}
             description={t('agent.agentModeDes', { ns: 'appDebug' })}
@@ -96,10 +98,11 @@ const AgentSetting: FC<Props> = ({
             icon={
               <Unblur className="h-4 w-4 text-[#FB6514]" />
             }
-            name={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
+            name={maximumIterationsLabel}
             description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
           >
-            <div className="flex items-center">
+            <FieldsetRoot className="flex items-center">
+              <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
               <Slider
                 className="mr-3 w-[156px]"
                 min={maxIterationsMin}
@@ -111,15 +114,16 @@ const AgentSetting: FC<Props> = ({
                     max_iteration: value,
                   })
                 }}
-                aria-label={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
+                aria-label={maximumIterationsLabel}
               />
 
               <input
+                aria-label={maximumIterationsLabel}
                 type="number"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
                 step={1}
-                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-primary-600 focus:ring-inset"
+                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:inset-ring-1 focus:inset-ring-primary-600"
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
                   let value = Number.parseInt(e.target.value, 10)
@@ -134,12 +138,12 @@ const AgentSetting: FC<Props> = ({
                   })
                 }}
               />
-            </div>
+            </FieldsetRoot>
           </ItemPanel>
 
           {!isFunctionCall && (
             <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm leading-6 font-semibold text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
+              <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
               <div className="h-[396px] overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>

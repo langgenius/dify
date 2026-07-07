@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 from core.app.apps.message_generator import MessageGenerator
+from core.app.entities.task_entities import StreamEvent
 from models.model import AppMode
 
 
@@ -23,7 +24,21 @@ class TestMessageGenerator:
                 "core.app.apps.message_generator.stream_topic_events", return_value=iter([{"event": "ping"}])
             ) as mock_stream,
         ):
-            events = list(MessageGenerator.retrieve_events(AppMode.WORKFLOW, "run-1", idle_timeout=1, ping_interval=2))
+            events = list(
+                MessageGenerator.retrieve_events(
+                    AppMode.WORKFLOW,
+                    "run-1",
+                    idle_timeout=1,
+                    ping_interval=2,
+                    terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
+                )
+            )
 
         assert events == [{"event": "ping"}]
-        mock_stream.assert_called_once()
+        mock_stream.assert_called_once_with(
+            topic="topic",
+            idle_timeout=1,
+            ping_interval=2,
+            on_subscribe=None,
+            terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
+        )

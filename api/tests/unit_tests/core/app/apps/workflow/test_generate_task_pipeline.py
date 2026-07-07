@@ -2,15 +2,14 @@ import time
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 
-from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState
-
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.model import AppMode
 from tests.workflow_test_utils import build_test_variable_pool

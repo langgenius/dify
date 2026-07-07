@@ -1,26 +1,26 @@
 import type { Node } from './types'
-import { produce } from 'immer'
 import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
-  ContextMenu,
   ContextMenuContent,
   ContextMenuGroup,
-  ContextMenuGroupLabel,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
+} from '@langgenius/dify-ui/context-menu'
+import { produce } from 'immer'
+import {
+  useCallback,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore } from 'reactflow'
+import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
+import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
-import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
+import { BlockEnum } from './types'
 
 const AlignType = {
   Bottom: 'bottom',
@@ -74,6 +74,14 @@ const menuSections: MenuSection[] = [
     ],
   },
 ]
+
+const unsupportedSnippetNodeTypes = new Set([
+  BlockEnum.Answer,
+  BlockEnum.End,
+  BlockEnum.Start,
+  BlockEnum.HumanInput,
+  BlockEnum.KnowledgeRetrieval,
+])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -181,8 +189,8 @@ const distributeNodes = (
   const lastNode = sortedNodes[sortedNodes.length - 1]
 
   const totalGap = isHorizontal
-    ? lastNode.position.x + (lastNode.width || 0) - firstNode.position.x
-    : lastNode.position.y + (lastNode.height || 0) - firstNode.position.y
+    ? lastNode!.position.x + (lastNode!.width || 0) - firstNode!.position.x
+    : lastNode!.position.y + (lastNode!.height || 0) - firstNode!.position.y
 
   const fixedSpace = sortedNodes.reduce((sum, node) =>
     sum + (isHorizontal ? (node.width || 0) : (node.height || 0)), 0)
@@ -193,12 +201,12 @@ const distributeNodes = (
 
   return produce(nodes, (draft) => {
     let currentPosition = isHorizontal
-      ? firstNode.position.x + (firstNode.width || 0)
-      : firstNode.position.y + (firstNode.height || 0)
+      ? firstNode!.position.x + (firstNode!.width || 0)
+      : firstNode!.position.y + (firstNode!.height || 0)
 
     for (let index = 1; index < sortedNodes.length - 1; index++) {
       const nodeToAlign = sortedNodes[index]
-      const currentNode = draft.find(node => node.id === nodeToAlign.id)
+      const currentNode = draft.find(node => node.id === nodeToAlign!.id)
       if (!currentNode)
         continue
 
@@ -207,94 +215,121 @@ const distributeNodes = (
         currentNode.position.x = nextX
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.x = nextX
-        currentPosition = nextX + (nodeToAlign.width || 0)
+        currentPosition = nextX + (nodeToAlign!.width || 0)
       }
       else {
         const nextY = currentPosition + spacing
         currentNode.position.y = nextY
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.y = nextY
-        currentPosition = nextY + (nodeToAlign.height || 0)
+        currentPosition = nextY + (nodeToAlign!.height || 0)
       }
     }
   })
 }
 
-const SelectionContextmenu = () => {
+export function SelectionContextmenu({
+  onClose,
+}: {
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { handleSelectionContextmenuCancel } = useSelectionInteractions()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
-  const selectionMenu = useStore(s => s.selectionMenu)
-  const store = useStoreApi()
+  const isSelectionContextMenu = useStore(s => s.contextMenuTarget?.type === 'selection')
+
+  // Access React Flow methods
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+
+  // Get selected nodes for alignment logic
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
+  const edges = useReactFlowStore(state => state.edges)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-
-  const anchor = useMemo(() => {
-    if (!selectionMenu)
-      return undefined
-
-    return {
-      getBoundingClientRect: () => DOMRect.fromRect({
-        width: 0,
-        height: 0,
-        x: selectionMenu.clientX,
-        y: selectionMenu.clientY,
-      }),
-    }
-  }, [selectionMenu])
-
-  useEffect(() => {
-    if (selectionMenu && selectedNodes.length <= 1)
-      handleSelectionContextmenuCancel()
-  }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
+  const {
+    createSnippetDialog,
+    handleOpenCreateSnippet,
+    isCreateSnippetDialogOpen,
+  } = useCreateSnippetFromSelection({
+    edges,
+    selectedNodes,
+    onClose,
+  })
+  const canCreateSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+    && selectedNodes.every(node => !unsupportedSnippetNodeTypes.has(node.data.type))
 
   const handleCopyNodes = useCallback(() => {
     handleNodesCopy()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesCopy, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesCopy, onClose])
 
   const handleDuplicateNodes = useCallback(() => {
     handleNodesDuplicate()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesDuplicate, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesDuplicate, onClose])
 
   const handleDeleteNodes = useCallback(() => {
     handleNodesDelete()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesDelete, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesDelete, onClose])
 
   const handleAlignNodes = useCallback((alignType: AlignTypeValue) => {
     if (getNodesReadOnly() || selectedNodes.length <= 1) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
     workflowStore.setState({ nodeAnimation: false })
 
-    const nodes = store.getState().getNodes()
+    // Get all current nodes
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+
+    // Get all selected nodes
+    const selectedNodeIds = selectedNodes.map(node => node.id)
+
+    // Find container nodes and their children
+    // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
+    // when the container is selected. This prevents child nodes from being moved outside their containers.
+    const childNodeIds = new Set<string>()
+
+    nodes.forEach((node) => {
+      // Check if this is a container node (Iteration or Loop)
+      if (node.data._children && node.data._children.length > 0) {
+        // If container node is selected, add its children to the exclusion set
+        if (selectedNodeIds.includes(node.id)) {
+          // Add all its children to the childNodeIds set
+          node.data._children.forEach((child: { nodeId: string, nodeType: string }) => {
+            childNodeIds.add(child.nodeId)
+          })
+        }
+      }
+    })
+
+    // Filter out child nodes from the alignment operation
+    // Only align nodes that are selected AND are not children of container nodes
+    // This ensures container nodes can be aligned while their children stay in the same relative position
     const nodesToAlign = getAlignableNodes(nodes, selectedNodes)
 
     if (nodesToAlign.length <= 1) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
     const bounds = getAlignBounds(nodesToAlign)
     if (!bounds) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
     if (alignType === AlignType.DistributeHorizontal || alignType === AlignType.DistributeVertical) {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
-        store.getState().setNodes(distributedNodes)
-        handleSelectionContextmenuCancel()
+        setNodes(distributedNodes)
+        onClose()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
         setHelpLineHorizontal()
@@ -318,8 +353,11 @@ const SelectionContextmenu = () => {
     })
 
     try {
-      store.getState().setNodes(newNodes)
-      handleSelectionContextmenuCancel()
+      // Directly use setNodes to update nodes - consistent with handleNodeDrag
+      setNodes(newNodes)
+
+      // Close popup
+      onClose()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
       setHelpLineHorizontal()
       setHelpLineVertical()
@@ -329,59 +367,60 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, onClose])
 
-  if (!selectionMenu)
-    return null
+  if (!isSelectionContextMenu || selectedNodes.length <= 1)
+    return isCreateSnippetDialogOpen ? createSnippetDialog : null
 
   return (
-    <ContextMenu
-      open
-      onOpenChange={(open) => {
-        if (!open)
-          handleSelectionContextmenuCancel()
-      }}
-    >
-      <ContextMenuContent
-        popupClassName="w-[240px]"
-        positionerProps={anchor ? { anchor } : undefined}
-      >
+    <>
+      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+        {canCreateSnippet && (
+          <>
+            <ContextMenuGroup>
+              <ContextMenuItem
+                className="px-3 text-text-secondary"
+                onClick={handleOpenCreateSnippet}
+              >
+                <span>{t('snippet.createDialogTitle', { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
+              </ContextMenuItem>
+            </ContextMenuGroup>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-copy"
             onClick={handleCopyNodes}
           >
             <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'c']} />
+            <ShortcutKbd shortcut="workflow.copy" />
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-duplicate"
             onClick={handleDuplicateNodes}
           >
             <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'd']} />
+            <ShortcutKbd shortcut="workflow.duplicate" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-            data-testid="selection-contextmenu-item-delete"
             onClick={handleDeleteNodes}
           >
             <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-            <ShortcutsName keys={['del']} />
+            <ShortcutKbd shortcut="workflow.delete" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
+            <ContextMenuLabel>
               {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
+            </ContextMenuLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem
@@ -397,8 +436,7 @@ const SelectionContextmenu = () => {
           </ContextMenuGroup>
         ))}
       </ContextMenuContent>
-    </ContextMenu>
+      {createSnippetDialog}
+    </>
   )
 }
-
-export default memo(SelectionContextmenu)

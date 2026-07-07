@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiDeleteBinLine,
   RiUploadCloud2Line,
@@ -10,16 +11,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
-import { toast } from '@/app/components/base/ui/toast'
 import { formatFileSize } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string
   accept?: string
   displayName?: string
-}
+}>
 
 const Uploader: FC<Props> = ({
   file,
@@ -109,19 +109,25 @@ const Uploader: FC<Props> = ({
         {!file && (
           <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className="flex w-full items-center justify-center space-x-2">
-              <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
+              <RiUploadCloud2Line className="size-6 text-text-tertiary" />
               <div className="text-text-tertiary">
                 {t('dslUploader.button', { ns: 'app' })}
-                <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>{t('dslUploader.browse', { ns: 'app' })}</span>
+                <button
+                  type="button"
+                  className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={selectHandle}
+                >
+                  {t('dslUploader.browse', { ns: 'app' })}
+                </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
           </div>
         )}
         {file && (
           <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:bg-components-panel-on-panel-item-bg-hover')}>
             <div className="flex items-center justify-center p-3">
-              <YamlIcon className="h-6 w-6 shrink-0" />
+              <YamlIcon className="size-6 shrink-0" />
             </div>
             <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
               <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">{file.name}</span>
@@ -133,7 +139,7 @@ const Uploader: FC<Props> = ({
             </div>
             <div className="hidden items-center pr-3 group-hover:flex">
               <ActionButton onClick={removeFile}>
-                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
+                <RiDeleteBinLine className="size-4 text-text-tertiary" />
               </ActionButton>
             </div>
           </div>

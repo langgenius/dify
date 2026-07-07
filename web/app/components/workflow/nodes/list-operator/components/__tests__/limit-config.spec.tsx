@@ -9,6 +9,7 @@ type MockSwitchProps = {
 }
 
 type MockSliderProps = {
+  label: string
   value: number
   min: number
   max: number
@@ -19,8 +20,8 @@ type MockSliderProps = {
 const mockSwitch = vi.fn<(props: MockSwitchProps) => void>()
 const mockSlider = vi.fn<(props: MockSliderProps) => void>()
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: (props: MockSwitchProps) => {
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: MockSwitchProps) => {
     mockSwitch(props)
     return (
       <button
@@ -79,7 +80,7 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.listFilter.limit')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.listFilter.limit'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'slider:10:false' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'switch:false' }))
@@ -102,12 +103,13 @@ describe('list-operator/limit-config', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'slider:6:true' })).toBeInTheDocument()
-    expect(mockSlider.mock.calls[0][0]).toMatchObject({
+    expect(screen.getByRole('button', { name: 'slider:6:true' }))!.toBeInTheDocument()
+    expect(mockSlider.mock.calls[0]![0]).toMatchObject({
       value: 6,
       min: 1,
       max: 20,
       readonly: true,
+      label: 'workflow.nodes.listFilter.limit',
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'slider:6:true' }))

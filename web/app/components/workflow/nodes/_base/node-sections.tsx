@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -25,7 +25,7 @@ export const NodeHeaderMeta = ({
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
         <Tooltip>
           <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
+            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
               {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
@@ -45,18 +45,18 @@ export const NodeHeaderMeta = ({
         </div>
       )}
       {!!(data.type === BlockEnum.Loop && data._loopIndex) && loopIndex}
-      {isLoading && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />}
+      {isLoading && <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />}
       {!isLoading && data._runningStatus === NodeRunningStatus.Failed && (
-        <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+        <span className="i-ri-error-warning-fill size-3.5 text-text-destructive" />
       )}
       {!isLoading && data._runningStatus === NodeRunningStatus.Exception && (
-        <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
+        <span className="i-ri-alert-fill size-3.5 text-text-warning-secondary" />
       )}
       {!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || (!data._runningStatus && hasVarValue)) && (
-        <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+        <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
       )}
       {!isLoading && data._runningStatus === NodeRunningStatus.Paused && (
-        <span className="i-ri-pause-circle-fill h-3.5 w-3.5 text-text-warning-secondary" />
+        <span className="i-ri-pause-circle-fill size-3.5 text-text-warning-secondary" />
       )}
     </>
   )
@@ -73,7 +73,7 @@ export const NodeBody = ({
 }: NodeBodyProps) => {
   if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
     return (
-      <div className="grow pb-1 pl-1 pr-1">
+      <div className="grow px-1 pb-1">
         {child}
       </div>
     )
@@ -83,11 +83,11 @@ export const NodeBody = ({
 }
 
 export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
-  if (!data.desc || data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop)
+  if (!data.desc || data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop || data.type === BlockEnum.StartPlaceholder)
     return null
 
   return (
-    <div className="whitespace-pre-line wrap-break-word px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
+    <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
       {data.desc}
     </div>
   )

@@ -3,33 +3,38 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
 from enums.hosted_provider import HostedTrialProvider
-from services.billing_service import BillingService
+from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
-class SubscriptionModel(BaseModel):
+class FeatureResponseModel(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True, protected_namespaces=())
+
+
+class SubscriptionModel(FeatureResponseModel):
     plan: str = CloudPlan.SANDBOX
     interval: str = ""
 
 
-class BillingModel(BaseModel):
+class BillingModel(FeatureResponseModel):
     enabled: bool = False
     subscription: SubscriptionModel = SubscriptionModel()
 
 
-class EducationModel(BaseModel):
+class EducationModel(FeatureResponseModel):
     enabled: bool = False
     activated: bool = False
 
 
-class LimitationModel(BaseModel):
+class LimitationModel(FeatureResponseModel):
     size: int = 0
     limit: int = 0
 
 
-class LicenseLimitationModel(BaseModel):
+class LicenseLimitationModel(FeatureResponseModel):
     """
     - enabled: whether this limit is enforced
     - size: current usage count
@@ -55,7 +60,7 @@ class LicenseLimitationModel(BaseModel):
         return (self.limit - self.size) >= required
 
 
-class Quota(BaseModel):
+class Quota(FeatureResponseModel):
     usage: int = 0
     limit: int = 0
     reset_date: int = -1
@@ -70,13 +75,13 @@ class LicenseStatus(StrEnum):
     LOST = "lost"
 
 
-class LicenseModel(BaseModel):
+class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
-class BrandingModel(BaseModel):
+class BrandingModel(FeatureResponseModel):
     enabled: bool = False
     application_title: str = ""
     login_page_logo: str = ""
@@ -84,11 +89,11 @@ class BrandingModel(BaseModel):
     favicon: str = ""
 
 
-class WebAppAuthSSOModel(BaseModel):
+class WebAppAuthSSOModel(FeatureResponseModel):
     protocol: str = ""
 
 
-class WebAppAuthModel(BaseModel):
+class WebAppAuthModel(FeatureResponseModel):
     enabled: bool = False
     allow_sso: bool = False
     sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
@@ -96,7 +101,7 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
-class KnowledgePipeline(BaseModel):
+class KnowledgePipeline(FeatureResponseModel):
     publish_enabled: bool = False
 
 
@@ -107,7 +112,7 @@ class PluginInstallationScope(StrEnum):
     ALL = "all"
 
 
-class PluginInstallationPermissionModel(BaseModel):
+class PluginInstallationPermissionModel(FeatureResponseModel):
     # Plugin installation scope – possible values:
     #   none: prohibit all plugin installations
     #   official_only: allow only Dify official plugins
@@ -120,12 +125,12 @@ class PluginInstallationPermissionModel(BaseModel):
     restrict_to_marketplace_only: bool = False
 
 
-class FeatureModel(BaseModel):
+class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
-    vector_space: LimitationModel = LimitationModel(size=0, limit=5)
+    vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)
     knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
@@ -140,23 +145,22 @@ class FeatureModel(BaseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     next_credit_reset_date: int = 0
 
 
-class KnowledgeRateLimitModel(BaseModel):
+class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
 
 
-class PluginManagerModel(BaseModel):
+class PluginManagerModel(FeatureResponseModel):
     enabled: bool = False
 
 
-class SystemFeatureModel(BaseModel):
+class SystemFeatureModel(FeatureResponseModel):
+    enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -164,6 +168,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
+    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
@@ -173,20 +178,28 @@ class SystemFeatureModel(BaseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
-    trial_models: list[str] = []
+    enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    enable_learn_app: bool = True
+    rbac_enabled: bool = False
 
 
 class FeatureService:
     @classmethod
-    def get_features(cls, tenant_id: str) -> FeatureModel:
+    def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
         features = FeatureModel()
+        if exclude_vector_space:
+            features.vector_space = None
 
         cls._fulfill_params_from_env(features)
 
         if dify_config.BILLING_ENABLED and tenant_id:
-            cls._fulfill_params_from_billing_api(features, tenant_id)
+            cls._fulfill_params_from_billing_api(
+                features,
+                tenant_id,
+                exclude_vector_space=exclude_vector_space,
+            )
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
@@ -199,6 +212,18 @@ class FeatureService:
         )
 
         return features
+
+    @classmethod
+    def get_vector_space(cls, tenant_id: str) -> LimitationModel:
+        vector_space = LimitationModel(size=0, limit=5)
+        if dify_config.BILLING_ENABLED and tenant_id:
+            billing_vector_space = BillingService.get_vector_space(tenant_id)
+            # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+            # but feature API keeps LimitationModel.size as int for compatibility.
+            vector_space.size = int(billing_vector_space["size"])
+            vector_space.limit = billing_vector_space["limit"]
+
+        return vector_space
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
@@ -224,6 +249,7 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
+        system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -237,19 +263,27 @@ class FeatureService:
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
 
+        if dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            system_features.enable_creators_platform = True
+
         return system_features
+
+    @classmethod
+    def get_app_dsl_version(cls) -> str:
+        return CURRENT_APP_DSL_VERSION
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
-        system_features.trial_models = cls._fulfill_trial_models_from_env()
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
@@ -261,6 +295,11 @@ class FeatureService:
                 and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
             )
         ]
+
+    @classmethod
+    def get_trial_models(cls) -> list[str]:
+        """Return hosted trial provider ids without requiring the full system-features payload."""
+        return cls._fulfill_trial_models_from_env()
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -278,10 +317,18 @@ class FeatureService:
             features.workspace_members.enabled = workspace_info["WorkspaceMembers"]["enabled"]
 
     @classmethod
-    def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
-        billing_info = BillingService.get_info(tenant_id)
+    def _fulfill_params_from_billing_api(
+        cls,
+        features: FeatureModel,
+        tenant_id: str,
+        exclude_vector_space: bool = False,
+    ):
+        if exclude_vector_space:
+            billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        else:
+            billing_info = BillingService.get_info(tenant_id)
 
-        features_usage_info = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
+        features_usage_info = BillingService.get_quota_info(tenant_id)
 
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
@@ -311,12 +358,9 @@ class FeatureService:
             features.apps.size = billing_info["apps"]["size"]
             features.apps.limit = billing_info["apps"]["limit"]
 
-        if "vector_space" in billing_info:
-            # NOTE (hj24): billing API returns vector_space.size as float (e.g. 0.0)
-            # but LimitationModel.size is int; truncate here for compatibility
-            features.vector_space.size = int(billing_info["vector_space"]["size"])
-            # NOTE END
-            features.vector_space.limit = billing_info["vector_space"]["limit"]
+        if not exclude_vector_space:
+            assert features.vector_space is not None
+            cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
         if "documents_upload_quota" in billing_info:
             features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
@@ -349,6 +393,16 @@ class FeatureService:
             features.next_credit_reset_date = billing_info["next_credit_reset_date"]
 
     @classmethod
+    def _fulfill_vector_space_from_billing_info(cls, vector_space: LimitationModel, billing_info: BillingInfo):
+        if "vector_space" not in billing_info:
+            return
+
+        # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+        # but feature API keeps LimitationModel.size as int for compatibility.
+        vector_space.size = int(billing_info["vector_space"]["size"])
+        vector_space.limit = billing_info["vector_space"]["limit"]
+
+    @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):
         enterprise_info = EnterpriseService.get_info()
 
@@ -369,6 +423,9 @@ class FeatureService:
 
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
+
+        if "EnableAppDeploy" in enterprise_info:
+            features.enable_app_deploy = enterprise_info["EnableAppDeploy"]
 
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")

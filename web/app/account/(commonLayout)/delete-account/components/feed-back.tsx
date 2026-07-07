@@ -1,10 +1,10 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CustomDialog from '@/app/components/base/dialog'
-import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -47,26 +47,35 @@ export default function FeedBack(props: DeleteAccountProps) {
     handleSuccess()
   }, [handleSuccess, props])
   return (
-    <CustomDialog
-      show={true}
-      onClose={props.onCancel}
-      title={t('account.feedbackTitle', { ns: 'common' })}
-      className="max-w-[480px]"
-      footer={false}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          props.onCancel()
+      }}
     >
-      <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
-      <Textarea
-        rows={6}
-        value={userFeedback}
-        placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
-        onChange={(e) => {
-          setUserFeedback(e.target.value)
-        }}
-      />
-      <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
-        <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
-      </div>
-    </CustomDialog>
+      <DialogContent
+        className="max-w-[480px] overflow-hidden!"
+        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+      >
+        <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
+          {t('account.feedbackTitle', { ns: 'common' })}
+        </DialogTitle>
+        <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+        <Textarea
+          aria-label={t('account.feedbackLabel', { ns: 'common' }) as string}
+          rows={6}
+          value={userFeedback}
+          placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
+          onValueChange={(value) => {
+            setUserFeedback(value)
+          }}
+        />
+        <div className="mt-3 flex w-full flex-col gap-2">
+          <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
+          <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

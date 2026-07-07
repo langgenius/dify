@@ -1,16 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { Item } from '@/app/components/base/select'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
-import { PlusIcon } from '@heroicons/react/24/solid'
-import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
-import { Button } from '@/app/components/base/ui/button'
 import AutoDisabledDocument from '@/app/components/datasets/common/document-status-with-action/auto-disabled-document'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import StatusWithAction from '@/app/components/datasets/common/document-status-with-action/status-with-action'
@@ -19,11 +16,19 @@ import { useDocLink } from '@/context/i18n'
 import { DataSourceType } from '@/models/datasets'
 import { useIndexStatus } from '../status-item/hooks'
 
+type SelectOption = {
+  value: string | number
+  name: string
+}
+
 type DocumentsHeaderProps = {
   // Dataset info
   datasetId: string
   dataSourceType?: DataSourceType
   embeddingAvailable: boolean
+  canManageMetadata?: boolean
+  canAddDocument?: boolean
+  canEditDocument?: boolean
   isFreePlan: boolean
 
   // Filter & sort
@@ -55,6 +60,9 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   datasetId,
   dataSourceType,
   embeddingAvailable,
+  canManageMetadata = false,
+  canAddDocument = false,
+  canEditDocument = false,
   isFreePlan,
   statusFilterValue,
   sortValue,
@@ -82,7 +90,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   const isDataSourceNotion = dataSourceType === DataSourceType.NOTION
   const isDataSourceWeb = dataSourceType === DataSourceType.WEB
 
-  const statusFilterItems: Item[] = useMemo(() => [
+  const statusFilterItems: SelectOption[] = useMemo(() => [
     { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
@@ -94,7 +102,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
     { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
   ], [DOC_INDEX_STATUS_MAP, t])
 
-  const sortItems: Item[] = useMemo(() => [
+  const sortItems: SelectOption[] = useMemo(() => [
     { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
     { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
   ], [t])
@@ -124,7 +132,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
-            <RiExternalLinkLine className="h-3 w-3" />
+            <span className="i-ri-external-link-line size-3" />
           </a>
         </div>
       </div>
@@ -160,17 +168,17 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
 
         {/* Right: Actions */}
         <div className="flex h-8! items-center justify-center gap-2">
-          {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
-          <IndexFailed datasetId={datasetId} />
+          {!isFreePlan && canEditDocument && <AutoDisabledDocument datasetId={datasetId} />}
+          {canEditDocument && <IndexFailed datasetId={datasetId} />}
           {!embeddingAvailable && (
             <StatusWithAction
               type="warning"
               description={t('embeddingModelNotAvailable', { ns: 'dataset' })}
             />
           )}
-          {embeddingAvailable && (
+          {embeddingAvailable && canManageMetadata && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
-              <RiDraftLine className="mr-1 size-4" />
+              <span className="mr-1 i-ri-draft-line size-4" />
               {t('metadata.metadata', { ns: 'dataset' })}
             </Button>
           )}
@@ -186,9 +194,9 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
               onIsBuiltInEnabledChange={onBuiltInEnabledChange}
             />
           )}
-          {embeddingAvailable && (
+          {embeddingAvailable && canAddDocument && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
-              <PlusIcon className="mr-2 h-4 w-4 stroke-current" />
+              <span className="mr-2 i-heroicons-plus-solid size-4 stroke-current" />
               {addButtonText}
             </Button>
           )}

@@ -59,7 +59,7 @@ def _build_fake_opensearch_modules():
 
 
 @pytest.fixture
-def opensearch_module(monkeypatch):
+def opensearch_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_opensearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -95,7 +95,7 @@ class TestOpenSearchConfig:
         assert params["connection_class"].__name__ == "Urllib3HttpConnection"
         assert params["http_auth"] == ("admin", "password")
 
-    def test_to_opensearch_params_with_aws_managed_iam(self, opensearch_module, monkeypatch):
+    def test_to_opensearch_params_with_aws_managed_iam(self, opensearch_module, monkeypatch: pytest.MonkeyPatch):
         class _Session:
             def get_credentials(self):
                 return "creds"

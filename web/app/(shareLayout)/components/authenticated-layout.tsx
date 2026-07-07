@@ -7,7 +7,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
 import { webAppLogout } from '@/service/webapp-auth'
 
@@ -18,9 +18,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isFetching: isFetchingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
-  const { isFetching: isFetchingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
-  const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
+  const { isLoading: isLoadingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
+  const { isLoading: isLoadingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
+  const { isLoading: isLoadingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
@@ -39,7 +39,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const getSigninUrl = useCallback(() => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
-    params.set('redirect_url', pathname)
+    const query = params.toString()
+    const fullPath = query ? `${pathname}?${query}` : pathname
+    params.set('redirect_url', fullPath)
     return `/webapp-signin?${params.toString()}`
   }, [searchParams, pathname])
 
@@ -80,12 +82,12 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
-        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
-        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
+        <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
       </div>
     )
   }
-  if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
+  if (isLoadingAppInfo || isLoadingAppParams || isLoadingAppMeta || !appInfo || !appParams || !appMeta) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading />

@@ -16,7 +16,7 @@ const mockMutationOptions = vi.fn((options: Record<string, unknown>) => ({
   ...options,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (...args: unknown[]) => mockNotify(...args),
   },
@@ -30,12 +30,22 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
-      },
-      changePreferredProviderType: {
-        mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
+              },
+            },
+            preferredProviderType: {
+              post: {
+                mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },

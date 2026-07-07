@@ -2,20 +2,6 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultWithStructuredOutput,
-    LLMUsage,
-)
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    SystemPromptMessage,
-    TextPromptMessageContent,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule, ParameterType
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import (
@@ -30,6 +16,20 @@ from core.llm_generator.output_parser.structured_output import (
     remove_additional_properties,
 )
 from core.model_manager import ModelInstance
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultWithStructuredOutput,
+    LLMUsage,
+)
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule, ParameterType
 
 
 class TestStructuredOutput:

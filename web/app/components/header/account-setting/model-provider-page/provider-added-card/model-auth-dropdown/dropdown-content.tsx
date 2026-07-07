@@ -1,7 +1,5 @@
 import type { Credential, ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CredentialPanelState } from '../use-credential-panel-state'
-import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,7 +8,10 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { ConfigurationMethodEnum } from '../../declarations'
 import { useAuth } from '../../model-auth/hooks'
 import ApiKeySection from './api-key-section'
@@ -38,6 +39,7 @@ function DropdownContent({
 }: DropdownContentProps) {
   const { t } = useTranslation()
   const { available_credentials } = provider.custom_configuration
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
   const {
     openConfirmDelete,
@@ -51,19 +53,28 @@ function DropdownContent({
   const { selectedCredentialId, isActivating, activate } = useActivateCredential(provider)
 
   const handleEdit = useCallback((credential?: Credential) => {
+    if (credential ? !canManageCredential : !canCreateCredential)
+      return
+
     handleOpenModal(credential)
     onClose()
-  }, [handleOpenModal, onClose])
+  }, [canCreateCredential, canManageCredential, handleOpenModal, onClose])
 
   const handleDelete = useCallback((credential?: Credential) => {
+    if (!canManageCredential)
+      return
+
     if (credential)
       openConfirmDelete(credential)
-  }, [openConfirmDelete])
+  }, [canManageCredential, openConfirmDelete])
 
   const handleAdd = useCallback(() => {
+    if (!canCreateCredential)
+      return
+
     handleOpenModal()
     onClose()
-  }, [handleOpenModal, onClose])
+  }, [canCreateCredential, handleOpenModal, onClose])
 
   const showCreditsExhaustedAlert = state.isCreditsExhausted && state.supportsCredits
   const hasApiKeyFallback = state.variant === 'api-fallback'
@@ -79,7 +90,7 @@ function DropdownContent({
         {state.showPrioritySwitcher && (
           <UsagePrioritySection
             value={state.priority}
-            disabled={isChangingPriority}
+            disabled={isChangingPriority || !canUseCredential}
             onSelect={onChangePriority}
           />
         )}
@@ -109,10 +120,10 @@ function DropdownContent({
       >
         <AlertDialogContent>
           <div className="p-6 pb-0">
-            <AlertDialogTitle className="text-text-primary system-xl-semibold">
+            <AlertDialogTitle className="system-xl-semibold text-text-primary">
               {t('modelProvider.confirmDelete', { ns: 'common' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-1 text-text-secondary system-sm-regular" />
+            <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={doingAction}>

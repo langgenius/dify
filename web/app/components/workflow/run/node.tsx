@@ -8,6 +8,7 @@ import type {
   NodeTracing,
 } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAlertFill,
   RiArrowRightSLine,
@@ -18,7 +19,6 @@ import {
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -28,24 +28,24 @@ import { useDocLink } from '@/context/i18n'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
-import { AgentLogTrigger } from './agent-log'
+import { AgentLogTrigger } from './agent-log/agent-log-trigger'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
 
 type Props = {
-  className?: string
-  nodeInfo: NodeTracing
-  allExecutions?: NodeTracing[]
-  inMessage?: boolean
-  hideInfo?: boolean
-  hideProcessDetail?: boolean
-  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
-  onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
-  onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  notShowIterationNav?: boolean
-  notShowLoopNav?: boolean
+  readonly className?: string
+  readonly nodeInfo: NodeTracing
+  readonly allExecutions?: NodeTracing[]
+  readonly inMessage?: boolean
+  readonly hideInfo?: boolean
+  readonly hideProcessDetail?: boolean
+  readonly onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  readonly onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
+  readonly onShowRetryDetail?: (detail: NodeTracing[]) => void
+  readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  readonly notShowIterationNav?: boolean
+  readonly notShowLoopNav?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -126,24 +126,28 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               )}
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && 'mr-1!')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <Tooltip
-            popupContent={
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <div
+                  className={cn(
+                    'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
+                    hideInfo && 'text-xs!',
+                  )}
+                >
+                  {nodeInfo.title}
+                </div>
+              )}
+            />
+            <TooltipContent>
               <div className="max-w-xs">{nodeInfo.title}</div>
-            }
-          >
-            <div className={cn(
-              'grow truncate system-xs-semibold-uppercase text-text-secondary',
-              hideInfo && 'text-xs!',
-            )}
-            >
-              {nodeInfo.title}
-            </div>
+            </TooltipContent>
           </Tooltip>
           {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="shrink-0 system-xs-regular text-text-tertiary">
@@ -152,24 +156,24 @@ const NodePanel: FC<Props> = ({
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <RiCheckboxCircleFill className="ml-2 size-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiPauseCircleFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
+              <RiLoader2Line className="size-3.5 animate-spin" />
             </div>
           )}
         </div>
@@ -217,6 +221,7 @@ const NodePanel: FC<Props> = ({
                   <a
                     href={docLink('/use-dify/debug/error-type')}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="text-text-accent"
                   >
                     {t('common.learnMore', { ns: 'workflow' })}
@@ -255,6 +260,7 @@ const NodePanel: FC<Props> = ({
               <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{processDataTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.process_data}
@@ -266,6 +272,7 @@ const NodePanel: FC<Props> = ({
               <div>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{outputTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}

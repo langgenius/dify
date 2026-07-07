@@ -1,20 +1,39 @@
-import { act } from '@testing-library/react'
-import { ZEN_TOGGLE_EVENT } from '@/app/components/goto-anything/actions/commands/zen'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { useShortcuts } from '../use-shortcuts'
+import { useWorkflowHotkeys } from '../../shortcuts/use-workflow-hotkeys'
 
 type KeyPressRegistration = {
   keyFilter: unknown
   handler: (event: KeyboardEvent) => void
   options?: {
     events?: string[]
+    enabled?: boolean
+    ignoreInputs?: boolean
+    preventDefault?: boolean
+    stopPropagation?: boolean
+    meta?: {
+      scope?: string
+    }
   }
+}
+
+type ReactFlowNodeMock = {
+  id: string
+  data: {
+    _isBundled?: boolean
+  }
+}
+
+type HotkeyDefinitionMock = {
+  hotkey: unknown
+  callback: (event: KeyboardEvent) => void
+  options?: KeyPressRegistration['options'] & { eventType?: 'keydown' | 'keyup' }
 }
 
 const keyPressRegistrations = vi.hoisted<KeyPressRegistration[]>(() => [])
 const mockZoomTo = vi.hoisted(() => vi.fn())
 const mockGetZoom = vi.hoisted(() => vi.fn(() => 1))
 const mockFitView = vi.hoisted(() => vi.fn())
+const mockGetNodes = vi.hoisted(() => vi.fn<() => ReactFlowNodeMock[]>(() => []))
 const mockHandleNodesDelete = vi.hoisted(() => vi.fn())
 const mockHandleEdgeDelete = vi.hoisted(() => vi.fn())
 const mockHandleNodesCopy = vi.hoisted(() => vi.fn())
@@ -27,24 +46,44 @@ const mockUndimAllNodes = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockHandleModeHand = vi.hoisted(() => vi.fn())
 const mockHandleModePointer = vi.hoisted(() => vi.fn())
+const mockHandleModeComment = vi.hoisted(() => vi.fn())
 const mockHandleLayout = vi.hoisted(() => vi.fn())
-const mockHandleToggleMaximizeCanvas = vi.hoisted(() => vi.fn())
+const mockUseKeyHold = vi.hoisted(() => vi.fn(() => false))
 
-vi.mock('ahooks', () => ({
-  useKeyPress: (keyFilter: unknown, handler: (event: KeyboardEvent) => void, options?: { events?: string[] }) => {
-    keyPressRegistrations.push({ keyFilter, handler, options })
-  },
-}))
+vi.mock('@tanstack/react-hotkeys', () => {
+  const useHotkeys = (
+    definitions: HotkeyDefinitionMock[],
+    commonOptions?: KeyPressRegistration['options'],
+  ) => {
+    definitions.forEach((definition) => {
+      keyPressRegistrations.push({
+        keyFilter: definition.hotkey,
+        handler: definition.callback,
+        options: {
+          ...commonOptions,
+          ...definition.options,
+          events: definition.options?.eventType ? [definition.options.eventType] : undefined,
+        },
+      })
+    })
+  }
+
+  return {
+    useHotkeys,
+    useKeyHold: mockUseKeyHold,
+  }
+})
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
     zoomTo: mockZoomTo,
     getZoom: mockGetZoom,
     fitView: mockFitView,
+    getNodes: mockGetNodes,
   }),
 }))
 
-vi.mock('..', () => ({
+vi.mock('../use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodesCopy: mockHandleNodesCopy,
     handleNodesPaste: mockHandleNodesPaste,
@@ -55,34 +94,48 @@ vi.mock('..', () => ({
     dimOtherNodes: mockDimOtherNodes,
     undimAllNodes: mockUndimAllNodes,
   }),
+}))
+
+vi.mock('../use-edges-interactions', () => ({
   useEdgesInteractions: () => ({
     handleEdgeDelete: mockHandleEdgeDelete,
   }),
+}))
+
+vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
-  useWorkflowCanvasMaximize: () => ({
-    handleToggleMaximizeCanvas: mockHandleToggleMaximizeCanvas,
-  }),
+}))
+
+vi.mock('../use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     handleModeHand: mockHandleModeHand,
     handleModePointer: mockHandleModePointer,
+    handleModeComment: mockHandleModeComment,
+    isCommentModeAvailable: true,
   }),
+}))
+
+vi.mock('../use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({
     handleLayout: mockHandleLayout,
   }),
 }))
 
-vi.mock('../../workflow-history-store', () => ({
-  useWorkflowHistoryStore: () => ({
-    shortcutsEnabled: true,
-  }),
-}))
-
 const createKeyboardEvent = (target: HTMLElement = document.body) => ({
   preventDefault: vi.fn(),
+  stopPropagation: vi.fn(),
   target,
 }) as unknown as KeyboardEvent
+
+const createSelectionMock = (commonAncestorContainer: Node): Selection => ({
+  isCollapsed: false,
+  rangeCount: 1,
+  getRangeAt: () => ({
+    commonAncestorContainer,
+  } as unknown as Range),
+} as unknown as Selection)
 
 const findRegistration = (matcher: (registration: KeyPressRegistration) => boolean) => {
   const registration = keyPressRegistrations.find(matcher)
@@ -90,48 +143,76 @@ const findRegistration = (matcher: (registration: KeyPressRegistration) => boole
   return registration as KeyPressRegistration
 }
 
+const isEditableTarget = (target: EventTarget | null) => {
+  return target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLSelectElement
+    || (target instanceof HTMLElement && target.isContentEditable)
+}
+
+const triggerShortcut = (
+  registration: KeyPressRegistration,
+  event: KeyboardEvent = createKeyboardEvent(),
+) => {
+  if (registration.options?.enabled === false)
+    return
+
+  if (registration.options?.ignoreInputs !== false && isEditableTarget(event.target))
+    return
+
+  if (registration.options?.preventDefault !== false)
+    event.preventDefault()
+
+  if (registration.options?.stopPropagation !== false)
+    event.stopPropagation()
+
+  registration.handler(event)
+}
+
 describe('useShortcuts', () => {
   beforeEach(() => {
     keyPressRegistrations.length = 0
     vi.clearAllMocks()
+    mockUseKeyHold.mockReturnValue(false)
+    mockGetNodes.mockReturnValue([])
   })
 
   it('deletes selected nodes and edges only outside editable inputs', () => {
-    renderWorkflowHook(() => useShortcuts())
+    renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const deleteShortcut = findRegistration(registration =>
-      Array.isArray(registration.keyFilter)
-      && registration.keyFilter.includes('delete'),
+    const deleteShortcut = findRegistration(registration => registration.keyFilter === 'Delete')
+    expect(deleteShortcut.options?.meta).toEqual(
+      expect.objectContaining({ scope: 'workflow-canvas' }),
     )
 
     const bodyEvent = createKeyboardEvent()
-    deleteShortcut.handler(bodyEvent)
+    triggerShortcut(deleteShortcut, bodyEvent)
 
     expect(bodyEvent.preventDefault).toHaveBeenCalled()
     expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
     expect(mockHandleEdgeDelete).toHaveBeenCalledTimes(1)
 
     const inputEvent = createKeyboardEvent(document.createElement('input'))
-    deleteShortcut.handler(inputEvent)
+    triggerShortcut(deleteShortcut, inputEvent)
 
     expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
     expect(mockHandleEdgeDelete).toHaveBeenCalledTimes(1)
   })
 
   it('runs layout and zoom shortcuts through the workflow actions', () => {
-    renderWorkflowHook(() => useShortcuts())
+    renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const layoutShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.o' || registration.keyFilter === 'meta.o')
-    const fitViewShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.1' || registration.keyFilter === 'meta.1')
-    const halfZoomShortcut = findRegistration(registration => registration.keyFilter === 'shift.5')
-    const zoomOutShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.dash' || registration.keyFilter === 'meta.dash')
-    const zoomInShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.equalsign' || registration.keyFilter === 'meta.equalsign')
+    const layoutShortcut = findRegistration(registration => registration.keyFilter === 'Mod+O')
+    const fitViewShortcut = findRegistration(registration => registration.keyFilter === 'Mod+1')
+    const halfZoomShortcut = findRegistration(registration => registration.keyFilter === 'Shift+5')
+    const zoomOutShortcut = findRegistration(registration => registration.keyFilter === 'Mod+-')
+    const zoomInShortcut = findRegistration(registration => registration.keyFilter === 'Mod+=')
 
-    layoutShortcut.handler(createKeyboardEvent())
-    fitViewShortcut.handler(createKeyboardEvent())
-    halfZoomShortcut.handler(createKeyboardEvent())
-    zoomOutShortcut.handler(createKeyboardEvent())
-    zoomInShortcut.handler(createKeyboardEvent())
+    triggerShortcut(layoutShortcut)
+    triggerShortcut(fitViewShortcut)
+    triggerShortcut(halfZoomShortcut)
+    triggerShortcut(zoomOutShortcut)
+    triggerShortcut(zoomInShortcut)
 
     expect(mockHandleLayout).toHaveBeenCalledTimes(1)
     expect(mockFitView).toHaveBeenCalledTimes(1)
@@ -141,28 +222,61 @@ describe('useShortcuts', () => {
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(4)
   })
 
-  it('dims on shift down, undims on shift up, and responds to zen toggle events', () => {
-    const { unmount } = renderWorkflowHook(() => useShortcuts())
+  it('copies bundled nodes even when an incidental text selection exists outside the workflow canvas', () => {
+    const getSelectionSpy = vi.spyOn(document, 'getSelection')
+    const textContainer = document.createElement('div')
+    const selectedText = document.createElement('span')
+    selectedText.textContent = 'Selected browser text'
+    textContainer.appendChild(selectedText)
 
-    const shiftDownShortcut = findRegistration(registration => registration.keyFilter === 'shift' && registration.options?.events?.[0] === 'keydown')
-    const shiftUpShortcut = findRegistration(registration => typeof registration.keyFilter === 'function' && registration.options?.events?.[0] === 'keyup')
+    getSelectionSpy.mockReturnValue(createSelectionMock(selectedText))
+    mockGetNodes.mockReturnValue([
+      {
+        id: 'bundled-node',
+        data: {
+          _isBundled: true,
+        },
+      },
+    ])
 
-    shiftDownShortcut.handler(createKeyboardEvent())
-    shiftUpShortcut.handler({ ...createKeyboardEvent(), key: 'Shift' } as KeyboardEvent)
+    renderWorkflowHook(() => useWorkflowHotkeys())
+
+    const copyShortcut = findRegistration(registration => registration.keyFilter === 'Mod+C')
+    const event = createKeyboardEvent()
+    triggerShortcut(copyShortcut, event)
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
+
+    getSelectionSpy.mockRestore()
+  })
+
+  it('dims while shift is held and undims when released', () => {
+    const { rerender } = renderWorkflowHook(() => useWorkflowHotkeys())
+
+    mockUseKeyHold.mockReturnValue(true)
+    rerender()
+
+    mockUseKeyHold.mockReturnValue(false)
+    rerender()
 
     expect(mockDimOtherNodes).toHaveBeenCalledTimes(1)
     expect(mockUndimAllNodes).toHaveBeenCalledTimes(1)
+  })
 
-    act(() => {
-      window.dispatchEvent(new Event(ZEN_TOGGLE_EVENT))
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
+  it('does not dim when shift is held inside editable inputs', () => {
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
 
-    unmount()
+    const { rerender } = renderWorkflowHook(() => useWorkflowHotkeys())
 
-    act(() => {
-      window.dispatchEvent(new Event(ZEN_TOGGLE_EVENT))
-    })
-    expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
+    mockUseKeyHold.mockReturnValue(true)
+    rerender()
+
+    expect(mockDimOtherNodes).not.toHaveBeenCalled()
+    expect(mockUndimAllNodes).not.toHaveBeenCalled()
+
+    input.remove()
   })
 })

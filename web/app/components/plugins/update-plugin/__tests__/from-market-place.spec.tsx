@@ -7,22 +7,20 @@ import UpdateFromMarketplace from '../from-market-place'
 const {
   mockStop,
   mockCheck,
-  mockHandleRefetch,
-  mockInvalidateReferenceSettings,
+  mockHandleInstallTaskStart,
   mockRemoveAutoUpgrade,
   mockUpdateFromMarketPlace,
   mockToastError,
 } = vi.hoisted(() => ({
   mockStop: vi.fn(),
   mockCheck: vi.fn(),
-  mockHandleRefetch: vi.fn(),
-  mockInvalidateReferenceSettings: vi.fn(),
+  mockHandleInstallTaskStart: vi.fn(),
   mockRemoveAutoUpgrade: vi.fn(),
   mockUpdateFromMarketPlace: vi.fn(),
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/dialog', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -37,7 +35,7 @@ vi.mock('@/app/components/base/badge/index', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({
     children,
     onClick,
@@ -49,7 +47,7 @@ vi.mock('@/app/components/base/ui/button', () => ({
   }) => <button disabled={disabled} onClick={onClick}>{children}</button>,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
@@ -81,12 +79,11 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   usePluginTaskList: () => ({
-    handleRefetch: mockHandleRefetch,
+    handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
   useRemoveAutoUpgrade: () => ({
     mutateAsync: mockRemoveAutoUpgrade,
   }),
-  useInvalidateReferenceSettings: () => mockInvalidateReferenceSettings,
 }))
 
 vi.mock('../install-plugin/base/use-get-icon', () => ({
@@ -218,8 +215,7 @@ describe('UpdateFromMarketplace', () => {
     fireEvent.click(screen.getByText('exclude and downgrade'))
 
     await waitFor(() => {
-      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1' })
-      expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
+      expect(mockRemoveAutoUpgrade).toHaveBeenCalledWith({ plugin_id: 'plugin-1', category: PluginCategoryEnum.tool })
       expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
     })
   })

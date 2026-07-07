@@ -9,7 +9,6 @@ import {
   isEmbeddingStatus,
   isTerminalStatus,
   useEmbeddingStatus,
-  useInvalidateEmbeddingStatus,
   usePauseIndexing,
   useResumeIndexing,
 } from '../use-embedding-status'
@@ -342,7 +341,7 @@ describe('use-embedding-status', () => {
 
       await waitFor(() => {
         expect(onError).toHaveBeenCalled()
-        expect(onError.mock.calls[0][0]).toEqual(error)
+        expect(onError.mock.calls[0]![0]).toEqual(error)
       })
     })
   })
@@ -384,79 +383,6 @@ describe('use-embedding-status', () => {
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled()
       })
-    })
-  })
-
-  describe('useInvalidateEmbeddingStatus', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(
-        () => useInvalidateEmbeddingStatus(),
-        { wrapper: createWrapper() },
-      )
-
-      expect(typeof result.current).toBe('function')
-    })
-
-    it('should invalidate specific query when datasetId and documentId are provided', async () => {
-      const queryClient = createTestQueryClient()
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )
-
-      // Set some initial data in the cache
-      queryClient.setQueryData(['embedding', 'indexing-status', 'ds1', 'doc1'], {
-        id: 'doc1',
-        indexing_status: 'indexing',
-      })
-
-      const { result } = renderHook(
-        () => useInvalidateEmbeddingStatus(),
-        { wrapper },
-      )
-
-      await act(async () => {
-        result.current('ds1', 'doc1')
-      })
-
-      // The query should be invalidated (marked as stale)
-      const queryState = queryClient.getQueryState(['embedding', 'indexing-status', 'ds1', 'doc1'])
-      expect(queryState?.isInvalidated).toBe(true)
-    })
-
-    it('should invalidate all embedding status queries when ids are not provided', async () => {
-      const queryClient = createTestQueryClient()
-      const wrapper = ({ children }: { children: ReactNode }) => (
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      )
-
-      // Set some initial data in the cache for multiple documents
-      queryClient.setQueryData(['embedding', 'indexing-status', 'ds1', 'doc1'], {
-        id: 'doc1',
-        indexing_status: 'indexing',
-      })
-      queryClient.setQueryData(['embedding', 'indexing-status', 'ds2', 'doc2'], {
-        id: 'doc2',
-        indexing_status: 'completed',
-      })
-
-      const { result } = renderHook(
-        () => useInvalidateEmbeddingStatus(),
-        { wrapper },
-      )
-
-      await act(async () => {
-        result.current()
-      })
-
-      // Both queries should be invalidated
-      const queryState1 = queryClient.getQueryState(['embedding', 'indexing-status', 'ds1', 'doc1'])
-      const queryState2 = queryClient.getQueryState(['embedding', 'indexing-status', 'ds2', 'doc2'])
-      expect(queryState1?.isInvalidated).toBe(true)
-      expect(queryState2?.isInvalidated).toBe(true)
     })
   })
 })

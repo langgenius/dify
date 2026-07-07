@@ -1,7 +1,8 @@
 import logging
-from typing import Any
+from typing import Any, override
 
 import httpx
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
@@ -16,23 +17,26 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from dify official
     """
 
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
-        result: dict[str, Any] | None
+    @override
+    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
         try:
-            result = self.fetch_pipeline_template_detail_from_dify_official(template_id)
+            return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(session, template_id)
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    @override
+    def get_pipeline_templates(
+        self, session: Session, language: str, current_tenant_id: str | None = None
+    ) -> dict[str, Any]:
+        del current_tenant_id
         try:
-            result = self.fetch_pipeline_templates_from_dify_official(language)
+            return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
-            result = DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
-        return result
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(session, language)
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.REMOTE
 

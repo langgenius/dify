@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
@@ -532,6 +532,7 @@ describe('useEmbeddedChatbot', () => {
     })
 
     it('handleChangeConversation updates current conversation and refetches chat list', async () => {
+      mockStoreState.embeddedConversationId = null
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       act(() => {
@@ -546,6 +547,39 @@ describe('useEmbeddedChatbot', () => {
       })
       expect(result.current.newConversationId).toBe('')
       expect(result.current.clearChatList).toBe(false)
+    })
+
+    // Scenario: URL-provided conversation_id should take precedence over localStorage value.
+    it('should prioritize URL conversation_id over localStorage', async () => {
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
+        'app-1': { 'embedded-user-1': 'stored-conv-id' },
+      }))
+      mockStoreState.embeddedConversationId = 'url-conv-id'
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
+        user_id: 'embedded-user-1',
+        conversation_id: 'url-conv-id',
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.currentConversationId).toBe('url-conv-id')
+      })
+    })
+
+    // Scenario: When no URL conversation_id is provided, fall back to localStorage.
+    it('should fall back to localStorage when no URL conversation_id is provided', async () => {
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
+        'app-1': { DEFAULT: 'stored-conv-id' },
+      }))
+      mockStoreState.embeddedConversationId = null
+      mockStoreState.embeddedUserId = null
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.currentConversationId).toBe('stored-conv-id')
+      })
     })
 
     it('handleFeedback invokes updateFeedback service successfully', async () => {

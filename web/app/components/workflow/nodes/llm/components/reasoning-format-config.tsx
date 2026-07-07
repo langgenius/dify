@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 
 type ReasoningFormatConfigProps = {

@@ -1,12 +1,8 @@
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiClipboardLine,
-  RiEqualizer2Line,
-  RiInformation2Fill,
-} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -17,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { Button } from '@/app/components/base/ui/button'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
@@ -36,14 +31,21 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  renderTrigger?: (props: {
+    disabled?: boolean
+    isConfigured: boolean
+    onClick: () => void
+  }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
     is_system_oauth_params_exists?: boolean
-    client_params?: Record<string, any>
+    client_params?: Record<string, unknown>
     redirect_uri?: string
   }
 }
+type OAuthData = NonNullable<AddOAuthButtonProps['oAuthData']>
+
 const AddOAuthButton = ({
   pluginPayload,
   buttonVariant = 'primary',
@@ -54,27 +56,33 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  renderTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
+  const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
-  const mergedOAuthData = useMemo(() => {
+  const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData)
       return oAuthData
 
-    return data
+    return data || {}
   }, [oAuthData, data])
   const {
     schema = [],
-    is_oauth_custom_client_enabled,
-    is_system_oauth_params_exists,
-    client_params,
+    is_oauth_custom_client_enabled = false,
+    is_system_oauth_params_exists = false,
+    client_params = {},
     redirect_uri,
-  } = mergedOAuthData as any || {}
+  } = mergedOAuthData
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
+  const openOAuthSettings = useCallback(() => {
+    setIsOAuthSettingsMounted(true)
+    setIsOAuthSettingsOpen(true)
+  }, [])
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
 
@@ -91,7 +99,7 @@ const AddOAuthButton = ({
       <div className="w-full">
         <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
           <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <RiInformation2Fill className="h-5 w-5 text-text-accent" />
+            <span className="i-ri-information-2-fill size-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
             <div className="mb-1.5 system-sm-regular">
@@ -107,7 +115,7 @@ const AddOAuthButton = ({
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <RiClipboardLine className="h-4 w-4" />
+                    <span className="i-ri-clipboard-line size-4" />
                   </ActionButton>
                 </div>
               )
@@ -184,24 +192,26 @@ const AddOAuthButton = ({
   return (
     <>
       {
-        isConfigured && (
-          <Button
-            variant={buttonVariant}
-            className={cn(
-              'w-full px-0 py-0 hover:bg-components-button-primary-bg',
-              className,
-            )}
-            disabled={disabled}
-            onClick={handleOAuth}
-          >
-            <div className={cn(
-              'flex h-full w-0 grow items-center justify-center rounded-l-lg pl-0.5 hover:bg-components-button-primary-bg-hover',
-              buttonLeftClassName,
-            )}
+        renderTrigger?.({
+          disabled,
+          isConfigured,
+          onClick: isConfigured ? handleOAuth : openOAuthSettings,
+        })
+      }
+      {
+        !renderTrigger && isConfigured && (
+          <div className={cn('flex w-full', className)}>
+            <Button
+              variant={buttonVariant}
+              className={cn(
+                'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+                buttonLeftClassName,
+              )}
+              disabled={disabled}
+              onClick={handleOAuth}
             >
               <div
                 className="truncate"
-                title={buttonText}
               >
                 {buttonText}
               </div>
@@ -217,45 +227,48 @@ const AddOAuthButton = ({
                   </Badge>
                 )
               }
-            </div>
+            </Button>
             <div className={cn(
-              'h-4 w-px shrink-0 bg-text-primary-on-surface opacity-[0.15]',
+              'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
               dividerClassName,
             )}
             >
             </div>
-            <div
-              data-testid="oauth-settings-button"
+            <Button
+              variant={buttonVariant}
+              aria-label={t('auth.oauthClientSettings', { ns: 'plugin' })}
               className={cn(
-                'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
+                'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,
               )}
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsOAuthSettingsOpen(true)
+              disabled={disabled}
+              onClick={() => {
+                openOAuthSettings()
               }}
             >
-              <RiEqualizer2Line className="h-4 w-4" />
-            </div>
-          </Button>
+              <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
+            </Button>
+          </div>
         )
       }
       {
-        !isConfigured && (
+        !renderTrigger && !isConfigured && (
           <Button
             variant={buttonVariant}
-            onClick={() => setIsOAuthSettingsOpen(true)}
+            onClick={openOAuthSettings}
             disabled={disabled}
             className="w-full"
           >
-            <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
+            <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
             {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )
       }
       {
-        isOAuthSettingsOpen && (
+        isOAuthSettingsMounted && (
           <OAuthClientSettings
+            open={isOAuthSettingsOpen}
+            onOpenChange={setIsOAuthSettingsOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsOAuthSettingsOpen(false)}
             disabled={disabled || isLoading}

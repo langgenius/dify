@@ -1,8 +1,6 @@
 'use client'
 
 import type { FC } from 'react'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,13 +8,15 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   onConfirm: () => void
-}
+}>
 
 const ClearAllAnnotationsConfirmModal: FC<Props> = ({
   isShow,

@@ -55,7 +55,7 @@ describe('ChunkingModeLabel', () => {
     it('should apply correct icon size classes', () => {
       const { container } = render(<ChunkingModeLabel isGeneralMode={true} isQAMode={false} />)
       const iconElement = container.querySelector('svg')
-      expect(iconElement).toHaveClass('h-3', 'w-3')
+      expect(iconElement).toHaveClass('size-3')
     })
   })
 })

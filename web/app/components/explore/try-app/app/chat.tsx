@@ -5,6 +5,7 @@ import type {
 } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -21,16 +22,15 @@ import {
   useEmbeddedChatbot,
 } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import Tooltip from '@/app/components/base/tooltip'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
   className: string
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,
@@ -70,20 +70,29 @@ const TryApp: FC<Props> = ({
             <AppIcon
               size="large"
               iconType={appDetail.site.icon_type}
-              icon={appDetail.site.icon}
-              background={appDetail.site.icon_background}
-              imageUrl={appDetail.site.icon_url}
+              icon={appDetail.site.icon ?? undefined}
+              background={appDetail.site.icon_background ?? undefined}
+              imageUrl={appDetail.site.icon_url ?? undefined}
             />
             <div className="grow truncate system-md-semibold text-text-primary" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center gap-1">
             {currentConversationId && (
-              <Tooltip
-                popupContent={t('chat.resetChat', { ns: 'share' })}
-              >
-                <ActionButton size="l" onClick={handleNewConversation}>
-                  <RiResetLeftLine className="h-[18px] w-[18px]" />
-                </ActionButton>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <ActionButton
+                      size="l"
+                      aria-label={t('chat.resetChat', { ns: 'share' })}
+                      onClick={handleNewConversation}
+                    >
+                      <RiResetLeftLine className="h-[18px] w-[18px]" aria-hidden="true" />
+                    </ActionButton>
+                  )}
+                />
+                <TooltipContent>
+                  {t('chat.resetChat', { ns: 'share' })}
+                </TooltipContent>
               </Tooltip>
             )}
             {currentConversationId && inputsForms.length > 0 && (

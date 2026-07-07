@@ -119,7 +119,7 @@ describe('RunOnce – integration flow', () => {
     fireEvent.change(screen.getByPlaceholderText('Bio'), { target: { value: 'Hello' } })
 
     // Phase 3 – submit
-    fireEvent.click(screen.getByTestId('run-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledTimes(1)
 
     // Phase 4 – simulate "running" state
@@ -132,7 +132,7 @@ describe('RunOnce – integration flow', () => {
       />,
     )
 
-    const stopBtn = screen.getByTestId('stop-button')
+    const stopBtn = screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })
     expect(stopBtn).toBeInTheDocument()
     fireEvent.click(stopBtn)
     expect(onStop).toHaveBeenCalledTimes(1)
@@ -145,7 +145,7 @@ describe('RunOnce – integration flow', () => {
         runControl={{ onStop, isStopping: true }}
       />,
     )
-    expect(screen.getByTestId('stop-button')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })).toBeDisabled()
   })
 
   it('clear resets all field types and allows re-submit', async () => {
@@ -174,7 +174,7 @@ describe('RunOnce – integration flow', () => {
 
     // Re-fill and submit
     fireEvent.change(screen.getByPlaceholderText('Question'), { target: { value: 'New' } })
-    fireEvent.click(screen.getByTestId('run-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledTimes(1)
   })
 
@@ -212,7 +212,7 @@ describe('RunOnce – integration flow', () => {
     fireEvent.change(screen.getByPlaceholderText('Text'), { target: { value: 'hello' } })
     fireEvent.change(screen.getByTestId('code-editor'), { target: { value: '{"a":1}' } })
 
-    fireEvent.click(screen.getByTestId('run-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledTimes(1)
   })
 })

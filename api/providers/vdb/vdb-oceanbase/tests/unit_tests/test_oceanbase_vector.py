@@ -53,7 +53,7 @@ def _build_fake_pyobvector_module():
 
 
 @pytest.fixture
-def oceanbase_module(monkeypatch):
+def oceanbase_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setitem(sys.modules, "pyobvector", _build_fake_pyobvector_module())
 
     import dify_vdb_oceanbase.oceanbase_vector as module
@@ -208,7 +208,7 @@ def test_create_delegates_to_collection_and_insert(oceanbase_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_module, monkeypatch):
+def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -234,7 +234,7 @@ def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_mod
     vector.delete.assert_not_called()
 
 
-def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, monkeypatch):
+def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -271,7 +271,7 @@ def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, mo
     oceanbase_module.redis_client.set.assert_called_once()
 
 
-def test_create_collection_error_paths(oceanbase_module, monkeypatch):
+def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -308,7 +308,7 @@ def test_create_collection_error_paths(oceanbase_module, monkeypatch):
         vector._create_collection()
 
 
-def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_module, monkeypatch):
+def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -517,7 +517,7 @@ def test_delete_success_and_exception(oceanbase_module):
         vector.delete()
 
 
-def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_module, monkeypatch):
+def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     factory = oceanbase_module.OceanBaseVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

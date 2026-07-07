@@ -139,7 +139,6 @@ class TestEnableSegmentsToIndexTask:
         for i in range(count):
             text = fake.text(max_nb_chars=200)
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,

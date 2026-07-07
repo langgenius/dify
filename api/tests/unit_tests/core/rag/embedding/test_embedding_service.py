@@ -44,11 +44,16 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import base64
+import logging
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
+from sqlalchemy.exc import IntegrityError
+
+from core.entities.embedding_type import EmbeddingInputType
+from core.rag.embedding.cached_embedding import CacheEmbedding
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from graphon.model_runtime.errors.invoke import (
@@ -56,10 +61,6 @@ from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
     InvokeRateLimitError,
 )
-from sqlalchemy.exc import IntegrityError
-
-from core.entities.embedding_type import EmbeddingInputType
-from core.rag.embedding.cached_embedding import CacheEmbedding
 from models.dataset import Embedding
 
 
@@ -406,7 +407,7 @@ class TestCacheEmbeddingDocuments:
             assert len(calls[1].kwargs["texts"]) == 10
             assert len(calls[2].kwargs["texts"]) == 5
 
-    def test_embed_documents_nan_handling(self, mock_model_instance):
+    def test_embed_documents_nan_handling(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
         """Test handling of NaN values in embeddings.
 
         Verifies:
@@ -446,7 +447,7 @@ class TestCacheEmbeddingDocuments:
             mock_session.scalar.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
-            with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
+            with caplog.at_level(logging.WARNING, logger="core.rag.embedding.cached_embedding"):
                 # Act
                 result = cache_embedding.embed_documents(texts)
 
@@ -461,8 +462,8 @@ class TestCacheEmbeddingDocuments:
                 assert result[1] is None
 
                 # Verify warning was logged
-                mock_logger.warning.assert_called_once()
-                assert "Normalized embedding is nan" in str(mock_logger.warning.call_args)
+                assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) >= 1
+                assert any("Normalized embedding is nan" in record.message for record in caplog.records)
 
     def test_embed_documents_api_connection_error(self, mock_model_instance):
         """Test handling of API connection errors during embedding.

@@ -2,23 +2,23 @@ import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-import { RiMoreFill } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { Button } from '@/app/components/base/ui/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 
 type ChangeItemProps = {
   data: CommonNodeType
@@ -33,10 +33,11 @@ const ChangeItem = ({
   const { t } = useTranslation()
 
   const { handleNodeChange } = useNodesInteractions()
+  const nodeCatalogType = getNodeCatalogType(data)
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  } = useAvailableBlocks(nodeCatalogType, data.isInIteration || data.isInLoop)
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
@@ -60,7 +61,7 @@ const ChangeItem = ({
       }}
       trigger={renderTrigger}
       popupClassName="w-[328px]!"
-      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
+      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== nodeCatalogType)}
     />
   )
 }
@@ -86,18 +87,23 @@ const Operator = ({
   } = useNodesInteractions()
 
   return (
-    <PortalToFollowElem
-      placement="bottom-end"
-      offset={{ mainAxis: 4, crossAxis: -4 }}
+    <DropdownMenu
       open={open}
       onOpenChange={onOpenChange}
     >
-      <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
-        <Button className="h-6 w-6 p-0">
-          <RiMoreFill className="h-4 w-4" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
+      <DropdownMenuTrigger
+        render={(
+          <Button className="size-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </Button>
+        )}
+      />
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={-4}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
           <div className="p-1">
             <ChangeItem
@@ -107,7 +113,10 @@ const Operator = ({
             />
             <div
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-              onClick={() => handleNodeDisconnect(nodeId)}
+              onClick={() => {
+                onOpenChange(false)
+                handleNodeDisconnect(nodeId)
+              }}
             >
               {t('common.disconnect', { ns: 'workflow' })}
             </div>
@@ -115,14 +124,17 @@ const Operator = ({
           <div className="p-1">
             <div
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-              onClick={() => handleNodeDelete(nodeId)}
+              onClick={() => {
+                onOpenChange(false)
+                handleNodeDelete(nodeId)
+              }}
             >
               {t('operation.delete', { ns: 'common' })}
             </div>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

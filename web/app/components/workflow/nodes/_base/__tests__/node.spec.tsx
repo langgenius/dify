@@ -10,10 +10,15 @@ const mockUseNodePluginInstallation = vi.fn()
 const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
+const mockUseCollaboration = vi.fn()
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
   useToolIcon: () => undefined,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
+  useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
@@ -76,6 +81,9 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 vi.mock('@/app/components/workflow/nodes/tool/components/copy-id', () => ({
   default: ({ content }: { content: string }) => <div>{content}</div>,
 }))
+vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
+  selectWorkflowNode: vi.fn(),
+}))
 
 const createData = (overrides: Record<string, unknown> = {}) => ({
   type: BlockEnum.Tool,
@@ -98,6 +106,7 @@ describe('BaseNode', () => {
     vi.clearAllMocks()
     mockHasNodeInspectVars.mockReturnValue(false)
     mockUseNodeResizeObserver.mockReset()
+    mockUseCollaboration.mockReturnValue({ nodePanelPresence: {} })
     mockUseNodePluginInstallation.mockReturnValue({
       shouldDim: false,
       isChecking: false,
@@ -119,6 +128,42 @@ describe('BaseNode', () => {
     expect(screen.getByTestId('node-control')).toBeInTheDocument()
     expect(screen.getByTestId('node-source-handle')).toBeInTheDocument()
     expect(screen.getByTestId('node-target-handle')).toBeInTheDocument()
+  })
+
+  it('should expose the node title area as a selectable button', async () => {
+    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData())}>
+        <div>Body</div>
+      </BaseNode>,
+    )
+
+    const node = screen.getByRole('button', { name: 'Node title' })
+
+    fireEvent.click(node)
+
+    expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
+  })
+
+  it('should keep header metadata outside the selectable button', () => {
+    renderWorkflowComponent(
+      <BaseNode
+        id="node-1"
+        data={toNodeData(createData({
+          type: BlockEnum.Iteration,
+          is_parallel: true,
+        }))}
+      >
+        <div>Iteration body</div>
+      </BaseNode>,
+    )
+
+    const titleButton = screen.getByRole('button', { name: 'Node title' })
+    const parallelButton = screen.getByRole('button', { name: /workflow\.nodes\.iteration\.parallelModeUpper/ })
+
+    expect(titleButton).not.toContainElement(parallelButton)
+    expect(titleButton.querySelector('button')).toBeNull()
   })
 
   it('should render entry nodes inside the entry container', () => {
@@ -146,9 +191,9 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
-    const overlay = screen.getByTestId('workflow-node-install-overlay')
+    const overlay = screen.getByRole('button', { name: 'plugin.installPlugin' })
     expect(overlay).toBeInTheDocument()
-    fireEvent.click(overlay)
+    expect(overlay).toBeDisabled()
   })
 
   it('should render running status indicators for loop nodes', () => {
@@ -214,5 +259,33 @@ describe('BaseNode', () => {
 
     expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
     expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
+  })
+
+  it('should keep viewer avatars outside the truncated title area', () => {
+    const longTitle = 'This is a very long node title that should truncate before it clips the viewer avatars'
+    mockUseCollaboration.mockReturnValue({
+      nodePanelPresence: {
+        'node-1': {
+          'client-1': {
+            userId: 'viewer-1',
+            username: 'Zed',
+            avatar: null,
+            clientId: 'client-1',
+            timestamp: Date.now(),
+          },
+        },
+      },
+    })
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData({ title: longTitle }))}>
+        <div>Body</div>
+      </BaseNode>,
+    )
+
+    const titleContainer = screen.getByTitle(longTitle)
+    expect(titleContainer).toHaveClass('min-w-0', 'grow', 'truncate')
+    expect(titleContainer?.nextElementSibling).toHaveClass('shrink-0')
+    expect(screen.getByText('Z')).toBeInTheDocument()
   })
 })

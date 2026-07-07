@@ -235,8 +235,8 @@ describe('image-uploader utils', () => {
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toHaveLength(1)
-      expect(result[0].name).toBe('test.png')
-      expect(result[0].relativePath).toBe('test.png')
+      expect(result[0]!.name).toBe('test.png')
+      expect(result[0]!.relativePath).toBe('test.png')
     })
 
     it('should resolve with file array with prefix for nested file', async () => {
@@ -249,7 +249,7 @@ describe('image-uploader utils', () => {
 
       const result = await traverseFileEntry(mockEntry, 'folder/')
       expect(result).toHaveLength(1)
-      expect(result[0].relativePath).toBe('folder/test.png')
+      expect(result[0]!.relativePath).toBe('folder/test.png')
     })
 
     it('should resolve empty array for unknown entry type', async () => {
@@ -312,8 +312,8 @@ describe('image-uploader utils', () => {
 
       const result = await traverseFileEntry(mockEntry)
       expect(result).toHaveLength(2)
-      expect(result[0].relativePath).toBe('folder/file1.png')
-      expect(result[1].relativePath).toBe('folder/file2.png')
+      expect(result[0]!.relativePath).toBe('folder/file1.png')
+      expect(result[1]!.relativePath).toBe('folder/file2.png')
     })
   })
 })

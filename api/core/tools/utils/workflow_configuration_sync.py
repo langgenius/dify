@@ -1,12 +1,11 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.variables.input_entities import VariableEntity
-
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
-from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 
 
 class WorkflowToolConfigurationUtils:

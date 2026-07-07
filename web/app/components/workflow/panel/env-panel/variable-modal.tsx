@@ -1,14 +1,14 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -87,10 +87,10 @@ const VariableModal = ({
         {!env ? t('env.modal.title', { ns: 'workflow' }) : t('env.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -129,14 +129,14 @@ const VariableModal = ({
               onClick={() => setType('secret')}
             >
               <span>Secret</span>
-              <Tooltip
-                popupContent={(
-                  <div className="w-[240px]">
-                    {t('env.modal.secretTip', { ns: 'workflow' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-3.5 h-3.5"
-              />
+              <Infotip
+                aria-label={t('env.modal.secretTip', { ns: 'workflow' })}
+                className="ml-0.5 size-3.5"
+                iconClassName="h-3.5 w-3.5"
+                popupClassName="w-[240px]"
+              >
+                {t('env.modal.secretTip', { ns: 'workflow' })}
+              </Infotip>
             </div>
           </div>
         </div>

@@ -66,6 +66,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
+                assert vector_space is not None
                 count = len(document_ids)
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:

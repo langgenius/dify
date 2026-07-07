@@ -11,6 +11,8 @@ from unittest.mock import ANY, Mock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
@@ -54,7 +56,7 @@ class TestDealDatasetVectorIndexTask:
             yield mock_factory
 
     @pytest.fixture
-    def account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
+    def account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Create an account with an owner tenant for testing.
 
         Returns a tuple of (account, tenant) where tenant is guaranteed to be non-None.
@@ -65,14 +67,15 @@ class TestDealDatasetVectorIndexTask:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
         return account, tenant
 
     def test_deal_dataset_vector_index_task_remove_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful removal of dataset vector index.
@@ -88,7 +91,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -130,7 +132,7 @@ class TestDealDatasetVectorIndexTask:
         assert mock_processor.clean.call_count >= 0  # For now, just check it doesn't fail
 
     def test_deal_dataset_vector_index_task_add_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful addition of dataset vector index.
@@ -148,7 +150,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -200,7 +201,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -221,7 +221,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load method was called
@@ -230,7 +232,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_update_action_success(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test successful update of dataset vector index.
@@ -249,7 +251,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset with parent-child index
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -301,7 +302,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -322,7 +322,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "update")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor clean and load methods were called
@@ -332,7 +334,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_dataset_not_found_error(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior when dataset is not found.
@@ -352,7 +354,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_no_documents(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action when no documents exist for the dataset.
@@ -365,7 +367,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without documents
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -384,7 +385,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_no_segments(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action when documents exist but have no segments.
@@ -397,7 +398,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -431,7 +431,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify that no index processor load was called since no segments exist
@@ -440,7 +442,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_update_action_no_documents(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test update action when no documents exist for the dataset.
@@ -453,7 +455,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without documents
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -473,7 +474,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_with_exception_handling(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test add action with exception handling during processing.
@@ -486,7 +487,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -538,7 +538,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -564,12 +563,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to error
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.ERROR
         assert "Test exception during indexing" in updated_document.error
 
     def test_deal_dataset_vector_index_task_with_custom_index_type(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with custom index type (QA_INDEX).
@@ -582,7 +583,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset with custom index type
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -614,7 +614,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -635,7 +634,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with custom index type
@@ -645,7 +646,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_default_index_type(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with default index type (PARAGRAPH_INDEX).
@@ -658,7 +659,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without doc_form (should use default)
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -690,7 +690,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -711,7 +710,9 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify document status was updated to indexing then completed
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor was initialized with the document's index type
@@ -721,7 +722,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_multiple_documents_processing(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task processing with multiple documents and segments.
@@ -734,7 +735,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -792,7 +792,6 @@ class TestDealDatasetVectorIndexTask:
         for i, document in enumerate(documents):
             for j in range(2):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -815,7 +814,10 @@ class TestDealDatasetVectorIndexTask:
 
         # Verify all documents were processed
         for document in documents:
-            updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+            updated_document = db_session_with_containers.scalar(
+                select(Document).where(Document.id == document.id).limit(1)
+            )
+            assert updated_document
             assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times
@@ -824,7 +826,7 @@ class TestDealDatasetVectorIndexTask:
         assert mock_processor.load.call_count == 3
 
     def test_deal_dataset_vector_index_task_document_status_transitions(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test document status transitions during task execution.
@@ -837,7 +839,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -889,7 +890,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -917,11 +917,13 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify final document status
-        updated_document = db_session_with_containers.query(Document).filter_by(id=document.id).first()
+        updated_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == document.id).limit(1)
+        )
         assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
     def test_deal_dataset_vector_index_task_with_disabled_documents(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with disabled documents.
@@ -934,7 +936,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1006,7 +1007,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for enabled document only
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=enabled_document.id,
@@ -1027,12 +1027,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only enabled document was processed
-        updated_enabled_document = db_session_with_containers.query(Document).filter_by(id=enabled_document.id).first()
+        updated_enabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == enabled_document.id).limit(1)
+        )
         assert updated_enabled_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify disabled document status remains unchanged
-        updated_disabled_document = (
-            db_session_with_containers.query(Document).filter_by(id=disabled_document.id).first()
+        updated_disabled_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == disabled_document.id).limit(1)
         )
         assert updated_disabled_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1042,7 +1044,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_archived_documents(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with archived documents.
@@ -1055,7 +1057,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1127,7 +1128,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for active document only
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=active_document.id,
@@ -1148,12 +1148,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only active document was processed
-        updated_active_document = db_session_with_containers.query(Document).filter_by(id=active_document.id).first()
+        updated_active_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == active_document.id).limit(1)
+        )
         assert updated_active_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify archived document status remains unchanged
-        updated_archived_document = (
-            db_session_with_containers.query(Document).filter_by(id=archived_document.id).first()
+        updated_archived_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == archived_document.id).limit(1)
         )
         assert updated_archived_document.indexing_status == IndexingStatus.COMPLETED  # Should not change
 
@@ -1163,7 +1165,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_with_incomplete_documents(
-        self, db_session_with_containers, mock_index_processor_factory, account_and_tenant
+        self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
         Test task behavior with documents that have incomplete indexing status.
@@ -1176,7 +1178,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1248,7 +1249,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for completed document only
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=completed_document.id,
@@ -1269,14 +1269,14 @@ class TestDealDatasetVectorIndexTask:
         deal_dataset_vector_index_task(dataset.id, "add")
 
         # Verify only completed document was processed
-        updated_completed_document = (
-            db_session_with_containers.query(Document).filter_by(id=completed_document.id).first()
+        updated_completed_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == completed_document.id).limit(1)
         )
         assert updated_completed_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify incomplete document status remains unchanged
-        updated_incomplete_document = (
-            db_session_with_containers.query(Document).filter_by(id=incomplete_document.id).first()
+        updated_incomplete_document = db_session_with_containers.scalar(
+            select(Document).where(Document.id == incomplete_document.id).limit(1)
         )
         assert updated_incomplete_document.indexing_status == IndexingStatus.INDEXING  # Should not change
 

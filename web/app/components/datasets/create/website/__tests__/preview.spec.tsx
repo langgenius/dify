@@ -84,9 +84,7 @@ describe('WebsitePreview', () => {
 
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      // Assert - the close button container is a div with cursor-pointer
-      const closeButton = screen.getByText(/pagePreview/i).parentElement?.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /operation\.close$/ })).toBeInTheDocument()
     })
   })
 
@@ -95,11 +93,7 @@ describe('WebsitePreview', () => {
       const payload = createPayload()
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      // Act - find the close button div with cursor-pointer class
-      const closeButton = screen.getByText(/pagePreview/i)
-        .closest('[class*="title"]')!
-        .querySelector('.cursor-pointer') as HTMLElement
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(mockHidePreview).toHaveBeenCalledTimes(1)
     })
@@ -108,9 +102,7 @@ describe('WebsitePreview', () => {
       const payload = createPayload()
       render(<WebsitePreview payload={payload} hidePreview={mockHidePreview} />)
 
-      const closeButton = screen.getByText(/pagePreview/i)
-        .closest('[class*="title"]')!
-        .querySelector('.cursor-pointer') as HTMLElement
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)
 

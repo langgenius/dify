@@ -1,7 +1,7 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import { Button } from '@/app/components/base/ui/button'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 
@@ -30,7 +30,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
       onClick={handleClick}
       variant="ghost"
     >
-      <BubbleX className="h-4 w-4 text-components-button-secondary-text" />
+      <BubbleX className="size-4 text-components-button-secondary-text" />
     </Button>
   )
 }

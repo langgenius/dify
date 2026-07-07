@@ -1,5 +1,4 @@
 'use client'
-import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type IChildrenProps = {
@@ -45,7 +44,7 @@ export const Heading = function H2({
     <>
       <span id={name?.replace(/^#/, '')} className="relative -top-28" />
       <div className="flex items-center gap-x-3">
-        <span className={`rounded-lg px-1.5 font-mono text-[0.625rem] leading-6 font-semibold ring-1 ring-inset ${style}`}>{method}</span>
+        <span className={`rounded-lg px-1.5 font-mono text-2xs/6 font-semibold ring-1 ring-inset ${style}`}>{method}</span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
@@ -138,11 +137,5 @@ export function SubProperty({ name, type, children }: ISubProperty) {
         </dd>
       </dl>
     </li>
-  )
-}
-
-export function PropertyInstruction({ children }: PropsWithChildren<{ }>) {
-  return (
-    <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )
 }

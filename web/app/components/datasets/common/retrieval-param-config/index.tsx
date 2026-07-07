@@ -3,17 +3,18 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -26,17 +27,19 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
 import Reranking from '../../create/assets/rerank.svg'
 
-type Props = {
+type Props = Readonly<{
   type: RETRIEVE_METHOD
   value: RetrievalConfig
   showMultiModalTip?: boolean
+  disabled?: boolean
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
 const RetrievalParamConfig: FC<Props> = ({
   type,
   value,
   showMultiModalTip = false,
+  disabled = false,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -58,13 +61,15 @@ const RetrievalParamConfig: FC<Props> = ({
   )
 
   const handleToggleRerankEnable = useCallback((enable: boolean) => {
+    if (disabled)
+      return
     if (enable && !currentModel)
       toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
     onChange({
       ...value,
       reranking_enable: enable,
     })
-  }, [currentModel, onChange, value])
+  }, [currentModel, disabled, onChange, t, value])
 
   const rerankModel = useMemo(() => {
     return {
@@ -74,6 +79,8 @@ const RetrievalParamConfig: FC<Props> = ({
   }, [value.reranking_model])
 
   const handleChangeRerankMode = (v: RerankingModeEnum) => {
+    if (disabled)
+      return
     if (v === value.reranking_mode)
       return
 
@@ -123,15 +130,17 @@ const RetrievalParamConfig: FC<Props> = ({
                 size="md"
                 checked={value.reranking_enable}
                 onCheckedChange={handleToggleRerankEnable}
+                disabled={disabled}
               />
             )}
             <div className="flex items-center">
               <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
-              <Tooltip
-                popupContent={
-                  <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
-                }
-              />
+              <Infotip
+                aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                popupClassName="w-[200px]"
+              >
+                {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+              </Infotip>
             </div>
           </div>
           {
@@ -141,6 +150,8 @@ const RetrievalParamConfig: FC<Props> = ({
                   defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
                   modelList={rerankModelList}
                   onSelect={(v) => {
+                    if (disabled)
+                      return
                     onChange({
                       ...value,
                       reranking_model: {
@@ -149,10 +160,11 @@ const RetrievalParamConfig: FC<Props> = ({
                       },
                     })
                   }}
+                  readonly={disabled}
                 />
                 {showMultiModalTip && (
                   <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                     <div className="p-1">
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
@@ -173,18 +185,23 @@ const RetrievalParamConfig: FC<Props> = ({
               className="grow"
               value={value.top_k}
               onChange={(_key, v) => {
+                if (disabled)
+                  return
                 onChange({
                   ...value,
                   top_k: v,
                 })
               }}
               enable={true}
+              disabled={disabled}
             />
             {(!isEconomical && !(value.search_method === RETRIEVE_METHOD.fullText && !value.reranking_enable)) && (
               <ScoreThresholdItem
                 className="grow"
                 value={value.score_threshold}
                 onChange={(_key, v) => {
+                  if (disabled)
+                    return
                   onChange({
                     ...value,
                     score_threshold: v,
@@ -192,7 +209,10 @@ const RetrievalParamConfig: FC<Props> = ({
                 }}
                 enable={value.score_threshold_enabled}
                 hasSwitch={true}
+                disabled={disabled}
                 onSwitchChange={(_key, v) => {
+                  if (disabled)
+                    return
                   onChange({
                     ...value,
                     score_threshold_enabled: v,
@@ -206,13 +226,17 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className="mb-4 flex gap-2">
+            <RadioGroup<RerankingModeEnum>
+              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+              value={value.reranking_mode}
+              onValueChange={handleChangeRerankMode}
+              className="mb-4 flex gap-2"
+            >
               {
                 rerankingModeOptions.map(option => (
-                  <RadioCard
+                  <RadioCard<RerankingModeEnum>
                     key={option.value}
-                    isChosen={value.reranking_mode === option.value}
-                    onChosen={() => handleChangeRerankMode(option.value)}
+                    value={option.value}
                     icon={(
                       <img
                         src={
@@ -229,7 +253,7 @@ const RetrievalParamConfig: FC<Props> = ({
                   />
                 ))
               }
-            </div>
+            </RadioGroup>
             {
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore
@@ -240,17 +264,19 @@ const RetrievalParamConfig: FC<Props> = ({
                     ],
                   }}
                   onChange={(v) => {
+                    if (disabled)
+                      return
                     onChange({
                       ...value,
                       weights: {
                         ...value.weights!,
                         vector_setting: {
                           ...value.weights!.vector_setting,
-                          vector_weight: v.value[0],
+                          vector_weight: v.value[0]!,
                         },
                         keyword_setting: {
                           ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1],
+                          keyword_weight: v.value[1]!,
                         },
                       },
                     })
@@ -265,6 +291,8 @@ const RetrievalParamConfig: FC<Props> = ({
                     defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
                     modelList={rerankModelList}
                     onSelect={(v) => {
+                      if (disabled)
+                        return
                       onChange({
                         ...value,
                         reranking_model: {
@@ -273,10 +301,11 @@ const RetrievalParamConfig: FC<Props> = ({
                         },
                       })
                     }}
+                    readonly={disabled}
                   />
                   {showMultiModalTip && (
                     <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
                       <div className="p-1">
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
@@ -293,17 +322,22 @@ const RetrievalParamConfig: FC<Props> = ({
                 className="grow"
                 value={value.top_k}
                 onChange={(_key, v) => {
+                  if (disabled)
+                    return
                   onChange({
                     ...value,
                     top_k: v,
                   })
                 }}
                 enable={true}
+                disabled={disabled}
               />
               <ScoreThresholdItem
                 className="grow"
                 value={value.score_threshold}
                 onChange={(_key, v) => {
+                  if (disabled)
+                    return
                   onChange({
                     ...value,
                     score_threshold: v,
@@ -311,7 +345,10 @@ const RetrievalParamConfig: FC<Props> = ({
                 }}
                 enable={value.score_threshold_enabled}
                 hasSwitch={true}
+                disabled={disabled}
                 onSwitchChange={(_key, v) => {
+                  if (disabled)
+                    return
                   onChange({
                     ...value,
                     score_threshold_enabled: v,

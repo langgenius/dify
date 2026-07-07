@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/avatar', () => ({
+vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
@@ -115,6 +115,7 @@ const createDefaultMocks = () => {
     appId: 'app-123',
     inputs: { key: 'value' },
     collectionList: [],
+    canTestAndRun: true,
   })
 
   mockUseProviderContext.mockReturnValue({
@@ -287,6 +288,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -522,6 +524,7 @@ describe('ChatItem', () => {
           { id: 'collection1', icon: 'icon1' },
           { id: 'collection2', icon: 'icon2' },
         ],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -545,6 +548,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -563,6 +567,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -631,6 +636,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       // This may throw since the code does agentConfig.tools?.forEach
