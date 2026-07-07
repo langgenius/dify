@@ -109,7 +109,7 @@ function precheckReleaseReady(get: Getter) {
     && get(submissionUnsupportedDslNodesAtom).length === 0
 }
 
-export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
+const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)

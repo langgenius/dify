@@ -85,7 +85,7 @@ export const deploymentsListSelectedEnvironmentFilterOptionAtom = atom((get): De
       : allOption)
 })
 
-export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
+const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
   const queryKeywords = get(deploymentsListKeywordsAtom).trim()
   const queryEnvironmentId = get(deploymentsListEnvironmentIdAtom) ?? undefined
 
