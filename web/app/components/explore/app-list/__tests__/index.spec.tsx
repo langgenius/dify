@@ -871,6 +871,12 @@ describe('AppList', () => {
       await waitFor(() => {
         expect(fetchAppDetail).toHaveBeenCalledWith('learn-basic-1')
       })
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          skipRedirectOnSuccess: false,
+        }),
+      )
     })
 
     it('should advance the Learn Dify tour to the create button after a lesson opens', async () => {
@@ -958,6 +964,47 @@ describe('AppList', () => {
         expect(state?.activeGuideIndex).toBeUndefined()
         expect(state?.completedTaskIds).toEqual(['home'])
       })
+      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          skipRedirectOnSuccess: true,
+        }),
+      )
+    })
+
+    it('should skip redirect after confirming a pending Learn Dify tour create', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockStepByStepTour.setUiState({
+        activeTaskId: 'home',
+        activeGuideIndex: 0,
+        minimized: true,
+      });
+      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
+        options.onPending?.()
+      })
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      })
+
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByTestId('dsl-confirm'))
+
+      await waitFor(() => {
+        expect(mockHandleImportDSLConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({
+            skipRedirectOnSuccess: true,
+          }),
+        )
+      })
     })
 
     it('should hide the Learn Dify tour target while the create modal is open and abandon on cancel', async () => {
@@ -992,6 +1039,68 @@ describe('AppList', () => {
         expect(state?.activeTaskId).toBeUndefined()
         expect(state?.activeGuideIndex).toBeUndefined()
         expect(state?.completedTaskIds).toEqual([])
+      })
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+    })
+
+    it('should restart the Learn Dify tour from a clean state after abandoning create', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockStepByStepTour.setUiState({
+        activeTaskId: 'home',
+        activeGuideIndex: 0,
+        minimized: true,
+      })
+      const { unmount } = renderAppList(true, undefined, undefined, {
+        isCloudEdition: true,
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+      fireEvent.click(await screen.findByTestId('hide-create'))
+
+      await waitFor(() => {
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBeUndefined()
+        expect(state?.activeGuideIndex).toBeUndefined()
+      })
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+
+      const abandonedTourState = mockStepByStepTour.observedState
+      if (!abandonedTourState)
+        throw new Error('Step-by-step tour state should be ready before restarting the home tour.')
+      unmount()
+      mockStepByStepTour.setState({
+        active_task_id: 'home',
+        active_guide_index: 0,
+        completed_task_ids: abandonedTourState.completedTaskIds,
+        first_workspace_id: abandonedTourState.firstWorkspaceId,
+        manually_disabled_workspace_ids: abandonedTourState.manuallyDisabledWorkspaceIds,
+        manually_enabled_workspace_ids: abandonedTourState.manuallyEnabledWorkspaceIds,
+        minimized: true,
+        skipped: abandonedTourState.skipped,
+      })
+      mockStepByStepTour.setUiState({
+        activeTaskId: 'home',
+        activeGuideIndex: 0,
+        minimized: true,
+      })
+
+      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('try-app-create')).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
+      )
+      await waitFor(() => {
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBe('home')
+        expect(state?.activeGuideIndex).toBe(1)
       })
     })
   })

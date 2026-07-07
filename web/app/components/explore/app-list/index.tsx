@@ -316,6 +316,10 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       return
 
     abandonHomeTour()
+    setCurrentTryApp(undefined)
+    setCurrApp(null)
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
     isCurrentTryAppFromLearnDifyRef.current = false
     shouldCompleteHomeTourOnCreateRef.current = false
   }, [abandonHomeTour])
@@ -429,6 +433,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           didTransitionCreateFlow = true
           setShowDSLConfirmModal(true)
         },
+        skipRedirectOnSuccess: shouldCompleteHomeTourOnCreateRef.current,
       })
       if (!didTransitionCreateFlow && shouldCompleteHomeTourOnCreateRef.current) {
         isSubmittingHomeTourCreateRef.current = false
@@ -445,6 +450,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         completeHomeTourAfterCreate()
         onSuccess?.()
       },
+      skipRedirectOnSuccess: shouldCompleteHomeTourOnCreateRef.current,
     })
   }, [completeHomeTourAfterCreate, handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
