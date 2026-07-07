@@ -423,7 +423,7 @@ describe('useChecklist', () => {
     ])
   })
 
-  it('should detect duplicate output variables across end nodes', () => {
+  it('should allow duplicate output variables across end nodes (different branches)', () => {
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
     const firstEndNode = createNode({
       id: 'end-1',
@@ -454,8 +454,9 @@ describe('useChecklist', () => {
     const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
     const secondWarning = result.current.find((item: ChecklistItem) => item.id === 'end-2')
 
-    expect(firstWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
-    expect(secondWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(true)
+    // Different branches → only one End node executes, so duplicate output variables are allowed
+    expect(firstWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(false)
+    expect(secondWarning?.errorMessages.some(message => message.includes('duplicateOutputVariable'))).toBe(false)
   })
 
   it('should sync checklist items to the workflow store without render phase update warnings', async () => {
