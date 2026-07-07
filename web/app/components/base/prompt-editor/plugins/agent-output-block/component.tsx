@@ -164,12 +164,26 @@ const AgentOutputBlockComponent = ({
     }
   }
 
+  const handleEditRequest = () => {
+    onEdit?.(name, outputType)
+  }
+
   if (!isEditing) {
     return (
       <span
+        role="button"
+        tabIndex={0}
+        aria-label={t('nodes.agent.outputVars.edit', { ns: 'workflow', name })}
         contentEditable={false}
-        className="group/agent-output inline-flex min-w-[18px] items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
-        onMouseEnter={() => onEdit?.(name, outputType)}
+        className="group/agent-output inline-flex min-w-[18px] cursor-pointer items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+        onClick={handleEditRequest}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ')
+            return
+
+          event.preventDefault()
+          handleEditRequest()
+        }}
       >
         <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:hidden" />
         <span aria-hidden="true" className="i-ri-edit-2-line hidden size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:inline-block" />

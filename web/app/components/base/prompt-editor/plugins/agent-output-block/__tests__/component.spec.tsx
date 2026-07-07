@@ -503,7 +503,7 @@ describe('AgentOutputBlockComponent', () => {
     expect(screen.getByText('file')).toBeInTheDocument()
   })
 
-  it('requests the output editor when hovering a committed output block', () => {
+  it('requests the output editor when clicking a committed output block', () => {
     const onEdit = vi.fn()
 
     render(
@@ -517,7 +517,14 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    fireEvent.mouseEnter(screen.getByText('qna_report_pdf').parentElement!)
+    const outputBlock = screen.getByText('qna_report_pdf').parentElement!
+
+    fireEvent.mouseEnter(outputBlock)
+
+    expect(outputBlock).toHaveClass('cursor-pointer')
+    expect(onEdit).not.toHaveBeenCalled()
+
+    fireEvent.click(outputBlock)
 
     expect(onEdit).toHaveBeenCalledWith('qna_report_pdf', 'file')
   })
