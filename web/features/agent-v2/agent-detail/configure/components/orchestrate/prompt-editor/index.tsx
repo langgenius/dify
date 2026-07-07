@@ -1,7 +1,7 @@
 'use client'
 
 import type { LexicalNode } from 'lexical'
-import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { MouseEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { TextRange } from './options'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
@@ -23,8 +23,7 @@ import {
   COMMAND_PRIORITY_LOW,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useMemo, useLayoutEffect as useReactLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -52,6 +51,11 @@ const useIsHydrated = () => useSyncExternalStore(
   () => true,
   () => false,
 )
+
+const noopLayoutEffect: typeof useReactLayoutEffect = () => {}
+const useIsoLayoutEffect = typeof document !== 'undefined'
+  ? useReactLayoutEffect
+  : noopLayoutEffect
 
 function AgentPromptPlaceholder({
   insertLabel,
@@ -139,7 +143,8 @@ const getLastTextContent = (node: Node): string => {
     return node.textContent ?? ''
 
   const textParts: string[] = []
-  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+  const ownerDocument = node.ownerDocument ?? document
+  const walker = ownerDocument.createTreeWalker(node, ownerDocument.defaultView?.NodeFilter.SHOW_TEXT ?? NodeFilter.SHOW_TEXT)
   let current = walker.nextNode()
   while (current) {
     textParts.push(current.textContent ?? '')
@@ -153,7 +158,7 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
   if (!rootElement)
     return fallbackValue.endsWith('/')
 
-  const selection = window.getSelection()
+  const selection = rootElement.ownerDocument.getSelection()
   if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
     return fallbackValue.endsWith('/')
 
@@ -287,14 +292,72 @@ type SelectionRestoreRequest = {
 type SlashMenuPosition = {
   left: number
   top: number
+  containerWidth: number
 }
 
 const slashMenuViewportPadding = 8
 const slashMenuMainWidth = 200
 const slashMenuSubmenuWidth = 360
+const agentPromptSlashMenuId = 'agent-configure-prompt-slash-menu'
 
-const getSlashMenuPosition = (editorElement: HTMLElement): SlashMenuPosition | null => {
-  const selection = window.getSelection()
+const getRangeRect = (range: Range) => {
+  const rects = range.getClientRects()
+  if (rects.length)
+    return rects[rects.length - 1]!
+
+  return range.getBoundingClientRect()
+}
+
+const getLastTextNode = (node: Node): Text | null => {
+  if (node.nodeType === Node.TEXT_NODE)
+    return node as Text
+
+  for (let index = node.childNodes.length - 1; index >= 0; index--) {
+    const textNode = getLastTextNode(node.childNodes.item(index))
+    if (textNode)
+      return textNode
+  }
+
+  return null
+}
+
+const getSlashAnchorRange = (selection: Selection, editorElement: HTMLElement) => {
+  const anchorNode = selection.anchorNode
+  if (!anchorNode || !editorElement.contains(anchorNode))
+    return null
+
+  const ownerDocument = editorElement.ownerDocument
+
+  if (anchorNode.nodeType === Node.TEXT_NODE) {
+    const text = anchorNode.textContent ?? ''
+    if (selection.anchorOffset > 0 && text[selection.anchorOffset - 1] === '/') {
+      const range = ownerDocument.createRange()
+      range.setStart(anchorNode, selection.anchorOffset - 1)
+      range.setEnd(anchorNode, selection.anchorOffset)
+      return range
+    }
+  }
+
+  if (anchorNode.nodeType !== Node.ELEMENT_NODE)
+    return null
+
+  const previousChild = anchorNode.childNodes.item(selection.anchorOffset - 1)
+  if (!previousChild)
+    return null
+
+  const textNode = getLastTextNode(previousChild)
+  const text = textNode?.textContent ?? ''
+  if (!textNode || !text.endsWith('/'))
+    return null
+
+  const range = ownerDocument.createRange()
+  range.setStart(textNode, text.length - 1)
+  range.setEnd(textNode, text.length)
+  return range
+}
+
+const getSlashMenuPosition = (rootElement: HTMLElement, editorElement: HTMLElement): SlashMenuPosition | null => {
+  const selection = editorElement.ownerDocument.getSelection()
   if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
     return null
 
@@ -302,39 +365,43 @@ const getSlashMenuPosition = (editorElement: HTMLElement): SlashMenuPosition | n
   if (!anchorNode || !editorElement.contains(anchorNode))
     return null
 
-  const range = selection.getRangeAt(0).cloneRange()
-  let rect: DOMRect | null = null
-  const rects = range.getClientRects()
-  if (rects.length)
-    rect = rects[rects.length - 1]!
-  else
-    rect = range.getBoundingClientRect()
+  const slashRange = getSlashAnchorRange(selection, editorElement)
+  const caretRange = selection.getRangeAt(0).cloneRange()
+  const rect = slashRange ? getRangeRect(slashRange) : getRangeRect(caretRange)
 
   if (!rect || (rect.top === 0 && rect.left === 0 && rect.width === 0 && rect.height === 0)) {
-    const node = anchorNode.nodeType === Node.ELEMENT_NODE
-      ? anchorNode as Element
-      : anchorNode.parentElement
+    const editorRect = editorElement.getBoundingClientRect()
+    const rootRect = rootElement.getBoundingClientRect()
 
-    rect = node?.getBoundingClientRect() ?? editorElement.getBoundingClientRect()
+    return {
+      left: editorRect.left - rootRect.left + slashMenuViewportPadding,
+      top: editorRect.top - rootRect.top + 24,
+      containerWidth: rootRect.width,
+    }
   }
 
   const editorRect = editorElement.getBoundingClientRect()
   if (!rect || rect.bottom < editorRect.top || rect.top > editorRect.bottom)
     return null
 
+  const rootRect = rootElement.getBoundingClientRect()
+
   return {
-    left: rect.right,
-    top: rect.bottom + 4,
+    left: rect.right - rootRect.left,
+    top: rect.bottom - rootRect.top + 4,
+    containerWidth: rootRect.width,
   }
 }
 
 const getSlashMenuLeft = (position: SlashMenuPosition, width: number) => {
-  if (typeof window === 'undefined')
-    return position.left
+  const maxLeft = Math.max(
+    slashMenuViewportPadding,
+    position.containerWidth - width - slashMenuViewportPadding,
+  )
 
   return Math.max(
     slashMenuViewportPadding,
-    Math.min(position.left, window.innerWidth - width - slashMenuViewportPadding),
+    Math.min(position.left, maxLeft),
   )
 }
 /* v8 ignore stop */
@@ -418,7 +485,15 @@ export function AgentPromptEditor() {
   const [selectionRestoreRequest, setSelectionRestoreRequest] = useState<SelectionRestoreRequest | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const slashMenuRef = useRef<HTMLDivElement>(null)
+  const slashMenuAnnouncementRef = useRef<HTMLSpanElement>(null)
   const slashInsertRangeRef = useRef<TextRange | null>(null)
+  const slashMenuShouldAutoFocusRef = useRef(false)
+  const slashMenuKeepsEditorFocusRef = useRef(false)
+  const slashMenuActiveIndexRef = useRef(-1)
+  const slashMenuHandledKeyboardEventRef = useRef(false)
+  const slashMenuSyncFrameRef = useRef<number | null>(null)
+  const slashMenuSyncWindowRef = useRef<Window | null>(null)
   const selectionRestoreRequestIdRef = useRef(0)
   const configuredReferenceIds = useMemo(() => {
     const skillIds = new Set<string>()
@@ -453,25 +528,37 @@ export function AgentPromptEditor() {
     void copy(value)
   }, [copy, value])
 
-  const closeSlashMenu = () => {
+  const closeSlashMenu = useCallback(() => {
     setIsSlashMenuOpen(false)
     setSlashMenuPosition(null)
+    if (slashMenuAnnouncementRef.current)
+      slashMenuAnnouncementRef.current.textContent = ''
     setSlashMenuView('main')
-  }
+    slashMenuShouldAutoFocusRef.current = false
+    slashMenuKeepsEditorFocusRef.current = false
+    slashMenuActiveIndexRef.current = -1
+    slashMenuHandledKeyboardEventRef.current = false
+  }, [])
 
   const updateSlashMenuPosition = useCallback(() => {
+    const rootElement = rootRef.current
     const editorElement = editorRef.current
-    if (!editorElement)
+    if (!rootElement || !editorElement)
       return
 
-    const position = getSlashMenuPosition(editorElement)
+    const position = getSlashMenuPosition(rootElement, editorElement)
     if (!position)
       return
 
     setSlashMenuPosition(position)
   }, [])
 
-  const openSlashMenu = useCallback(() => {
+  const openSlashMenu = useCallback((options: { autoFocus: boolean }) => {
+    slashMenuShouldAutoFocusRef.current = options.autoFocus
+    slashMenuKeepsEditorFocusRef.current = !options.autoFocus
+    slashMenuActiveIndexRef.current = options.autoFocus ? 0 : -1
+    if (slashMenuAnnouncementRef.current)
+      slashMenuAnnouncementRef.current.textContent = ''
     setSlashMenuView('main')
     updateSlashMenuPosition()
     setIsSlashMenuOpen(true)
@@ -483,37 +570,151 @@ export function AgentPromptEditor() {
 
     if (isSelectionAfterSlash(editorRef.current, value)) {
       updateSlashMenuPosition()
-      openSlashMenu()
+      openSlashMenu({ autoFocus: false })
     }
     else {
       slashInsertRangeRef.current = null
       closeSlashMenu()
     }
-  }, [isHydrated, openSlashMenu, readOnly, updateSlashMenuPosition, value])
+  }, [closeSlashMenu, isHydrated, openSlashMenu, readOnly, updateSlashMenuPosition, value])
+
+  const scheduleSlashMenuSync = useCallback(() => {
+    const ownerWindow = editorRef.current?.ownerDocument.defaultView ?? window
+    if (slashMenuSyncFrameRef.current !== null)
+      (slashMenuSyncWindowRef.current ?? ownerWindow).cancelAnimationFrame(slashMenuSyncFrameRef.current)
+
+    slashMenuSyncWindowRef.current = ownerWindow
+    slashMenuSyncFrameRef.current = ownerWindow.requestAnimationFrame(() => {
+      slashMenuSyncFrameRef.current = null
+      slashMenuSyncWindowRef.current = null
+      syncSlashMenuWithSelection()
+    })
+  }, [syncSlashMenuWithSelection])
+
+  useEffect(() => {
+    return () => {
+      if (slashMenuSyncFrameRef.current !== null)
+        (slashMenuSyncWindowRef.current ?? window).cancelAnimationFrame(slashMenuSyncFrameRef.current)
+    }
+  }, [])
 
   const handleSlashRangeChange = useCallback((range: TextRange | null) => {
     if (range)
       slashInsertRangeRef.current = range
   }, [])
 
-  const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const focusPromptEditor = useCallback(() => {
+    const editable = editorRef.current?.querySelector<HTMLElement>('[contenteditable="true"], [role="textbox"]')
+    editable?.focus({ preventScroll: true })
+  }, [])
+
+  const getSlashMenuItems = useCallback(() => Array.from(slashMenuRef.current?.querySelectorAll<HTMLElement>('[data-agent-prompt-menu-item]') ?? [])
+    .filter(item => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true'), [])
+
+  const setActiveSlashMenuItem = useCallback((menuItems: HTMLElement[], index: number) => {
+    slashMenuActiveIndexRef.current = index
+    menuItems.forEach((item, itemIndex) => {
+      item.toggleAttribute('data-agent-prompt-menu-active', itemIndex === index)
+    })
+    const announcement = index >= 0
+      ? menuItems[index]?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+      : ''
+    if (slashMenuAnnouncementRef.current && slashMenuAnnouncementRef.current.textContent !== announcement)
+      slashMenuAnnouncementRef.current.textContent = announcement
+  }, [])
+
+  const activateSlashMenuItem = useCallback((item: HTMLElement | undefined) => {
+    if (!item)
+      return
+
+    if (item.hasAttribute('data-agent-prompt-menu-category'))
+      slashMenuActiveIndexRef.current = 0
+
+    item.click()
+  }, [])
+
+  const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    slashMenuHandledKeyboardEventRef.current = false
+
     if (!isHydrated || readOnly)
       return
 
     if (event.key === 'Escape' && isSlashMenuOpen) {
       event.preventDefault()
+      slashMenuHandledKeyboardEventRef.current = true
       closeSlashMenu()
       return
     }
 
-    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey)
+    if (!isSlashMenuOpen)
       return
 
-    openSlashMenu()
+    const menuItems = getSlashMenuItems()
+    if (!menuItems.length)
+      return
+
+    if (event.key === 'ArrowLeft' && slashMenuView !== 'main') {
+      event.preventDefault()
+      event.stopPropagation()
+      slashMenuHandledKeyboardEventRef.current = true
+      slashMenuActiveIndexRef.current = 0
+      setSlashMenuView('main')
+      return
+    }
+
+    if (event.key === 'ArrowRight' && slashMenuActiveIndexRef.current >= 0) {
+      const activeItem = menuItems[slashMenuActiveIndexRef.current]
+      if (!activeItem?.hasAttribute('data-agent-prompt-menu-category') && !activeItem?.hasAttribute('aria-expanded'))
+        return
+
+      event.preventDefault()
+      event.stopPropagation()
+      slashMenuHandledKeyboardEventRef.current = true
+      activateSlashMenuItem(activeItem)
+      return
+    }
+
+    if ((event.key === 'Enter' || event.key === ' ') && slashMenuActiveIndexRef.current >= 0) {
+      const activeItem = menuItems[slashMenuActiveIndexRef.current]
+      event.preventDefault()
+      event.stopPropagation()
+      slashMenuHandledKeyboardEventRef.current = true
+      activateSlashMenuItem(activeItem)
+      return
+    }
+
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End')
+      return
+
+    event.preventDefault()
+    event.stopPropagation()
+    slashMenuHandledKeyboardEventRef.current = true
+
+    if (event.key === 'Home') {
+      setActiveSlashMenuItem(menuItems, 0)
+      return
+    }
+
+    if (event.key === 'End') {
+      setActiveSlashMenuItem(menuItems, menuItems.length - 1)
+      return
+    }
+
+    const activeIndex = slashMenuActiveIndexRef.current
+    const nextIndex = activeIndex === -1
+      ? event.key === 'ArrowUp' ? menuItems.length - 1 : 0
+      : (activeIndex + (event.key === 'ArrowDown' ? 1 : -1) + menuItems.length) % menuItems.length
+
+    setActiveSlashMenuItem(menuItems, nextIndex)
   }
 
   const handleEditorKeyUp = () => {
-    window.requestAnimationFrame(syncSlashMenuWithSelection)
+    if (slashMenuHandledKeyboardEventRef.current) {
+      slashMenuHandledKeyboardEventRef.current = false
+      return
+    }
+
+    scheduleSlashMenuSync()
   }
 
   const handleEditorPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -525,7 +726,17 @@ export function AgentPromptEditor() {
       return
     }
 
-    window.requestAnimationFrame(syncSlashMenuWithSelection)
+    scheduleSlashMenuSync()
+  }
+
+  const handleSlashMenuPointerDownCapture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (slashMenuKeepsEditorFocusRef.current)
+      event.preventDefault()
+  }
+
+  const handleSlashMenuMouseDownCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (slashMenuKeepsEditorFocusRef.current)
+      event.preventDefault()
   }
 
   const handleRootPointerDown = (event: MouseEvent<HTMLDivElement>) => {
@@ -574,7 +785,7 @@ export function AgentPromptEditor() {
 
   const handleInsertSlash = () => {
     setValue(`${value}/`)
-    openSlashMenu()
+    openSlashMenu({ autoFocus: true })
   }
 
   const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
@@ -619,6 +830,11 @@ export function AgentPromptEditor() {
     if (!isSlashMenuOpen)
       return
 
+    const rootElement = rootRef.current
+    if (!rootElement)
+      return
+    const ownerDocument = rootElement.ownerDocument
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target
       if (!(target instanceof Node))
@@ -631,15 +847,126 @@ export function AgentPromptEditor() {
         return
       }
 
-      if (!rootRef.current?.contains(target))
+      if (!rootElement.contains(target))
         closeSlashMenu()
     }
 
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target
+      if (target instanceof Node && !rootElement.contains(target))
+        closeSlashMenu()
     }
-  }, [isSlashMenuOpen])
+
+    ownerDocument.addEventListener('pointerdown', handlePointerDown)
+    ownerDocument.addEventListener('focusin', handleFocusIn)
+    return () => {
+      ownerDocument.removeEventListener('pointerdown', handlePointerDown)
+      ownerDocument.removeEventListener('focusin', handleFocusIn)
+    }
+  }, [closeSlashMenu, isSlashMenuOpen])
+
+  useIsoLayoutEffect(() => {
+    if (!isSlashMenuOpen)
+      return
+
+    const menuElement = slashMenuRef.current
+    if (!menuElement)
+      return
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      const activeElement = menuElement.ownerDocument.activeElement
+      if (!menuElement.contains(activeElement))
+        return
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        closeSlashMenu()
+        focusPromptEditor()
+        return
+      }
+
+      if (event.key === 'ArrowLeft' && slashMenuView !== 'main') {
+        event.preventDefault()
+        event.stopPropagation()
+        slashMenuActiveIndexRef.current = 0
+        setSlashMenuView('main')
+        return
+      }
+
+      const menuItems = getSlashMenuItems()
+      if (!menuItems.length)
+        return
+
+      const currentIndex = menuItems.findIndex(item => item === activeElement)
+
+      if (event.key === 'ArrowRight') {
+        const currentItem = menuItems[currentIndex]
+        if (currentItem?.hasAttribute('data-agent-prompt-menu-category') || currentItem?.hasAttribute('aria-expanded')) {
+          event.preventDefault()
+          event.stopPropagation()
+          activateSlashMenuItem(currentItem)
+        }
+
+        return
+      }
+
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End')
+        return
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (event.key === 'Home') {
+        setActiveSlashMenuItem(menuItems, 0)
+        menuItems[0]?.focus()
+        return
+      }
+
+      if (event.key === 'End') {
+        setActiveSlashMenuItem(menuItems, menuItems.length - 1)
+        menuItems[menuItems.length - 1]?.focus()
+        return
+      }
+
+      const direction = event.key === 'ArrowDown' ? 1 : -1
+      const nextIndex = currentIndex === -1
+        ? direction === 1 ? 0 : menuItems.length - 1
+        : (currentIndex + direction + menuItems.length) % menuItems.length
+
+      setActiveSlashMenuItem(menuItems, nextIndex)
+      menuItems[nextIndex]?.focus()
+    }
+
+    menuElement.addEventListener('keydown', handleKeyDown)
+    return () => {
+      menuElement.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [activateSlashMenuItem, closeSlashMenu, focusPromptEditor, getSlashMenuItems, isSlashMenuOpen, setActiveSlashMenuItem, slashMenuView])
+
+  useIsoLayoutEffect(() => {
+    if (!isSlashMenuOpen)
+      return
+
+    const menuItems = getSlashMenuItems()
+    if (!menuItems.length)
+      return
+
+    if (slashMenuKeepsEditorFocusRef.current) {
+      const activeIndex = slashMenuActiveIndexRef.current < 0
+        ? -1
+        : Math.min(slashMenuActiveIndexRef.current, menuItems.length - 1)
+      setActiveSlashMenuItem(menuItems, activeIndex)
+      return
+    }
+
+    if (!slashMenuShouldAutoFocusRef.current && slashMenuView === 'main')
+      return
+
+    slashMenuShouldAutoFocusRef.current = true
+    setActiveSlashMenuItem(menuItems, 0)
+    menuItems[0]?.focus({ preventScroll: true })
+  }, [getSlashMenuItems, isSlashMenuOpen, setActiveSlashMenuItem, slashMenuView])
 
   const slashMenuCategories: SlashMenuCategory[] = [
     {
@@ -665,10 +992,17 @@ export function AgentPromptEditor() {
   ]
   const slashMenuWidth = slashMenuView === 'main' ? slashMenuMainWidth : slashMenuSubmenuWidth
   const slashMenu = isHydrated && !readOnly && isSlashMenuOpen
-    ? createPortal(
+    ? (
         <div
+          id={agentPromptSlashMenuId}
+          ref={slashMenuRef}
           data-agent-prompt-slash-menu
-          className="fixed z-60"
+          role="dialog"
+          aria-label={t('agentDetail.configure.prompt.insert.label')}
+          tabIndex={-1}
+          className="absolute z-30"
+          onPointerDownCapture={handleSlashMenuPointerDownCapture}
+          onMouseDownCapture={handleSlashMenuMouseDownCapture}
           style={{
             left: slashMenuPosition ? `${getSlashMenuLeft(slashMenuPosition, slashMenuWidth)}px` : '12px',
             top: slashMenuPosition ? `${slashMenuPosition.top}px` : '36px',
@@ -690,8 +1024,7 @@ export function AgentPromptEditor() {
             onOpenCategory={setSlashMenuView}
             onSelect={handleSlashSelect}
           />
-        </div>,
-        document.body,
+        </div>
       )
     : null
 
@@ -742,6 +1075,8 @@ export function AgentPromptEditor() {
           <div ref={editorRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
+              aria-controls={isSlashMenuOpen ? agentPromptSlashMenuId : undefined}
+              aria-haspopup="dialog"
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
@@ -767,6 +1102,7 @@ export function AgentPromptEditor() {
                 onSlashRangeChange={handleSlashRangeChange}
               />
             </PromptEditor>
+            <span ref={slashMenuAnnouncementRef} className="sr-only" aria-live="polite" />
           </div>
           {!readOnly && (
             <div
@@ -776,6 +1112,9 @@ export function AgentPromptEditor() {
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={isSlashMenuOpen}
+                  aria-controls={isSlashMenuOpen ? agentPromptSlashMenuId : undefined}
                   className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={handleInsertSlash}
                 >
