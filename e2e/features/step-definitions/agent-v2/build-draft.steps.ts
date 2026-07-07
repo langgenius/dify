@@ -8,6 +8,7 @@ import {
   saveAgentComposerDraft,
 } from '../../agent-v2/support/agent'
 import {
+  agentBuildDraftExists,
   applyAgentBuildDraft,
   saveAgentBuildDraft,
 } from '../../agent-v2/support/agent-build-draft'
@@ -25,6 +26,7 @@ import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import {
+  expectAgentModelRequiredFeedback,
   getAgentEnvVariableValue,
   getCurrentAgentId,
   uploadSummaryConfigSkillForBuildDraft,
@@ -142,6 +144,17 @@ When(
   },
 )
 
+When(
+  'I try to generate an Agent v2 Build draft without a model',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+
+    await page.getByRole('button', { exact: true, name: 'Build' }).click()
+    await page.getByPlaceholder('Describe what your agent should do').fill('Update the agent instructions for E2E.')
+    await page.getByRole('button', { name: 'Start build' }).click()
+  },
+)
+
 const expectPageResponseOK = async (response: Response, action: string) => {
   if (response.ok())
     return
@@ -244,6 +257,17 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
   await expect(
     page.getByText('You\'re in build mode. Shape this setup through the chat on the right, then Apply.'),
   ).toBeVisible()
+})
+
+Then('Agent v2 Build chat should be blocked until a model is configured', async function (this: DifyWorld) {
+  await expectAgentModelRequiredFeedback(this.getPage())
+})
+
+Then('the Agent v2 Build draft should not be checked out', async function (this: DifyWorld) {
+  await expect.poll(
+    async () => agentBuildDraftExists(getCurrentAgentId(this)),
+    { timeout: 30_000 },
+  ).toBe(false)
 })
 
 Then('I should see the e2e-summary-skill Skill in the Skills section', async function (this: DifyWorld) {

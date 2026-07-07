@@ -1,6 +1,8 @@
 'use client'
 
+import type { LexicalNode } from 'lexical'
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { TextRange } from './options'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
 import type { AgentFileNode, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
@@ -8,9 +10,21 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import { useClipboard } from 'foxact/use-clipboard'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import {
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  $isTextNode,
+  COMMAND_PRIORITY_LOW,
+  SELECTION_CHANGE_COMMAND,
+} from 'lexical'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -18,14 +32,17 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import {
+  addProviderToolsAtom,
+  agentComposerToolsAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
-import { replaceTrailingSlashWithToken } from './options'
+import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
@@ -152,13 +169,232 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
   return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
 }
 
+/* v8 ignore start -- Lexical selection offsets and DOM range geometry are browser-editor integration glue; user-visible slash insertion behavior is covered by AgentPromptEditor tests. @preserve */
+const getNodeOffset = (
+  node: LexicalNode,
+  anchorNode: LexicalNode,
+  anchorOffset: number,
+): { found: boolean, offset: number } => {
+  if (node.getKey() === anchorNode.getKey())
+    return { found: true, offset: anchorOffset }
+
+  if (!$isElementNode(node))
+    return { found: false, offset: node.getTextContent().length }
+
+  let offset = 0
+  for (const child of node.getChildren()) {
+    const childOffset = getNodeOffset(child, anchorNode, anchorOffset)
+    if (childOffset.found)
+      return { found: true, offset: offset + childOffset.offset }
+
+    offset += childOffset.offset
+  }
+
+  return { found: false, offset }
+}
+
+const getSelectionTextOffset = () => {
+  const selection = $getSelection()
+  if (!$isRangeSelection(selection) || !selection.isCollapsed())
+    return null
+
+  const anchor = selection.anchor
+  const anchorNode = anchor.getNode()
+  const root = $getRoot()
+  let offset = 0
+
+  for (const child of root.getChildren()) {
+    const childOffset = getNodeOffset(child, anchorNode, anchor.offset)
+    if (childOffset.found)
+      return offset + childOffset.offset
+
+    offset += childOffset.offset + 1
+  }
+
+  return null
+}
+
+const readSlashInsertRange = (): TextRange | null => {
+  const offset = getSelectionTextOffset()
+  if (!offset)
+    return null
+
+  const value = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+  if (value[offset - 1] !== '/')
+    return null
+
+  return {
+    start: offset - 1,
+    end: offset,
+  }
+}
+
+const selectNodeTextOffset = (node: LexicalNode, textOffset: number): boolean => {
+  if ($isTextNode(node)) {
+    const offset = Math.max(0, Math.min(textOffset, node.getTextContentSize()))
+    node.select(offset, offset)
+    return true
+  }
+
+  if (!$isElementNode(node))
+    return false
+
+  const children = node.getChildren()
+  let currentOffset = 0
+
+  for (let index = 0; index < children.length; index++) {
+    const child = children[index]!
+    const childLength = child.getTextContent().length
+    if (textOffset > currentOffset + childLength) {
+      currentOffset += childLength
+      continue
+    }
+
+    if ($isElementNode(child) || $isTextNode(child))
+      return selectNodeTextOffset(child, textOffset - currentOffset)
+
+    const childSelectionOffset = textOffset <= currentOffset ? index : index + 1
+    node.select(childSelectionOffset, childSelectionOffset)
+    return true
+  }
+
+  node.select(children.length, children.length)
+  return true
+}
+
+const selectTextOffset = (textOffset: number) => {
+  const root = $getRoot()
+  let currentOffset = 0
+
+  for (const child of root.getChildren()) {
+    const childLength = child.getTextContent().length
+    if (textOffset <= currentOffset + childLength) {
+      selectNodeTextOffset(child, textOffset - currentOffset)
+      return
+    }
+
+    currentOffset += childLength + 1
+  }
+
+  root.selectEnd()
+}
+
+type SelectionRestoreRequest = {
+  id: number
+  offset: number
+}
+
+type SlashMenuPosition = {
+  left: number
+  top: number
+}
+
+const slashMenuViewportPadding = 8
+const slashMenuMainWidth = 200
+const slashMenuSubmenuWidth = 360
+
+const getSlashMenuPosition = (editorElement: HTMLElement): SlashMenuPosition | null => {
+  const selection = window.getSelection()
+  if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
+    return null
+
+  const anchorNode = selection.anchorNode
+  if (!anchorNode || !editorElement.contains(anchorNode))
+    return null
+
+  const range = selection.getRangeAt(0).cloneRange()
+  let rect: DOMRect | null = null
+  const rects = range.getClientRects()
+  if (rects.length)
+    rect = rects[rects.length - 1]!
+  else
+    rect = range.getBoundingClientRect()
+
+  if (!rect || (rect.top === 0 && rect.left === 0 && rect.width === 0 && rect.height === 0)) {
+    const node = anchorNode.nodeType === Node.ELEMENT_NODE
+      ? anchorNode as Element
+      : anchorNode.parentElement
+
+    rect = node?.getBoundingClientRect() ?? editorElement.getBoundingClientRect()
+  }
+
+  const editorRect = editorElement.getBoundingClientRect()
+  if (!rect || rect.bottom < editorRect.top || rect.top > editorRect.bottom)
+    return null
+
+  return {
+    left: rect.right,
+    top: rect.bottom + 4,
+  }
+}
+
+const getSlashMenuLeft = (position: SlashMenuPosition, width: number) => {
+  if (typeof window === 'undefined')
+    return position.left
+
+  return Math.max(
+    slashMenuViewportPadding,
+    Math.min(position.left, window.innerWidth - width - slashMenuViewportPadding),
+  )
+}
+/* v8 ignore stop */
+
+function AgentPromptSelectionBridge({
+  restoreRequest,
+  onSlashRangeChange,
+}: {
+  restoreRequest: SelectionRestoreRequest | null
+  onSlashRangeChange: (range: TextRange | null) => void
+}) {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    const updateSlashRange = () => {
+      editor.getEditorState().read(() => {
+        onSlashRangeChange(readSlashInsertRange())
+      })
+
+      return false
+    }
+
+    updateSlashRange()
+
+    return mergeRegister(
+      editor.registerCommand(
+        SELECTION_CHANGE_COMMAND,
+        updateSlashRange,
+        COMMAND_PRIORITY_LOW,
+      ),
+      editor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => {
+          onSlashRangeChange(readSlashInsertRange())
+        })
+      }),
+    )
+  }, [editor, onSlashRangeChange])
+
+  useEffect(() => {
+    if (!restoreRequest)
+      return
+
+    editor.focus(() => {
+      editor.update(() => {
+        selectTextOffset(restoreRequest.offset)
+      })
+    })
+  }, [editor, restoreRequest])
+
+  return null
+}
+
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [value, setValue] = useAtom(agentComposerPromptAtom)
   const { skills } = useAgentConfigSkills()
   const { files } = useAgentConfigFiles()
-  const [tools, setTools] = useAtom(agentComposerToolsAtom)
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
@@ -178,8 +414,12 @@ export function AgentPromptEditor() {
   })
   const [slashMenuView, setSlashMenuView] = useState<SlashMenuView>('main')
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
+  const [slashMenuPosition, setSlashMenuPosition] = useState<SlashMenuPosition | null>(null)
+  const [selectionRestoreRequest, setSelectionRestoreRequest] = useState<SelectionRestoreRequest | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const slashInsertRangeRef = useRef<TextRange | null>(null)
+  const selectionRestoreRequestIdRef = useRef(0)
   const configuredReferenceIds = useMemo(() => {
     const skillIds = new Set<string>()
     skills.forEach((skill) => {
@@ -215,23 +455,46 @@ export function AgentPromptEditor() {
 
   const closeSlashMenu = () => {
     setIsSlashMenuOpen(false)
+    setSlashMenuPosition(null)
     setSlashMenuView('main')
   }
 
-  const openSlashMenu = () => {
+  const updateSlashMenuPosition = useCallback(() => {
+    const editorElement = editorRef.current
+    if (!editorElement)
+      return
+
+    const position = getSlashMenuPosition(editorElement)
+    if (!position)
+      return
+
+    setSlashMenuPosition(position)
+  }, [])
+
+  const openSlashMenu = useCallback(() => {
     setSlashMenuView('main')
+    updateSlashMenuPosition()
     setIsSlashMenuOpen(true)
-  }
+  }, [updateSlashMenuPosition])
 
   const syncSlashMenuWithSelection = useCallback(() => {
     if (!isHydrated || readOnly)
       return
 
-    if (isSelectionAfterSlash(editorRef.current, value))
+    if (isSelectionAfterSlash(editorRef.current, value)) {
+      updateSlashMenuPosition()
       openSlashMenu()
-    else
+    }
+    else {
+      slashInsertRangeRef.current = null
       closeSlashMenu()
-  }, [isHydrated, readOnly, value])
+    }
+  }, [isHydrated, openSlashMenu, readOnly, updateSlashMenuPosition, value])
+
+  const handleSlashRangeChange = useCallback((range: TextRange | null) => {
+    if (range)
+      slashInsertRangeRef.current = range
+  }, [])
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!isHydrated || readOnly)
@@ -287,7 +550,25 @@ export function AgentPromptEditor() {
   }
 
   const handleSlashSelect = (token: string) => {
-    setValue(replaceTrailingSlashWithToken(value, token))
+    const slashRange = slashInsertRangeRef.current
+    let insertionResult
+    if (slashRange) {
+      insertionResult = insertTokenAtTextRange(value, slashRange, token)
+    }
+    else {
+      const nextValue = replaceTrailingSlashWithToken(value, token)
+      insertionResult = {
+        value: nextValue,
+        cursorOffset: nextValue.length,
+      }
+    }
+    setValue(insertionResult.value)
+    slashInsertRangeRef.current = null
+    selectionRestoreRequestIdRef.current += 1
+    setSelectionRestoreRequest({
+      id: selectionRestoreRequestIdRef.current,
+      offset: insertionResult.cursorOffset,
+    })
     closeSlashMenu()
   }
 
@@ -343,6 +624,13 @@ export function AgentPromptEditor() {
       if (!(target instanceof Node))
         return
 
+      if (
+        target instanceof Element
+        && target.closest('[data-agent-prompt-slash-menu]')
+      ) {
+        return
+      }
+
       if (!rootRef.current?.contains(target))
         closeSlashMenu()
     }
@@ -375,6 +663,37 @@ export function AgentPromptEditor() {
       icon: 'i-ri-book-open-line',
     },
   ]
+  const slashMenuWidth = slashMenuView === 'main' ? slashMenuMainWidth : slashMenuSubmenuWidth
+  const slashMenu = isHydrated && !readOnly && isSlashMenuOpen
+    ? createPortal(
+        <div
+          data-agent-prompt-slash-menu
+          className="fixed z-60"
+          style={{
+            left: slashMenuPosition ? `${getSlashMenuLeft(slashMenuPosition, slashMenuWidth)}px` : '12px',
+            top: slashMenuPosition ? `${slashMenuPosition.top}px` : '36px',
+          }}
+        >
+          <AgentPromptSlashMenu
+            view={slashMenuView}
+            categories={slashMenuCategories}
+            skills={skills}
+            files={files}
+            tools={tools}
+            onAddProviderTools={addProviderTools}
+            onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
+            onAddFile={addActions.files}
+            onAddKnowledge={addActions.knowledge}
+            onAddSkill={addActions.skills}
+            retrievals={retrievals}
+            onBack={() => setSlashMenuView('main')}
+            onOpenCategory={setSlashMenuView}
+            onSelect={handleSlashSelect}
+          />
+        </div>,
+        document.body,
+      )
+    : null
 
   return (
     <section className="flex flex-col gap-1 px-0 py-0" aria-labelledby="agent-configure-prompt-label">
@@ -442,7 +761,12 @@ export function AgentPromptEditor() {
               }}
               disableSlashPicker
               disableBracePicker
-            />
+            >
+              <AgentPromptSelectionBridge
+                restoreRequest={selectionRestoreRequest}
+                onSlashRangeChange={handleSlashRangeChange}
+              />
+            </PromptEditor>
           </div>
           {!readOnly && (
             <div
@@ -466,26 +790,7 @@ export function AgentPromptEditor() {
           )}
         </div>
 
-        {isHydrated && !readOnly && isSlashMenuOpen && (
-          <div data-agent-prompt-slash-menu className="absolute top-9 left-3 z-50">
-            <AgentPromptSlashMenu
-              view={slashMenuView}
-              categories={slashMenuCategories}
-              skills={skills}
-              files={files}
-              tools={tools}
-              onToolsChange={setTools}
-              onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
-              onAddFile={addActions.files}
-              onAddKnowledge={addActions.knowledge}
-              onAddSkill={addActions.skills}
-              retrievals={retrievals}
-              onBack={() => setSlashMenuView('main')}
-              onOpenCategory={setSlashMenuView}
-              onSelect={handleSlashSelect}
-            />
-          </div>
-        )}
+        {slashMenu}
       </div>
     </section>
   )

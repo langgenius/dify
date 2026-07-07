@@ -6,9 +6,10 @@ import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-stat
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { downloadBlob } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
@@ -431,6 +432,20 @@ export function AgentWorkingDirectoryPanel({
     retry: false,
   })
   const isFileReadLoading = !!selectedWorkingDirectoryFile && fileReadQuery.isPending
+  const { data: fileReadData, refetch: refetchFileRead } = fileReadQuery
+  const handleDownloadFile = useCallback(async () => {
+    if (!selectedWorkingDirectoryFile)
+      return
+
+    const readResult = fileReadData ?? (await refetchFileRead()).data
+    if (readResult?.binary || readResult?.text === undefined || readResult.text === null)
+      return
+
+    downloadBlob({
+      data: new Blob([readResult.text], { type: 'text/plain;charset=utf-8' }),
+      fileName: selectedWorkingDirectoryFile.name,
+    })
+  }, [fileReadData, refetchFileRead, selectedWorkingDirectoryFile])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -485,6 +500,9 @@ export function AgentWorkingDirectoryPanel({
             isError: fileListQuery.isError || fileReadQuery.isError,
             isLoading: isFileListLoading || isFileReadLoading,
           },
+          onDownloadFile: selectedWorkingDirectoryFile && !fileReadQuery.data?.binary
+            ? handleDownloadFile
+            : undefined,
           folderOpenState: ({ file }) => {
             const queryIndex = loadedFolderPathIndexes.get(file.id)
             const folderLoaded = queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess

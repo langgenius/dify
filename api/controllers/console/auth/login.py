@@ -56,7 +56,7 @@ from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
-from services.errors.account import AccountRegisterError
+from services.errors.account import AccountRegisterError, RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
@@ -359,18 +359,22 @@ class RefreshTokenApi(Resource):
 
         try:
             new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
+        except Unauthorized as exc:
+            return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
+                mode="json"
+            ), 401
+        except (RefreshTokenNotFoundError, RefreshTokenAccountNotFoundError) as exc:
+            return SimpleResultMessageResponse(result="fail", message=str(exc)).model_dump(mode="json"), 401
 
-            # Create response with new cookies
-            # response-contract:ignore cookie-bearing Flask response
-            response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
+        # Create response with new cookies
+        # response-contract:ignore cookie-bearing Flask response
+        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
 
-            # Update cookies with new tokens
-            set_csrf_token_to_cookie(request, response, new_token_pair.csrf_token)
-            set_access_token_to_cookie(request, response, new_token_pair.access_token)
-            set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
-            return response
-        except Exception as e:
-            return SimpleResultMessageResponse(result="fail", message=str(e)).model_dump(mode="json"), 401
+        # Update cookies with new tokens
+        set_csrf_token_to_cookie(request, response, new_token_pair.csrf_token)
+        set_access_token_to_cookie(request, response, new_token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
+        return response
 
 
 def _get_account_with_case_fallback(email: str):

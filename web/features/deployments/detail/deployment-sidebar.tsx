@@ -16,7 +16,7 @@ import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/Sidebar
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
-import { usePathname, useRouter } from '@/next/navigation'
+import { usePathname } from '@/next/navigation'
 import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { TitleTooltip } from '../shared/components/title-tooltip'
@@ -187,7 +187,6 @@ export function DeploymentDetailTop({
   onToggle?: () => void
 }) {
   const { t } = useTranslation()
-  const router = useRouter()
   const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   if (!expand) {
@@ -208,23 +207,14 @@ export function DeploymentDetailTop({
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <div className="flex min-w-0 flex-1 items-center gap-px">
-        <div className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
-          <button
-            type="button"
-            aria-label={t('operation.back', { ns: 'common' })}
-            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary"
-            onClick={() => router.back()}
-          >
-            <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-          </button>
-          <Link
-            href="/"
-            aria-label={t('mainNav.home', { ns: 'common' })}
-            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary"
-          >
-            <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-          </Link>
-        </div>
+        <Link
+          href="/"
+          aria-label={t('mainNav.home', { ns: 'common' })}
+          className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary"
+        >
+          <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+          <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+        </Link>
         <span className="shrink-0 system-md-regular text-text-quaternary">
           /
         </span>

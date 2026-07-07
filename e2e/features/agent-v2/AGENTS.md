@@ -43,7 +43,6 @@ Use tags in three layers:
 - `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
 - `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
 - `@oauth-tool-agent` — fixed `E2E Agent With OAuth Tool` Agent dependency for OAuth2 tool credential preservation.
-- `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
 - `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
 - `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
 - `@published-web-app` — fixed or scenario-owned published Web app access dependency.
@@ -205,10 +204,6 @@ Use `the Agent Builder preseeded Agent "{agent}" includes the tool state fixture
 Use `the Agent Builder preseeded Agent "{agent}" includes an OAuth2 tool credential` for the fixed OAuth Tool Agent prerequisite. It reads the Agent composer and verifies at least one Dify tool has `credential_type: oauth2` with a `credential_ref.id`. Scenarios that need to save or mutate this configuration should copy that tool config into a scenario-owned Agent instead of mutating the fixed preseeded Agent.
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the file tree fixture files` for file-tree display prerequisites. It verifies the Agent drive contains every file from `agentBuilderFileTreeFixtureFiles` through `/console/api/agent/{agent_id}/drive/files?prefix=files/`.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the current flat file fixture configuration` for the current Agent Edit Files section. Agent config files are still a flat `config_files` list and reject path separators, so this preflight verifies the fixture file basenames are present in the Agent Soul. Treat this as partial coverage for tree-display requirements until the product supports hierarchical config files in the visible Files section.
 
 Use `the Agent Builder preseeded Agent "{agent}" has published Web app access` to verify that a fixed Agent is published, Web app access is enabled, and the Agent detail response includes the site token and base URL needed to open the Web app.
 

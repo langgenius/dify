@@ -1,18 +1,24 @@
 'use client'
 
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentProviderToolDefaultValue, ToolSettingTarget } from './types'
+import type { ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentCliTool, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
-import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import {
+  addProviderToolsAtom,
+  agentComposerToolsAtom,
+  setProviderToolCredentialAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
   useAllBuiltInTools,
@@ -28,7 +34,11 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
-import { useAgentToolsOperations } from './hooks'
+import {
+  useCliToolDialogSurface,
+  useProviderToolSettingsSurface,
+  useSelectedProviderTools,
+} from './hooks'
 import { ProviderToolSettingsDialog } from './provider-tool/dialog'
 import { AgentProviderToolItem } from './provider-tool/item'
 
@@ -264,6 +274,12 @@ function AddToolMenuItem({
   )
 }
 
+type AddToolMenuView = 'menu' | 'tool-picker'
+
+// CLI tools are not available yet, so open the tool picker directly for now.
+// Switch this back to 'menu' when the CLI tool entry returns.
+const addToolDefaultView = 'tool-picker' satisfies AddToolMenuView
+
 function AddToolMenu({
   onAddCliTool,
   onAddTools,
@@ -275,7 +291,7 @@ function AddToolMenu({
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<'menu' | 'tool-picker'>('menu')
+  const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const providerById = useAgentToolProviderMap()
 
   const openToolPicker = useCallback(() => {
@@ -291,7 +307,7 @@ function AddToolMenu({
     setOpen(nextOpen)
 
     if (nextOpen)
-      setView('menu')
+      setView(addToolDefaultView)
   }, [])
 
   const toAgentToolDefaultValue = useCallback((tool: ToolDefaultValue): AgentProviderToolDefaultValue => ({
@@ -367,25 +383,30 @@ function AddToolMenu({
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
-  const setProviderToolCredential = useSetProviderToolCredential()
+  const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const providerById = useAgentToolProviderMap()
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const selectedTools = useSelectedProviderTools()
+  const addTools = useSetAtom(addProviderToolsAtom)
   const {
-    tools,
-    selectedTools,
     settingTarget,
-    isCliToolDialogOpen,
-    editingCliTool,
     setSettingTarget,
-    addTools,
-    deleteCliTool,
     deleteProviderTool,
     deleteProviderToolAction,
+    closeProviderSettingsDialog,
+  } = useProviderToolSettingsSurface()
+  const {
+    isCliToolDialogOpen,
+    editingCliTool,
+    deleteCliTool,
     openCliToolDialog,
     editCliTool,
     handleCliDialogSave,
     handleCliDialogOpenChange,
-    closeProviderSettingsDialog,
-  } = useAgentToolsOperations()
+  } = useCliToolDialogSurface()
+  const handleProviderCredentialChange = useCallback((toolId: string, credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => {
+    setProviderToolCredential({ toolId, credentialId, credentialType })
+  }, [setProviderToolCredential])
   const visibleTools = useMemo(
     () => ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter(tool => tool.kind !== 'cli'),
     [tools],
@@ -460,9 +481,12 @@ export function AgentTools() {
   )
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
+  const settingTargetTool = settingTarget
+    ? tools.find(tool => tool.kind === 'provider' && tool.id === settingTarget.toolId)
+    : undefined
   const settingTargetCollection = settingTarget
-    ? providerById.get(settingTarget.tool.id)
-    ?? providerById.get(settingTarget.tool.name)
+    ? providerById.get(settingTarget.toolId)
+    ?? providerById.get(settingTargetTool?.name ?? settingTarget.toolId)
     : undefined
 
   return (
@@ -501,7 +525,7 @@ export function AgentTools() {
                 onDeleteProviderTool={deleteProviderTool}
                 onDeleteProviderToolAction={deleteProviderToolAction}
                 onEditCliTool={editCliTool}
-                onCredentialChange={setProviderToolCredential}
+                onCredentialChange={handleProviderCredentialChange}
               />
             ))}
       </ConfigureSection>

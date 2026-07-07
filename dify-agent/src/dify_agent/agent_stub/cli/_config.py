@@ -17,13 +17,14 @@ from dify_agent.agent_stub._drive_materialization import (
 from dify_agent.agent_stub.cli._drive import _build_skill_archive
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
 from dify_agent.agent_stub.cli._files import upload_tool_file_resource_from_environment
-from dify_agent.agent_stub.client._agent_stub import (
+from dify_agent.agent_stub.client import (
+    AgentStubTransferError,
+    AgentStubValidationError,
+    request_agent_stub_config_file_pull_sync,
     request_agent_stub_config_manifest_sync,
     request_agent_stub_config_push_sync,
-    request_agent_stub_config_file_pull_sync,
     request_agent_stub_config_skill_pull_sync,
 )
-from dify_agent.agent_stub.client._errors import AgentStubTransferError, AgentStubValidationError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigFileRef,
     AgentStubConfigManifestResponse,
