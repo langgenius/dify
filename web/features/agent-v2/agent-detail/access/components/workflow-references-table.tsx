@@ -12,6 +12,7 @@ import { consoleQuery } from '@/service/client'
 
 type WorkflowReferencesTableProps = {
   agentId: string
+  enabled?: boolean
 }
 
 const workflowTableColSpan = 5
@@ -20,6 +21,7 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
 
 export function WorkflowReferencesTable({
   agentId,
+  enabled = true,
 }: WorkflowReferencesTableProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -29,6 +31,7 @@ export function WorkflowReferencesTable({
         agent_id: agentId,
       },
     },
+    enabled,
   }))
   const workflowReferences = workflowReferencesQuery.data?.data ?? []
 
@@ -62,12 +65,12 @@ export function WorkflowReferencesTable({
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {workflowReferencesQuery.isPending && (
+          {enabled && workflowReferencesQuery.isPending && (
             <WorkflowAccessStateRow>
               {t('agentDetail.access.workflow.loading')}
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isError && (
+          {enabled && workflowReferencesQuery.isError && (
             <WorkflowAccessStateRow>
               <div className="flex items-center justify-center gap-2">
                 <span>{t('agentDetail.access.workflow.loadFailed')}</span>
@@ -83,12 +86,12 @@ export function WorkflowReferencesTable({
               </div>
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isSuccess && workflowReferences.length === 0 && (
+          {enabled && workflowReferencesQuery.isSuccess && workflowReferences.length === 0 && (
             <WorkflowAccessStateRow>
               {t('agentDetail.access.workflow.empty')}
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isSuccess && workflowReferences.map(reference => (
+          {enabled && workflowReferencesQuery.isSuccess && workflowReferences.map(reference => (
             <WorkflowAccessRow
               key={`${reference.app_id}:${reference.workflow_id}`}
               reference={reference}

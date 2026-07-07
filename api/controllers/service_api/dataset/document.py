@@ -59,6 +59,7 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
@@ -945,8 +946,8 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(
-            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        paginated_documents = paginate_query(
+            query, page=query_params.page, per_page=query_params.limit, max_per_page=100
         )
         documents = paginated_documents.items
 

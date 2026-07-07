@@ -4,7 +4,7 @@ This module owns plugin daemon management calls that are shared by API services
 and core runtimes. Plugin model provider discovery is cached here, alongside
 plugin install, uninstall, and upgrade invalidation, so all cache mutations for
 plugin-owned provider metadata stay tenant-scoped and in one place.
-Provider cache payloads may be stored as prefixed zlib bytes; readers also
+Provider cache payloads may be stored as prefixed zstd bytes; readers also
 accept legacy plain JSON payloads for rolling upgrades and existing Redis keys.
 
 The console plugin list also normalizes endpoint setup counters against live
@@ -16,12 +16,12 @@ metadata.
 
 import logging
 import time
-import zlib
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from mimetypes import guess_type
 from typing import Literal, Protocol
 
+import zstandard
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
 from redis.exceptions import LockError
@@ -95,7 +95,7 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_LOCK_TTL = 30
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT = 2.0
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
-    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zlib-v1:"
+    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
@@ -152,7 +152,7 @@ class PluginService:
         if len(payload) < cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES:
             return payload
 
-        return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(payload, level=1)
+        return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(payload, level=1)
 
     @classmethod
     def _decode_plugin_model_providers_cache_payload(cls, payload: bytes | bytearray | str) -> bytes | bytearray | str:
@@ -164,8 +164,8 @@ class PluginService:
             return payload
 
         try:
-            return zlib.decompress(payload[len(prefix) :])
-        except zlib.error as exc:
+            return zstandard.decompress(payload[len(prefix) :])
+        except zstandard.ZstdError as exc:
             raise ValueError("Invalid compressed plugin model providers cache payload.") from exc
 
     @classmethod
@@ -902,7 +902,10 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            [{}],
+            [
+                {"plugin_unique_identifier": plugin_unique_identifier}
+                for plugin_unique_identifier in plugin_unique_identifiers
+            ],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result

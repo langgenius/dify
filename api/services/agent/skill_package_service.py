@@ -175,7 +175,10 @@ class SkillPackageService:
                         continue
                     raise SkillPackageError(
                         "files_outside_skill_root",
-                        "skill archive contains files outside the selected skill root",
+                        (
+                            "skill package must contain exactly one skill; "
+                            "multiple skill folders in one archive are not supported"
+                        ),
                         status_code=400,
                     )
                 normalized_path = safe_path.removeprefix(skill_root_prefix)

@@ -38,6 +38,8 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
@@ -63,6 +65,8 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
+    RefreshTokenAccountNotFoundError,
+    RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
@@ -652,11 +656,11 @@ class AccountService:
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
-            raise ValueError("Invalid refresh token")
+            raise RefreshTokenNotFoundError("Invalid refresh token")
 
         account = AccountService.load_user(account_id.decode("utf-8"), session)
         if not account:
-            raise ValueError("Invalid account")
+            raise RefreshTokenAccountNotFoundError("Invalid account")
 
         # Generate new access token and refresh token
         new_access_token = AccountService.get_account_jwt_token(account)
@@ -1257,13 +1261,13 @@ class TenantService:
         session.add(tenant)
         session.commit()
 
-        for category in TenantPluginAutoUpgradeStrategy.PluginCategory:
+        for category in TenantPluginAutoUpgradeCategory:
             plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
                 tenant_id=tenant.id,
                 category=category,
                 strategy_setting=PluginAutoUpgradeService.default_strategy_setting_for_category(category),
                 upgrade_time_of_day=PluginAutoUpgradeService.default_upgrade_time_of_day(tenant.id),
-                upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
                 exclude_plugins=[],
                 include_plugins=[],
             )

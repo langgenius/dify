@@ -86,16 +86,21 @@ def git_output(*args: str, allow_missing: bool = False) -> str:
     raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "git command failed")
 
 
+def resolve_ci_base(merge_target: str) -> str:
+    merge_base = git_output("merge-base", merge_target, "HEAD", allow_missing=True).strip()
+    return merge_base or merge_target
+
+
 def collect_diff_text(args: argparse.Namespace) -> str:
     if args.mode == "pre-commit":
         return git_output("diff", "--cached", "--unified=0", "--diff-filter=AM", "--no-ext-diff")
-    merge_base = git_output("merge-base", args.merge_target, "HEAD").strip()
+    compare_base = resolve_ci_base(args.merge_target)
     return git_output(
         "diff",
         "--unified=0",
         "--diff-filter=AM",
         "--no-ext-diff",
-        f"{merge_base}..HEAD",
+        f"{compare_base}..HEAD",
     )
 
 
@@ -146,9 +151,9 @@ def load_file_versions(path: str, args: argparse.Namespace) -> tuple[str, str]:
             git_output("show", f":{path}"),
         )
 
-    merge_base = git_output("merge-base", args.merge_target, "HEAD").strip()
+    compare_base = resolve_ci_base(args.merge_target)
     return (
-        git_output("show", f"{merge_base}:{path}", allow_missing=True),
+        git_output("show", f"{compare_base}:{path}", allow_missing=True),
         git_output("show", f"HEAD:{path}"),
     )
 

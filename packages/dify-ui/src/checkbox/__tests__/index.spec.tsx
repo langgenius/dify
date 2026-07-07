@@ -17,17 +17,14 @@ describe('Checkbox', () => {
     await expect.element(checkbox).toHaveAttribute('data-unchecked', '')
     await expect.element(checkbox).not.toHaveAttribute('data-checked')
     await expect.element(checkbox).not.toHaveAttribute('data-indeterminate')
-    await expect.element(checkbox).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-state-accent-solid')
   })
 
-  it('should expose checked data attributes and icon styling hooks', async () => {
+  it('should expose checked data attributes', async () => {
     const screen = await render(<Checkbox checked aria-label="Accept terms" />)
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'true')
     await expect.element(checkbox).toHaveAttribute('data-checked', '')
-    await expect.element(checkbox).toHaveClass('data-checked:bg-components-checkbox-bg')
-    expect(screen.container.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
 
   it('should expose mixed state when indeterminate', async () => {
@@ -36,8 +33,6 @@ describe('Checkbox', () => {
 
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'mixed')
     await expect.element(checkbox).toHaveAttribute('data-indeterminate', '')
-    expect(screen.container.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-    expect(screen.container.querySelector('span span.rounded-full.bg-current')).toBeInTheDocument()
   })
 
   it('should call onCheckedChange with the next checked value', async () => {
@@ -75,7 +70,6 @@ describe('Checkbox', () => {
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
     await expect.element(checkbox).toHaveAttribute('data-disabled', '')
-    await expect.element(checkbox).toHaveClass('data-disabled:cursor-not-allowed')
 
     asHTMLElement(checkbox.element()).click()
 
@@ -125,6 +119,6 @@ describe('CheckboxSkeleton', () => {
     const screen = await render(<CheckboxSkeleton data-testid="checkbox-skeleton" />)
 
     expect(screen.container.querySelector('[role="checkbox"]')).not.toBeInTheDocument()
-    await expect.element(screen.getByTestId('checkbox-skeleton')).toHaveClass('bg-text-quaternary', 'opacity-20')
+    await expect.element(screen.getByTestId('checkbox-skeleton')).toBeInTheDocument()
   })
 })

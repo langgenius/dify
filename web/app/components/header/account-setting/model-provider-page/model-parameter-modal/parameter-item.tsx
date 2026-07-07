@@ -6,8 +6,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -270,13 +269,13 @@ function ParameterItem({
             <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
             <FieldItem>
               <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
-                <Radio value={true} />
+                <Radio<boolean> value={true} />
                 True
               </FieldLabel>
             </FieldItem>
             <FieldItem>
               <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
-                <Radio value={false} />
+                <Radio<boolean> value={false} />
                 False
               </FieldLabel>
             </FieldItem>

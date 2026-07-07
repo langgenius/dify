@@ -55,6 +55,14 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
 }))
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+  }
+})
+
 vi.mock('@/context/app-context', () => ({
   useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
@@ -191,7 +199,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/tools',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 
@@ -402,6 +410,18 @@ describe('ToolPicker', () => {
 
     await user.click(screen.getAllByText('open-picker')[1]!.closest('[role="button"]')!)
     expect(disabledOnShowChange).not.toHaveBeenCalled()
+  })
+
+  it('should link the find-more footer to the marketplace tool category', () => {
+    renderToolPicker({
+      isShow: true,
+      selectedTools: [],
+    })
+
+    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute(
+      'href',
+      'https://marketplace.test/plugins/tool',
+    )
   })
 
   it('should render real search and tool lists, then forward tool selections', async () => {

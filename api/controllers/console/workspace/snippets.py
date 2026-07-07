@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource, marshal
+from flask_restx import Resource
 from pydantic import Field as PydanticField
 from pydantic import field_validator
 from sqlalchemy.orm import Session, sessionmaker
@@ -37,8 +37,7 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import snippet_fields, snippet_list_fields
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
@@ -198,13 +197,16 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return {
-            "data": marshal(snippets, snippet_list_fields),
-            "page": query.page,
-            "limit": query.limit,
-            "total": total,
-            "has_more": has_more,
-        }, 200
+        return dump_response(
+            SnippetPaginationResponse,
+            {
+                "data": snippets,
+                "page": query.page,
+                "limit": query.limit,
+                "total": total,
+                "has_more": has_more,
+            },
+        ), 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
@@ -245,7 +247,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 201
+        return dump_response(SnippetResponse, snippet), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -268,7 +270,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -317,7 +319,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -533,4 +535,4 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
             session.commit()
             session.refresh(snippet)
 
-        return {"result": "success", "use_count": snippet.use_count}, 200
+        return SnippetUseCountResponse(result="success", use_count=snippet.use_count).model_dump(mode="json"), 200

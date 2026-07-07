@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
-import { validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import {
   agentComposerDraftAtom,
   agentComposerOriginalConfigAtom,
@@ -23,12 +23,6 @@ import {
 import { consoleQuery } from '@/service/client'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
-
-class InvalidKnowledgeConfigurationError extends Error {
-  constructor() {
-    super('Agent knowledge retrieval configuration is invalid.')
-  }
-}
 
 export function useAgentConfigureSync({
   agentId,
@@ -42,6 +36,7 @@ export function useAgentConfigureSync({
   enabled: boolean
 }) {
   const { t: tCommon } = useTranslation('common')
+  const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const queryClient = useQueryClient()
   const store = useStore()
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
@@ -127,8 +122,6 @@ export function useAgentConfigureSync({
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
   latestDraftSaveRef.current = () => {
     const draft = store.get(agentComposerDraftAtom)
-    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
-      return
 
     void saveComposer({
       configSnapshot: getAgentSoulDraft(),
@@ -145,8 +138,6 @@ export function useAgentConfigureSync({
       return
 
     const draft = store.get(agentComposerDraftAtom)
-    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
-      throw new InvalidKnowledgeConfigurationError()
     const configSnapshot = getAgentSoulDraft()
     const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
     debouncedSaveDraft.cancel?.()
@@ -168,7 +159,6 @@ export function useAgentConfigureSync({
     const draft = store.get(agentComposerDraftAtom)
     if (
       !store.get(isAgentComposerDirtyAtom)
-      || !validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid
     ) {
       return
     }
@@ -209,8 +199,7 @@ export function useAgentConfigureSync({
       }
 
       if (
-        !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
-        || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
+        lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
         return
       }
@@ -248,18 +237,26 @@ export function useAgentConfigureSync({
       return
 
     const draft = store.get(agentComposerDraftAtom)
-    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
-      throw new InvalidKnowledgeConfigurationError()
+    const configSnapshot = formStateToAgentSoulConfig({
+      baseConfig: baseConfigRef.current,
+      formState: draft,
+      currentModel: currentModelRef.current,
+    })
+    if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
+      toast.error(tCommon('modelProvider.selectModel'))
+      return
+    }
+
+    const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
+    if (!knowledgeValidation.isValid) {
+      toast.error(getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ?? tCommon('api.actionFailed'))
+      return
+    }
 
     publishInFlightRef.current = true
     setIsPublishInFlight(true)
     try {
       debouncedSaveDraft.cancel?.()
-      const configSnapshot = formStateToAgentSoulConfig({
-        baseConfig: baseConfigRef.current,
-        formState: draft,
-        currentModel: currentModelRef.current,
-      })
       const saved = await saveComposer({
         configSnapshot,
         draftBaseline: draft,
@@ -302,7 +299,7 @@ export function useAgentConfigureSync({
       publishInFlightRef.current = false
       setIsPublishInFlight(false)
     }
-  }, [agentId, debouncedSaveDraft, publishAgent, queryClient, saveComposer, setOriginalConfig, setOriginalDraft, setPublishedDraft, store, tCommon])
+  }, [agentId, debouncedSaveDraft, getKnowledgeValidationMessage, publishAgent, queryClient, saveComposer, setOriginalConfig, setOriginalDraft, setPublishedDraft, store, tCommon])
 
   return {
     draftSavedAt,

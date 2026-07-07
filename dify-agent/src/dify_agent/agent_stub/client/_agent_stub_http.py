@@ -338,7 +338,7 @@ def request_agent_stub_config_env_update_http_sync(
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ) -> dict[str, object]:
-    """Replace or delete config env entries through the HTTP Agent Stub endpoint."""
+    """Set or delete config env entries through the HTTP Agent Stub endpoint."""
     request_model = AgentStubConfigEnvUpdateRequest(env_text=env_text)
     response = _send_agent_stub_json(
         method="PATCH",

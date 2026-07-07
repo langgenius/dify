@@ -407,6 +407,8 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Cerca nel Marketplace per installarne uno o configura i fornitori nelle impostazioni.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Vengono mostrati solo i modelli compatibili",
   "modelProvider.selector.showIncompatibleModels": "Mostra modelli incompatibili",
+  "modelProvider.selector.suggestion": "Suggerimento",
+  "modelProvider.selector.suggestionTip": "Consigliato per le attività degli agenti",
   "modelProvider.showModels": "Mostra Modelli",
   "modelProvider.speechToTextModel.key": "Modello da Voce a Testo",
   "modelProvider.speechToTextModel.tip": "Imposta il modello predefinito per l'input da voce a testo nella conversazione.",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -38,6 +39,13 @@ def _config_manifest_response() -> AgentStubConfigManifestResponse:
     )
 
 
+def _patch_cli_module(monkeypatch: pytest.MonkeyPatch, accessor_name: str, **attrs: object) -> None:
+    monkeypatch.setattr(
+        f"dify_agent.agent_stub.cli.main.{accessor_name}",
+        lambda: SimpleNamespace(**attrs),
+    )
+
+
 def test_cli_connect_reports_missing_environment_variables(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["connect"])
@@ -59,7 +67,7 @@ def test_cli_connect_supports_json_output(
         assert argv == ["echo", "hello"]
         return AgentStubConnectResponse(connection_id="conn-1", status="connected")
 
-    monkeypatch.setattr("dify_agent.agent_stub.cli.main.connect_from_environment", fake_connect_from_environment)
+    _patch_cli_module(monkeypatch, "_agent_stub_module", connect_from_environment=fake_connect_from_environment)
 
     main(["connect", "--json", "--", "echo", "hello"])
 
@@ -78,7 +86,7 @@ def test_cli_unknown_command_auto_forwards_when_agent_stub_env_is_present(
         assert argv == ["run", "--target", "prod"]
         return AgentStubConnectResponse(connection_id="conn-1", status="connected")
 
-    monkeypatch.setattr("dify_agent.agent_stub.cli.main.connect_from_environment", fake_connect_from_environment)
+    _patch_cli_module(monkeypatch, "_agent_stub_module", connect_from_environment=fake_connect_from_environment)
 
     main(["run", "--target", "prod"])
 
@@ -220,7 +228,7 @@ def test_cli_connect_accepts_grpc_agent_stub_api_base_url(
         assert argv == ["echo", "hello"]
         return AgentStubConnectResponse(connection_id="conn-1", status="connected")
 
-    monkeypatch.setattr("dify_agent.agent_stub.cli.main.connect_from_environment", fake_connect_from_environment)
+    _patch_cli_module(monkeypatch, "_agent_stub_module", connect_from_environment=fake_connect_from_environment)
 
     main(["connect", "echo", "hello"])
 
@@ -232,9 +240,10 @@ def test_cli_config_manifest_omits_hash_fields(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.manifest_from_environment",
-        lambda: AgentStubConfigManifestResponse(
+    _patch_cli_module(
+        monkeypatch,
+        "_config_module",
+        manifest_from_environment=lambda: AgentStubConfigManifestResponse(
             agent_id="agent-1",
             config_version=AgentStubConfigVersionInfo(id="cfg-1", kind="build_draft", writable=True),
             skills=AgentStubConfigSkillItemsResponse(
@@ -299,12 +308,11 @@ def test_cli_config_manifest_omits_hash_fields(
             "push_config_note_from_environment",
             {"local_path": "/tmp/note.md"},
         ),
-        (["config", "env", "push"], "push_config_env_from_environment", {"local_path": None}),
         (["config", "env", "push", "/tmp/.env"], "push_config_env_from_environment", {"local_path": "/tmp/.env"}),
         (
-            ["config", "files", "push", "/tmp/guide.txt", "--name", "runtime.txt"],
+            ["config", "files", "push", "/tmp/guide.txt"],
             "push_config_files_from_environment",
-            {"paths": ["/tmp/guide.txt"], "name": "runtime.txt"},
+            {"paths": ["/tmp/guide.txt"]},
         ),
         (
             ["config", "files", "delete", "old.txt", "legacy.txt"],
@@ -336,7 +344,7 @@ def test_cli_config_mutation_commands_forward_and_print_manifest_json(
         captured_kwargs.update(kwargs)
         return _config_manifest_response()
 
-    monkeypatch.setattr(f"dify_agent.agent_stub.cli.main.{helper_name}", fake_helper)
+    _patch_cli_module(monkeypatch, "_config_module", **{helper_name: fake_helper})
 
     with pytest.raises(SystemExit) as exc_info:
         main(argv)
@@ -395,7 +403,7 @@ def test_cli_config_pull_commands_support_plural_and_hidden_singular_aliases(
         captured_kwargs["local_dir"] = local_dir
         return response
 
-    monkeypatch.setattr(f"dify_agent.agent_stub.cli.main.{helper_name}", fake_helper)
+    _patch_cli_module(monkeypatch, "_config_module", **{helper_name: fake_helper})
 
     with pytest.raises(SystemExit) as exc_info:
         main(argv)
@@ -431,9 +439,10 @@ def test_cli_file_upload_prints_uploaded_tool_file_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.upload_file_from_environment",
-        lambda *, path: type(
+    _patch_cli_module(
+        monkeypatch,
+        "_files_module",
+        upload_file_from_environment=lambda *, path: type(
             "Response",
             (),
             {
@@ -462,9 +471,10 @@ def test_cli_file_download_prints_saved_path(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.download_file_from_environment",
-        lambda **_kwargs: type("Response", (), {"path": Path("/tmp/report.pdf")})(),
+    _patch_cli_module(
+        monkeypatch,
+        "_files_module",
+        download_file_from_environment=lambda **_kwargs: type("Response", (), {"path": Path("/tmp/report.pdf")})(),
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -485,8 +495,10 @@ def test_cli_file_download_supports_mapping_json(
         captured_kwargs.update(kwargs)
         return type("Response", (), {"path": Path("/tmp/inputs/report.pdf")})()
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    _patch_cli_module(
+        monkeypatch,
+        "_files_module",
+        download_file_from_environment=fake_download_file_from_environment,
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -523,8 +535,10 @@ def test_cli_file_download_rejects_legacy_positional_directory(
         called = True
         return type("Response", (), {"path": Path("/tmp/report.pdf")})()
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    _patch_cli_module(
+        monkeypatch,
+        "_files_module",
+        download_file_from_environment=fake_download_file_from_environment,
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -540,9 +554,10 @@ def test_cli_drive_list_prints_manifest_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.list_drive_manifest_from_environment",
-        lambda *, prefix: AgentStubDriveManifestResponse(
+    _patch_cli_module(
+        monkeypatch,
+        "_drive_module",
+        list_drive_manifest_from_environment=lambda *, prefix: AgentStubDriveManifestResponse(
             items=[
                 AgentStubDriveItem(
                     key=prefix + "example/SKILL.md",
@@ -553,6 +568,10 @@ def test_cli_drive_list_prints_manifest_json(
                     file_id="tool-file-1",
                 )
             ]
+        ),
+        format_drive_manifest=lambda response: (
+            f"{response.items[0].size}\t{response.items[0].mime_type}\t{response.items[0].hash or '-'}\t"
+            f"{response.items[0].key}"
         ),
     )
 
@@ -568,9 +587,10 @@ def test_cli_drive_list_prints_human_readable_listing(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.list_drive_manifest_from_environment",
-        lambda *, prefix: AgentStubDriveManifestResponse(
+    _patch_cli_module(
+        monkeypatch,
+        "_drive_module",
+        list_drive_manifest_from_environment=lambda *, prefix: AgentStubDriveManifestResponse(
             items=[
                 AgentStubDriveItem(
                     key=f"{prefix}example/SKILL.md",
@@ -581,6 +601,10 @@ def test_cli_drive_list_prints_human_readable_listing(
                     file_id="tool-file-1",
                 )
             ]
+        ),
+        format_drive_manifest=lambda response: (
+            f"{response.items[0].size}\t{response.items[0].mime_type}\t{response.items[0].hash or '-'}\t"
+            f"{response.items[0].key}"
         ),
     )
 
@@ -596,9 +620,10 @@ def test_cli_drive_pull_prints_downloaded_paths(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        lambda *, targets, local_base: DrivePullResult(
+    _patch_cli_module(
+        monkeypatch,
+        "_drive_module",
+        pull_drive_from_environment=lambda *, targets, local_base: DrivePullResult(
             items=[
                 DrivePullResult.Item(
                     key=f"{targets[0]}/SKILL.md", local_path=str(Path(local_base) / targets[0] / "SKILL.md")
@@ -625,9 +650,10 @@ def test_cli_drive_pull_prints_json_result(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        lambda *, targets, local_base: DrivePullResult(
+    _patch_cli_module(
+        monkeypatch,
+        "_drive_module",
+        pull_drive_from_environment=lambda *, targets, local_base: DrivePullResult(
             items=[
                 DrivePullResult.Item(key="files/a.txt", local_path=f"{local_base}/files/a.txt"),
                 DrivePullResult.Item(key="skills/foo/SKILL.md", local_path=f"{local_base}/skills/foo/SKILL.md"),
@@ -665,10 +691,7 @@ def test_cli_drive_pull_forwards_multiple_targets(
             ]
         )
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        fake_pull_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", pull_drive_from_environment=fake_pull_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "pull", "skills/foo", "files/a.txt", "--to", "/tmp/drive"])
@@ -697,10 +720,7 @@ def test_cli_drive_pull_uses_environment_drive_base_default(
             ]
         )
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        fake_pull_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", pull_drive_from_environment=fake_pull_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "pull", "skills/foo"])
@@ -729,10 +749,7 @@ def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
             ]
         )
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        fake_pull_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", pull_drive_from_environment=fake_pull_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "pull", "skills/foo"])
@@ -756,10 +773,7 @@ def test_cli_drive_pull_without_targets_pulls_whole_visible_drive(
             items=[DrivePullResult.Item(key="files/a.txt", local_path=str(Path(local_base) / "files" / "a.txt"))]
         )
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        fake_pull_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", pull_drive_from_environment=fake_pull_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "pull", "--to", "/tmp/drive"])
@@ -774,9 +788,10 @@ def test_cli_drive_push_prints_commit_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
-        lambda *, local_path, drive_path, kind: AgentStubDriveCommitResponse(
+    _patch_cli_module(
+        monkeypatch,
+        "_drive_module",
+        push_drive_from_environment=lambda *, local_path, drive_path, kind: AgentStubDriveCommitResponse(
             items=[
                 AgentStubDriveItem(
                     key=drive_path,
@@ -811,10 +826,7 @@ def test_cli_drive_push_forwards_kind(
         captured_kwargs["kind"] = kind
         return AgentStubDriveCommitResponse(items=[])
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
-        fake_push_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", push_drive_from_environment=fake_push_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "push", "/tmp/skill", "skills/example", "--kind", "skill"])
@@ -840,10 +852,7 @@ def test_cli_drive_push_accepts_json_flag(
         captured_kwargs["kind"] = kind
         return AgentStubDriveCommitResponse(items=[])
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
-        fake_push_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", push_drive_from_environment=fake_push_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "push", "/tmp/report.md", "files/report.md", "--json"])
@@ -869,10 +878,7 @@ def test_cli_drive_push_rejects_recursive_option(
         called = True
         return AgentStubDriveCommitResponse(items=[])
 
-    monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
-        fake_push_drive_from_environment,
-    )
+    _patch_cli_module(monkeypatch, "_drive_module", push_drive_from_environment=fake_push_drive_from_environment)
 
     with pytest.raises(SystemExit) as exc_info:
         main(["drive", "push", "/tmp/dir", "files/dir", "--recursive"])

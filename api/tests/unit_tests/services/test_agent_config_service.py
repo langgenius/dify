@@ -342,6 +342,38 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
     session.commit.assert_called_once()
 
 
+def test_upload_skill_for_console_maps_package_validation_failures() -> None:
+    session = MagicMock()
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False)
+    message = "skill package must contain exactly one skill; multiple skill folders in one archive are not supported"
+
+    with (
+        patch(f"{MODULE}.session_factory.create_session", return_value=_session_cm(session)),
+        patch.object(service, "_resolve_target_in_session", return_value=target),
+        patch.object(
+            service._skill_normalizer,
+            "normalize",
+            side_effect=SkillPackageError("files_outside_skill_root", message, status_code=400),
+        ),
+    ):
+        with pytest.raises(AgentConfigServiceError, match="exactly one skill") as exc_info:
+            service.upload_skill_for_console(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                user_id=USER,
+                config_version_id="draft-1",
+                config_version_kind=AgentConfigVersionKind.DRAFT,
+                content=b"bad-archive",
+                filename="skills.zip",
+            )
+
+    assert exc_info.value.code == "files_outside_skill_root"
+    assert exc_info.value.message == message
+    assert exc_info.value.status_code == 400
+    session.commit.assert_not_called()
+
+
 def test_apply_skill_updates_rejects_non_tool_file_refs() -> None:
     service = AgentConfigService()
 

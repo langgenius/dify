@@ -698,7 +698,7 @@ export const zDatasourceNodeRunPayload = z.object({
  * DatasourcePluginResponse
  */
 export const zDatasourcePluginResponse = z.object({
-  credentials: z.array(zDatasourceCredentialInfoResponse),
+  credentials: z.array(zDatasourceCredentialInfoResponse).optional(),
   datasource_type: z.string().nullish(),
   node_id: z.string().nullish(),
   plugin_id: z.string().nullish(),
@@ -1676,9 +1676,9 @@ export const zProcessRule = z.object({
 })
 
 /**
- * SimpleAccount
+ * SimpleAccountResponse
  */
-export const zSimpleAccount = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -2197,7 +2197,7 @@ export const zWorkflowRunForLogResponse = z.object({
  */
 export const zWorkflowAppLogPartialResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   created_from: z.string().nullish(),
@@ -3063,8 +3063,10 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 /**
  * Streaming response with node execution events.
  */
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
-  = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
 

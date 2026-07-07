@@ -33,7 +33,7 @@ import TypeSelector from './type-select'
 import { CHECKBOX_DEFAULT_FALSE_VALUE, CHECKBOX_DEFAULT_TRUE_VALUE, TEXT_MAX_LENGTH } from './utils'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
-const EMPTY_SELECT_VALUE = '__empty__'
+const EMPTY_SELECT_VALUE = '__empty__' as const
 
 type ConfigModalFormFieldsProps = {
   checkboxDefaultSelectValue: string
@@ -169,10 +169,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           </Field>
           {options && options.length > 0 && (
             <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
-              <Select
+              <Select<string>
                 key={`default-select-${options.join('-')}`}
-                value={tempPayload.default ? String(tempPayload.default) : EMPTY_SELECT_VALUE}
-                onValueChange={value => onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)}
+                value={typeof tempPayload.default === 'string' ? tempPayload.default : EMPTY_SELECT_VALUE}
+                onValueChange={(value) => {
+                  if (value == null)
+                    return
+                  onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
+                }}
               >
                 <SelectTrigger size="large" className="w-full">
                   <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />

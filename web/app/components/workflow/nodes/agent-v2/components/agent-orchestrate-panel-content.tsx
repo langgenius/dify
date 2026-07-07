@@ -257,6 +257,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const composerState = inlineComposerState
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
   const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
@@ -347,6 +348,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
   const resetBuildChatSession = useCallback(async () => {
     await refreshDebugConversationAsync().catch(() => undefined)
+    setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
     setWorkflowRunId(null)
     setClearPreviewChat(true)
@@ -467,6 +469,14 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     || isApplyingInlineBuildDraft
     || discardBuildDraftMutation.isPending
     || isRefreshingDebugConversation
+  const buildConversationHasAgentResponse = !!conversationIds.build && (
+    conversationIds.build === completedBuildConversationId
+    || (
+      conversationIds.build === inlineComposerState?.debug_conversation_id
+      && (inlineComposerState?.debug_conversation_has_messages ?? false)
+    )
+  )
+  const showWorkingDirectoryAction = rightPanelChatMode === 'build' && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -539,6 +549,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
               showChatFeaturesAction={false}
               trailingAction={(
                 <button
@@ -567,6 +578,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
                 if (mode === 'build') {
+                  setCompletedBuildConversationId(completedConversationId)
                   setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
                     agentId,
