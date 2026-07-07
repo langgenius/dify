@@ -3105,14 +3105,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
