@@ -15,7 +15,6 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolsLayerConfig,
 )
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -132,7 +131,7 @@ def _list_provider_tool_names(
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
     """Normalize MCP provider ids to the runtime-facing server identifier."""
-    service = MCPToolManageService(session=cast(Session, db.session))
+    service = MCPToolManageService(session=db.session())
     try:
         return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
     except ValueError:

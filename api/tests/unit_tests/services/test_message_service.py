@@ -102,6 +102,7 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
+            session=MagicMock(),
         )
 
         # Assert
@@ -124,6 +125,7 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="",
             first_id=None,
             limit=10,
+            session=MagicMock(),
         )
 
         # Assert
@@ -166,6 +168,7 @@ class TestMessageServicePaginationByFirstId:
             first_id=None,
             limit=10,
             order="desc",
+            session=mock_db.session,
         )
 
         # Assert
@@ -209,6 +212,7 @@ class TestMessageServicePaginationByFirstId:
             first_id=None,
             limit=10,
             order="asc",
+            session=mock_db.session,
         )
 
         # Assert
@@ -258,6 +262,7 @@ class TestMessageServicePaginationByFirstId:
             first_id="msg-005",
             limit=10,
             order="desc",
+            session=mock_db.session,
         )
 
         # Assert
@@ -288,6 +293,7 @@ class TestMessageServicePaginationByFirstId:
                 conversation_id="conv-001",
                 first_id="nonexistent-msg",
                 limit=10,
+                session=mock_db.session,
             )
 
     # Test 07: Has_more flag when results exceed limit
@@ -323,6 +329,7 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
+            session=mock_db.session,
         )
 
         # Assert
@@ -353,6 +360,7 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
+            session=mock_db.session,
         )
 
         # Assert
@@ -389,6 +397,7 @@ class TestMessageServicePaginationByLastId:
             user=None,
             last_id=None,
             limit=10,
+            session=MagicMock(),
         )
 
         # Assert
@@ -421,6 +430,7 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id=None,
             limit=10,
+            session=mock_db.session,
         )
 
         # Assert
@@ -459,6 +469,7 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id="msg-005",
             limit=10,
+            session=mock_db.session,
         )
 
         # Assert
@@ -482,6 +493,7 @@ class TestMessageServicePaginationByLastId:
                 user=user,
                 last_id="nonexistent-msg",
                 limit=10,
+                session=mock_db.session,
             )
 
     # Test 13: Pagination with conversation_id filter
@@ -516,6 +528,7 @@ class TestMessageServicePaginationByLastId:
             last_id=None,
             limit=10,
             conversation_id="conv-001",
+            session=mock_db.session,
         )
 
         # Assert
@@ -546,6 +559,7 @@ class TestMessageServicePaginationByLastId:
             last_id=None,
             limit=10,
             include_ids=["msg-001", "msg-003"],
+            session=mock_db.session,
         )
 
         # Assert
@@ -578,6 +592,7 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id=None,
             limit=10,
+            session=mock_db.session,
         )
 
         # Assert
@@ -680,8 +695,8 @@ class TestMessageServiceGetMessage:
 
         mock_db.session.scalar.return_value = message
 
-        # Act
-        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123")
+        # Act,
+        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
 
         # Assert
         assert result == message
@@ -700,8 +715,8 @@ class TestMessageServiceGetMessage:
 
         mock_db.session.scalar.return_value = message
 
-        # Act
-        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123")
+        # Act,
+        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
 
         # Assert
         assert result == message
@@ -718,7 +733,7 @@ class TestMessageServiceGetMessage:
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            MessageService.get_message(app_model=app, user=user, message_id="msg-123")
+            MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
 
 
 class TestMessageServiceFeedback:
@@ -748,6 +763,7 @@ class TestMessageServiceFeedback:
             user=user,
             rating=FeedbackRating.LIKE,
             content="Good answer",
+            session=mock_db.session,
         )
 
         # Assert
@@ -780,6 +796,7 @@ class TestMessageServiceFeedback:
             user=user,
             rating=FeedbackRating.DISLIKE,
             content="Bad answer",
+            session=mock_db.session,
         )
 
         # Assert
@@ -808,6 +825,7 @@ class TestMessageServiceFeedback:
             user=user,
             rating=None,
             content=None,
+            session=mock_db.session,
         )
 
         # Assert
@@ -826,8 +844,8 @@ class TestMessageServiceFeedback:
 
         mock_db.session.scalars.return_value.all.return_value = [feedback]
 
-        # Act
-        result = MessageService.get_all_messages_feedbacks(app_model=app, page=1, limit=10)
+        # Act,
+        result = MessageService.get_all_messages_feedbacks(app_model=app, page=1, limit=10, session=mock_db.session)
 
         # Assert
         assert result == [{"id": "fb-1"}]
@@ -846,7 +864,11 @@ class TestMessageServiceSuggestedQuestions:
         app = factory.create_app_mock()
         with pytest.raises(ValueError, match="user cannot be None"):
             MessageService.get_suggested_questions_after_answer(
-                app_model=app, user=None, message_id="msg-123", invoke_from=MagicMock()
+                app_model=app,
+                user=None,
+                message_id="msg-123",
+                invoke_from=MagicMock(),
+                session=MagicMock(),
             )
 
     # Test 28: get_suggested_questions_after_answer - Advanced Chat success
@@ -890,7 +912,11 @@ class TestMessageServiceSuggestedQuestions:
 
         # Act
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app, user=user, message_id="msg-123", invoke_from=InvokeFrom.WEB_APP
+            app_model=app,
+            user=user,
+            message_id="msg-123",
+            invoke_from=InvokeFrom.WEB_APP,
+            session=MagicMock(),
         )
 
         # Assert
@@ -938,7 +964,11 @@ class TestMessageServiceSuggestedQuestions:
 
         # Act
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+            app_model=app,
+            user=user,
+            message_id="msg-123",
+            invoke_from=MagicMock(),
+            session=mock_db.session,
         )
 
         # Assert
@@ -996,6 +1026,7 @@ class TestMessageServiceSuggestedQuestions:
             user=user,
             message_id="msg-123",
             invoke_from=InvokeFrom.WEB_APP,
+            session=mock_db.session,
         )
 
         assert result == ["Q1?"]
@@ -1059,7 +1090,11 @@ class TestMessageServiceSuggestedQuestions:
         mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+            app_model=app,
+            user=user,
+            message_id="msg-123",
+            invoke_from=MagicMock(),
+            session=mock_db.session,
         )
 
         assert result == ["Q1?"]
@@ -1168,7 +1203,11 @@ class TestMessageServiceSuggestedQuestions:
         mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+            app_model=app,
+            user=user,
+            message_id="msg-123",
+            invoke_from=MagicMock(),
+            session=mock_db.session,
         )
 
         assert result == ["Q1?"]
@@ -1209,5 +1248,9 @@ class TestMessageServiceSuggestedQuestions:
         # Act & Assert
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+                app_model=app,
+                user=user,
+                message_id="msg-123",
+                invoke_from=MagicMock(),
+                session=MagicMock(),
             )

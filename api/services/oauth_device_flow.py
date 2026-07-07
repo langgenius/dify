@@ -13,7 +13,7 @@ from enum import StrEnum
 from typing import Any, NotRequired, TypedDict
 
 from sqlalchemy import and_, func, select, update
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from libs.oauth_bearer import TOKEN_CACHE_KEY_FMT, AuthContext, SubjectType
 from models.oauth import OAuthAccessToken
@@ -335,9 +335,7 @@ def sha256_hex(token: str) -> str:
 
 
 def mint_oauth_token(
-    # Accept either Session or Flask-SQLAlchemy's request-scoped wrapper —
-    # the wrapper proxies the same execute/commit surface.
-    session: Session | scoped_session,
+    session: Session,
     redis_client,
     *,
     subject_email: str,
@@ -390,7 +388,7 @@ def mint_oauth_token(
 
 
 def _upsert(
-    session: Session | scoped_session,
+    session: Session,
     *,
     subject_email: str,
     subject_issuer: str | None,
@@ -502,7 +500,7 @@ def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
 
 
 def list_active_sessions(
-    session: Session | scoped_session,
+    session: Session,
     ctx: AuthContext,
     now: datetime,
 ) -> list[OAuthAccessToken]:
@@ -525,7 +523,7 @@ def list_active_sessions(
 
 
 def token_belongs_to_subject(
-    session: Session | scoped_session,
+    session: Session,
     token_id: str,
     ctx: AuthContext,
 ) -> bool:
@@ -541,7 +539,7 @@ def token_belongs_to_subject(
 
 
 def revoke_oauth_token(
-    session: Session | scoped_session,
+    session: Session,
     redis_client: Any,
     token_id: str,
 ) -> None:

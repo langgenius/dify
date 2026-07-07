@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -18,7 +18,7 @@ from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
-from extensions.ext_database import db
+from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
@@ -80,7 +80,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -154,7 +154,7 @@ class AppService:
 
     @staticmethod
     def get_starred_app_ids(
-        session: Session | scoped_session,
+        session: Session,
         *,
         tenant_id: str,
         account_id: str,
@@ -175,14 +175,14 @@ class AppService:
 
     @staticmethod
     def get_app_by_id(
-        session: Session | scoped_session,
+        session: Session,
         app_id: str,
     ) -> App | None:
         return session.get(App, app_id)
 
     @staticmethod
     def get_visible_app_by_id(
-        session: Session | scoped_session,
+        session: Session,
         app_id: str,
     ) -> App | None:
         app = session.get(App, app_id)
@@ -192,7 +192,7 @@ class AppService:
 
     @staticmethod
     def find_visible_apps_by_ids(
-        session: Session | scoped_session,
+        session: Session,
         app_ids: Sequence[str],
     ) -> list[App]:
         if not app_ids:
@@ -201,7 +201,7 @@ class AppService:
 
     @staticmethod
     def find_visible_apps_by_name(
-        session: Session | scoped_session,
+        session: Session,
         *,
         name: str,
         tenant_id: str,
@@ -219,7 +219,7 @@ class AppService:
         )
 
     def get_paginate_apps(
-        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+        self, user_id: str, tenant_id: str, params: AppListParams, session: Session
     ) -> PaginatedResult | None:
         """
         Get app list with pagination, filters, and explicit sort order.
@@ -238,11 +238,12 @@ class AppService:
             sa.select(App).where(*filters).order_by(order_by),
             page=params.page,
             per_page=params.limit,
+            session=session,
         )
 
         app_ids = [str(app.id) for app in app_models.items]
         starred_app_ids = self.get_starred_app_ids(
-            db.session,
+            session,
             tenant_id=tenant_id,
             account_id=user_id,
             app_ids=app_ids,
@@ -253,7 +254,7 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: Session
     ) -> PaginatedResult | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
@@ -277,6 +278,7 @@ class AppService:
             .order_by(order_by),
             page=params.page,
             per_page=params.limit,
+            session=session,
         )
 
         for app in app_models.items:
@@ -318,7 +320,7 @@ class AppService:
 
         session.delete(existing_star)
 
-    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account) -> App:
+    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account, *, session: Session) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -397,15 +399,15 @@ class AppService:
         app.maintainer = account.id
         app.updated_by = account.id
 
-        db.session.add(app)
-        db.session.flush()
+        session.add(app)
+        session.flush()
 
         if default_model_config:
             app_model_config = AppModelConfig(
                 **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
             )
-            db.session.add(app_model_config)
-            db.session.flush()
+            session.add(app_model_config)
+            session.flush()
 
             app.app_model_config_id = app_model_config.id
         elif app_mode == AppMode.AGENT:
@@ -418,8 +420,8 @@ class AppService:
             # left unset so App.is_agent stays False (this is the new Agent App
             # type, not a legacy function-call/react agent).
             agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
-            db.session.add(agent_app_model_config)
-            db.session.flush()
+            session.add(agent_app_model_config)
+            session.flush()
 
             app.app_model_config_id = agent_app_model_config.id
 
@@ -431,7 +433,7 @@ class AppService:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
-            AgentRosterService(db.session).create_backing_agent_for_app(
+            AgentRosterService(session).create_backing_agent_for_app(
                 tenant_id=tenant_id,
                 account_id=account.id,
                 app_id=app.id,
@@ -443,7 +445,7 @@ class AppService:
                 icon_background=params.icon_background,
             )
 
-        db.session.commit()
+        session.commit()
 
         app_was_created.send(app, account=account)
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
@@ -542,10 +544,10 @@ class AppService:
         role: NotRequired[str | None]
 
     @staticmethod
-    def _get_backing_agent_for_update(app: App) -> Agent | None:
+    def _get_backing_agent_for_update(app: App, *, session: Session) -> Agent | None:
         if app.mode != AppMode.AGENT:
             return None
-        return db.session.scalar(
+        return session.scalar(
             select(Agent).where(
                 Agent.tenant_id == app.tenant_id,
                 Agent.app_id == app.id,
@@ -574,6 +576,7 @@ class AppService:
         icon_background: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
+        session: Session,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
@@ -584,7 +587,7 @@ class AppService:
         Role omission is intentional: ``role=None`` preserves the backing
         Agent's current role, while ``role=""`` explicitly clears it.
         """
-        agent = self._get_backing_agent_for_update(app)
+        agent = self._get_backing_agent_for_update(app, session=session)
         if agent is None:
             return
 
@@ -605,16 +608,16 @@ class AppService:
             agent.updated_at = updated_at
 
     @staticmethod
-    def _commit_app_identity_update(app: App) -> None:
+    def _commit_app_identity_update(app: App, *, session: Session) -> None:
         try:
-            db.session.commit()
+            session.commit()
         except IntegrityError as exc:
-            db.session.rollback()
+            session.rollback()
             if app.mode == AppMode.AGENT:
                 raise AgentNameConflictError() from exc
             raise
 
-    def update_app(self, app: App, args: ArgsDict) -> App:
+    def update_app(self, app: App, args: ArgsDict, *, session: Session) -> App:
         """
         Update app
         :param app: App instance
@@ -649,14 +652,15 @@ class AppService:
             icon_background=app.icon_background,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
-        self._commit_app_identity_update(app)
+        self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)
 
         return app
 
-    def update_app_name(self, app: App, name: str) -> App:
+    def update_app_name(self, app: App, name: str, *, session: Session) -> App:
         """
         Update app name
         :param app: App instance
@@ -672,15 +676,22 @@ class AppService:
             name=app.name,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
-        self._commit_app_identity_update(app)
+        self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)
 
         return app
 
     def update_app_icon(
-        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+        self,
+        app: App,
+        icon: str,
+        icon_background: str,
+        icon_type: IconType | str | None = None,
+        *,
+        session: Session,
     ) -> App:
         """
         Update app icon
@@ -704,14 +715,15 @@ class AppService:
             icon_background=app.icon_background,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
         return app
 
-    def update_app_site_status(self, app: App, enable_site: bool) -> App:
+    def update_app_site_status(self, app: App, enable_site: bool, *, session: Session) -> App:
         """
         Update app site status
         :param app: App instance
@@ -724,13 +736,13 @@ class AppService:
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
         return app
 
-    def update_app_api_status(self, app: App, enable_api: bool) -> App:
+    def update_app_api_status(self, app: App, enable_api: bool, *, session: Session) -> App:
         """
         Update app api status
         :param app: App instance
@@ -744,20 +756,20 @@ class AppService:
         app.enable_api = enable_api
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
         return app
 
-    def delete_app(self, app: App):
+    def delete_app(self, app: App, *, session: Session) -> None:
         """
         Delete app
         :param app: App instance
         """
         app_was_deleted.send(app)
 
-        backing_agent = self._get_backing_agent_for_update(app)
+        backing_agent = self._get_backing_agent_for_update(app, session=session)
         if backing_agent is not None:
             now = naive_utc_now()
             account_id = getattr(current_user, "id", None)
@@ -767,8 +779,8 @@ class AppService:
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
-        db.session.delete(app)
-        db.session.commit()
+        session.delete(app)
+        session.commit()
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:
@@ -780,7 +792,7 @@ class AppService:
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App):
+    def get_app_meta(self, app_model: App, *, session: Session):
         """
         Get app meta info
         :param app_model: app model
@@ -833,7 +845,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)
+                        provider: ApiToolProvider | None = session.get(ApiToolProvider, provider_id)
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
@@ -843,25 +855,25 @@ class AppService:
         return meta
 
     @staticmethod
-    def get_app_code_by_id(app_id: str) -> str:
+    def get_app_code_by_id(app_id: str, *, session: Session) -> str:
         """
         Get app code by app id
         :param app_id: app id
         :return: app code
         """
-        site = db.session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+        site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
 
     @staticmethod
-    def get_app_id_by_code(app_code: str) -> str:
+    def get_app_id_by_code(app_code: str, *, session: Session) -> str:
         """
         Get app id by app code
         :param app_code: app code
         :return: app id
         """
-        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
+        site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

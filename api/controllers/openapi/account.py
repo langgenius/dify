@@ -45,8 +45,8 @@ class AccountApi(Resource):
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
         account_id_str = str(auth_data.account_id) if auth_data.account_id else None
-        account = AccountService.get_account_by_id(db.session, account_id_str) if account_id_str else None
-        memberships = TenantService.get_account_memberships(db.session, account_id_str) if account_id_str else []
+        account = AccountService.get_account_by_id(db.session(), account_id_str) if account_id_str else None
+        memberships = TenantService.get_account_memberships(db.session(), account_id_str) if account_id_str else []
         default_ws_id = _pick_default_workspace(memberships)
 
         return AccountResponse(
@@ -63,7 +63,7 @@ class AccountSessionsSelfApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, RevokeResponse, description="Session revoked")
     def delete(self, *, auth_data: AuthData):
-        revoke_oauth_token(db.session, redis_client, str(auth_data.token_id))
+        revoke_oauth_token(db.session(), redis_client, str(auth_data.token_id))
         return RevokeResponse(status="revoked")
 
 
@@ -81,7 +81,7 @@ class AccountSessionsApi(Resource):
         page = query.page
         limit = query.limit
 
-        all_rows = list_active_sessions(db.session, ctx, now)
+        all_rows = list_active_sessions(db.session(), ctx, now)
 
         total = len(all_rows)
         sliced = all_rows[(page - 1) * limit : page * limit]
@@ -117,10 +117,10 @@ class AccountSessionByIdApi(Resource):
 
         # 404 (not 403) on cross-subject so the endpoint doesn't leak
         # token IDs that belong to other subjects.
-        if not token_belongs_to_subject(db.session, session_id, ctx):
+        if not token_belongs_to_subject(db.session(), session_id, ctx):
             raise NotFound("session not found")
 
-        revoke_oauth_token(db.session, redis_client, session_id)
+        revoke_oauth_token(db.session(), redis_client, session_id)
         return RevokeResponse(status="revoked")
 
 

@@ -760,11 +760,7 @@ class TestTenantService:
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
-                # Mock the db import in CreditPoolService to avoid database connection
-                with patch("services.credit_pool_service.db") as mock_credit_pool_db:
-                    mock_credit_pool_db.session.add = MagicMock()
-                    mock_credit_pool_db.session.commit = MagicMock()
-
+                with patch("services.credit_pool_service.CreditPoolService.create_default_pool"):
                     # Execute test
                     TenantService.create_owner_tenant_if_not_exist(
                         mock_account, session=mock_db_dependencies["db"].session
@@ -1052,6 +1048,7 @@ class TestTenantService:
             account_id="user-rbac",
             member_account_id="user-rbac",
             role_ids=["rbac-owner-id"],
+            session=mock_db_dependencies["db"].session,
         )
 
     def test_admin_can_update_admin_member_role(self):
@@ -1191,7 +1188,11 @@ class TestTenantService:
 
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(
-                mock_tenant, mock_operator, mock_member, "remove", session=MagicMock()
+                mock_tenant,
+                mock_operator,
+                mock_member,
+                "remove",
+                session=mock_db_dependencies["db"].session,
             )
 
     def test_rbac_member_can_remove_non_owner_member(self):
@@ -1265,7 +1266,9 @@ class TestTenantService:
             ),
             patch("services.account_service.RBACService.Roles", mock_rbac_roles),
         ):
-            owner_account_id = AccountService.get_rbac_workspace_owner_account_id("tenant-1", "acct-1")
+            owner_account_id = AccountService.get_rbac_workspace_owner_account_id(
+                "tenant-1", "acct-1", session=MagicMock()
+            )
 
         assert owner_account_id == "owner-account"
         call = mock_rbac_roles.members.call_args
@@ -2171,6 +2174,7 @@ class TestRegisterService:
                     account_id=mock_inviter.id,
                     member_account_id=mock_new_account.id,
                     role_ids=["rbac-role-id-123"],
+                    session=mock_db_dependencies["db"].session,
                 )
 
     def test_invite_new_member_rbac_enabled_existing_account(
@@ -2220,6 +2224,7 @@ class TestRegisterService:
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
+                    session=mock_db_dependencies["db"].session,
                 )
 
     def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
@@ -2268,6 +2273,7 @@ class TestRegisterService:
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
+                    session=mock_db_dependencies["db"].session,
                 )
                 mock_task_dependencies.delay.assert_not_called()
 

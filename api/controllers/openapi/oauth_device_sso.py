@@ -194,7 +194,7 @@ def _sso_complete_impl():
     if state.status is not DeviceFlowStatus.PENDING:
         return _device_error_redirect("sso_failed", user_code)
 
-    if AccountService.has_active_account_with_email(db.session, claims.email):
+    if AccountService.has_active_account_with_email(db.session(), claims.email):
         _emit_external_rejection_audit(
             state,
             _RejectedClaims(subject_email=claims.email, subject_issuer=claims.issuer),
@@ -274,7 +274,7 @@ def approve_external():
     if state.status is not DeviceFlowStatus.PENDING:
         raise Conflict("user_code_not_pending")
 
-    if AccountService.has_active_account_with_email(db.session, claims.subject_email):
+    if AccountService.has_active_account_with_email(db.session(), claims.subject_email):
         _emit_external_rejection_audit(state, claims, reason="email_belongs_to_dify_account")
         raise Forbidden("email_belongs_to_dify_account")
 
@@ -293,7 +293,7 @@ def approve_external():
 
     ttl_days = oauth_ttl_days(tenant_id=None)
     mint = mint_oauth_token(
-        db.session,
+        db.session(),
         redis_client,
         subject_email=claims.subject_email,
         subject_issuer=claims.subject_issuer,

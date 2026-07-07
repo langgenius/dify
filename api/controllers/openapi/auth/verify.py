@@ -82,7 +82,7 @@ def check_app_api_enabled(data: AuthData) -> None:
 def check_app_access(data: AuthData) -> None:
     if data.tenant is None:
         return
-    if not TenantService.account_belongs_to_tenant(db.session, data.account_id, data.tenant.id):
+    if not TenantService.account_belongs_to_tenant(db.session(), data.account_id, data.tenant.id):
         raise Forbidden("subject_no_app_access")
 
 
@@ -127,5 +127,5 @@ def _resolve_user_id(data: AuthData) -> str | None:
         return str(data.account_id) if data.account_id is not None else None
     if data.external_identity is None:
         return None
-    account = AccountService.get_account_by_email(db.session, data.external_identity.email)
+    account = AccountService.get_account_by_email(db.session(), data.external_identity.email)
     return str(account.id) if account is not None else None

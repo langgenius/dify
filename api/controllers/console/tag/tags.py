@@ -154,7 +154,7 @@ class TagListApi(Resource):
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
         _enforce_snippet_tag_rbac_if_needed(payload.type)
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session)
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session())
 
         return dump_response(TagResponse, {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}), 200
 
@@ -175,9 +175,9 @@ class TagUpdateDeleteApi(Resource):
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session())
 
-        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session)
+        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session())
 
         return (
             dump_response(
@@ -196,7 +196,7 @@ class TagUpdateDeleteApi(Resource):
         tag_id_str = str(tag_id)
 
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
-        TagService.delete_tag(tag_id_str, db.session)
+        TagService.delete_tag(tag_id_str, db.session())
 
         return "", 204
 
@@ -223,7 +223,7 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             target_id=payload.target_id,
             type=payload.type,
         ),
-        db.session,
+        db.session(),
     )
     return {"result": "success"}, 200
 
@@ -239,7 +239,7 @@ def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             target_id=payload.target_id,
             type=payload.type,
         ),
-        db.session,
+        db.session(),
     )
     return {"result": "success"}, 200
 
