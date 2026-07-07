@@ -137,12 +137,21 @@ def test_resolve_ci_base_uses_github_base_sha(monkeypatch: pytest.MonkeyPatch) -
     assert result == "abc123def456"
 
 
-def test_resolve_ci_base_falls_back_to_merge_base(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_ci_base_falls_back_to_origin_merge_target(monkeypatch: pytest.MonkeyPatch) -> None:
     module = load_guard_module()
     monkeypatch.delenv("GITHUB_BASE_SHA", raising=False)
-    # In a real repo, merge-base should return something
+    responses = {
+        ("merge-base", "main", "HEAD"): "",
+        ("merge-base", "origin/main", "HEAD"): "abc123def456\n",
+    }
+
+    def fake_git_output(*args: str, allow_missing: bool = False) -> str:
+        return responses.get(args, "")
+
+    monkeypatch.setattr(module, "git_output", fake_git_output)
+
     result = module.resolve_ci_base("main")
-    assert result  # should be a non-empty SHA or "main" as fallback
+    assert result == "abc123def456"
 
 
 def test_style_workflow_wires_no_new_getattr_guard() -> None:
@@ -434,6 +443,38 @@ def test_ci_mode_uses_merge_base_against_main_not_just_head_parent(tmp_path: Pat
 
     assert result.returncode == 1
     assert_has_actionable_violation(result.stderr, "pkg/introduced_earlier.py")
+
+
+def test_ci_mode_uses_origin_merge_target_when_local_branch_is_missing(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def stable() -> str:
+            return "ok"
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    git(tmp_path, "update-ref", "refs/remotes/origin/main", git(tmp_path, "rev-parse", "HEAD"))
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/other.py",
+        """
+        def meaning() -> int:
+            return 42
+        """,
+    )
+    commit_all(tmp_path, "feature change")
+
+    git(tmp_path, "checkout", "--detach", "HEAD")
+    git(tmp_path, "branch", "-D", "main")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_pre_commit_mode_reads_staged_content_only(tmp_path: Path) -> None:

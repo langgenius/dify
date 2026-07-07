@@ -91,11 +91,19 @@ def resolve_ci_base(merge_target: str) -> str:
     # In CI (GitHub Actions), use the stable pull request base SHA to avoid
     # failures when the PR merge commit is based on an older commit than the
     # shallow-fetched main branch tip.
-    ci_base_sha = os.environ.get("GITHUB_BASE_SHA", "")
+    ci_base_sha = os.environ.get("GITHUB_BASE_SHA", "").strip()
     if ci_base_sha:
         return ci_base_sha
-    merge_base = git_output("merge-base", merge_target, "HEAD", allow_missing=True).strip()
-    return merge_base or merge_target
+    for candidate in (merge_target, f"origin/{merge_target}"):
+        merge_base = git_output("merge-base", candidate, "HEAD", allow_missing=True).strip()
+        if merge_base:
+            return merge_base
+
+    remote_merge_target = f"origin/{merge_target}"
+    if git_output("rev-parse", "--verify", remote_merge_target, allow_missing=True).strip():
+        return remote_merge_target
+
+    return merge_target
 
 
 def collect_diff_text(args: argparse.Namespace) -> str:
