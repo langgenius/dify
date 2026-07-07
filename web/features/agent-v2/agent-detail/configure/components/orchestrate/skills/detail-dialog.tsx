@@ -184,7 +184,7 @@ function AgentFilePreviewContent({
   isError?: boolean
   isImage?: boolean
   isLoading?: boolean
-  onDownloadFile?: () => void
+  onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')

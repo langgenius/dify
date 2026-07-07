@@ -25,11 +25,49 @@ const mocks = vi.hoisted(() => ({
   workflowSandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
     url: 'https://example.com/workflow-sandbox-file',
   })),
+  sandboxFileUploadClientPost: vi.fn(async (_input: unknown) => ({
+    url: 'https://example.com/chart.png',
+  })),
+  workflowSandboxFileUploadClientPost: vi.fn(async (_input: unknown) => ({
+    url: 'https://example.com/workflow-chart.png',
+  })),
   downloadUrl: vi.fn(),
   toastSuccess: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    agent: {
+      byAgentId: {
+        sandbox: {
+          files: {
+            upload: {
+              post: mocks.sandboxFileUploadClientPost,
+            },
+          },
+        },
+      },
+    },
+    apps: {
+      byAppId: {
+        workflowRuns: {
+          byWorkflowRunId: {
+            agentNodes: {
+              byNodeId: {
+                sandbox: {
+                  files: {
+                    upload: {
+                      post: mocks.workflowSandboxFileUploadClientPost,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -144,15 +182,16 @@ describe('AgentWorkingDirectoryPanel', () => {
           { name: 'workspace/report.md', type: 'file' },
           { name: 'workspace/notes.md', type: 'file' },
           { name: 'workspace/chart.png', type: 'file' },
+          { name: 'workspace/model.bin', type: 'file' },
         ],
       }),
     }))
     mocks.sandboxFileReadQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
       queryKey: ['sandbox-file-read', input],
       queryFn: async () => ({
-        binary: input.query?.path?.endsWith('chart.png') ?? false,
+        binary: input.query?.path?.endsWith('model.bin') ?? false,
         path: input.query?.path ?? '',
-        text: input.query?.path?.endsWith('chart.png') ? null : `Content for ${input.query?.path}`,
+        text: input.query?.path?.endsWith('model.bin') ? null : `Content for ${input.query?.path}`,
         truncated: false,
       }),
     }))
@@ -201,7 +240,7 @@ describe('AgentWorkingDirectoryPanel', () => {
     mocks.sandboxFileUploadMutationFn.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
-    await user.click(await screen.findByText('chart.png'))
+    await user.click(await screen.findByText('model.bin'))
 
     expect(await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
@@ -209,7 +248,7 @@ describe('AgentWorkingDirectoryPanel', () => {
     const downloadingLink = await screen.findByRole('link', { name: /common\.operation\.downloading/i })
     expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
     const headerDownloadButton = screen.getByRole('button', {
-      name: /common\.operation\.download.*chart\.png/i,
+      name: /common\.operation\.download.*model\.bin/i,
     })
     expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
 
@@ -223,14 +262,38 @@ describe('AgentWorkingDirectoryPanel', () => {
         },
         body: {
           conversation_id: 'conversation-1',
-          path: '~/workspace/chart.png',
+          path: '~/workspace/model.bin',
         },
       })
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
         url: 'https://example.com/sandbox-file',
-        fileName: 'chart.png',
+        fileName: 'model.bin',
       })
       expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
     })
+  })
+
+  it('should preview sandbox images with the uploaded file url', async () => {
+    const user = userEvent.setup()
+    renderWorkingDirectoryPanel()
+
+    await user.click(await screen.findByText('chart.png'))
+
+    await waitFor(() => {
+      expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalled()
+    })
+    const image = await screen.findByAltText('chart.png')
+    expect(image).toHaveAttribute('src', 'https://example.com/chart.png')
+    expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        conversation_id: 'conversation-1',
+        path: '~/workspace/chart.png',
+      },
+    })
+    expect(screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported')).not.toBeInTheDocument()
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 })

@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
@@ -414,7 +414,7 @@ export function AgentWorkingDirectoryPanel({
       })
   const fileReadQuery = useQuery({
     ...fileReadQueryOptions,
-    enabled: open && !!selectedWorkingDirectoryFile,
+    enabled: open && !!selectedWorkingDirectoryFile && selectedWorkingDirectoryFile.icon !== 'image',
     queryFn: async (context): Promise<SandboxReadResponse> => {
       try {
         return await fileReadQueryOptions.queryFn(context)
@@ -437,9 +437,57 @@ export function AgentWorkingDirectoryPanel({
   const agentSandboxUploadMutation = useMutation(consoleQuery.agent.byAgentId.sandbox.files.upload.post.mutationOptions())
   const workflowSandboxUploadMutation = useMutation(consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post.mutationOptions())
   const { mutateAsync: uploadAgentSandboxFile } = agentSandboxUploadMutation
+  const isImagePreviewFile = selectedWorkingDirectoryFile?.icon === 'image'
+  const selectedWorkingDirectoryFilePath = selectedWorkingDirectoryFile?.id
   const { mutateAsync: uploadWorkflowSandboxFile } = workflowSandboxUploadMutation
   const isFileDownloadPending = agentSandboxUploadMutation.isPending || workflowSandboxUploadMutation.isPending
-  const isFileReadLoading = !!selectedWorkingDirectoryFile && fileReadQuery.isPending
+  const isFileReadLoading = !!selectedWorkingDirectoryFile && !isImagePreviewFile && fileReadQuery.isPending
+  const imagePreviewQuery = useQuery({
+    queryKey: [
+      'agent-v2',
+      'working-directory',
+      'image-preview',
+      source.type,
+      source.type === 'agent' ? source.agentId : source.appId,
+      source.type === 'agent' ? source.conversationId : workflowNodeRunId,
+      source.type === 'workflow-node' ? source.nodeId : undefined,
+      selectedWorkingDirectoryFilePath,
+    ],
+    queryFn: async () => {
+      if (!selectedWorkingDirectoryFilePath)
+        throw new Error('Missing selected working directory file')
+
+      if (source.type === 'agent') {
+        if (!source.conversationId)
+          throw new Error('Missing agent sandbox conversation ID')
+
+        return consoleClient.agent.byAgentId.sandbox.files.upload.post({
+          params: {
+            agent_id: source.agentId,
+          },
+          body: {
+            conversation_id: source.conversationId,
+            path: toSandboxApiPath(selectedWorkingDirectoryFilePath),
+          },
+        })
+      }
+
+      if (!source.appId || !workflowNodeRunId)
+        throw new Error('Missing workflow sandbox source')
+
+      return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post({
+        params: {
+          app_id: source.appId,
+          workflow_run_id: workflowNodeRunId,
+          node_id: source.nodeId,
+        },
+        body: {
+          path: toSandboxApiPath(selectedWorkingDirectoryFilePath),
+        },
+      })
+    },
+    enabled: open && !!selectedWorkingDirectoryFile && isImagePreviewFile && hasWorkingDirectorySource,
+  })
   const handleDownloadFile = useCallback(async (action: AgentSkillDetailDownloadAction) => {
     if (!selectedWorkingDirectoryFile || isFileDownloadPending)
       return
@@ -541,8 +589,12 @@ export function AgentWorkingDirectoryPanel({
             binary: fileReadQuery.data?.binary,
             content: fileReadQuery.data?.text ?? undefined,
             downloadActionLoadingTarget,
+            downloadUrl: imagePreviewQuery.data?.url,
             fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
+            isDownloadError: imagePreviewQuery.isError,
+            isDownloadLoading: !!isImagePreviewFile && imagePreviewQuery.isPending,
             isError: fileListQuery.isError || fileReadQuery.isError,
+            isImage: isImagePreviewFile,
             isLoading: isFileListLoading || isFileReadLoading,
           },
           onDownloadFile: selectedWorkingDirectoryFile ? handleDownloadFile : undefined,
