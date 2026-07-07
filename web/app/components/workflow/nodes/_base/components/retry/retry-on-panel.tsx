@@ -1,10 +1,11 @@
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
-import { Slider } from '@/app/components/base/ui/slider'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'
@@ -17,6 +18,8 @@ const RetryOnPanel = ({
   const { t } = useTranslation()
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
+  const maxRetriesLabel = t('nodes.common.retry.maxRetries', { ns: 'workflow' })
+  const retryIntervalLabel = t('nodes.common.retry.retryInterval', { ns: 'workflow' })
 
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
@@ -65,17 +68,19 @@ const RetryOnPanel = ({
         {
           retry_config?.retry_enabled && (
             <div className="px-4 pb-2">
-              <div className="mb-1 flex w-full items-center">
-                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{t('nodes.common.retry.maxRetries', { ns: 'workflow' })}</div>
+              <FieldsetRoot className="mb-1 flex w-full items-center">
+                <FieldsetLegend className="sr-only">{maxRetriesLabel}</FieldsetLegend>
+                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{maxRetriesLabel}</div>
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.max_retries || 3}
                   onValueChange={handleMaxRetriesChange}
                   min={1}
                   max={10}
-                  aria-label={t('nodes.common.retry.maxRetries', { ns: 'workflow' })}
+                  aria-label={maxRetriesLabel}
                 />
                 <Input
+                  aria-label={maxRetriesLabel}
                   type="number"
                   wrapperClassName="w-[100px]"
                   value={retry_config?.max_retries || 3}
@@ -86,18 +91,20 @@ const RetryOnPanel = ({
                   unit={t('nodes.common.retry.times', { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </div>
-              <div className="flex items-center">
-                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{t('nodes.common.retry.retryInterval', { ns: 'workflow' })}</div>
+              </FieldsetRoot>
+              <FieldsetRoot className="flex items-center">
+                <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
+                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{retryIntervalLabel}</div>
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.retry_interval || 1000}
                   onValueChange={handleRetryIntervalChange}
                   min={100}
                   max={5000}
-                  aria-label={t('nodes.common.retry.retryInterval', { ns: 'workflow' })}
+                  aria-label={retryIntervalLabel}
                 />
                 <Input
+                  aria-label={retryIntervalLabel}
                   type="number"
                   wrapperClassName="w-[100px]"
                   value={retry_config?.retry_interval || 1000}
@@ -108,7 +115,7 @@ const RetryOnPanel = ({
                   unit={t('nodes.common.retry.ms', { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </div>
+              </FieldsetRoot>
             </div>
           )
         }

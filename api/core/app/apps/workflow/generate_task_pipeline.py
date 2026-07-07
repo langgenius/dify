@@ -4,9 +4,6 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -34,6 +31,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -45,12 +43,16 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    HumanInputRequiredPauseReasonPayload,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowPauseStreamResponse,
@@ -61,6 +63,9 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -118,7 +123,11 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
-    def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    def process(
+        self,
+    ) -> Union[
+        WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]
+    ]:
         """
         Process generate task pipeline.
         :return:
@@ -129,56 +138,95 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> WorkflowAppBlockingResponse:
+    def _to_blocking_response(
+        self, generator: Generator[StreamResponse, None, None]
+    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
         """
         To blocking response.
         :return:
         """
+        human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
-            if isinstance(stream_response, ErrorStreamResponse):
-                raise stream_response.err
-            elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                response = WorkflowAppBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.workflow_run_id,
-                    data=WorkflowAppBlockingResponse.Data(
-                        id=stream_response.data.workflow_run_id,
-                        workflow_id=self._workflow.id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs or {},
-                        error=None,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=stream_response.data.created_at,
-                        finished_at=None,
-                    ),
-                )
+            match stream_response:
+                case ErrorStreamResponse():
+                    raise stream_response.err
+                case HumanInputRequiredResponse():
+                    human_input_responses.append(stream_response)
+                case WorkflowPauseStreamResponse():
+                    return WorkflowAppPausedBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.workflow_run_id,
+                        data=WorkflowAppPausedBlockingResponse.Data(
+                            id=stream_response.data.workflow_run_id,
+                            workflow_id=self._workflow.id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs or {},
+                            error=None,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=stream_response.data.created_at,
+                            finished_at=None,
+                            paused_nodes=stream_response.data.paused_nodes,
+                            reasons=stream_response.data.reasons,
+                        ),
+                    )
+                case WorkflowFinishStreamResponse():
+                    return WorkflowAppBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.id,
+                        data=WorkflowAppBlockingResponse.Data(
+                            id=stream_response.data.id,
+                            workflow_id=stream_response.data.workflow_id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs,
+                            error=stream_response.data.error,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=int(stream_response.data.created_at),
+                            finished_at=int(stream_response.data.finished_at)
+                            if stream_response.data.finished_at
+                            else None,
+                        ),
+                    )
+                case _:
+                    continue
 
-                return response
-            elif isinstance(stream_response, WorkflowFinishStreamResponse):
-                response = WorkflowAppBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.id,
-                    data=WorkflowAppBlockingResponse.Data(
-                        id=stream_response.data.id,
-                        workflow_id=stream_response.data.workflow_id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs,
-                        error=stream_response.data.error,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=int(stream_response.data.created_at),
-                        finished_at=int(stream_response.data.finished_at) if stream_response.data.finished_at else None,
-                    ),
-                )
-
-                return response
-            else:
-                continue
+        if human_input_responses:
+            return self._build_paused_blocking_response_from_human_input(human_input_responses)
 
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _build_paused_blocking_response_from_human_input(
+        self, human_input_responses: list[HumanInputRequiredResponse]
+    ) -> WorkflowAppPausedBlockingResponse:
+        runtime_state = self._resolve_graph_runtime_state()
+        paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
+        created_at = int(runtime_state.start_at)
+        reasons = [
+            HumanInputRequiredPauseReasonPayload.from_response_data(response.data).model_dump(mode="json")
+            for response in human_input_responses
+        ]
+
+        return WorkflowAppPausedBlockingResponse(
+            task_id=self._application_generate_entity.task_id,
+            workflow_run_id=human_input_responses[-1].workflow_run_id,
+            data=WorkflowAppPausedBlockingResponse.Data(
+                id=human_input_responses[-1].workflow_run_id,
+                workflow_id=self._workflow.id,
+                status=WorkflowExecutionStatus.PAUSED,
+                outputs={},
+                error=None,
+                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
+                created_at=created_at,
+                finished_at=None,
+                paused_nodes=paused_nodes,
+                reasons=reasons,
+            ),
+        )
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -525,6 +573,22 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
 
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle reasoning chunk events."""
+        # is_final with empty reasoning is still forwarded as the "thinking finished" signal
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
+        )
+
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
@@ -554,6 +618,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
@@ -685,6 +750,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         match invoke_from:
             case InvokeFrom.SERVICE_API:
                 created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.OPENAPI:
+                created_from = WorkflowAppLogCreatedFrom.OPENAPI
             case InvokeFrom.EXPLORE:
                 created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
             case InvokeFrom.WEB_APP:

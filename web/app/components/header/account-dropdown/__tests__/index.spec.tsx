@@ -1,16 +1,23 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
+
+type DeepPartial<T> = T extends Array<infer U>
+  ? Array<U>
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -33,12 +40,19 @@ vi.mock('@/app/components/base/theme-switcher', () => ({
   default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+const { mockSetTheme } = vi.hoisted(() => ({
+  mockSetTheme: vi.fn(),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
+vi.mock('next-themes', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    setTheme: mockSetTheme,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -79,15 +93,19 @@ const { mockConfig, mockEnv } = vi.hoisted(() => ({
     },
   },
 }))
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-  get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
-  get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
-  get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-  get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
-  IS_DEV: false,
-  IS_CE_EDITION: false,
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
+    get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
+    get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
+    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
+    get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
+    IS_DEV: false,
+    IS_CE_EDITION: false,
+  }
+})
 vi.mock('@/env', () => mockEnv)
 
 const baseAppContextValue: AppContextValue = {
@@ -129,6 +147,7 @@ const baseAppContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 }
 
 describe('AccountDropdown', () => {
@@ -136,20 +155,13 @@ describe('AccountDropdown', () => {
   const mockLogout = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
 
-  const renderWithRouter = (ui: React.ReactElement) => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+  const renderWithRouter = (
+    ui: React.ReactElement,
+    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
+  ) => {
+    return renderWithSystemFeatures(ui, {
+      systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
     })
-
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>,
-    )
   }
 
   beforeEach(() => {
@@ -159,10 +171,6 @@ describe('AccountDropdown', () => {
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
     vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
-      const fullState = { systemFeatures: { branding: { enabled: false } }, setSystemFeatures: vi.fn() }
-      return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
-    })
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
@@ -233,6 +241,29 @@ describe('AccountDropdown', () => {
       expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
     })
 
+    it('should open preferences from the account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.settings.preferences'))
+
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+    })
+
+    it('should show Appearance after Preferences in the main nav account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      const preferences = screen.getByText('common.settings.preferences')
+      const appearance = screen.getByText('common.account.appearanceLabel')
+
+      // Assert
+      expect(preferences.compareDocumentPosition(appearance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' })).toBeInTheDocument()
+    })
+
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
@@ -282,9 +313,17 @@ describe('AccountDropdown', () => {
       // Assert
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
-        expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
         expect(mockPush).toHaveBeenCalledWith('/signin')
       })
+    })
+
+    it('should use the shutdown icon for main nav logout', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }).querySelector('.i-ri-shut-down-line')).toBeInTheDocument()
     })
 
     it('should show About section when about button is clicked and can close it', () => {
@@ -316,14 +355,10 @@ describe('AccountDropdown', () => {
 
   describe('Branding and Environment', () => {
     it('should hide sections when branding is enabled', () => {
-      // Arrange
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector?: unknown) => {
-        const fullState = { systemFeatures: { branding: { enabled: true } }, setSystemFeatures: vi.fn() }
-        return typeof selector === 'function' ? (selector as (state: typeof fullState) => unknown)(fullState) : fullState
-      })
-
       // Act
-      renderWithRouter(<AppSelector />)
+      renderWithRouter(<AppSelector />, {
+        systemFeatures: { branding: { enabled: true } },
+      })
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
@@ -362,8 +397,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
@@ -383,8 +417,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
     })
   })
 })

@@ -1,14 +1,16 @@
 import type { AutoUpdateConfig } from '../types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
-import { defaultValue } from '../config'
 import AutoUpdateSetting from '../index'
 import NoDataPlaceholder from '../no-data-placeholder'
 import NoPluginSelected from '../no-plugin-selected'
@@ -52,6 +54,32 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: (defaultNs?: string) => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const ns = (options?.ns as string | undefined) ?? defaultNs
+      const params = { ...options }
+      delete params.ns
+      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+      return `${ns ? `${ns}.` : ''}${key}${suffix}`
+    },
+    i18n: {
+      language: 'en',
+      changeLanguage: vi.fn(),
+    },
+  }),
+  Trans: ({ i18nKey, components }: {
+    i18nKey: string
+    components?: Record<string, React.ReactElement>
+  }) => {
+    const setTimezone = components?.setTimezone
+    if (setTimezone)
+      return React.cloneElement(setTimezone, undefined, i18nKey)
+
+    return <span>{i18nKey}</span>
+  },
+}))
+
 // Mock plugins service
 const mockPluginsData: { plugins: PluginDetail[] } = { plugins: [] }
 vi.mock('@/service/use-plugins', () => ({
@@ -61,35 +89,48 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-// Mock portal component for ToolPicker and StrategyPicker
-let mockPortalOpen = false
-let forcePortalContentVisible = false // Allow tests to force content visibility
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
+// Mock popover component for ToolPicker and StrategyPicker
+let mockPopoverOpen = false
+let forcePopoverContentVisible = false // Allow tests to force content visibility
+let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({ children, open = false, onOpenChange }: {
     children: React.ReactNode
-    open: boolean
-    onOpenChange: (open: boolean) => void
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
   }) => {
-    mockPortalOpen = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
+    mockPopoverOpen = open
+    mockPopoverOnOpenChange = onOpenChange
+    return (
+      <div data-testid="popover" data-open={open}>{children}</div>
+    )
   },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children: React.ReactNode
-    onClick: (e: React.MouseEvent) => void
+  PopoverTrigger: ({ children, render, onClick, className }: {
+    children?: React.ReactNode
+    render?: React.ReactNode
+    onClick?: (e: React.MouseEvent) => void
     className?: string
   }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
+    <div
+      data-testid="popover-trigger"
+      onClick={(e) => {
+        onClick?.(e)
+        if (!onClick)
+          mockPopoverOnOpenChange?.(!mockPopoverOpen)
+      }}
+      className={className}
+    >
+      {render ?? children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children, className }: {
+  PopoverContent: ({ children, className, popupClassName }: {
     children: React.ReactNode
     className?: string
+    popupClassName?: string
   }) => {
-    // Allow forcing content visibility for testing option selection
-    if (!mockPortalOpen && !forcePortalContentVisible)
+    if (!mockPopoverOpen && !forcePopoverContentVisible)
       return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
+    return <div data-testid="popover-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
   },
 }))
 
@@ -162,23 +203,6 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
         placeholder={placeholder}
       />
     </div>
-  ),
-}))
-
-// Mock Checkbox component
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck, className }: {
-    checked?: boolean
-    onCheck: () => void
-    className?: string
-  }) => (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onCheck}
-      className={className}
-      data-testid="checkbox"
-    />
   ),
 }))
 
@@ -294,21 +318,22 @@ const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): 
 // Helper Functions
 // ================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-})
+const createQueryClient = () => createAccountProfileQueryClient({ timezone: mockTimezone })
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createQueryClient()
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper })
+}
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
+  return rtlRender(ui, { wrapper: Wrapper })
 }
 
 // ================================
@@ -318,8 +343,9 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('auto-update-setting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
-    forcePortalContentVisible = false
+    mockPopoverOpen = false
+    mockPopoverOnOpenChange = undefined
+    forcePopoverContentVisible = false
     mockPluginsData.plugins = []
   })
 
@@ -350,39 +376,6 @@ describe('auto-update-setting', () => {
       it('should contain exactly 3 modes', () => {
         const values = Object.values(AUTO_UPDATE_MODE)
         expect(values).toHaveLength(3)
-      })
-    })
-  })
-
-  describe('config.ts', () => {
-    describe('defaultValue', () => {
-      it('should have disabled strategy by default', () => {
-        expect(defaultValue.strategy_setting).toBe(AUTO_UPDATE_STRATEGY.disabled)
-      })
-
-      it('should have upgrade_time_of_day as 0', () => {
-        expect(defaultValue.upgrade_time_of_day).toBe(0)
-      })
-
-      it('should have update_all mode by default', () => {
-        expect(defaultValue.upgrade_mode).toBe(AUTO_UPDATE_MODE.update_all)
-      })
-
-      it('should have empty exclude_plugins array', () => {
-        expect(defaultValue.exclude_plugins).toEqual([])
-      })
-
-      it('should have empty include_plugins array', () => {
-        expect(defaultValue.include_plugins).toEqual([])
-      })
-
-      it('should be a complete AutoUpdateConfig object', () => {
-        const keys = Object.keys(defaultValue)
-        expect(keys).toContain('strategy_setting')
-        expect(keys).toContain('upgrade_time_of_day')
-        expect(keys).toContain('upgrade_mode')
-        expect(keys).toContain('exclude_plugins')
-        expect(keys).toContain('include_plugins')
       })
     })
   })
@@ -642,8 +635,7 @@ describe('auto-update-setting', () => {
 
         // Assert - all 14 icons are displayed
         expect(screen.getAllByTestId('plugin-icon')).toHaveLength(14)
-        // Note: Component shows "+0" when exactly at limit due to < vs <= comparison
-        // This is the actual behavior (isShowAll = plugins.length < MAX_DISPLAY_COUNT)
+        expect(screen.queryByText('+0')).not.toBeInTheDocument()
       })
 
       it('should handle MAX_DISPLAY_COUNT + 1 plugins showing overflow', () => {
@@ -724,7 +716,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={false} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).not.toBeChecked()
+        expect(screen.getByRole('checkbox')).not.toBeChecked()
       })
 
       it('should render checkbox checked when isChecked is true', () => {
@@ -732,7 +724,7 @@ describe('auto-update-setting', () => {
         render(<ToolItem {...defaultProps} isChecked={true} />)
 
         // Assert
-        expect(screen.getByTestId('checkbox')).toBeChecked()
+        expect(screen.getByRole('checkbox')).toBeChecked()
       })
     })
 
@@ -743,7 +735,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolItem {...defaultProps} onCheckChange={onCheckChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onCheckChange).toHaveBeenCalledTimes(1)
@@ -759,165 +751,62 @@ describe('auto-update-setting', () => {
   })
 
   describe('StrategyPicker (strategy-picker.tsx)', () => {
-    const defaultProps = {
-      value: AUTO_UPDATE_STRATEGY.disabled,
-      onChange: vi.fn(),
+    const i18nKeyByStrategy: Record<AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest'> = {
+      [AUTO_UPDATE_STRATEGY.disabled]: 'disabled',
+      [AUTO_UPDATE_STRATEGY.fixOnly]: 'fixOnly',
+      [AUTO_UPDATE_STRATEGY.latest]: 'latest',
+    }
+
+    const triggerName = (strategy: AUTO_UPDATE_STRATEGY) =>
+      new RegExp(`plugin\\.autoUpdate\\.strategy\\.${i18nKeyByStrategy[strategy]}\\.name`, 'i')
+
+    const findOption = (key: 'disabled' | 'fixOnly' | 'latest') => {
+      const options = screen.getAllByRole('button')
+      const option = options.find(item =>
+        item.textContent?.includes(`plugin.autoUpdate.strategy.${key}.name`),
+      )
+      if (!option)
+        throw new Error(`Strategy option "${key}" not found`)
+      return option
     }
 
     describe('Rendering', () => {
-      it('should render trigger button with current strategy label', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} value={AUTO_UPDATE_STRATEGY.disabled} />)
+      it('should render the segmented control with all strategies', () => {
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        // Assert
-        expect(screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.disabled\.name/i })).toBeInTheDocument()
-      })
-
-      it('should not render dropdown content when closed', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
-
-        // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
-      })
-
-      it('should render all strategy options when open', () => {
-        // Arrange
-        mockPortalOpen = true
-
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
-
-        // Wait for portal to open
-        if (mockPortalOpen) {
-          // Assert all options visible (use getAllByText for strategy name as it appears in both trigger and dropdown)
-          expect(screen.getAllByText('plugin.autoUpdate.strategy.disabled.name').length).toBeGreaterThanOrEqual(1)
-          expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-          expect(screen.getByText('plugin.autoUpdate.strategy.latest.name')).toBeInTheDocument()
-        }
+        expect(screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })).toBeInTheDocument()
+        const options = screen.getAllByRole('button')
+        expect(options).toHaveLength(3)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name'))).toBe(true)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name'))).toBe(true)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.latest.name'))).toBe(true)
       })
     })
 
     describe('User Interactions', () => {
-      it('should toggle dropdown when trigger is clicked', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
-
-        // Assert - initially closed
-        expect(mockPortalOpen).toBe(false)
-
-        // Act - click trigger
-        fireEvent.click(screen.getByTestId('portal-trigger'))
-
-        // Assert - portal trigger element should still be in document
-        expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      })
-
-      it('should call onChange with fixOnly when Bug Fixes Only option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
+      it.each<[AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest', AUTO_UPDATE_STRATEGY]>([
+        [AUTO_UPDATE_STRATEGY.disabled, 'fixOnly', AUTO_UPDATE_STRATEGY.fixOnly],
+        [AUTO_UPDATE_STRATEGY.disabled, 'latest', AUTO_UPDATE_STRATEGY.latest],
+        [AUTO_UPDATE_STRATEGY.fixOnly, 'disabled', AUTO_UPDATE_STRATEGY.disabled],
+      ])('should call onChange with %s -> %s when option is selected', async (initial, optionKey, expected) => {
+        const user = userEvent.setup()
         const onChange = vi.fn()
+        render(<StrategyPicker value={initial} onChange={onChange} />)
 
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />)
+        await user.click(findOption(optionKey))
 
-        // Find and click the "Bug Fixes Only" option
-        const fixOnlyOption = screen.getByText('plugin.autoUpdate.strategy.fixOnly.name').closest('div[class*="cursor-pointer"]')
-        expect(fixOnlyOption).toBeInTheDocument()
-        fireEvent.click(fixOnlyOption!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.fixOnly)
+        expect(onChange).toHaveBeenCalledWith(expected)
       })
 
-      it('should call onChange with latest when Latest Version option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />)
-
-        // Find and click the "Latest Version" option
-        const latestOption = screen.getByText('plugin.autoUpdate.strategy.latest.name').closest('div[class*="cursor-pointer"]')
-        expect(latestOption).toBeInTheDocument()
-        fireEvent.click(latestOption!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.latest)
-      })
-
-      it('should call onChange with disabled when Disabled option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={onChange} />)
-
-        // Find and click the "Disabled" option - need to find the one in the dropdown, not the button
-        const disabledOptions = screen.getAllByText('plugin.autoUpdate.strategy.disabled.name')
-        // The second one should be in the dropdown
-        const dropdownOption = disabledOptions.find(el => el.closest('div[class*="cursor-pointer"]'))
-        expect(dropdownOption).toBeInTheDocument()
-        fireEvent.click(dropdownOption!.closest('div[class*="cursor-pointer"]')!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.disabled)
-      })
-
-      it('should stop event propagation when option is clicked', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-        const parentClickHandler = vi.fn()
-
-        // Act
-        render(
-          <div onClick={parentClickHandler}>
-            <StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />
-          </div>,
-        )
-
-        // Click an option
-        const fixOnlyOption = screen.getByText('plugin.autoUpdate.strategy.fixOnly.name').closest('div[class*="cursor-pointer"]')
-        fireEvent.click(fixOnlyOption!)
-
-        // Assert - onChange is called but parent click handler should not propagate
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.fixOnly)
-      })
-
-      it('should render check icon for currently selected option', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-
-        // Act - render with fixOnly selected
+      it('should mark only the currently selected option with aria-pressed', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
 
-        // Assert - RiCheckLine should be rendered (check icon)
-        // Find all "Bug Fixes Only" texts and get the one in the dropdown (has cursor-pointer parent)
-        const allFixOnlyTexts = screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')
-        const dropdownOption = allFixOnlyTexts.find(el => el.closest('div[class*="cursor-pointer"]'))
-        const optionContainer = dropdownOption?.closest('div[class*="cursor-pointer"]')
-        expect(optionContainer).toBeInTheDocument()
-        // The check icon SVG should exist within the option
-        expect(optionContainer?.querySelector('svg')).toBeInTheDocument()
-      })
+        const options = screen.getAllByRole('button')
+        const checked = options.filter(o => o.getAttribute('aria-pressed') === 'true')
 
-      it('should not render check icon for non-selected options', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-
-        // Act - render with disabled selected
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
-
-        // Assert - check the Latest Version option should not have check icon
-        const latestOption = screen.getByText('plugin.autoUpdate.strategy.latest.name').closest('div[class*="cursor-pointer"]')
-        // The svg should only be in selected option, not in non-selected
-        const checkIconContainer = latestOption?.querySelector('div.mr-1')
-        // Non-selected option should have empty check icon container
-        expect(checkIconContainer?.querySelector('svg')).toBeNull()
+        expect(checked).toHaveLength(1)
+        expect(checked[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
       })
     })
   })
@@ -945,12 +834,12 @@ describe('auto-update-setting', () => {
         render(<ToolPicker {...defaultProps} isShow={false} />)
 
         // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
       })
 
       it('should render search box and tabs when isShow is true', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         render(<ToolPicker {...defaultProps} isShow={true} />)
@@ -961,7 +850,7 @@ describe('auto-update-setting', () => {
 
       it('should show NoDataPlaceholder when no plugins and no search query', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = []
 
         // Act
@@ -1003,7 +892,7 @@ describe('auto-update-setting', () => {
 
       it('should filter out non-marketplace plugins', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -1014,7 +903,7 @@ describe('auto-update-setting', () => {
 
       it('should filter by search query', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -1035,7 +924,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolPicker {...defaultProps} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('popover-trigger'))
 
         // Assert
         expect(onShowChange).toHaveBeenCalledWith(true)
@@ -1043,7 +932,7 @@ describe('auto-update-setting', () => {
 
       it('should call onChange when plugin is selected', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -1055,7 +944,7 @@ describe('auto-update-setting', () => {
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} onChange={onChange} />)
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(['test-plugin'])
@@ -1063,7 +952,7 @@ describe('auto-update-setting', () => {
 
       it('should unselect plugin when already selected', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -1076,7 +965,7 @@ describe('auto-update-setting', () => {
         renderWithQueryClient(
           <ToolPicker {...defaultProps} isShow={true} value={['test-plugin']} onChange={onChange} />,
         )
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1087,7 +976,7 @@ describe('auto-update-setting', () => {
       it('handleCheckChange should be memoized with correct dependencies', () => {
         // Arrange
         const onChange = vi.fn()
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'plugin-1',
@@ -1101,7 +990,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to select
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith(['plugin-1'])
 
         // Rerender with new value
@@ -1113,7 +1002,7 @@ describe('auto-update-setting', () => {
         )
 
         // Click to unselect
-        fireEvent.click(screen.getByTestId('checkbox'))
+        fireEvent.click(screen.getByRole('checkbox'))
         expect(onChange).toHaveBeenCalledWith([])
       })
     })
@@ -1150,8 +1039,8 @@ describe('auto-update-setting', () => {
         render(<PluginsPicker {...defaultProps} value={['plugin-1', 'plugin-2']} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.operation.clearAll')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' })).toBeInTheDocument()
       })
 
       it('should render select button', () => {
@@ -1173,7 +1062,7 @@ describe('auto-update-setting', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1190,7 +1079,7 @@ describe('auto-update-setting', () => {
             onChange={onChange}
           />,
         )
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1236,7 +1125,9 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} />)
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.fixOnly\.name/i }),
+        ).toBeInTheDocument()
       })
 
       it('should show time picker when strategy is not disabled', () => {
@@ -1342,7 +1233,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
       })
 
       it('should show exclude_plugins when mode is exclude', () => {
@@ -1358,21 +1249,28 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":3}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":3,"num":3}')).toBeInTheDocument()
       })
     })
 
     describe('User Interactions', () => {
-      it('should call onChange with updated strategy when strategy changes', () => {
+      it('should call onChange with updated strategy when strategy changes', async () => {
         // Arrange
+        const user = userEvent.setup()
         const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig()
+        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
 
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
-        // Assert - component renders with strategy picker
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        await user.click(
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.latest\.name/i }),
+        )
+
+        // Assert
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({ strategy_setting: AUTO_UPDATE_STRATEGY.latest }),
+        )
       })
 
       it('should call onChange with updated time when time changes', () => {
@@ -1384,10 +1282,10 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click time picker trigger
-        fireEvent.click(screen.getByTestId('time-picker').querySelector('[data-testid="time-input"]')!.parentElement!)
+        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
 
         // Set time
-        fireEvent.click(screen.getByTestId('time-picker-set'))
+        fireEvent.click(screen.getByRole('button', { name: 'Set 10:30' }))
 
         // Assert
         expect(onChange).toHaveBeenCalled()
@@ -1402,10 +1300,10 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click time picker trigger
-        fireEvent.click(screen.getByTestId('time-picker').querySelector('[data-testid="time-input"]')!.parentElement!)
+        fireEvent.click(screen.getByRole('button', { name: /GMT-5/ }))
 
         // Clear time
-        fireEvent.click(screen.getByTestId('time-picker-clear'))
+        fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
 
         // Assert
         expect(onChange).toHaveBeenCalled()
@@ -1424,7 +1322,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -1445,7 +1343,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -1459,9 +1357,10 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
+        fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
-        // Assert - timezone Trans component is rendered
-        expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+        // Assert
+        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
       })
     })
 
@@ -1493,7 +1392,7 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Trigger a change (clear plugins)
-        fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
         // Assert - other values should be preserved
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
@@ -1547,7 +1446,7 @@ describe('auto-update-setting', () => {
         const { rerender } = render(<AutoUpdateSetting {...defaultProps} payload={partialPayload} />)
 
         // Assert - partial mode shows include_plugins count
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":2}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
 
         // Act - change to exclude mode
         const excludePayload = createMockAutoUpdateConfig({
@@ -1559,7 +1458,7 @@ describe('auto-update-setting', () => {
         rerender(<AutoUpdateSetting {...defaultProps} payload={excludePayload} />)
 
         // Assert - exclude mode shows exclude_plugins count
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":1}')).toBeInTheDocument()
+        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
       })
     })
 
@@ -1634,10 +1533,10 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
-        // Assert - OptionCard component will be rendered for each mode
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.all')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.exclude')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.upgradeMode.partial')).toBeInTheDocument()
+        // Assert
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.all' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.exclude' })).toHaveAttribute('aria-pressed', 'false')
+        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.partial' })).toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should call onChange when upgrade mode is changed', () => {
@@ -1651,7 +1550,7 @@ describe('auto-update-setting', () => {
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
-        // Click on partial mode - find the option card for partial
+        // Click on partial mode
         const partialOption = screen.getByText('plugin.autoUpdate.upgradeMode.partial')
         fireEvent.click(partialOption)
 
@@ -1708,7 +1607,7 @@ describe('auto-update-setting', () => {
       render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
       // Assert - partial mode shows include_plugins
-      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"num":1}')).toBeInTheDocument()
+      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":1,"num":1}')).toBeInTheDocument()
     })
   })
 })

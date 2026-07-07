@@ -47,7 +47,7 @@ const Node: FC<NodeProps<LoopNodeType>> = ({
         )
       }
       {
-        data._children!.length === 1 && (
+        data._children?.length === 1 && (
           <AddBlock
             loopNodeId={id}
             loopNodeData={data}

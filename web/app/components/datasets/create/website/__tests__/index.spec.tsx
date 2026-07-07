@@ -5,7 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Website from '../index'
 
-const mockSetShowAccountSettingModal = vi.fn()
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -246,15 +255,14 @@ describe('Website', () => {
   })
 
   describe('NoData Config', () => {
-    it('should call setShowAccountSettingModal when NoData onConfig is triggered', () => {
+    it('should navigate to data source settings when NoData onConfig is triggered', () => {
       renderWebsite({ authedDataSourceList: [] })
 
       const configButton = screen.getByTestId('no-data-config-button')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 

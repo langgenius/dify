@@ -1,10 +1,12 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType, ProviderModel
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType, ProviderModel
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from pydantic import BaseModel, ConfigDict
 
 
 class ModelStatus(StrEnum):
@@ -51,6 +53,7 @@ class ProviderModelWithStatusEntity(ProviderModel):
     Model class for model response.
     """
 
+    model_properties: dict[ModelPropertyKey, Any]
     status: ModelStatus
     load_balancing_enabled: bool = False
     has_invalid_load_balancing_configs: bool = False

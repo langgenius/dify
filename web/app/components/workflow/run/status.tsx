@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
 import { useWorkflowPausedDetails } from '@/service/use-log'
@@ -112,43 +112,43 @@ const StatusPanel: FC<ResultProps> = ({
           >
             {status === 'running' && (
               <>
-                <Indicator color="blue" />
+                <StatusDot status="normal" />
                 <span>{isListening ? 'Listening' : 'Running'}</span>
               </>
             )}
             {status === 'succeeded' && (
               <>
-                <Indicator color="green" />
+                <StatusDot status="success" />
                 <span>SUCCESS</span>
               </>
             )}
             {status === 'partial-succeeded' && (
               <>
-                <Indicator color="green" />
+                <StatusDot status="success" />
                 <span>PARTIAL SUCCESS</span>
               </>
             )}
             {status === 'exception' && (
               <>
-                <Indicator color="yellow" />
+                <StatusDot status="warning" />
                 <span>EXCEPTION</span>
               </>
             )}
             {status === 'failed' && (
               <>
-                <Indicator color="red" />
+                <StatusDot status="error" />
                 <span>FAIL</span>
               </>
             )}
             {status === 'stopped' && (
               <>
-                <Indicator color="yellow" />
+                <StatusDot status="warning" />
                 <span>STOP</span>
               </>
             )}
             {status === 'paused' && (
               <>
-                <Indicator color="yellow" />
+                <StatusDot status="warning" />
                 <span>PENDING</span>
               </>
             )}
@@ -212,6 +212,7 @@ const StatusPanel: FC<ResultProps> = ({
               <a
                 href={docLink('/use-dify/debug/error-type')}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-text-accent"
               >
                 {t('common.learnMore', { ns: 'workflow' })}
@@ -244,6 +245,7 @@ const StatusPanel: FC<ResultProps> = ({
                     key={url}
                     href={url}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="system-xs-medium text-text-accent"
                   >
                     {url}

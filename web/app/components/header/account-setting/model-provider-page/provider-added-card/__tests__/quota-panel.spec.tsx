@@ -1,15 +1,17 @@
+import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import QuotaPanel from '../quota-panel'
 
 let mockWorkspaceData: {
   trial_credits: number
   trial_credits_used: number
-  next_credit_reset_date: string
+  next_credit_reset_date: number
 } | undefined = {
   trial_credits: 100,
   trial_credits_used: 30,
-  next_credit_reset_date: '2024-12-31',
+  next_credit_reset_date: 1735603200,
 }
 let mockWorkspaceIsPending = false
 let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
@@ -30,22 +32,35 @@ vi.mock('@/app/components/base/icons/src/public/llm', () => {
   }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useCurrentWorkspace: () => ({
-    data: mockWorkspaceData,
-    isPending: mockWorkspaceIsPending,
-  }),
+vi.mock('../use-trial-credits', () => ({
+  useTrialCredits: () => {
+    const totalCredits = mockWorkspaceData?.trial_credits ?? 0
+    const credits = Math.max(totalCredits - (mockWorkspaceData?.trial_credits_used ?? 0), 0)
+    return {
+      credits,
+      totalCredits,
+      isExhausted: credits <= 0,
+      isLoading: mockWorkspaceIsPending && !mockWorkspaceData,
+      nextCreditResetDate: mockWorkspaceData?.next_credit_reset_date,
+    }
+  },
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: mockTrialModels ? { trial_models: mockTrialModels } : undefined,
-  }),
-}))
+const renderQuotaPanel = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  trialModels: mockTrialModels ?? [],
+})
 
 vi.mock('../../hooks', () => ({
   useMarketplaceAllPlugins: () => ({
     plugins: mockPlugins,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    canUpdatePlugin: true,
+    currentDifyVersion: '1.0.0',
   }),
 }))
 
@@ -78,7 +93,7 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = {
       trial_credits: 100,
       trial_credits_used: 30,
-      next_credit_reset_date: '2024-12-31',
+      next_credit_reset_date: 1735603200,
     }
     mockWorkspaceIsPending = false
     mockTrialModels = ['langgenius/openai/openai']
@@ -89,12 +104,12 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = undefined
     mockWorkspaceIsPending = true
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('should show remaining credits and reset date', () => {
-    render(
+    renderQuotaPanel(
       <QuotaPanel
         providers={mockProviders}
       />,
@@ -108,7 +123,7 @@ describe('QuotaPanel', () => {
   it('should keep quota content during background refetch when cached workspace exists', () => {
     mockWorkspaceIsPending = true
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByText('70')).toBeInTheDocument()
@@ -118,17 +133,17 @@ describe('QuotaPanel', () => {
     mockWorkspaceData = {
       trial_credits: 10,
       trial_credits_used: 999,
-      next_credit_reset_date: '',
+      next_credit_reset_date: 0,
     }
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByText(/modelProvider\.card\.quotaExhausted/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
   it('should open install modal when clicking an unsupported trial provider', () => {
-    render(<QuotaPanel providers={[]} />)
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
 
@@ -136,7 +151,7 @@ describe('QuotaPanel', () => {
   })
 
   it('should close install modal when provider becomes installed', async () => {
-    const { rerender } = render(<QuotaPanel providers={[]} />)
+    const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
     fireEvent.click(screen.getByText('openai'))
     expect(screen.getByText('install modal')).toBeInTheDocument()
@@ -151,13 +166,13 @@ describe('QuotaPanel', () => {
   it('should tolerate missing trial model configuration', () => {
     mockTrialModels = undefined
 
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
   })
 
   it('should render installed custom providers without opening the install modal', () => {
-    render(<QuotaPanel providers={mockProviders} />)
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
 
@@ -167,7 +182,7 @@ describe('QuotaPanel', () => {
   })
 
   it('should show the supported-model tooltip for installed non-custom providers', () => {
-    render(
+    renderQuotaPanel(
       <QuotaPanel providers={[
         {
           provider: 'langgenius/openai/openai',

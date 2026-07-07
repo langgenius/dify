@@ -6,7 +6,7 @@ import type {
 } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { BlockClassificationEnum, BlockDefaultValue, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
@@ -27,6 +27,7 @@ import type {
 
 export enum BlockEnum {
   Start = 'start',
+  StartPlaceholder = 'start-placeholder',
   End = 'end',
   Answer = 'answer',
   LLM = 'llm',
@@ -46,6 +47,7 @@ export enum BlockEnum {
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
   Agent = 'agent',
+  AgentV2 = 'agent-v2',
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
@@ -61,6 +63,7 @@ export enum BlockEnum {
 export enum ControlMode {
   Pointer = 'pointer',
   Hand = 'hand',
+  Comment = 'comment',
 }
 export enum ErrorHandleMode {
   Terminated = 'terminated',
@@ -92,6 +95,7 @@ export type CommonNodeType<T = {}> = {
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
   _isTempNode?: boolean
+  _openInlineAgentPanel?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -213,7 +217,7 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string | number
+  default?: string | number | boolean
   required: boolean
   hint?: string
   options?: string[]
@@ -342,7 +346,7 @@ export type NodeDefault<T = {}> = {
   }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, defaultValue?: BlockDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -376,7 +380,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    pluginDefaultValue?: PluginDefaultValue
+    pluginDefaultValue?: BlockDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
@@ -497,7 +501,7 @@ export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-export const TRIGGER_NODE_TYPES = [
+const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,

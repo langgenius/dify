@@ -133,6 +133,7 @@
 
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
+    const routeSegment = (config.routeSegment || "chatbot").replace(/^\/+|\/+$/g, "") || "chatbot";
     const targetOrigin = new URL(baseUrl).origin;
 
     // Pass sendOnEnter config as URL parameter
@@ -141,7 +142,7 @@
     }
 
     // pre-check the length of the URL
-    const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
+    const iframeUrl = `${baseUrl}/${routeSegment}/${config.token}?${params}`;
     // 1) CREATE the iframe immediately, so it can load in the background:
     const preloadedIframe = createIframe();
     // 2) HIDE it by default:
@@ -312,9 +313,11 @@
         }
         targetIframe.style.display =
           targetIframe.style.display === "none" ? "block" : "none";
-        targetIframe.style.display === "none"
-          ? setSvgIcon("open")
-          : setSvgIcon("close");
+        if (targetIframe.style.display === "none") {
+          setSvgIcon("open")
+        } else {
+          setSvgIcon("close")
+        }
 
         if (targetIframe.style.display === "none") {
           document.removeEventListener("keydown", handleEscKey);

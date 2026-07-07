@@ -1,4 +1,5 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightSLine,
@@ -8,7 +9,6 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { Button } from '@/app/components/base/ui/button'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -57,15 +57,15 @@ const AgentLogItem = ({
     <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default">
       <div
         className={cn(
-          'flex cursor-pointer items-center pt-2 pr-3 pb-2 pl-1.5',
+          'flex cursor-pointer items-center py-2 pr-3 pl-1.5',
           expanded && 'pb-1',
         )}
         onClick={() => setExpanded(!expanded)}
       >
         {
           expanded
-            ? <RiArrowRightSLine className="h-4 w-4 shrink-0 rotate-90 text-text-quaternary" />
-            : <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-quaternary" />
+            ? <RiArrowRightSLine className="size-4 shrink-0 rotate-90 text-text-quaternary" />
+            : <RiArrowRightSLine className="size-4 shrink-0 text-text-quaternary" />
         }
         <BlockIcon
           className="mr-1.5 shrink-0"
@@ -99,11 +99,11 @@ const AgentLogItem = ({
                   onClick={() => onShowAgentOrToolLog(item)}
                 >
                   <div className="flex items-center">
-                    <RiListView className="mr-1 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+                    <RiListView className="mr-1 size-4 shrink-0 text-components-button-tertiary-text" />
                     {`${children.length} Action Logs`}
                   </div>
                   <div className="flex">
-                    <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+                    <RiArrowRightSLine className="size-4 shrink-0 text-components-button-tertiary-text" />
                   </div>
                 </Button>
               )

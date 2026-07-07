@@ -42,7 +42,7 @@ describe('external-data-tool-modal-utils', () => {
   it('should build localized providers and default configs for code-based tools', () => {
     const providers = buildProviders({
       codeBasedExtensionList,
-      locale: LanguagesSupported[1],
+      locale: LanguagesSupported[1]!,
       t,
     })
 

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from controllers.web.error import NotFoundError
+from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
 from models.enums import CreatorUserRole
 

@@ -1,10 +1,16 @@
 import type { ConversationItem } from '@/models/share'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiEditBoxLine,
-  RiExpandRightLine,
-  RiLayoutLeft2Line,
-} from '@remixicon/react'
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useState,
@@ -15,26 +21,16 @@ import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { Button } from '@/app/components/base/ui/button'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   isPanel?: boolean
   panelVisible?: boolean
-}
+}>
 
-const Sidebar = ({ isPanel, panelVisible }: Props) => {
+const Sidebar = ({ isPanel }: Props) => {
   const { t } = useTranslation()
   const {
     isInstalledApp,
@@ -55,7 +51,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 
@@ -111,18 +107,18 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
-            <RiExpandRightLine className="h-[18px] w-[18px]" />
+            <span aria-hidden className="i-ri-expand-right-line h-[18px] w-[18px]" />
           </ActionButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
           <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
-            <RiLayoutLeft2Line className="h-[18px] w-[18px]" />
+            <span aria-hidden className="i-ri-layout-left-2-line h-[18px] w-[18px]" />
           </ActionButton>
         )}
       </div>
       <div className="shrink-0 px-3 py-4">
         <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
-          <RiEditBoxLine className="mr-1 h-4 w-4" />
+          <span aria-hidden className="mr-1 i-ri-edit-box-line size-4" />
           {t('chat.newChat', { ns: 'share' })}
         </Button>
       </div>
@@ -155,7 +151,6 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
           hideLogout={isInstalledApp}
           placement="top-start"
           data={appData?.site}
-          forceClose={isPanel && !panelVisible}
         />
         {/* powered by */}
         <div className="shrink-0">

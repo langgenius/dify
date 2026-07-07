@@ -1,11 +1,8 @@
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   icon: any
   title: any
   tooltip?: any
@@ -16,7 +13,7 @@ type Props = {
   onChange?: (state: any) => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
-}
+}>
 
 const FeatureCard = ({
   icon,
@@ -41,11 +38,12 @@ const FeatureCard = ({
         <div className="flex grow items-center system-sm-semibold text-text-secondary">
           {title}
           {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
+            <Infotip
+              aria-label={typeof tooltip === 'string' ? tooltip : String(title)}
+              className="ml-0.5 size-3.5"
             >
-              <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
-            </Tooltip>
+              {tooltip}
+            </Infotip>
           )}
         </div>
         <Switch disabled={disabled} className="shrink-0" onCheckedChange={state => onChange?.(state)} checked={value} />

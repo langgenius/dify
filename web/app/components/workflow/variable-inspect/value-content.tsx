@@ -20,11 +20,11 @@ import {
   validateInspectJsonValue,
 } from './value-content.helpers'
 
-type Props = {
+type Props = Readonly<{
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
   isTruncated: boolean
-}
+}>
 
 const ValueContent = ({
   currentVar,
@@ -119,7 +119,7 @@ const ValueContent = ({
     if (contentContainerRef.current && errorMessageRef.current) {
       const errorMessageObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
+          const { inlineSize } = entry.borderBoxSize[0]!
           const height = (contentContainerRef.current as any).clientHeight - inlineSize
           setEditorHeight(height)
         }

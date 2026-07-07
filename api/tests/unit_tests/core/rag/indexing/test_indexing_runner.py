@@ -49,11 +49,11 @@ for the full indexing pipeline are handled separately in the integration test su
 
 import json
 import uuid
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.errors.error import ProviderTokenNotInitError
@@ -64,6 +64,7 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
@@ -594,6 +595,7 @@ class TestIndexingRunnerLoad:
             patch("core.indexing_runner.threading.Thread") as mock_thread,
             patch("core.indexing_runner.concurrent.futures.ThreadPoolExecutor") as mock_executor,
         ):
+            mock_app._get_current_object = Mock(return_value=Mock())
             yield {
                 "db": mock_db,
                 "model_manager": mock_model_manager,
@@ -1395,12 +1397,10 @@ class TestIndexingRunnerEstimate:
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.FeatureService") as mock_feature_service,
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
                 "db": mock_db,
-                "feature_service": mock_feature_service,
                 "factory": mock_factory,
             }
 
@@ -1410,13 +1410,9 @@ class TestIndexingRunnerEstimate:
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
 
-        # Mock feature service
-        mock_features = MagicMock()
-        mock_features.billing.enabled = True
-        mock_dependencies["feature_service"].get_features.return_value = mock_features
-
         # Create too many extract settings
         with patch("core.indexing_runner.dify_config") as mock_config:
+            mock_config.BILLING_ENABLED = True
             mock_config.BATCH_UPLOAD_LIMIT = 10
             extract_settings = [MagicMock() for _ in range(15)]
 
@@ -1428,6 +1424,42 @@ class TestIndexingRunnerEstimate:
                     tmp_processing_rule={"mode": "automatic", "rules": {}},
                     doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 )
+
+    def test_indexing_estimate_commits_preview_image_cleanup(self, mock_dependencies):
+        """Test indexing estimate persists cleanup for preview-only extracted images."""
+        runner = IndexingRunner()
+        tenant_id = str(uuid.uuid4())
+        mock_processor = MagicMock()
+        mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+
+        preview_doc = Document(
+            page_content="![image](http://files.local/files/image-1/file-preview)",
+            metadata={},
+        )
+        mock_processor.extract.return_value = [preview_doc]
+        mock_processor.transform.return_value = [preview_doc]
+
+        image_file = SimpleNamespace(key="image_files/tenant-1/source-file-1/image.png")
+        mock_dependencies["db"].session.scalar.return_value = image_file
+
+        with (
+            patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
+            patch("core.indexing_runner.storage") as mock_storage,
+            patch("core.indexing_runner.dify_config") as mock_config,
+        ):
+            mock_config.BILLING_ENABLED = False
+
+            result = runner.indexing_estimate(
+                tenant_id=tenant_id,
+                extract_settings=[MagicMock()],
+                tmp_processing_rule={"mode": "automatic", "rules": {}},
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            )
+
+        assert result.total_segments == 1
+        mock_storage.delete.assert_called_once_with(image_file.key)
+        mock_dependencies["db"].session.delete.assert_called_once_with(image_file)
+        mock_dependencies["db"].session.commit.assert_called_once()
 
 
 class TestIndexingRunnerProcessChunk:
@@ -1484,11 +1516,8 @@ class TestIndexingRunnerProcessChunk:
 
         mock_dependencies["redis"].get.return_value = None
 
-        # Mock database query for segment updates
-        mock_query = MagicMock()
-        mock_dependencies["db"].session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.update.return_value = None
+        # Mock database update for segment status
+        mock_dependencies["db"].session.execute.return_value = None
 
         # Create a proper context manager mock
         mock_context = MagicMock()

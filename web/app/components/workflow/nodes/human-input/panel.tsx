@@ -1,7 +1,9 @@
 import type { FC } from 'react'
-import type { HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
   RiClipboardLine,
@@ -16,9 +18,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
+import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -33,6 +33,16 @@ import useConfig from './hooks/use-config'
 import { UserActionButtonType } from './types'
 
 const i18nPrefix = 'nodes.humanInput'
+
+const getOutputVarType = (input: FormInputItem): VarType => {
+  if (input.type === 'file')
+    return VarType.file
+
+  if (input.type === 'file-list')
+    return VarType.arrayFile
+
+  return VarType.string
+}
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   id,
@@ -59,7 +69,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(varPayload.type)
     },
   })
 
@@ -108,9 +118,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
             <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
-            />
+            <Infotip aria-label={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}>
+              {t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
+            </Infotip>
           </div>
           {!readOnly && (
             <div className="flex items-center">
@@ -128,18 +138,25 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               <div className="flex items-center space-x-1">
-                <div
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+                <button
+                  type="button"
+                  aria-label={t('operation.copy', { ns: 'common' })}
+                  className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <RiClipboardLine className="h-4 w-4 text-text-secondary" />
-                </div>
-                <div className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')} onClick={toggleExpandFormContent}>
-                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" /> : <RiExpandDiagonalLine className="h-4 w-4" />}
-                </div>
+                  <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t(isExpandFormContent ? 'chat.collapse' : 'chat.expand', { ns: 'share' })}
+                  className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
+                  onClick={toggleExpandFormContent}
+                >
+                  {isExpandFormContent ? <RiCollapseDiagonalLine className="size-4" aria-hidden /> : <RiExpandDiagonalLine className="size-4" aria-hidden />}
+                </button>
               </div>
             </div>
           )}
@@ -164,16 +181,16 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
             <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`, { ns: 'workflow' })}</div>
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
-            />
+            <Infotip aria-label={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}>
+              {t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
+            </Infotip>
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">
               <ActionButton
                 onClick={onAddUseAction}
               >
-                <RiAddLine className="h-4 w-4" />
+                <RiAddLine className="size-4" />
               </ActionButton>
             </div>
           )}
@@ -219,7 +236,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             <VarItem
               key={input.output_variable_name}
               name={input.output_variable_name}
-              type={VarType.string}
+              type={getOutputVarType(input)}
               description="Form input value"
             />
           ))
@@ -228,6 +245,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           name="__action_id"
           type="string"
           description="Action ID user triggered"
+        />
+        <VarItem
+          name="__action_value"
+          type="string"
+          description="Selected action value"
         />
         <VarItem
           name="__rendered_content"

@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
   memo,
   useCallback,
@@ -11,7 +12,6 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { Avatar } from '@/app/components/base/ui/avatar'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useAppContext } from '@/context/app-context'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -44,6 +44,7 @@ const ChatItem: FC<ChatItemProps> = ({
     appId,
     inputs,
     collectionList,
+    canTestAndRun = false,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -84,6 +85,8 @@ const ChatItem: FC<ChatItemProps> = ({
   useFormattingChangedSubscription(chatList)
 
   const doSend: OnSend = useCallback((message, files) => {
+    if (!canTestAndRun)
+      return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
@@ -116,7 +119,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
+  }, [appId, canTestAndRun, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

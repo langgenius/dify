@@ -1,7 +1,7 @@
 import type { CommonResponse } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,

@@ -14,6 +14,7 @@ describe('InvitedModal', () => {
   const mockOnCancel = vi.fn()
   const results: InvitationResult[] = [
     { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
+    { email: 'member@example.com', status: 'already_member', message: 'Account already in workspace.' },
     { email: 'failed@example.com', status: 'failed', message: 'Error msg' },
   ]
 
@@ -28,6 +29,8 @@ describe('InvitedModal', () => {
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
     expect(await screen.findByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.getByText('http://invite.com/1')).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
   })
 
@@ -51,6 +54,19 @@ describe('InvitedModal', () => {
 
     expect(screen.getByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
+  })
+
+  it('should show already-member message without invitation copy when every email is already a member', () => {
+    const alreadyMembers: InvitationResult[] = [
+      { email: 'member@example.com', status: 'already_member' },
+    ]
+
+    render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
+
+    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
+    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 
   it('should hide both sections when results are empty', () => {
@@ -84,5 +100,17 @@ describe('InvitedModal (non-CE edition)', () => {
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
     // CE-only content should not be shown
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
+  })
+
+  it('should show already-member details when IS_CE_EDITION is false', () => {
+    const results: InvitationResult[] = [
+      { email: 'member@example.com', status: 'already_member' },
+    ]
+
+    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+
+    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
   })
 })

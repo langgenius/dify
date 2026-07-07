@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, override
 
 from extensions.ext_redis import redis_client
 
@@ -9,11 +9,11 @@ from extensions.ext_redis import redis_client
 class ProviderCredentialsCache(ABC):
     """Base class for provider credentials cache"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         self.cache_key = self._generate_cache_key(**kwargs)
 
     @abstractmethod
-    def _generate_cache_key(self, **kwargs) -> str:
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         """Generate cache key based on subclass implementation"""
         pass
 
@@ -28,11 +28,11 @@ class ProviderCredentialsCache(ABC):
                 return None
         return None
 
-    def set(self, config: dict[str, Any]):
+    def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
         redis_client.setex(self.cache_key, 86400, json.dumps(config))
 
-    def delete(self):
+    def delete(self) -> None:
         """Delete cached provider credentials"""
         redis_client.delete(self.cache_key)
 
@@ -47,7 +47,8 @@ class SingletonProviderCredentialsCache(ProviderCredentialsCache):
             provider_identity=provider_identity,
         )
 
-    def _generate_cache_key(self, **kwargs) -> str:
+    @override
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_type = kwargs["provider_type"]
         identity_name = kwargs["provider_identity"]
@@ -61,7 +62,8 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider: str, credential_id: str):
         super().__init__(tenant_id=tenant_id, provider=provider, credential_id=credential_id)
 
-    def _generate_cache_key(self, **kwargs) -> str:
+    @override
+    def _generate_cache_key(self, **kwargs: Any) -> str:
         tenant_id = kwargs["tenant_id"]
         provider = kwargs["provider"]
         credential_id = kwargs["credential_id"]
@@ -75,10 +77,10 @@ class NoOpProviderCredentialCache:
         """Get cached provider credentials"""
         return None
 
-    def set(self, config: dict[str, Any]):
+    def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
         pass
 
-    def delete(self):
+    def delete(self) -> None:
         """Delete cached provider credentials"""
         pass

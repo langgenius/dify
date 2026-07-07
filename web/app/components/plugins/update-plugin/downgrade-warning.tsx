@@ -1,13 +1,13 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 
 const i18nPrefix = 'autoUpdate.pluginDowngradeWarning'
 
-type Props = {
+type Props = Readonly<{
   onCancel: () => void
   onJustDowngrade: () => void
   onExcludeAndDowngrade: () => void
-}
+}>
 const DowngradeWarningModal = ({
   onCancel,
   onJustDowngrade,

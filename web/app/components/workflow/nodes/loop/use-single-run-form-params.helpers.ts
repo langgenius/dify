@@ -68,7 +68,7 @@ export const buildUsedOutVars = ({
     nodeVars.forEach((varSelector) => {
       if (varSelector[0] === currentNodeId)
         return
-      if (isNodeInLoop(varSelector[0]))
+      if (isNodeInLoop(varSelector[0]!))
         return
 
       const varSelectorStr = varSelector.join('.')
@@ -90,12 +90,12 @@ export const buildUsedOutVars = ({
   })
 
   const usedOutVars = toVarInputs(vars.map((valueSelector) => {
-    const varInfo = getNodeInfoById(canChooseVarNodes, valueSelector[0])
+    const varInfo = getNodeInfoById(canChooseVarNodes, valueSelector[0]!)
     return {
       label: {
         nodeType: varInfo?.data.type,
-        nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title,
-        variable: isSystemVar(valueSelector) ? valueSelector.join('.') : valueSelector[valueSelector.length - 1],
+        nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title!,
+        variable: isSystemVar(valueSelector) ? valueSelector.join('.') : valueSelector[valueSelector.length - 1]!,
       },
       variable: valueSelector.join('.'),
       value_selector: valueSelector,

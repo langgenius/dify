@@ -5,9 +5,9 @@ import type { CommonNodeType } from '../../workflow/types'
 import type { DataSet } from '@/models/datasets'
 import type { App } from '@/types/app'
 
-export type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command' | 'recent'
+type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command' | 'recent'
 
-export type BaseSearchResult<T = any> = {
+type BaseSearchResult<T = any> = {
   id: string
   title: string
   description?: string
@@ -29,7 +29,7 @@ export type KnowledgeSearchResult = {
   type: 'knowledge'
 } & BaseSearchResult<DataSet>
 
-export type WorkflowNodeSearchResult = {
+type WorkflowNodeSearchResult = {
   type: 'workflow-node'
   metadata?: {
     nodeId: string

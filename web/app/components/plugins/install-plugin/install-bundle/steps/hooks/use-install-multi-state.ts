@@ -1,10 +1,12 @@
 'use client'
 
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '@/app/components/plugins/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 
 type UseInstallMultiStateParams = {
@@ -35,7 +37,7 @@ function parseMarketplaceIdentifier(identifier?: string): MarketplacePluginInfo 
     return null
 
   const withoutHash = identifier.split('@')[0]
-  const [organization, nameAndVersionPart] = withoutHash.split('/')
+  const [organization, nameAndVersionPart] = withoutHash!.split('/')
   if (!organization || !nameAndVersionPart)
     return null
 
@@ -86,7 +88,7 @@ export function useInstallMultiState({
   onSelect,
   onLoadedAllPlugin,
 }: UseInstallMultiStateParams) {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   // Marketplace plugins filtering and index mapping
   const marketplacePlugins = useMemo(
@@ -153,11 +155,11 @@ export function useInstallMultiState({
         const pluginInfo = (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
 
         if (pluginInfo) {
-          pluginMap.set(request.dslIndex, {
+          pluginMap.set(request.dslIndex, getFormattedPlugin({
             ...pluginInfo,
             from: request.dependency.type,
             version: pluginInfo.version || pluginInfo.latest_version,
-          })
+          }))
         }
         else { errorSet.add(request.dslIndex) }
       })

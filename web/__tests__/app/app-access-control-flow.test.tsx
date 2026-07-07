@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 
-const mockFetchAppDetailDirect = vi.fn()
+const mockFetchAppDetail = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockRefetch = vi.fn()
 
@@ -23,6 +24,15 @@ let mockAppDetail: {
   }
 } | null = null
 
+const renderWithQueryClient = (ui: React.ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      webapp_auth: {
+        enabled: true,
+      },
+    },
+  })
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
@@ -36,16 +46,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (value: number) => `ago:${value}`,
@@ -56,7 +56,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
@@ -69,11 +69,23 @@ vi.mock('@/service/access-control', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: () => null,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: vi.fn(() => null),
+  },
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppPublishUpdate: vi.fn(() => vi.fn()),
+  },
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
@@ -108,14 +120,15 @@ describe('App Access Control Flow', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchAppDetailDirect.mockResolvedValue({
+    mockFetchAppDetail.mockResolvedValue({
       ...mockAppDetail,
       access_mode: AccessMode.PUBLIC,
     })
   })
 
   it('refreshes app detail after confirming access control updates', async () => {
-    render(<AppPublisher publishedAt={1700000000} />)
+    const { queryClient } = renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
     fireEvent.click(screen.getByText('app.accessControlDialog.accessItems.specific'))
@@ -125,12 +138,14 @@ describe('App Access Control Flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'confirm-access-control' }))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      }))
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
 
     await waitFor(() => {
       expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()

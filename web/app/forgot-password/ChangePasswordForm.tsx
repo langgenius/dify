@@ -1,11 +1,11 @@
 'use client'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { validPassword } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
@@ -49,7 +49,7 @@ const ChangePasswordForm = () => {
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleChangePassword = useCallback(async () => {
-    const token = searchParams.get('token') || ''
+    const resetToken = verifyTokenRes?.token ?? ''
 
     if (!valid())
       return
@@ -57,7 +57,7 @@ const ChangePasswordForm = () => {
       await changePasswordWithToken({
         url: '/forgot-password/resets',
         body: {
-          token,
+          token: resetToken,
           new_password: password,
           password_confirm: confirmPassword,
         },
@@ -67,7 +67,7 @@ const ChangePasswordForm = () => {
     catch {
       await revalidateToken()
     }
-  }, [confirmPassword, password, revalidateToken, searchParams, valid])
+  }, [confirmPassword, password, revalidateToken, verifyTokenRes?.token, valid])
 
   return (
     <div className={

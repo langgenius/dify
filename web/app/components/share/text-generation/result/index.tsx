@@ -4,13 +4,13 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { t } from 'i18next'
 import { useCallback } from 'react'
 import * as React from 'react'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
@@ -118,7 +118,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
     <>
       {!isCallBatchAPI && !isWorkflow && ((runState.isResponding && !runState.completionRes)
         ? (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex size-full items-center justify-center">
               <Loading type="area" />
             </div>
           )
@@ -131,7 +131,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
           ))}
       {!isCallBatchAPI && isWorkflow && ((runState.isResponding && !runState.workflowProcessData)
         ? (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex size-full items-center justify-center">
               <Loading type="area" />
             </div>
           )

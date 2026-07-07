@@ -1,7 +1,7 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
-import { Button } from '@/app/components/base/ui/button'
 import { useStore } from '@/app/components/workflow/store'
 
 const InputFieldButton = () => {
@@ -19,7 +19,7 @@ const InputFieldButton = () => {
       className="flex gap-x-0.5"
       onClick={handleClick}
     >
-      <InputField className="h-4 w-4" />
+      <InputField className="size-4" />
       <span className="px-0.5">{t('inputField', { ns: 'datasetPipeline' })}</span>
     </Button>
   )

@@ -82,7 +82,7 @@ describe('InstructionEditor', () => {
     expect(screen.getByTestId('error-block')).toHaveTextContent('true')
     expect(screen.getByTestId('last-run-block')).toHaveTextContent('true')
 
-    fireEvent.click(screen.getByText('generate.insertContext'))
+    fireEvent.click(screen.getByRole('button', { name: 'generate.insertContext' }))
 
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
       instanceId: 'editor-1',

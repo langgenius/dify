@@ -59,7 +59,7 @@ def _patch_both(monkeypatch, module, session):
 
 
 @pytest.fixture
-def relyt_module(monkeypatch):
+def relyt_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_relyt_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -97,7 +97,7 @@ def test_relyt_config_validation(relyt_module, field, value, message):
         relyt_module.RelytConfig.model_validate(values)
 
 
-def test_init_get_type_and_create_delegate(relyt_module, monkeypatch):
+def test_init_get_type_and_create_delegate(relyt_module, monkeypatch: pytest.MonkeyPatch):
     engine = MagicMock()
     monkeypatch.setattr(relyt_module, "create_engine", MagicMock(return_value=engine))
     vector = relyt_module.RelytVector("collection_1", _config(relyt_module), group_id="group-1")
@@ -114,7 +114,7 @@ def test_init_get_type_and_create_delegate(relyt_module, monkeypatch):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_sql_execution(relyt_module, monkeypatch):
+def test_create_collection_cache_and_sql_execution(relyt_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -142,7 +142,7 @@ def test_create_collection_cache_and_sql_execution(relyt_module, monkeypatch):
     relyt_module.redis_client.set.assert_called_once()
 
 
-def test_add_texts_and_metadata_queries(relyt_module, monkeypatch):
+def test_add_texts_and_metadata_queries(relyt_module, monkeypatch: pytest.MonkeyPatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector._group_id = "group-1"
@@ -212,7 +212,7 @@ def test_delete_by_metadata_field_calls_delete_by_uuids(relyt_module):
 
 
 # 3. delete_by_ids translates to uuids
-def test_delete_by_ids_translates_to_uuids(relyt_module, monkeypatch):
+def test_delete_by_ids_translates_to_uuids(relyt_module, monkeypatch: pytest.MonkeyPatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector.client = MagicMock()
@@ -225,7 +225,7 @@ def test_delete_by_ids_translates_to_uuids(relyt_module, monkeypatch):
 
 
 # 4. text_exists True
-def test_text_exists_true(relyt_module, monkeypatch):
+def test_text_exists_true(relyt_module, monkeypatch: pytest.MonkeyPatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector.client = MagicMock()
@@ -236,7 +236,7 @@ def test_text_exists_true(relyt_module, monkeypatch):
 
 
 # 5. text_exists False
-def test_text_exists_false(relyt_module, monkeypatch):
+def test_text_exists_false(relyt_module, monkeypatch: pytest.MonkeyPatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector.client = MagicMock()
@@ -284,7 +284,7 @@ def test_search_by_vector_filters_by_score_and_ids(relyt_module):
 
 
 # 8. delete commits session
-def test_delete_drops_table(relyt_module, monkeypatch):
+def test_delete_drops_table(relyt_module, monkeypatch: pytest.MonkeyPatch):
     vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
     vector._collection_name = "collection_1"
     vector.client = MagicMock()
@@ -295,7 +295,7 @@ def test_delete_drops_table(relyt_module, monkeypatch):
     session.execute.assert_called_once()
 
 
-def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypatch):
+def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypatch: pytest.MonkeyPatch):
     factory = relyt_module.RelytVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

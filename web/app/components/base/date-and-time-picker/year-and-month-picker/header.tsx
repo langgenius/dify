@@ -17,10 +17,10 @@ const Header: FC<YearAndMonthPickerHeaderProps> = ({
       <button
         type="button"
         onClick={onClick}
-        className="system-md-semibold flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 text-text-primary hover:bg-state-base-hover"
+        className="flex items-center gap-x-0.5 rounded-lg px-2 py-1.5 system-md-semibold text-text-primary hover:bg-state-base-hover"
       >
         <span>{`${months[selectedMonth]} ${selectedYear}`}</span>
-        <RiArrowUpSLine className="h-4 w-4 text-text-tertiary" />
+        <RiArrowUpSLine className="size-4 text-text-tertiary" />
       </button>
     </div>
   )

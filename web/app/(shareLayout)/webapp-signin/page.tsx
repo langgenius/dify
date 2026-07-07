@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
@@ -14,7 +15,7 @@ import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -62,8 +63,8 @@ const WebSSOForm: FC = () => {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-y-4">
-      <AppUnavailable className="h-auto w-auto" isUnknownReason={true} />
-      <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('login.backToHome', { ns: 'share' })}</span>
+      <AppUnavailable className="size-auto" isUnknownReason={true} />
+      <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('login.backToHome', { ns: 'share' })}</span>
     </div>
   )
 }

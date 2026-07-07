@@ -58,11 +58,11 @@ describe('Plans', () => {
         />,
       )
 
-      expect(screen.getByTestId('cloud-plan-sandbox')).toBeInTheDocument()
-      expect(screen.getByTestId('cloud-plan-professional')).toBeInTheDocument()
-      expect(screen.getByTestId('cloud-plan-team')).toBeInTheDocument()
+      expect(screen.getByTestId('cloud-plan-sandbox'))!.toBeInTheDocument()
+      expect(screen.getByTestId('cloud-plan-professional'))!.toBeInTheDocument()
+      expect(screen.getByTestId('cloud-plan-team'))!.toBeInTheDocument()
 
-      const firstCallProps = (cloudPlanItem as unknown as Mock).mock.calls[0][0]
+      const firstCallProps = (cloudPlanItem as unknown as Mock).mock.calls[0]![0]
       expect(firstCallProps.plan).toBe(Plan.sandbox)
       // Enterprise should be normalized to team when passed down
       expect(firstCallProps.currentPlan).toBe(Plan.team)
@@ -81,9 +81,9 @@ describe('Plans', () => {
         />,
       )
 
-      expect(screen.getByTestId('self-plan-community')).toBeInTheDocument()
-      expect(screen.getByTestId('self-plan-premium')).toBeInTheDocument()
-      expect(screen.getByTestId('self-plan-enterprise')).toBeInTheDocument()
+      expect(screen.getByTestId('self-plan-community'))!.toBeInTheDocument()
+      expect(screen.getByTestId('self-plan-premium'))!.toBeInTheDocument()
+      expect(screen.getByTestId('self-plan-enterprise'))!.toBeInTheDocument()
 
       expect(selfHostedPlanItem).toHaveBeenCalledTimes(3)
     })

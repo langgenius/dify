@@ -1,8 +1,8 @@
 import type { Tag } from '../../../hooks'
-import { useTranslation } from '#i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import * as React from 'react'
+import { useTranslation } from '#i18n'
 
 type MarketplaceTriggerProps = {
   selectedTagsLength: number
@@ -39,7 +39,7 @@ const MarketplaceTrigger = ({
         {
           !!selectedTagsLength && (
             <span className="text-text-secondary">
-              {tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')}
+              {tags.map(tag => tagsMap[tag]!.label).slice(0, 2).join(',')}
             </span>
           )
         }

@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import type { PluginDefaultValue } from '../../../block-selector/types'
+import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -28,6 +28,7 @@ import {
   BlockEnum,
   NodeRunningStatus,
 } from '../../../types'
+import { getNodeCatalogType } from '../../../utils'
 
 type NodeHandleProps = {
   handleId: string
@@ -35,6 +36,16 @@ type NodeHandleProps = {
   nodeSelectorClassName?: string
   showExceptionStatus?: boolean
 } & Pick<Node, 'id' | 'data'>
+
+const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) => {
+  if (isChatMode)
+    return false
+
+  return nodeType === BlockEnum.Start
+    || nodeType === BlockEnum.TriggerSchedule
+    || nodeType === BlockEnum.TriggerWebhook
+    || nodeType === BlockEnum.TriggerPlugin
+}
 
 export const NodeTargetHandle = memo(({
   id,
@@ -47,7 +58,7 @@ export const NodeTargetHandle = memo(({
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availablePrevBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const isConnectable = !!availablePrevBlocks.length
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -58,7 +69,7 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -78,7 +89,7 @@ export const NodeTargetHandle = memo(({
         type="target"
         position={Position.Left}
         className={cn(
-          'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+          'z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
           'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
@@ -100,14 +111,17 @@ export const NodeTargetHandle = memo(({
               open={open}
               onOpenChange={handleOpenChange}
               onSelect={handleSelect}
-              asChild
+              snippetInsertPayload={{
+                nextNodeId: id,
+                nextNodeTargetHandle: handleId,
+              }}
               placement="left"
               triggerClassName={open => `
-                hidden absolute left-0 top-0 pointer-events-none
+                absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
-                group-hover:flex!
-                ${data.selected && 'flex!'}
-                ${open && 'flex!'}
+                group-hover:opacity-100
+                ${data.selected && 'opacity-100'}
+                ${open && 'opacity-100'}
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -132,12 +146,13 @@ export const NodeSourceHandle = memo(({
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const workflowStoreApi = useWorkflowStore()
-  const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
+  const shouldAutoOpen = shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
+  const [open, setOpen] = useState(() => shouldAutoOpen)
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -147,7 +162,7 @@ export const NodeSourceHandle = memo(({
     e.stopPropagation()
     setOpen(v => !v)
   }, [])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -169,8 +184,7 @@ export const NodeSourceHandle = memo(({
       return
     }
 
-    if (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) {
-      setOpen(true)
+    if (canAutoOpenStartNodeSelector(data.type, false)) {
       if (setShouldAutoOpenStartNodeSelector)
         setShouldAutoOpenStartNodeSelector(false)
       else
@@ -189,7 +203,7 @@ export const NodeSourceHandle = memo(({
       type="source"
       position={Position.Right}
       className={cn(
-        'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
+        'group/handle z-1 size-4! rounded-none! border-none! bg-transparent! outline-hidden!',
         'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
@@ -219,13 +233,16 @@ export const NodeSourceHandle = memo(({
             open={open}
             onOpenChange={handleOpenChange}
             onSelect={handleSelect}
-            asChild
+            snippetInsertPayload={{
+              prevNodeId: id,
+              prevNodeSourceHandle: handleId,
+            }}
             triggerClassName={open => `
-              hidden absolute top-0 left-0 pointer-events-none
+              absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
-              group-hover:flex!
-              ${data.selected && 'flex!'}
-              ${open && 'flex!'}
+              group-hover:opacity-100
+              ${data.selected && 'opacity-100'}
+              ${open && 'opacity-100'}
             `}
             availableBlocksTypes={availableNextBlocks}
           />

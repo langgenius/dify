@@ -1,5 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import RenameDatasetModal from '../index'
@@ -17,7 +18,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -33,22 +34,33 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
-// Mock AppIconPicker - simplified mock to test onSelect and onClose callbacks
-vi.mock('../../../base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect?: (icon: { type: string, icon?: string, background?: string, fileId?: string, url?: string }) => void
-    onClose?: () => void
-  }) => (
-    <div data-testid="app-icon-picker">
-      <button data-testid="select-emoji" onClick={() => onSelect?.({ type: 'emoji', icon: '🚀', background: '#E0F2FE' })}>
-        Select Emoji
-      </button>
-      <button data-testid="select-image" onClick={() => onSelect?.({ type: 'image', fileId: 'new-file', url: 'https://new.png' })}>
-        Select Image
-      </button>
-      <button data-testid="close-picker" onClick={onClose}>Close</button>
-    </div>
-  ),
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({
+    onOpenChange,
+    onSelect,
+  }: {
+    onOpenChange: (open: boolean) => void
+    onSelect: (payload: { type: 'emoji', icon: string, background: string }) => void
+  }) => {
+    let selectedBackground = '#FFEAD5'
+    return (
+      <div>
+        <input placeholder="Search emojis..." />
+        <button type="button" aria-label="#E4FBCC" onClick={() => { selectedBackground = '#E4FBCC' }} />
+        <button type="button" aria-label="#E0F2FE" onClick={() => { selectedBackground = '#E0F2FE' }} />
+        <button
+          type="button"
+          onClick={() => {
+            onSelect({ type: 'emoji', icon: '📊', background: selectedBackground })
+            onOpenChange(false)
+          }}
+        >
+          iconPicker.ok
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>iconPicker.cancel</button>
+      </div>
+    )
+  },
 }))
 
 // The mock returns 'ns.key' format, e.g., 'common.operation.cancel'
@@ -138,43 +150,42 @@ describe('RenameDatasetModal', () => {
     it('should render without crashing', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       // Check title is rendered (translation mock returns 'datasetSettings.title')
-      expect(screen.getByText('datasetSettings.title')).toBeInTheDocument()
+      // Check title is rendered (translation mock returns 'datasetSettings.title')
+      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
     })
 
     it('should render modal when show is true', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByText('datasetSettings.title')).toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
     })
 
     it('should render name input with dataset name', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput).toBeInTheDocument()
+      expect(nameInput)!.toBeInTheDocument()
     })
 
     it('should render description textarea with dataset description', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea).toBeInTheDocument()
+      expect(descriptionTextarea)!.toBeInTheDocument()
     })
 
     it('should render cancel and save buttons', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.save')).toBeInTheDocument()
+      expect(screen.getByText('common.operation.cancel'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.save'))!.toBeInTheDocument()
     })
 
     it('should render close icon button', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      // The modal renders with title and other elements
-      // The close functionality is tested in user interactions
-      expect(screen.getByText('datasetSettings.title')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /operation\.close$/ }))!.toBeInTheDocument()
     })
 
     it('should render form labels', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByText('datasetSettings.form.name')).toBeInTheDocument()
-      expect(screen.getByText('datasetSettings.form.desc')).toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.form.desc'))!.toBeInTheDocument()
     })
   })
 
@@ -182,13 +193,13 @@ describe('RenameDatasetModal', () => {
     it('should render with emoji icon dataset', () => {
       const dataset = createMockDataset()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should render with image icon dataset', () => {
       const dataset = createMockDatasetWithImageIcon()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should render with empty description', () => {
@@ -196,30 +207,30 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
       // Find the textarea by its placeholder
       const descriptionTextarea = screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')
-      expect(descriptionTextarea).toHaveValue('')
+      expect(descriptionTextarea)!.toHaveValue('')
     })
 
     it('should render with external knowledge dataset', () => {
       const dataset = createMockExternalDataset()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle undefined onSuccess callback', () => {
       render(<RenameDatasetModal {...defaultProps} onSuccess={undefined} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
   })
 
   describe('State Management', () => {
     it('should initialize name state with dataset name', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should initialize description state with dataset description', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      expect(screen.getByDisplayValue('Test description')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test description'))!.toBeInTheDocument()
     })
 
     it('should update name state when input changes', () => {
@@ -228,7 +239,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(nameInput, { target: { value: 'New Dataset Name' } })
 
-      expect(screen.getByDisplayValue('New Dataset Name')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('New Dataset Name'))!.toBeInTheDocument()
     })
 
     it('should update description state when textarea changes', () => {
@@ -237,7 +248,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(descriptionTextarea, { target: { value: 'New description' } })
 
-      expect(screen.getByDisplayValue('New description')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('New description'))!.toBeInTheDocument()
     })
 
     it('should clear name when input is cleared', () => {
@@ -246,7 +257,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(nameInput, { target: { value: '' } })
 
-      expect(nameInput).toHaveValue('')
+      expect(nameInput)!.toHaveValue('')
     })
 
     it('should handle special characters in name', () => {
@@ -255,7 +266,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(nameInput, { target: { value: 'Dataset <script>alert("xss")</script>' } })
 
-      expect(screen.getByDisplayValue('Dataset <script>alert("xss")</script>')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Dataset <script>alert("xss")</script>'))!.toBeInTheDocument()
     })
 
     it('should handle very long name input', () => {
@@ -265,7 +276,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(nameInput, { target: { value: longName } })
 
-      expect(screen.getByDisplayValue(longName)).toBeInTheDocument()
+      expect(screen.getByDisplayValue(longName))!.toBeInTheDocument()
     })
 
     it('should handle multiline description', () => {
@@ -276,7 +287,8 @@ describe('RenameDatasetModal', () => {
       fireEvent.change(descriptionTextarea, { target: { value: multilineDesc } })
 
       // Verify the textarea contains the multiline value
-      expect(descriptionTextarea).toHaveValue(multilineDesc)
+      // Verify the textarea contains the multiline value
+      expect(descriptionTextarea)!.toHaveValue(multilineDesc)
     })
   })
 
@@ -292,14 +304,10 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should call onClose when close icon is clicked', () => {
-      // This test is covered by the cancel button test
-      // The close icon functionality works the same way as cancel button
       const handleClose = vi.fn()
       render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
 
-      // Use the cancel button to verify close callback works
-      const cancelButton = screen.getByText('common.operation.cancel')
-      fireEvent.click(cancelButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
@@ -338,7 +346,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expect(saveButton)!.toBeDisabled()
       })
 
       // Resolve the promise to clean up
@@ -355,6 +363,37 @@ describe('RenameDatasetModal', () => {
       nameInput.focus()
 
       // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
+      // Just verify the element is focusable (don't check activeElement as it may differ in test environment)
       expect(nameInput).not.toBeDisabled()
     })
 
@@ -365,6 +404,37 @@ describe('RenameDatasetModal', () => {
       // Verify the textarea can receive focus
       descriptionTextarea.focus()
 
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
+      // Just verify the element is focusable
       // Just verify the element is focusable
       expect(descriptionTextarea).not.toBeDisabled()
     })
@@ -429,7 +499,7 @@ describe('RenameDatasetModal', () => {
 
       await waitFor(() => {
         expect(mockUpdateDatasetSetting).toHaveBeenCalled()
-        const callArgs = mockUpdateDatasetSetting.mock.calls[0][0]
+        const callArgs = mockUpdateDatasetSetting.mock.calls[0]![0]
         expect(callArgs.body.external_knowledge_id).toBeUndefined()
         expect(callArgs.body.external_knowledge_api_id).toBeUndefined()
       })
@@ -605,6 +675,37 @@ describe('RenameDatasetModal', () => {
       })
 
       // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
+      // Save button should be enabled again
       expect(saveButton).not.toBeDisabled()
     })
   })
@@ -660,8 +761,10 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       // The modal should render with name label and input
       // AppIcon is rendered alongside the name input
-      expect(screen.getByText('datasetSettings.form.name')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      // The modal should render with name label and input
+      // AppIcon is rendered alongside the name input
+      expect(screen.getByText('datasetSettings.form.name'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should initialize icon state from dataset', () => {
@@ -669,14 +772,16 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} />)
       // The component initializes with the dataset's icon_info
       // This is verified by checking the form renders correctly
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      // The component initializes with the dataset's icon_info
+      // This is verified by checking the form renders correctly
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should initialize icon state from image icon dataset', () => {
       // Test with image icon - this triggers the icon_type === 'image' branch
       const imageDataset = createMockDatasetWithImageIcon()
       render(<RenameDatasetModal {...defaultProps} dataset={imageDataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
       // The component should render successfully with image icon dataset
     })
 
@@ -735,34 +840,62 @@ describe('RenameDatasetModal', () => {
       render(<RenameDatasetModal {...defaultProps} />)
 
       // Initially picker should not be visible
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      // Initially picker should not be visible
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
       const appIcon = screen.getByTestId('app-icon')
       await act(async () => {
         fireEvent.click(appIcon)
       })
 
-      // Picker should now be visible
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
     })
 
-    it('should select emoji icon and close picker (handleSelectAppIcon)', async () => {
+    it('should select emoji style and close picker (handleSelectAppIcon)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
-      // Open picker
-      const appIcon = screen.getByTestId('app-icon')
-      await act(async () => {
-        fireEvent.click(appIcon)
+      await user.click(screen.getByTestId('app-icon'))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
       })
-
-      // Select emoji
-      const selectEmojiBtn = screen.getByTestId('select-emoji')
-      await act(async () => {
-        fireEvent.click(selectEmojiBtn)
+      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
       })
-
-      // Picker should close after selection
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
 
       // Save and verify new icon is used
       const saveButton = screen.getByText('common.operation.save')
@@ -775,9 +908,9 @@ describe('RenameDatasetModal', () => {
           datasetId: 'dataset-1',
           body: expect.objectContaining({
             icon_info: {
-              icon: '🚀',
+              icon: '📊',
               icon_type: 'emoji',
-              icon_background: '#E0F2FE',
+              icon_background: '#E4FBCC',
               icon_url: undefined,
             },
           }),
@@ -785,25 +918,20 @@ describe('RenameDatasetModal', () => {
       })
     })
 
-    it('should select image icon and close picker (handleSelectAppIcon)', async () => {
+    it('should update emoji style through the picker (handleSelectAppIcon)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
-      // Open picker
-      const appIcon = screen.getByTestId('app-icon')
-      await act(async () => {
-        fireEvent.click(appIcon)
+      await user.click(screen.getByTestId('app-icon'))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: '#E0F2FE' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
       })
 
-      // Select image
-      const selectImageBtn = screen.getByTestId('select-image')
-      await act(async () => {
-        fireEvent.click(selectImageBtn)
-      })
-
-      // Picker should close after selection
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
-
-      // Save and verify new image icon is used
       const saveButton = screen.getByText('common.operation.save')
       await act(async () => {
         fireEvent.click(saveButton)
@@ -814,10 +942,10 @@ describe('RenameDatasetModal', () => {
           datasetId: 'dataset-1',
           body: expect.objectContaining({
             icon_info: {
-              icon: 'new-file',
-              icon_type: 'image',
-              icon_background: undefined,
-              icon_url: 'https://new.png',
+              icon: '📊',
+              icon_type: 'emoji',
+              icon_background: '#E0F2FE',
+              icon_url: undefined,
             },
           }),
         })
@@ -833,14 +961,14 @@ describe('RenameDatasetModal', () => {
         fireEvent.click(appIcon)
       })
 
-      // Close picker without selecting
-      const closeBtn = screen.getByTestId('close-picker')
-      await act(async () => {
-        fireEvent.click(closeBtn)
+      const user = userEvent.setup()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
       })
-
-      // Picker should close
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
 
       // Save and verify original icon is preserved
       const saveButton = screen.getByText('common.operation.save')
@@ -876,7 +1004,7 @@ describe('RenameDatasetModal', () => {
       })
 
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle image icon with empty icon_url', async () => {
@@ -891,7 +1019,7 @@ describe('RenameDatasetModal', () => {
       })
 
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       // Save and verify the icon_url is handled correctly
       const saveButton = screen.getByText('common.operation.save')
@@ -925,7 +1053,7 @@ describe('RenameDatasetModal', () => {
       })
 
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       // Save and verify the icon is handled correctly
       const saveButton = screen.getByText('common.operation.save')
@@ -958,7 +1086,7 @@ describe('RenameDatasetModal', () => {
       })
 
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle rapid input changes', async () => {
@@ -975,7 +1103,7 @@ describe('RenameDatasetModal', () => {
       fireEvent.change(nameInput, { target: { value: 'New Nam' } })
       fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
-      expect(screen.getByDisplayValue('New Name')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('New Name'))!.toBeInTheDocument()
     })
 
     it('should handle double click on save button', async () => {
@@ -995,7 +1123,8 @@ describe('RenameDatasetModal', () => {
       })
 
       // Button should be disabled now
-      expect(saveButton).toBeDisabled()
+      // Button should be disabled now
+      expect(saveButton)!.toBeDisabled()
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
@@ -1017,7 +1146,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(nameInput, { target: { value: '数据集 🎉 Dataset' } })
 
-      expect(screen.getByDisplayValue('数据集 🎉 Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('数据集 🎉 Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle unicode characters in description', () => {
@@ -1026,7 +1155,7 @@ describe('RenameDatasetModal', () => {
 
       fireEvent.change(descriptionTextarea, { target: { value: '这是一个测试描述 🚀' } })
 
-      expect(screen.getByDisplayValue('这是一个测试描述 🚀')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('这是一个测试描述 🚀'))!.toBeInTheDocument()
     })
 
     it('should preserve whitespace in description', () => {
@@ -1036,7 +1165,7 @@ describe('RenameDatasetModal', () => {
       const testValue = 'Leading spaces with content'
       fireEvent.change(descriptionTextarea, { target: { value: testValue } })
 
-      expect(descriptionTextarea).toHaveValue(testValue)
+      expect(descriptionTextarea)!.toHaveValue(testValue)
     })
   })
 
@@ -1044,20 +1173,22 @@ describe('RenameDatasetModal', () => {
     it('should update when dataset prop changes', () => {
       const { rerender } = render(<RenameDatasetModal {...defaultProps} />)
 
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
       const newDataset = createMockDataset({ name: 'Different Dataset', description: 'Different description' })
       rerender(<RenameDatasetModal {...defaultProps} dataset={newDataset} />)
 
       // Note: The component uses useState with initial value, so it won't update
       // This tests that the initial render works correctly with different props
-      expect(screen.getByDisplayValue('Test Dataset')).toBeInTheDocument()
+      // Note: The component uses useState with initial value, so it won't update
+      // This tests that the initial render works correctly with different props
+      expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
     })
 
     it('should handle show prop toggle', () => {
       const { rerender } = render(<RenameDatasetModal {...defaultProps} show={true} />)
 
-      expect(screen.getByText('datasetSettings.title')).toBeInTheDocument()
+      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
 
       rerender(<RenameDatasetModal {...defaultProps} show={false} />)
 
@@ -1084,8 +1215,8 @@ describe('RenameDatasetModal', () => {
       const cancelButton = screen.getByText('common.operation.cancel')
       const saveButton = screen.getByText('common.operation.save')
 
-      expect(cancelButton).toBeEnabled()
-      expect(saveButton).toBeEnabled()
+      expect(cancelButton)!.toBeEnabled()
+      expect(saveButton)!.toBeEnabled()
     })
   })
 
@@ -1105,7 +1236,7 @@ describe('RenameDatasetModal', () => {
 
       // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expect(saveButton)!.toBeDisabled()
       })
 
       // Resolve promise to complete the test
@@ -1148,6 +1279,37 @@ describe('RenameDatasetModal', () => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
 
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
+      // Button should be re-enabled after error
       // Button should be re-enabled after error
       expect(saveButton).not.toBeDisabled()
     })

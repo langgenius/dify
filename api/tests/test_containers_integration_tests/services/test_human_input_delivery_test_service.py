@@ -5,17 +5,19 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.runtime import VariablePool
+from flask import Flask
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
     MemberRecipient,
 )
+from graphon.runtime import VariablePool
 from models.account import Account, TenantAccountJoin
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
@@ -88,7 +90,7 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, flask_app_with_containers, db_session_with_containers):
+    def test_default(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
         registry = DeliveryTestRegistry.default()
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
@@ -121,11 +123,11 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestUnsupportedError):
             handler.send_test(context=MagicMock(), method=MagicMock())
 
-    def test_send_test_feature_disabled(self, monkeypatch):
+    def test_send_test_feature_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=False),
+            lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
         )
         handler = EmailDeliveryTestHandler(session_factory=MagicMock())
         context = DeliveryTestContext(
@@ -136,11 +138,11 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Email delivery is not available"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_mail_not_inited(self, monkeypatch):
+    def test_send_test_mail_not_inited(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: False)
 
@@ -153,11 +155,11 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Mail client is not initialized."):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_no_recipients(self, monkeypatch):
+    def test_send_test_no_recipients(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
@@ -172,11 +174,11 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="No recipients configured"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_success(self, monkeypatch):
+    def test_send_test_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
@@ -208,11 +210,11 @@ class TestEmailDeliveryTestHandler:
         assert kwargs["to"] == "test@example.com"
         assert "RENDERED_Subj" in kwargs["subject"]
 
-    def test_send_test_sanitizes_subject(self, monkeypatch):
+    def test_send_test_sanitizes_subject(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
@@ -260,7 +262,7 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id="t1", method=method) == ["ext@example.com"]
 
-    def test_resolve_recipients_member(self, flask_app_with_containers, db_session_with_containers):
+    def test_resolve_recipients_member(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         account = Account(name="Test User", email="member@example.com")
         db_session_with_containers.add(account)
@@ -282,7 +284,9 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
-    def test_resolve_recipients_whole_workspace(self, flask_app_with_containers, db_session_with_containers):
+    def test_resolve_recipients_whole_workspace(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
         account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")

@@ -26,7 +26,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.api, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -100,7 +100,7 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, disabled, className, variant, loading }: {
     children: React.ReactNode
     onClick?: () => void
@@ -121,18 +121,14 @@ vi.mock('@/app/components/base/ui/button', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, _onClose, className }: PropsWithChildren<{
-    isShow: boolean
-    _onClose: () => void
-    className?: string
-  }>) => isShow
-    ? (
-        <div data-testid="modal" className={className}>
-          {children}
-        </div>
-      )
-    : null,
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: PropsWithChildren<{ open?: boolean }>) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children, className }: PropsWithChildren<{ className?: string }>) => (
+    <div data-testid="modal" className={className}>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({

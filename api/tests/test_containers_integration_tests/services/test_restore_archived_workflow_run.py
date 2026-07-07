@@ -8,6 +8,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowPause, WorkflowRun
 from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
@@ -39,7 +40,7 @@ class TestWorkflowRunRestore:
         assert result["created_at"].month == 1
         assert result["name"] == "test"
 
-    def test_restore_table_records_returns_rowcount(self, db_session_with_containers):
+    def test_restore_table_records_returns_rowcount(self, db_session_with_containers: Session):
         """Restore should return inserted rowcount."""
         restore = WorkflowRunRestore()
         record_id = str(uuid4())
@@ -65,7 +66,7 @@ class TestWorkflowRunRestore:
         restored_pause = db_session_with_containers.scalar(select(WorkflowPause).where(WorkflowPause.id == record_id))
         assert restored_pause is not None
 
-    def test_restore_table_records_unknown_table(self, db_session_with_containers):
+    def test_restore_table_records_unknown_table(self, db_session_with_containers: Session):
         """Unknown table names should be ignored gracefully."""
         restore = WorkflowRunRestore()
 

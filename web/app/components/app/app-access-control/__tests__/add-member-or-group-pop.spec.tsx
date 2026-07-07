@@ -1,5 +1,5 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
 import { SubjectType } from '@/models/access-control'
@@ -106,8 +106,7 @@ describe('AddMemberOrGroupDialog', () => {
 
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -125,6 +124,31 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
+  })
+
+  it('should keep breadcrumbs visible when the current group has no candidates', async () => {
+    useAccessControlStore.setState({
+      selectedGroupsForBreadcrumb: [baseGroup],
+    })
+    mockUseSearchForWhiteListCandidates.mockReturnValue({
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      data: { pages: [{ currPage: 1, subjects: [], hasMore: false }] },
+    })
+
+    const user = userEvent.setup()
+    render(<AddMemberOrGroupDialog />)
+
+    await user.click(screen.getByText('common.operation.add'))
+
+    expect(screen.getByRole('button', { name: 'app.accessControlDialog.operateGroupAndMember.allMembers' })).toBeInTheDocument()
+    expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
+
+    await user.click(screen.getByRole('button', { name: 'app.accessControlDialog.operateGroupAndMember.allMembers' }))
+
+    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([])
   })
 })

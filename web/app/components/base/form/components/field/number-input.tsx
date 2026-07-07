@@ -1,9 +1,7 @@
+import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
 import type { ReactNode } from 'react'
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '../../../ui/number-field'
 import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useFieldContext } from '../..'
 import {
   NumberField,
   NumberFieldControls,
@@ -12,7 +10,9 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
   NumberFieldUnit,
-} from '../../../ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import * as React from 'react'
+import { useFieldContext } from '../..'
 import Label from '../label'
 
 type NumberInputFieldProps = {
@@ -30,7 +30,7 @@ const NumberInputField = ({
   className,
   inputClassName,
   unit,
-  size = 'regular',
+  size = 'medium',
   ...props
 }: NumberInputFieldProps) => {
   const field = useFieldContext<number>()
@@ -56,7 +56,6 @@ const NumberInputField = ({
         {...(labelOptions ?? {})}
       />
       <NumberField
-        id={field.name}
         name={field.name}
         value={field.state.value}
         min={min}
@@ -69,6 +68,7 @@ const NumberInputField = ({
       >
         <NumberFieldGroup size={size}>
           <NumberFieldInput
+            id={field.name}
             {...inputProps}
             size={size}
             className={inputClassName}

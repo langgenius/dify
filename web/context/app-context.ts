@@ -1,11 +1,12 @@
 'use client'
 
-import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 
 export type AppContextValue = {
-  userProfile: UserProfileResponse
+  userProfile: GetAccountProfileResponse
   mutateUserProfile: VoidFunction
   currentWorkspace: ICurrentWorkspace
   isCurrentWorkspaceManager: boolean
@@ -16,7 +17,9 @@ export type AppContextValue = {
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
+  isLoadingWorkspacePermissionKeys?: boolean
   isValidatingCurrentWorkspace: boolean
+  workspacePermissionKeys: string[]
 }
 
 export const userProfilePlaceholder = {
@@ -63,7 +66,9 @@ export const AppContext = createContext<AppContextValue>({
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {

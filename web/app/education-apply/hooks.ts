@@ -1,5 +1,6 @@
 import type { SearchParams } from './types'
-import { useDebounceFn, useLocalStorageState } from 'ahooks'
+import { useQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -9,15 +10,20 @@ import {
   useState,
 } from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
+import {
+  useEducationExpiredHasNoticed,
+  useEducationReverifyHasNoticed,
+  useEducationReverifyPrevExpireAt,
+  useEducationVerifying,
+} from '@/app/education-apply/storage'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from './constants'
 
 dayjs.extend(utc)
@@ -80,19 +86,16 @@ const isExpired = (expireAt?: number, timezone?: string) => {
 const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
-    defaultValue: 0,
-  })
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
-    defaultValue: false,
-  })
-  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
-    defaultValue: false,
-  })
+  const [prevExpireAt, setPrevExpireAt] = useEducationReverifyPrevExpireAt()
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useEducationReverifyHasNoticed()
+  const [expiredHasNoticed, setExpiredHasNoticed] = useEducationExpiredHasNoticed()
 
   useEffect(() => {
     if (isLoading || !timezone)
@@ -133,7 +136,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+  const [educationVerifying, setEducationVerifying] = useEducationVerifying()
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -156,9 +159,9 @@ export const useEducationInit = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
+        setEducationVerifying('yes')
     }
     if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
       handleVerify()
-  }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
+  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
 }

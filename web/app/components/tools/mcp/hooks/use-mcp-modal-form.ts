@@ -2,10 +2,10 @@
 import type { HeaderItem } from '../headers-input'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { getDomain } from 'tldts'
 import { v4 as uuid } from 'uuid'
-import { toast } from '@/app/components/base/ui/toast'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { uploadRemoteFileInfo } from '@/service/common'
 
@@ -54,6 +54,7 @@ type MCPModalFormState = {
   isDynamicRegistration: boolean
   clientID: string
   credentials: string
+  forwardUserIdentity: boolean
 }
 type MCPModalFormActions = {
   setUrl: (url: string) => void
@@ -68,6 +69,7 @@ type MCPModalFormActions = {
   setIsDynamicRegistration: (value: boolean) => void
   setClientID: (id: string) => void
   setCredentials: (credentials: string) => void
+  setForwardUserIdentity: (value: boolean) => void
   handleUrlBlur: (url: string) => Promise<void>
   resetIcon: () => void
 }
@@ -100,6 +102,11 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() => isCreate ? true : (data?.is_dynamic_registration ?? true))
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
+  // M3 — user-identity forwarding. The UI toggle is true iff the persisted
+  // identity_mode is anything other than "off" — currently just "idp_token".
+  const [forwardUserIdentity, setForwardUserIdentity] = useState(
+    () => (data?.identity_mode ?? 'off') !== 'off',
+  )
   const handleUrlBlur = useCallback(async (urlValue: string) => {
     if (data)
       return
@@ -163,6 +170,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       isDynamicRegistration,
       clientID,
       credentials,
+      forwardUserIdentity,
     } satisfies MCPModalFormState,
     // Actions
     actions: {
@@ -178,6 +186,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setIsDynamicRegistration,
       setClientID,
       setCredentials,
+      setForwardUserIdentity,
       handleUrlBlur,
       resetIcon,
     } satisfies MCPModalFormActions,

@@ -5,13 +5,11 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
-  buildConversationUrl,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
   getFormattedChatList,
   getThreadChatItems,
-  hasConversationFeedback,
   isNearTopLoadMore,
   mergePaginatedChatItems,
   mergeUniqueChatItems,
@@ -150,16 +148,15 @@ describe('log list utils', () => {
   it('should update annotation state helpers', () => {
     const items = createChatItems()
 
-    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0].content).toBe('updated question')
-    expect(applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1].annotation).toEqual(expect.objectContaining({
+    expect(applyAnnotationEdited(items, 'updated question', 'updated answer', 1)[0]!.content).toBe('updated question')
+    expect(applyAnnotationAdded(items, 'annotation-1', 'Dify', 'question', 'answer', 1)[1]!.annotation).toEqual(expect.objectContaining({
       id: 'annotation-1',
       authorName: 'Dify',
     }))
-    expect(applyAnnotationRemoved(items, 1)[1].annotation).toBeUndefined()
+    expect(applyAnnotationRemoved(items, 1)[1]!.annotation).toBeUndefined()
   })
 
   it('should derive urls, scroll thresholds, row values, and detail metadata', () => {
-    expect(buildConversationUrl('/apps/app-1/logs', 'page=2', 'conversation-1')).toBe('/apps/app-1/logs?page=2&conversation_id=conversation-1')
     expect(isNearTopLoadMore({
       clientHeight: 200,
       scrollHeight: 600,
@@ -212,9 +209,7 @@ describe('log list utils', () => {
     }, false)).toEqual(['https://example.com/file-1'])
   })
 
-  it('should remove conversation ids from urls, handle default inputs, and detect conversation feedback', () => {
-    expect(buildConversationUrl('/apps/app-1/logs', 'page=2&conversation_id=conversation-1')).toBe('/apps/app-1/logs?page=2')
-
+  it('should handle default inputs', () => {
     expect(getConversationRowValues({
       isChatMode: false,
       log: {
@@ -233,8 +228,5 @@ describe('log list utils', () => {
       leftValue: 'fallback input',
       rightValue: 0,
     })
-
-    expect(hasConversationFeedback({ like: 0, dislike: 0 })).toBe(false)
-    expect(hasConversationFeedback({ like: 1, dislike: 0 })).toBe(true)
   })
 })

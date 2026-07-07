@@ -1,3 +1,5 @@
+from pytest_mock import MockerFixture
+
 from services.rag_pipeline.pipeline_template.built_in.built_in_retrieval import BuiltInPipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
@@ -8,7 +10,7 @@ def test_get_type() -> None:
     assert retrieval.get_type() == PipelineTemplateType.BUILTIN
 
 
-def test_get_pipeline_templates(mocker) -> None:
+def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -21,12 +23,12 @@ def test_get_pipeline_templates(mocker) -> None:
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    templates = retrieval.get_pipeline_templates("en-US")
+    templates = retrieval.get_pipeline_templates(mocker.Mock(), "en-US")
 
     assert templates == {"pipeline_templates": [{"id": "tpl-1"}]}
 
 
-def test_get_pipeline_template_detail(mocker) -> None:
+def test_get_pipeline_template_detail(mocker: MockerFixture) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -38,12 +40,12 @@ def test_get_pipeline_template_detail(mocker) -> None:
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1")
+    detail = retrieval.get_pipeline_template_detail(mocker.Mock(), "tpl-1")
 
     assert detail == {"id": "tpl-1", "name": "Template 1"}
 
 
-def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker) -> None:
+def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker: MockerFixture) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -51,12 +53,12 @@ def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker) -> N
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("fr-FR")
+    result = retrieval.get_pipeline_templates(mocker.Mock(), "fr-FR")
 
     assert result == {}
 
 
-def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker) -> None:
+def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker: MockerFixture) -> None:
     mocker.patch.object(
         BuiltInPipelineTemplateRetrieval,
         "_get_builtin_data",
@@ -64,12 +66,12 @@ def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker) -> Non
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("nonexistent-id")
+    result = retrieval.get_pipeline_template_detail(mocker.Mock(), "nonexistent-id")
 
     assert result is None
 
 
-def test_get_builtin_data_reads_from_file_and_caches(mocker) -> None:
+def test_get_builtin_data_reads_from_file_and_caches(mocker: MockerFixture) -> None:
     import json
 
     # Ensure no cached data
@@ -98,7 +100,7 @@ def test_get_builtin_data_reads_from_file_and_caches(mocker) -> None:
     BuiltInPipelineTemplateRetrieval.builtin_data = None
 
 
-def test_get_builtin_data_returns_cache_on_second_call(mocker) -> None:
+def test_get_builtin_data_returns_cache_on_second_call(mocker: MockerFixture) -> None:
     cached_data = {"pipeline_templates": {"en-US": {}}}
     BuiltInPipelineTemplateRetrieval.builtin_data = cached_data
 

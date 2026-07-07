@@ -59,7 +59,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       if (index < 0)
         return
 
-      const groupName = groups[index].group_name
+      const groupName = groups[index]!.group_name
       if (isVarUsedInNodes([id, groupName, 'output'])) {
         showRemoveVarConfirm()
         setRemovedVars([[id, groupName, 'output']])
@@ -89,7 +89,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
         }
       }
 
-      handleOutVarRenameChange(id, [id, groups[0].group_name, 'output'], [id, 'output'])
+      handleOutVarRenameChange(id, [id, groups[0]!.group_name, 'output'], [id, 'output'])
     }
 
     setInputs(toggleGroupEnabled({ inputs, enabled }))
@@ -109,7 +109,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   } = useDebounceFn(
     (id: string, newName: string) => {
       const oldName = oldNameRef.current[id]
-      renameInspectVarName(id, oldName, newName)
+      renameInspectVarName(id, oldName!, newName)
       delete oldNameRef.current[id]
     },
     { wait: 500 },
@@ -122,7 +122,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       if (index < 0)
         return
 
-      const oldName = groups[index].group_name
+      const oldName = groups[index]!.group_name
       handleOutVarRenameChange(id, [id, oldName, 'output'], [id, name, 'output'])
       setInputs(renameGroup(inputs, groupId, name))
       if (!(id in oldNameRef.current))

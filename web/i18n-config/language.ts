@@ -14,10 +14,18 @@ export const getLanguage = (locale: Locale): Locale => {
   if (['zh-Hans', 'ja-JP'].includes(locale))
     return locale.replace('-', '_') as Locale
 
-  return LanguagesSupported[0].replace('-', '_') as Locale
+  return LanguagesSupported[0]!.replace('-', '_') as Locale
 }
 
 const DOC_LANGUAGE: Record<string, DocLanguage | undefined> = {
+  'zh-Hans': 'zh',
+  'ja-JP': 'ja',
+  'en-US': 'en',
+}
+
+export type AccessControlTemplateLanguage = 'zh' | 'ja' | 'en'
+
+const ACCESS_CONTROL_TEMPLATE_LANGUAGE: Record<string, AccessControlTemplateLanguage> = {
   'zh-Hans': 'zh',
   'ja-JP': 'ja',
   'en-US': 'en',
@@ -62,6 +70,10 @@ const PRICING_PAGE_LANGUAGE: Record<string, string> = {
 
 export const getPricingPageLanguage = (locale: string) => {
   return PRICING_PAGE_LANGUAGE[locale] || ''
+}
+
+export const getAccessControlTemplateLanguage = (locale: string): AccessControlTemplateLanguage => {
+  return ACCESS_CONTROL_TEMPLATE_LANGUAGE[locale] || 'en'
 }
 
 export const NOTICE_I18N = {

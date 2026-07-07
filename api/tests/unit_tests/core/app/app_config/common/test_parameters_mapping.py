@@ -10,7 +10,7 @@ class TestGetParametersFromFeatureDict:
     """Test suite for get_parameters_from_feature_dict"""
 
     @pytest.fixture
-    def mock_config(self, monkeypatch):
+    def mock_config(self, monkeypatch: pytest.MonkeyPatch):
         """Mock dify_config values"""
         mock = MagicMock()
         mock.UPLOAD_IMAGE_FILE_SIZE_LIMIT = 1
@@ -23,7 +23,7 @@ class TestGetParametersFromFeatureDict:
         return mock
 
     @pytest.fixture
-    def mock_default_file_limits(self, monkeypatch):
+    def mock_default_file_limits(self, monkeypatch: pytest.MonkeyPatch):
         """Mock DEFAULT_FILE_NUMBER_LIMITS constant"""
         monkeypatch.setattr(parameters_mapping, "DEFAULT_FILE_NUMBER_LIMITS", 99)
         return 99

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App
@@ -38,13 +38,13 @@ class DatasetUpdateDeleteTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 
@@ -141,7 +141,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act
         with patch("services.dataset_service.dataset_was_deleted") as mock_dataset_was_deleted:
-            result = DatasetService.delete_dataset(dataset.id, owner)
+            result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -168,7 +168,7 @@ class TestDatasetServiceDeleteDataset:
         dataset_id = str(uuid4())
 
         # Act
-        result = DatasetService.delete_dataset(dataset_id, owner)
+        result = DatasetService.delete_dataset(dataset_id, owner, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -198,7 +198,7 @@ class TestDatasetServiceDeleteDataset:
 
         # Act & Assert
         with pytest.raises(NoPermissionError):
-            DatasetService.delete_dataset(dataset.id, normal_user)
+            DatasetService.delete_dataset(dataset.id, normal_user, session=db_session_with_containers)
 
         # Verify no deletion was attempted
         assert db_session_with_containers.get(Dataset, dataset.id) is not None
@@ -230,7 +230,7 @@ class TestDatasetServiceDatasetUseCheck:
         DatasetUpdateDeleteTestDataFactory.create_app_dataset_join(db_session_with_containers, app.id, dataset.id)
 
         # Act
-        result = DatasetService.dataset_use_check(dataset.id)
+        result = DatasetService.dataset_use_check(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -254,7 +254,7 @@ class TestDatasetServiceDatasetUseCheck:
         dataset = DatasetUpdateDeleteTestDataFactory.create_dataset(db_session_with_containers, tenant.id, owner.id)
 
         # Act
-        result = DatasetService.dataset_use_check(dataset.id)
+        result = DatasetService.dataset_use_check(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -292,7 +292,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
             patch("services.dataset_service.current_user", owner),
             patch("services.dataset_service.naive_utc_now", return_value=current_time),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, True)
+            DatasetService.update_dataset_api_status(dataset.id, True, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.refresh(dataset)
@@ -327,7 +327,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
             patch("services.dataset_service.current_user", owner),
             patch("services.dataset_service.naive_utc_now", return_value=current_time),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, False)
+            DatasetService.update_dataset_api_status(dataset.id, False, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.refresh(dataset)
@@ -351,7 +351,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
 
         # Act & Assert
         with pytest.raises(NotFound, match="Dataset not found"):
-            DatasetService.update_dataset_api_status(dataset_id, True)
+            DatasetService.update_dataset_api_status(dataset_id, True, session=db_session_with_containers)
 
     def test_update_dataset_api_status_missing_current_user_error(self, db_session_with_containers: Session):
         """
@@ -378,7 +378,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
             patch("services.dataset_service.current_user", None),
             pytest.raises(ValueError, match="Current user or current user id not found"),
         ):
-            DatasetService.update_dataset_api_status(dataset.id, True)
+            DatasetService.update_dataset_api_status(dataset.id, True, session=db_session_with_containers)
 
         # Verify no commit was attempted
         db_session_with_containers.rollback()

@@ -3,24 +3,22 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
@@ -31,6 +29,7 @@ import {
 import ModelSelector from '../model-selector'
 
 type SystemModelSelectorProps = {
+  className?: string
   textGenerationDefaultModel: DefaultModelResponse | undefined
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
@@ -38,6 +37,8 @@ type SystemModelSelectorProps = {
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
   isLoading?: boolean
+  hideProviderSettingsFooter?: boolean
+  onOpenMarketplace?: () => void
 }
 
 type SystemModelLabelKey
@@ -55,6 +56,7 @@ type SystemModelTipKey
     | 'modelProvider.ttsModel.tip'
 
 const SystemModel: FC<SystemModelSelectorProps> = ({
+  className,
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
@@ -62,10 +64,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   ttsDefaultModel,
   notConfigured,
   isLoading,
+  hideProviderSettingsFooter,
+  onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
+  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -138,22 +143,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
         {t(labelKey, { ns: 'common' })}
-        <Tooltip>
-          <TooltipTrigger
-            aria-label={tipText}
-            delay={0}
-            render={(
-              <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-              </span>
-            )}
-          />
-          <TooltipContent>
-            <div className="w-[261px] text-text-tertiary">
-              {tipText}
-            </div>
-          </TooltipContent>
-        </Tooltip>
+        <Infotip
+          aria-label={tipText}
+          className="ml-0.5 text-text-tertiary"
+          popupClassName="w-[261px]"
+        >
+          {tipText}
+        </Infotip>
       </div>
     )
   }
@@ -161,81 +157,106 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   return (
     <>
       <Button
-        className="relative"
+        className={cn('relative', className)}
         variant={notConfigured ? 'primary' : 'secondary'}
         size="small"
         disabled={isLoading}
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="mr-1 i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
-          : <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5" />}
+          ? <span className="mr-0.5 i-ri-loader-2-line size-3.5 animate-spin" />
+          : <span className="mr-0.5 i-ri-brain-2-line size-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="w-[480px] max-w-[480px] overflow-hidden p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden rounded-2xl p-0"
         >
           <DialogCloseButton className="top-5 right-5" />
-          <div className="px-6 pt-6 pr-14 pb-3">
+          <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.systemModelSettings', { ns: 'common' })}
+              {t('modelProvider.systemModelSettingsTitle', { ns: 'common' })}
             </DialogTitle>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('modelProvider.systemModelSettingsDesc', { ns: 'common' })}
+            </p>
           </div>
-          <div className="flex flex-col gap-4 px-6 py-3">
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.systemReasoningModel.key', 'modelProvider.systemReasoningModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentTextGenerationDefaultModel}
-                  modelList={textGenerationModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
-                />
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.systemReasoningModel.key', 'modelProvider.systemReasoningModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentTextGenerationDefaultModel}
+                    modelList={textGenerationModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.embeddingModel.key', 'modelProvider.embeddingModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentEmbeddingsDefaultModel}
-                  modelList={embeddingModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.embeddingModel.key', 'modelProvider.embeddingModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentEmbeddingsDefaultModel}
+                    modelList={embeddingModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentRerankDefaultModel}
-                  modelList={rerankModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.rerankModel.key', 'modelProvider.rerankModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentRerankDefaultModel}
+                    modelList={rerankModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.speechToTextModel.key', 'modelProvider.speechToTextModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentSpeech2textDefaultModel}
-                  modelList={speech2textModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.speechToTextModel.key', 'modelProvider.speechToTextModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentSpeech2textDefaultModel}
+                    modelList={speech2textModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
-              <div>
-                <ModelSelector
-                  defaultModel={currentTTSDefaultModel}
-                  modelList={ttsModelList}
-                  onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
-                />
+              <div className="flex flex-col gap-1">
+                {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
+                <div>
+                  <ModelSelector
+                    defaultModel={currentTTSDefaultModel}
+                    modelList={ttsModelList}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
+                    onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                  />
+                </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <div className="flex h-[76px] shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
               className="min-w-[72px]"
               onClick={() => setOpen(false)}
@@ -246,7 +267,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               className="min-w-[72px]"
               variant="primary"
               onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageSystemDefaultModel}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>

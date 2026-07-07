@@ -1,15 +1,15 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
@@ -35,7 +35,7 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const {
     documentsData,
     searchValue,
@@ -115,7 +115,7 @@ const OnlineDocuments = ({
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     setOnlineDocuments(selectedPages)
   }, [dataSourceStore, PagesMapAndSelectedPagesId])
@@ -126,10 +126,10 @@ const OnlineDocuments = ({
   }, [PagesMapAndSelectedPagesId, dataSourceStore])
 
   const handleSetting = useCallback(() => {
-    setShowAccountSettingModal({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openIntegrationsSetting])
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -160,7 +160,7 @@ const OnlineDocuments = ({
                   checkedIds={selectedPagesId}
                   disabledValue={new Set()}
                   searchValue={searchValue}
-                  list={documentsData[0].pages || []}
+                  list={documentsData[0]!.pages || []}
                   pagesMap={PagesMapAndSelectedPagesId}
                   onSelect={handleSelectPages}
                   canPreview={!isInPipeline}

@@ -12,6 +12,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.pagination import paginate_query
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
 from services.feature_service import FeatureService
 
@@ -88,7 +89,7 @@ def clean_unused_datasets_task():
                     .order_by(Dataset.created_at.desc())
                 )
 
-                datasets = db.paginate(stmt, page=page, per_page=50, error_out=False)
+                datasets = paginate_query(stmt, page=page, per_page=50)
 
             except SQLAlchemyError:
                 raise
@@ -112,7 +113,7 @@ def clean_unused_datasets_task():
                             features_cache_key = f"features:{dataset.tenant_id}"
                             plan_cache = redis_client.get(features_cache_key)
                             if plan_cache is None:
-                                features = FeatureService.get_features(dataset.tenant_id)
+                                features = FeatureService.get_features(dataset.tenant_id, exclude_vector_space=True)
                                 redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
                                 plan = features.billing.subscription.plan
                             else:

@@ -10,7 +10,7 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -20,6 +20,13 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 const mockCheckUsage = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockExportPipeline = vi.fn()
+const mockPush = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
 
 vi.mock('@/service/use-dataset-card', () => ({
   useCheckDatasetUsage: () => ({ mutateAsync: mockCheckUsage }),
@@ -45,7 +52,7 @@ describe('useDatasetCardState', () => {
     word_count: 1000,
     created_at: 1609459200,
     updated_at: 1609545600,
-    tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 }],
+    tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: '' }],
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     created_by: 'user-1',
@@ -66,15 +73,6 @@ describe('useDatasetCardState', () => {
   })
 
   describe('Initial State', () => {
-    it('should return tags from dataset', () => {
-      const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
-
-      expect(result.current.tags).toEqual(dataset.tags)
-    })
-
     it('should have initial modal state closed', () => {
       const dataset = createMockDataset()
       const { result } = renderHook(() =>
@@ -93,36 +91,6 @@ describe('useDatasetCardState', () => {
       )
 
       expect(result.current.exporting).toBe(false)
-    })
-  })
-
-  describe('Tags State', () => {
-    it('should update tags when setTags is called', () => {
-      const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
-
-      act(() => {
-        result.current.setTags([{ id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: 0 }])
-      })
-
-      expect(result.current.tags).toEqual([{ id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: 0 }])
-    })
-
-    it('should sync tags when dataset tags change', () => {
-      const dataset = createMockDataset()
-      const { result, rerender } = renderHook(
-        ({ dataset }) => useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-        { initialProps: { dataset } },
-      )
-
-      const newTags = [{ id: 'tag-3', name: 'Tag 3', type: 'knowledge', binding_count: 0 }]
-      const updatedDataset = createMockDataset({ tags: newTags })
-
-      rerender({ dataset: updatedDataset })
-
-      expect(result.current.tags).toEqual(newTags)
     })
   })
 
@@ -157,7 +125,7 @@ describe('useDatasetCardState', () => {
       expect(result.current.modalState.showRenameModal).toBe(false)
     })
 
-    it('should close confirm delete modal when closeConfirmDelete is called', () => {
+    it('should close confirm delete modal when closeConfirmDelete is called', async () => {
       const dataset = createMockDataset()
       const { result } = renderHook(() =>
         useDatasetCardState({ dataset, onSuccess: vi.fn() }),
@@ -168,7 +136,7 @@ describe('useDatasetCardState', () => {
         result.current.detectIsUsedByApp()
       })
 
-      waitFor(() => {
+      await waitFor(() => {
         expect(result.current.modalState.showConfirmDelete).toBe(true)
       })
 
@@ -279,15 +247,6 @@ describe('useDatasetCardState', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty tags array', () => {
-      const dataset = createMockDataset({ tags: [] })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
-
-      expect(result.current.tags).toEqual([])
-    })
-
     it('should handle undefined onSuccess', async () => {
       const dataset = createMockDataset()
       const { result } = renderHook(() =>
@@ -305,7 +264,7 @@ describe('useDatasetCardState', () => {
 
   describe('Error Handling', () => {
     it('should show error toast when export pipeline fails', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockExportPipeline.mockRejectedValue(new Error('Export failed'))
 
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
@@ -321,7 +280,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle Response error in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       const mockResponse = new Response(JSON.stringify({ message: 'API Error' }), {
         status: 400,
       })
@@ -340,7 +299,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle generic Error in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockCheckUsage.mockRejectedValue(new Error('Network error'))
 
       const dataset = createMockDataset()
@@ -356,7 +315,7 @@ describe('useDatasetCardState', () => {
     })
 
     it('should handle error without message in detectIsUsedByApp', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       mockCheckUsage.mockRejectedValue({})
 
       const dataset = createMockDataset()

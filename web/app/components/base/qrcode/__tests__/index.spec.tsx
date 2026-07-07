@@ -17,7 +17,7 @@ describe('ShareQRCode', () => {
   describe('Rendering', () => {
     it('renders correctly', () => {
       render(<ShareQRCode content={content} />)
-      expect(screen.getByRole('button').firstElementChild).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })).toBeInTheDocument()
     })
   })
 
@@ -27,7 +27,7 @@ describe('ShareQRCode', () => {
       render(<ShareQRCode content={content} />)
 
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
-      const trigger = screen.getByTestId('qrcode-container')
+      const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
       await user.click(trigger)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
@@ -40,16 +40,16 @@ describe('ShareQRCode', () => {
       const user = userEvent.setup()
       render(
         <div>
-          <div data-testid="outside">Outside</div>
+          <div>Outside</div>
           <ShareQRCode content={content} />
         </div>,
       )
 
-      const trigger = screen.getByTestId('qrcode-container')
+      const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
       await user.click(trigger)
       expect(screen.getByRole('img')).toBeInTheDocument()
 
-      await user.click(screen.getByTestId('outside'))
+      await user.click(screen.getByText('Outside'))
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
@@ -57,7 +57,7 @@ describe('ShareQRCode', () => {
       const user = userEvent.setup()
       render(<ShareQRCode content={content} />)
 
-      const trigger = screen.getByTestId('qrcode-container')
+      const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
       await user.click(trigger)
 
       const canvas = screen.getByRole('img')
@@ -75,10 +75,10 @@ describe('ShareQRCode', () => {
       try {
         render(<ShareQRCode content={content} />)
 
-        const trigger = screen.getByTestId('qrcode-container')
+        const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
         await user.click(trigger!)
 
-        const downloadBtn = screen.getByText('appOverview.overview.appInfo.qrcode.download')
+        const downloadBtn = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' })
         await user.click(downloadBtn)
 
         expect(downloadUrl).toHaveBeenCalledWith({
@@ -95,7 +95,7 @@ describe('ShareQRCode', () => {
       const user = userEvent.setup()
       render(<ShareQRCode content={content} />)
 
-      const trigger = screen.getByTestId('qrcode-container')
+      const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
       await user.click(trigger)
 
       // Override querySelector on the panel to simulate canvas not being found
@@ -108,7 +108,7 @@ describe('ShareQRCode', () => {
       }) as typeof panel.querySelector
 
       try {
-        const downloadBtn = screen.getByText('appOverview.overview.appInfo.qrcode.download')
+        const downloadBtn = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' })
         await user.click(downloadBtn)
         expect(downloadUrl).not.toHaveBeenCalled()
       }
@@ -121,7 +121,7 @@ describe('ShareQRCode', () => {
       const user = userEvent.setup()
       render(<ShareQRCode content={content} />)
 
-      const trigger = screen.getByTestId('qrcode-container')
+      const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.title' })
       await user.click(trigger)
 
       // Click on the scan text inside the panel — panel should remain open

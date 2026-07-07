@@ -1,59 +1,53 @@
-import type { LexicalNode, SerializedLexicalNode } from 'lexical'
+import type { SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import RequestURLBlockComponent from './component'
 
 type SerializedNode = SerializedLexicalNode
 
 export class RequestURLBlockNode extends DecoratorNode<React.JSX.Element> {
-  static getType(): string {
+  static override getType(): string {
     return 'request-url-block'
   }
 
-  static clone(node: RequestURLBlockNode): RequestURLBlockNode {
+  static override clone(node: RequestURLBlockNode): RequestURLBlockNode {
     return new RequestURLBlockNode(node.__key)
   }
 
-  isInline(): boolean {
+  override isInline(): boolean {
     return true
   }
 
-  createDOM(): HTMLElement {
+  override createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  updateDOM(): false {
+  override updateDOM(): false {
     return false
   }
 
-  decorate(): React.JSX.Element {
+  override decorate(): React.JSX.Element {
     return <RequestURLBlockComponent nodeKey={this.getKey()} />
   }
 
-  static importJSON(): RequestURLBlockNode {
+  static override importJSON(): RequestURLBlockNode {
     const node = $createRequestURLBlockNode()
 
     return node
   }
 
-  exportJSON(): SerializedNode {
+  override exportJSON(): SerializedNode {
     return {
       type: 'request-url-block',
       version: 1,
     }
   }
 
-  getTextContent(): string {
+  override getTextContent(): string {
     return '{{#url#}}'
   }
 }
 export function $createRequestURLBlockNode(): RequestURLBlockNode {
   return new RequestURLBlockNode()
-}
-
-export function $isRequestURLBlockNode(
-  node: RequestURLBlockNode | LexicalNode | null | undefined,
-): node is RequestURLBlockNode {
-  return node instanceof RequestURLBlockNode
 }

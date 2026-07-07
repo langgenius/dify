@@ -359,23 +359,23 @@ describe('prompt-editor/hooks', () => {
       const user = userEvent.setup()
       render(<TriggerHarness />)
 
-      expect(screen.getByText('closed')).toBeInTheDocument()
+      expect(screen.getByText('closed'))!.toBeInTheDocument()
 
       await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('open')).toBeInTheDocument()
+      expect(screen.getByText('open'))!.toBeInTheDocument()
 
       await user.click(screen.getByTestId('trigger-target'))
-      expect(screen.getByText('closed')).toBeInTheDocument()
+      expect(screen.getByText('closed'))!.toBeInTheDocument()
     })
 
     it('should keep state unchanged when consumer does not attach the returned ref', async () => {
       const user = userEvent.setup()
       const { unmount } = render(<TriggerNoRefHarness />)
 
-      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
 
       await user.click(screen.getByTestId('trigger-no-ref-state'))
-      expect(screen.getByTestId('trigger-no-ref-state')).toHaveTextContent('closed')
+      expect(screen.getByTestId('trigger-no-ref-state'))!.toHaveTextContent('closed')
 
       expect(() => unmount()).not.toThrow()
     })
@@ -399,8 +399,8 @@ describe('prompt-editor/hooks', () => {
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledTimes(2)
       // Verify the first call uses TextNode, not MockTargetNode
       const calls = mockState.editor.registerNodeTransform.mock.calls
-      expect(calls[0][0]).not.toBe(MockTargetNode)
-      expect(typeof calls[0][0]).toBe('function')
+      expect(calls[0]![0]).not.toBe(MockTargetNode)
+      expect(typeof calls[0]![0]).toBe('function')
       expect(mockState.editor.registerNodeTransform).toHaveBeenCalledWith(
         MockTargetNode,
         expect.any(Function),
@@ -423,11 +423,11 @@ describe('prompt-editor/hooks', () => {
         maxLength: 5,
       }))
 
-      const match = result.current('prefix @..', {} as LexicalEditor)
+      const match = result.current('prefix @ab', {} as LexicalEditor)
       expect(match).toEqual({
         leadOffset: 7,
-        matchingString: '..',
-        replaceableString: '@..',
+        matchingString: 'ab',
+        replaceableString: '@ab',
       })
     })
 
@@ -437,7 +437,7 @@ describe('prompt-editor/hooks', () => {
         maxLength: 5,
       }))
 
-      expect(result.current('prefix @.', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @a', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when matching text exceeds maxLength', () => {
@@ -445,7 +445,7 @@ describe('prompt-editor/hooks', () => {
         minLength: 1,
         maxLength: 2,
       }))
-      expect(result.current('prefix @...', {} as LexicalEditor)).toBeNull()
+      expect(result.current('prefix @abc', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when text has no trigger character', () => {

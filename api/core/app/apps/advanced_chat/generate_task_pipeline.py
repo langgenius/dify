@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -9,13 +8,7 @@ from datetime import datetime
 from threading import Thread
 from typing import Any, Union
 
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -48,6 +41,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
@@ -59,14 +53,19 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.app.entities.task_entities import (
+    AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
+    HumanInputRequiredPauseReasonPayload,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -75,8 +74,14 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes import BuiltinNodeTypes
+from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
@@ -157,16 +162,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             stream=stream,
         )
 
-        if isinstance(user, EndUser):
-            self._user_id = user.id
-            user_session_id = user.session_id
-            self._created_by_role = CreatorUserRole.END_USER
-        elif isinstance(user, Account):
-            self._user_id = user.id
-            user_session_id = user.id
-            self._created_by_role = CreatorUserRole.ACCOUNT
-        else:
-            raise NotImplementedError(f"User type not supported: {type(user)}")
+        match user:
+            case EndUser():
+                self._user_id = user.id
+                user_session_id = user.session_id
+                self._created_by_role = CreatorUserRole.END_USER
+            case Account():
+                self._user_id = user.id
+                user_session_id = user.id
+                self._created_by_role = CreatorUserRole.ACCOUNT
+            case _:
+                raise NotImplementedError(f"User type not supported: {type(user)}")
 
         self._workflow_system_variables = build_system_variables(
             query=message.query,
@@ -210,7 +216,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if message.status == MessageStatus.PAUSED and message.answer:
             self._task_state.answer = message.answer
 
-    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def process(
+        self,
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        AdvancedChatPausedBlockingResponse,
+        Generator[ChatbotAppStreamResponse, None, None],
+    ]:
         """
         Process generate task pipeline.
         :return:
@@ -226,35 +238,94 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> ChatbotAppBlockingResponse:
+    def _to_blocking_response(
+        self, generator: Generator[StreamResponse, None, None]
+    ) -> Union[ChatbotAppBlockingResponse, AdvancedChatPausedBlockingResponse]:
         """
         Process blocking response.
         :return:
         """
+        human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
-            if isinstance(stream_response, ErrorStreamResponse):
-                raise stream_response.err
-            elif isinstance(stream_response, MessageEndStreamResponse):
-                extras = {}
-                if stream_response.metadata:
-                    extras["metadata"] = stream_response.metadata
+            match stream_response:
+                case ErrorStreamResponse():
+                    raise stream_response.err
+                case HumanInputRequiredResponse():
+                    human_input_responses.append(stream_response)
+                case WorkflowPauseStreamResponse():
+                    return AdvancedChatPausedBlockingResponse(
+                        task_id=stream_response.task_id,
+                        data=AdvancedChatPausedBlockingResponse.Data(
+                            id=self._message_id,
+                            mode=self._conversation_mode,
+                            conversation_id=self._conversation_id,
+                            message_id=self._message_id,
+                            workflow_run_id=stream_response.data.workflow_run_id,
+                            answer=self._task_state.answer,
+                            metadata=self._message_end_to_stream_response().metadata,
+                            created_at=self._message_created_at,
+                            paused_nodes=stream_response.data.paused_nodes,
+                            reasons=stream_response.data.reasons,
+                            status=stream_response.data.status,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                        ),
+                    )
+                case MessageEndStreamResponse():
+                    extras = {}
+                    if stream_response.metadata:
+                        extras["metadata"] = stream_response.metadata
 
-                return ChatbotAppBlockingResponse(
-                    task_id=stream_response.task_id,
-                    data=ChatbotAppBlockingResponse.Data(
-                        id=self._message_id,
-                        mode=self._conversation_mode,
-                        conversation_id=self._conversation_id,
-                        message_id=self._message_id,
-                        answer=self._task_state.answer,
-                        created_at=self._message_created_at,
-                        **extras,
-                    ),
-                )
-            else:
-                continue
+                    return ChatbotAppBlockingResponse(
+                        task_id=stream_response.task_id,
+                        data=ChatbotAppBlockingResponse.Data(
+                            id=self._message_id,
+                            mode=self._conversation_mode,
+                            conversation_id=self._conversation_id,
+                            message_id=self._message_id,
+                            answer=self._task_state.answer,
+                            created_at=self._message_created_at,
+                            **extras,
+                        ),
+                    )
+                case _:
+                    continue
+
+        if human_input_responses:
+            return self._build_paused_blocking_response_from_human_input(human_input_responses)
 
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _build_paused_blocking_response_from_human_input(
+        self, human_input_responses: list[HumanInputRequiredResponse]
+    ) -> AdvancedChatPausedBlockingResponse:
+        runtime_state = self._resolve_graph_runtime_state()
+        paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
+        reasons = [
+            HumanInputRequiredPauseReasonPayload.from_response_data(response.data).model_dump(mode="json")
+            for response in human_input_responses
+        ]
+
+        return AdvancedChatPausedBlockingResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=AdvancedChatPausedBlockingResponse.Data(
+                id=self._message_id,
+                mode=self._conversation_mode,
+                conversation_id=self._conversation_id,
+                message_id=self._message_id,
+                workflow_run_id=human_input_responses[-1].workflow_run_id,
+                answer=self._task_state.answer,
+                metadata=self._message_end_to_stream_response().metadata,
+                created_at=self._message_created_at,
+                paused_nodes=paused_nodes,
+                reasons=reasons,
+                status=WorkflowExecutionStatus.PAUSED,
+                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
+            ),
+        )
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -357,11 +428,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id = run_id
 
         with self._database_session() as session:
-            message = self._get_message(session=session)
-            if not message:
-                raise ValueError(f"Message not found: {self._message_id}")
-
-            message.workflow_run_id = run_id
+            session.execute(update(Message).where(Message.id == self._message_id).values(workflow_run_id=run_id))
 
         workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
@@ -407,6 +474,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             self._recorded_files.extend(
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
+
+        # Collect terminal reasoning (separated mode) per LLM node id for persistence. This is the
+        # authoritative source (outputs.reasoning_content), decoupled from the live delta stream.
+        # Accumulate across iteration/loop passes (same node_id) to match the live stream, which
+        # appends every pass under the same key — overwriting would keep only the last pass.
+        if event.node_type == BuiltinNodeTypes.LLM:
+            reasoning_content = (event.outputs or {}).get("reasoning_content")
+            if isinstance(reasoning_content, str) and reasoning_content:
+                self._task_state.metadata.reasoning[event.node_id] = (
+                    self._task_state.metadata.reasoning.get(event.node_id, "") + reasoning_content
+                )
 
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
@@ -468,6 +546,27 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._task_state.answer += delta_text
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
+        )
+
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle out-of-band reasoning chunk events.
+
+        Pure emit: reasoning is streamed on its own channel and never written to the
+        answer. The terminal marker (is_final) may carry an empty reasoning string, in
+        which case it is still forwarded as the "thinking finished" signal.
+        """
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                message_id=self._message_id,
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
         )
 
     def _handle_iteration_start_event(
@@ -807,6 +906,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
@@ -944,11 +1044,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if message.status == MessageStatus.PAUSED:
             message.status = MessageStatus.NORMAL
 
-        # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer
-        if self._recorded_files:
-            # Remove markdown image links since we're storing files separately
-            answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()

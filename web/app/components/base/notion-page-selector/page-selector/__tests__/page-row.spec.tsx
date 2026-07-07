@@ -54,7 +54,7 @@ describe('PageRow', () => {
 
     renderPageRow({ onSelect })
 
-    await user.click(screen.getByTestId('checkbox-notion-page-checkbox-page-1'))
+    await user.click(screen.getByRole('checkbox', { name: 'Page 1' }))
 
     expect(onSelect).toHaveBeenCalledWith('page-1')
   })

@@ -1,9 +1,10 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from flask import current_app
+from sqlalchemy.orm import Session
 
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -16,14 +17,20 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
     builtin_data: dict[str, Any] | None = None
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.BUILTIN
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    @override
+    def get_pipeline_templates(
+        self, session: Session, language: str, current_tenant_id: str | None = None
+    ) -> dict[str, Any]:
+        del current_tenant_id
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
+    @override
+    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result
 
@@ -50,7 +57,7 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
+        builtin_data: dict[str, dict[str, dict[str, Any]]] = cls._get_builtin_data()
         return builtin_data.get("pipeline_templates", {}).get(language, {})
 
     @classmethod
@@ -60,5 +67,5 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param template_id: Template ID
         :return:
         """
-        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
+        builtin_data: dict[str, dict[str, dict[str, Any]]] = cls._get_builtin_data()
         return builtin_data.get("pipeline_templates", {}).get(template_id)

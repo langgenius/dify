@@ -8,6 +8,11 @@ shared conversion functions for legacy callers and tests.
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from configs import dify_config
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+)
 from graphon.variables.exc import VariableError
 from graphon.variables.factory import (
     TypeMismatchError,
@@ -31,12 +36,6 @@ from graphon.variables.variables import (
     VariableBase,
 )
 
-from configs import dify_config
-from core.workflow.variable_prefixes import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-)
-
 __all__ = [
     "TypeMismatchError",
     "UnsupportedSegmentTypeError",
@@ -49,9 +48,18 @@ __all__ = [
 ]
 
 
+_MAX_VARIABLE_DESCRIPTION_LENGTH = 255
+
+
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
+    description = mapping.get("description", "")
+    if len(description) > _MAX_VARIABLE_DESCRIPTION_LENGTH:
+        raise VariableError(
+            f"description of variable '{mapping['name']}' is too long"
+            f" (max {_MAX_VARIABLE_DESCRIPTION_LENGTH} characters)"
+        )
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 

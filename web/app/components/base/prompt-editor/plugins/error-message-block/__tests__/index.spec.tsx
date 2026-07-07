@@ -90,7 +90,7 @@ describe('ErrorMessageBlock', () => {
     const onInsert = vi.fn()
     renderWithLexicalContext(<ErrorMessageBlock onInsert={onInsert} />)
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as () => boolean
     const result = insertHandler()
 
     expect($createErrorMessageBlockNode).toHaveBeenCalledTimes(1)
@@ -102,7 +102,7 @@ describe('ErrorMessageBlock', () => {
   it('should return true on insert command without onInsert callback', () => {
     renderWithLexicalContext(<ErrorMessageBlock />)
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as () => boolean
 
     expect(insertHandler()).toBe(true)
     expect($insertNodes).toHaveBeenCalled()
@@ -112,7 +112,7 @@ describe('ErrorMessageBlock', () => {
     const onDelete = vi.fn()
     renderWithLexicalContext(<ErrorMessageBlock onDelete={onDelete} />)
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
     const result = deleteHandler()
 
     expect(onDelete).toHaveBeenCalledTimes(1)
@@ -122,7 +122,7 @@ describe('ErrorMessageBlock', () => {
   it('should return true on delete command without onDelete callback', () => {
     renderWithLexicalContext(<ErrorMessageBlock />)
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
 
     expect(deleteHandler()).toBe(true)
   })

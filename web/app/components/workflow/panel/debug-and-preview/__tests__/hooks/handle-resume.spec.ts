@@ -27,7 +27,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -262,6 +262,27 @@ describe('useChat – handleResume', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
+
+    it('should store workflow finished error on resume workflow process', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onWorkflowStarted({
+          workflow_run_id: 'wfr-2',
+          task_id: 'task-2',
+        })
+      })
+
+      act(() => {
+        capturedResumeOptions.onWorkflowFinished({
+          data: { status: 'failed', error: 'Invalid upload file' },
+        })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
+    })
   })
 
   describe('onData', () => {
@@ -292,6 +313,35 @@ describe('useChat – handleResume', () => {
       })
 
       expect(result.current.conversationId).toBe('new-conv-resume')
+    })
+  })
+
+  describe('onReasoning', () => {
+    it('should accumulate reasoning per node onto the resumed answer', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'resumed ', node_id: 'llm' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'thought', node_id: 'llm', is_final: true } })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.reasoningContent).toEqual({ llm: 'resumed thought' })
+      expect(answer!.reasoningFinished).toBe(true)
+    })
+
+    it('should ignore empty reasoning and fall back to "_" when node_id is absent', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: '' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'a' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'b' } })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.reasoningContent).toEqual({ _: 'ab' })
+      expect(answer!.reasoningFinished).toBeUndefined()
     })
   })
 
@@ -502,8 +552,8 @@ describe('useChat – handleResume', () => {
 
       let answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].id).toBe('iter-r1')
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+      expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-r1')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
 
       act(() => {
         capturedResumeOptions.onIterationFinish({
@@ -513,7 +563,7 @@ describe('useChat – handleResume', () => {
 
       answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
 
     it('should handle iteration finish when no match found', async () => {
@@ -539,8 +589,8 @@ describe('useChat – handleResume', () => {
 
       let answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].id).toBe('loop-r1')
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+      expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-r1')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
 
       act(() => {
         capturedResumeOptions.onLoopFinish({
@@ -550,7 +600,7 @@ describe('useChat – handleResume', () => {
 
       answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
 
     it('should handle loop finish when no match found', async () => {
@@ -661,8 +711,8 @@ describe('useChat – handleResume', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-resume')
       const matchingTraces = answer!.workflowProcess!.tracing.filter((t: any) => t.node_id === 'rn-1')
       expect(matchingTraces).toHaveLength(1)
-      expect(matchingTraces[0].id).toBe('rtrace-1-v2')
-      expect(matchingTraces[0].status).toBe('running')
+      expect(matchingTraces[0]!.id).toBe('rtrace-1-v2')
+      expect(matchingTraces[0]!.status).toBe('running')
     })
 
     it('should match nodeFinished with parallel_id', async () => {
@@ -782,7 +832,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', form_data: { a: 1 } },
+          data: { node_id: 'rn-human', submitted_data: { a: 1 } },
         })
       })
 
@@ -796,7 +846,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', form_data: { b: 2 } },
+          data: { node_id: 'rn-human', submitted_data: { b: 2 } },
         })
       })
 
@@ -937,7 +987,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputFormFilled({
-        data: { node_id: 'hn-bare', form_data: { x: 1 } },
+        data: { node_id: 'hn-bare', submitted_data: { x: 1 } },
       })
     })
 
@@ -956,9 +1006,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('loop-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('n-loop-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-loop-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onLoopFinish should return early when no tracing', () => {
@@ -982,9 +1032,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('iter-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('n-iter-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-iter-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onIterationFinish should return early when no tracing', () => {
@@ -1008,9 +1058,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('rtrace-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('rn-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('rtrace-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('rn-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onNodeFinished should return early when no tracing', () => {

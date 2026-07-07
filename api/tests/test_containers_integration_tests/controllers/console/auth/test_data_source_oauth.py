@@ -17,6 +17,8 @@ def test_get_oauth_url_successful(
     test_client_with_containers: FlaskClient,
 ) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    tenant_id = tenant.id
+    current_tenant_id = account.current_tenant_id
     provider = MagicMock()
     provider.get_authorization_url.return_value = "http://oauth.provider/auth"
 
@@ -29,7 +31,7 @@ def test_get_oauth_url_successful(
             headers=authenticate_console_client(test_client_with_containers, account),
         )
 
-    assert tenant.id == account.current_tenant_id
+    assert tenant_id == current_tenant_id
     assert response.status_code == 200
     assert response.get_json() == {"data": "http://oauth.provider/auth"}
     provider.get_authorization_url.assert_called_once()

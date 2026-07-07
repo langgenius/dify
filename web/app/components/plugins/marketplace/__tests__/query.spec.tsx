@@ -143,7 +143,7 @@ describe('useMarketplacePlugins', () => {
     })
 
     expect(result.current.data?.pages).toHaveLength(1)
-    expect(result.current.data?.pages[0].plugins).toHaveLength(1)
+    expect(result.current.data?.pages[0]!.plugins).toHaveLength(1)
   })
 
   it('should handle bundle type in query params', async () => {
@@ -185,8 +185,8 @@ describe('useMarketplacePlugins', () => {
       expect(result.current.data).toBeDefined()
     })
 
-    expect(result.current.data?.pages[0].plugins).toEqual([])
-    expect(result.current.data?.pages[0].total).toBe(0)
+    expect(result.current.data?.pages[0]!.plugins).toEqual([])
+    expect(result.current.data?.pages[0]!.total).toBe(0)
   })
 
   it('should determine next page correctly via getNextPageParam', async () => {

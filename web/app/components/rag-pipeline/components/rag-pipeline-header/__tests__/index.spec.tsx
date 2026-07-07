@@ -9,6 +9,14 @@ import Publisher from '../publisher'
 import Popup from '../publisher/popup'
 import RunMode from '../run-mode'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockSetShowInputFieldPanel = vi.fn()
 const mockSetShowEnvPanel = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
@@ -40,6 +48,16 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -114,8 +132,29 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 const mockMutateDatasetRes = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    dataset: {
+      permission_keys: mockDatasetPermissionKeys,
+      maintainer: mockDatasetMaintainer,
+    },
+    mutateDatasetRes: mockMutateDatasetRes,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 const mockSetShowPricingModal = vi.fn()
@@ -161,7 +200,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -172,11 +211,6 @@ vi.mock('@/app/components/base/ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
-
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     let value = initial
@@ -188,28 +222,6 @@ vi.mock('ahooks', () => ({
         toggle: vi.fn(() => { value = !value }),
       },
     ]
-  },
-  useKeyPress: vi.fn(),
-}))
-
-let portalOpenState = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: PropsWithChildren<{
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    placement?: string
-    offset?: unknown
-  }>) => {
-    portalOpenState = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: PropsWithChildren<{ onClick?: () => void }>) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: PropsWithChildren) => {
-    if (!portalOpenState)
-      return null
-    return <div data-testid="portal-content">{children}</div>
   },
 }))
 
@@ -229,7 +241,6 @@ vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
 describe('RagPipelineHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
     mockStoreState = {
       pipelineId: 'test-pipeline-id',
       showDebugAndPreviewPanel: false,
@@ -241,23 +252,28 @@ describe('RagPipelineHeader', () => {
       setShowEnvPanel: mockSetShowEnvPanel,
     }
     mockProviderContextValue = createMockProviderContextValue()
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<RagPipelineHeader />)
-      expect(screen.getByTestId('workflow-header')).toBeInTheDocument()
+      expect(screen.getByTestId('workflow-header'))!.toBeInTheDocument()
     })
 
     it('should render InputFieldButton in left slot', () => {
       render(<RagPipelineHeader />)
-      expect(screen.getByTestId('header-left')).toBeInTheDocument()
-      expect(screen.getByText(/inputField/i)).toBeInTheDocument()
+      expect(screen.getByTestId('header-left'))!.toBeInTheDocument()
+      expect(screen.getByText(/inputField/i))!.toBeInTheDocument()
     })
 
     it('should render Publisher in middle slot', () => {
       render(<RagPipelineHeader />)
-      expect(screen.getByTestId('header-middle')).toBeInTheDocument()
+      expect(screen.getByTestId('header-middle'))!.toBeInTheDocument()
     })
 
     it('should pass correct viewHistoryProps with pipelineId', () => {
@@ -299,14 +315,14 @@ describe('InputFieldButton', () => {
   describe('Rendering', () => {
     it('should render button with correct text', () => {
       render(<InputFieldButton />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
-      expect(screen.getByText(/inputField/i)).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByText(/inputField/i))!.toBeInTheDocument()
     })
 
     it('should render with secondary variant style', () => {
       render(<InputFieldButton />)
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('flex', 'gap-x-0.5')
+      expect(button)!.toHaveClass('flex', 'gap-x-0.5')
     })
   })
 
@@ -351,25 +367,24 @@ describe('InputFieldButton', () => {
 describe('Publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
   })
 
   describe('Rendering', () => {
     it('should render publish button', () => {
       render(<Publisher />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
-      expect(screen.getByText(/workflow.common.publish/i)).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.publish/i))!.toBeInTheDocument()
     })
 
     it('should render with primary variant', () => {
       render(<Publisher />)
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('px-2')
+      expect(button)!.toHaveClass('px-2')
     })
 
-    it('should render portal trigger element', () => {
+    it('should render publish trigger button', () => {
       render(<Publisher />)
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /workflow\.common\.publish/i }))!.toBeInTheDocument()
     })
   })
 
@@ -377,7 +392,7 @@ describe('Publisher', () => {
     it('should call handleSyncWorkflowDraft when opening', () => {
       render(<Publisher />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))
 
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
     })
@@ -385,12 +400,14 @@ describe('Publisher', () => {
     it('should toggle open state when trigger clicked', () => {
       render(<Publisher />)
 
-      const portal = screen.getByTestId('portal-elem')
-      expect(portal).toHaveAttribute('data-open', 'false')
+      const trigger = screen.getByRole('button', { name: /workflow\.common\.publish/i })
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(trigger)
 
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByText(/workflow\.common\.publishUpdate/i))!.toBeInTheDocument()
     })
   })
 })
@@ -409,7 +426,7 @@ describe('Popup', () => {
   describe('Rendering', () => {
     it('should render popup container', () => {
       render(<Popup />)
-      expect(screen.getByText(/workflow.common.publishUpdate/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.publishUpdate/i))!.toBeInTheDocument()
     })
 
     it('should show unpublished state when publishedAt is 0', () => {
@@ -417,7 +434,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.currentDraftUnpublished/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.currentDraftUnpublished/i))!.toBeInTheDocument()
     })
 
     it('should show published state when publishedAt is set', () => {
@@ -425,33 +442,34 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.latestPublished/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.latestPublished/i))!.toBeInTheDocument()
     })
 
     it('should render keyboard shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
-      expect(screen.getByText('ctrl')).toBeInTheDocument()
-      expect(screen.getByText('⇧')).toBeInTheDocument()
-      expect(screen.getByText('P')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
+      expect(screen.getByText('Ctrl'))!.toBeInTheDocument()
+      expect(screen.getByText('Shift'))!.toBeInTheDocument()
+      expect(screen.getByText('P'))!.toBeInTheDocument()
     })
 
     it('should render goToAddDocuments button', () => {
       render(<Popup />)
 
-      expect(screen.getByText(/pipeline.common.goToAddDocuments/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.goToAddDocuments/i))!.toBeInTheDocument()
     })
 
     it('should render API reference link', () => {
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.accessAPIReference/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.accessAPIReference/i))!.toBeInTheDocument()
     })
 
     it('should render publish as template button', () => {
       render(<Popup />)
 
-      expect(screen.getByText(/pipeline.common.publishAs/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.publishAs/i))!.toBeInTheDocument()
     })
   })
 
@@ -462,7 +480,7 @@ describe('Popup', () => {
       render(<Popup />)
 
       const button = screen.getByText(/pipeline.common.goToAddDocuments/i).closest('button')
-      expect(button).toBeDisabled()
+      expect(button)!.toBeDisabled()
     })
 
     it('should enable goToAddDocuments when published', () => {
@@ -480,7 +498,7 @@ describe('Popup', () => {
       render(<Popup />)
 
       const button = screen.getByText(/pipeline.common.publishAs/i).closest('button')
-      expect(button).toBeDisabled()
+      expect(button)!.toBeDisabled()
     })
   })
 
@@ -492,7 +510,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/billing.upgradeBtn.encourageShort/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing.upgradeBtn.encourageShort/i))!.toBeInTheDocument()
     })
 
     it('should not show premium badge when allowed to publish as template', () => {
@@ -551,7 +569,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.autoSaved/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.autoSaved/i))!.toBeInTheDocument()
     })
 
     it('should show published time when published', () => {
@@ -559,7 +577,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.publishedAt/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.publishedAt/i))!.toBeInTheDocument()
     })
   })
 })
@@ -576,21 +594,22 @@ describe('RunMode', () => {
     it('should render run button with default text', () => {
       render(<RunMode />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
-      expect(screen.getByText(/pipeline.common.testRun/i)).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.testRun/i))!.toBeInTheDocument()
     })
 
     it('should render with custom text prop', () => {
       render(<RunMode text="Custom Run" />)
 
-      expect(screen.getByText('Custom Run')).toBeInTheDocument()
+      expect(screen.getByText('Custom Run'))!.toBeInTheDocument()
     })
 
     it('should render keyboard shortcuts when not disabled', () => {
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt')).toBeInTheDocument()
-      expect(screen.getByText('R')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
+      expect(screen.getByText('R'))!.toBeInTheDocument()
     })
   })
 
@@ -603,7 +622,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.processing/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.processing/i))!.toBeInTheDocument()
     })
 
     it('should show stop button when running', () => {
@@ -626,7 +645,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.reRun/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.reRun/i))!.toBeInTheDocument()
     })
 
     it('should show preparing data source state', () => {
@@ -634,7 +653,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.preparingDataSource/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.preparingDataSource/i))!.toBeInTheDocument()
     })
 
     it('should show cancel button when preparing data source', () => {
@@ -654,7 +673,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.reRun/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.reRun/i))!.toBeInTheDocument()
     })
 
     it('should show reRun text when workflow status is Stopped', () => {
@@ -665,7 +684,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.reRun/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.reRun/i))!.toBeInTheDocument()
     })
 
     it('should show reRun text when workflow status is Waiting', () => {
@@ -676,7 +695,7 @@ describe('RunMode', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.reRun/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.reRun/i))!.toBeInTheDocument()
     })
 
     it('should not show stop button when status is not Running', () => {
@@ -726,7 +745,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toBeDisabled()
+      expect(runButton)!.toBeDisabled()
     })
 
     it('should be disabled when preparing data source', () => {
@@ -735,7 +754,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toBeDisabled()
+      expect(runButton)!.toBeDisabled()
     })
 
     it('should not show keyboard shortcuts when disabled', () => {
@@ -768,7 +787,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1])
+      fireEvent.click(buttons[1]!)
 
       expect(mockHandleStopRun).toHaveBeenCalledWith('task-123')
     })
@@ -779,7 +798,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1])
+      fireEvent.click(buttons[1]!)
 
       expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
       expect(mockSetShowDebugAndPreviewPanel).toHaveBeenCalledWith(false)
@@ -794,7 +813,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1]) // Click stop button
+      fireEvent.click(buttons[1]!) // Click stop button
 
       expect(mockHandleStopRun).toHaveBeenCalledWith('')
     })
@@ -808,7 +827,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      fireEvent.click(runButton)
+      fireEvent.click(runButton!)
 
       expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
     })
@@ -879,7 +898,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('rounded-md')
+      expect(button)!.toHaveClass('rounded-md')
     })
 
     it('should have rounded-l-md class when disabled', () => {
@@ -891,7 +910,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toHaveClass('rounded-l-md')
+      expect(runButton)!.toHaveClass('rounded-l-md')
     })
 
     it('should have cursor-not-allowed when disabled', () => {
@@ -900,7 +919,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toHaveClass('cursor-not-allowed')
+      expect(runButton)!.toHaveClass('cursor-not-allowed')
     })
 
     it('should have bg-state-accent-hover when disabled', () => {
@@ -909,7 +928,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toHaveClass('bg-state-accent-hover')
+      expect(runButton)!.toHaveClass('bg-state-accent-hover')
     })
 
     it('should have bg-state-accent-active on stop button', () => {
@@ -921,7 +940,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const stopButton = screen.getAllByRole('button')[1]
-      expect(stopButton).toHaveClass('bg-state-accent-active')
+      expect(stopButton)!.toHaveClass('bg-state-accent-active')
     })
 
     it('should have rounded-r-md on stop button', () => {
@@ -933,7 +952,7 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const stopButton = screen.getAllByRole('button')[1]
-      expect(stopButton).toHaveClass('rounded-r-md')
+      expect(stopButton)!.toHaveClass('rounded-r-md')
     })
 
     it('should have size-7 on stop button', () => {
@@ -945,26 +964,26 @@ describe('RunMode', () => {
       render(<RunMode />)
 
       const stopButton = screen.getAllByRole('button')[1]
-      expect(stopButton).toHaveClass('size-7')
+      expect(stopButton)!.toHaveClass('size-7')
     })
 
     it('should have correct base classes on run button', () => {
       render(<RunMode />)
 
       const runButton = screen.getByRole('button')
-      expect(runButton).toHaveClass('system-xs-medium')
-      expect(runButton).toHaveClass('h-7')
-      expect(runButton).toHaveClass('px-1.5')
-      expect(runButton).toHaveClass('text-text-accent')
+      expect(runButton)!.toHaveClass('system-xs-medium')
+      expect(runButton)!.toHaveClass('h-7')
+      expect(runButton)!.toHaveClass('px-1.5')
+      expect(runButton)!.toHaveClass('text-text-accent')
     })
 
     it('should have gap-x-px on container', () => {
       const { container } = render(<RunMode />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('gap-x-px')
-      expect(wrapper).toHaveClass('flex')
-      expect(wrapper).toHaveClass('items-center')
+      expect(wrapper)!.toHaveClass('gap-x-px')
+      expect(wrapper)!.toHaveClass('flex')
+      expect(wrapper)!.toHaveClass('items-center')
     })
   })
 
@@ -978,7 +997,6 @@ describe('RunMode', () => {
 describe('Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
     mockStoreState = {
       pipelineId: 'test-pipeline-id',
       showDebugAndPreviewPanel: false,
@@ -994,9 +1012,9 @@ describe('Integration', () => {
   it('should render all child components in RagPipelineHeader', () => {
     render(<RagPipelineHeader />)
 
-    expect(screen.getByText(/inputField/i)).toBeInTheDocument()
+    expect(screen.getByText(/inputField/i))!.toBeInTheDocument()
 
-    expect(screen.getByTestId('header-middle')).toBeInTheDocument()
+    expect(screen.getByTestId('header-middle'))!.toBeInTheDocument()
   })
 
   it('should pass correct history URL based on pipelineId', () => {
@@ -1020,7 +1038,7 @@ describe('Edge Cases', () => {
 
       render(<RunMode />)
 
-      expect(screen.getByText(/pipeline.common.testRun/i)).toBeInTheDocument()
+      expect(screen.getByText(/pipeline.common.testRun/i))!.toBeInTheDocument()
     })
 
     it('should handle empty pipelineId', () => {
@@ -1058,7 +1076,7 @@ describe('Edge Cases', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton).toBeDisabled()
+      expect(runButton)!.toBeDisabled()
     })
 
     it('should show testRun text when workflowRunningData is null', () => {
@@ -1078,7 +1096,7 @@ describe('Edge Cases', () => {
 
       render(<RunMode text="Start Pipeline" />)
 
-      expect(screen.getByText('Start Pipeline')).toBeInTheDocument()
+      expect(screen.getByText('Start Pipeline'))!.toBeInTheDocument()
     })
 
     it('should show reRun instead of custom text when workflowRunningData exists', () => {
@@ -1099,10 +1117,11 @@ describe('Edge Cases', () => {
       mockStoreState.workflowRunningData = null
       mockStoreState.isPreparingDataSource = false
 
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt')).toBeInTheDocument()
-      expect(screen.getByText('R')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
+      expect(screen.getByText('R'))!.toBeInTheDocument()
     })
 
     it('should have correct structure with play icon when not disabled', () => {
@@ -1112,7 +1131,7 @@ describe('Edge Cases', () => {
       render(<RunMode />)
 
       const button = screen.getByRole('button')
-      expect(button.querySelector('svg')).toBeInTheDocument()
+      expect(button.querySelector('svg'))!.toBeInTheDocument()
     })
 
     it('should have correct structure with loader icon when running', () => {
@@ -1124,8 +1143,8 @@ describe('Edge Cases', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      const spinningIcon = runButton.querySelector('.animate-spin')
-      expect(spinningIcon).toBeInTheDocument()
+      const spinningIcon = runButton!.querySelector('.animate-spin')
+      expect(spinningIcon)!.toBeInTheDocument()
     })
 
     it('should have correct structure with database icon when preparing data source', () => {
@@ -1134,7 +1153,7 @@ describe('Edge Cases', () => {
       render(<RunMode />)
 
       const runButton = screen.getAllByRole('button')[0]
-      expect(runButton.querySelector('svg')).toBeInTheDocument()
+      expect(runButton!.querySelector('svg'))!.toBeInTheDocument()
     })
   })
 
@@ -1145,7 +1164,7 @@ describe('Edge Cases', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.autoSaved/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.autoSaved/i))!.toBeInTheDocument()
     })
 
     it('should handle very old publishedAt timestamp', () => {
@@ -1153,7 +1172,7 @@ describe('Edge Cases', () => {
 
       render(<Popup />)
 
-      expect(screen.getByText(/workflow.common.latestPublished/i)).toBeInTheDocument()
+      expect(screen.getByText(/workflow.common.latestPublished/i))!.toBeInTheDocument()
     })
   })
 })

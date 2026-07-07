@@ -1,15 +1,14 @@
 import json
 
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
-
 from models.workflow import Workflow
 
 
 def test_file_to_dict():
     file = File(
-        id="file1",
+        file_id="file1",
         tenant_id="tenant1",
-        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image1.jpg",
         storage_key="storage_key",

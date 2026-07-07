@@ -46,7 +46,7 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       mockState.mockToastCall({ type: 'success', message, ...options })),
@@ -258,6 +258,7 @@ vi.mock('../debug-with-single-model', () => {
 
 const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue => ({
   readonly: false,
+  canTestAndRun: true,
   appId: 'app-id',
   isAPIKeySet: true,
   isTrailFinished: false,
@@ -479,8 +480,8 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByText('appDebug.noModelProviderConfigured')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.noModelProviderConfiguredTip')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelProviderConfigured'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelProviderConfiguredTip'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'appDebug.manageModels' }))
       expect(onSetting).toHaveBeenCalledTimes(1)
@@ -500,8 +501,8 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByText('appDebug.noModelSelected')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.noModelSelectedTip')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelSelected'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelSelectedTip'))!.toBeInTheDocument()
       expect(screen.queryByText('appDebug.noModelProviderConfigured')).not.toBeInTheDocument()
     })
   })
@@ -510,9 +511,9 @@ describe('Debug', () => {
     it('should render single-model panel and refresh conversation', () => {
       renderDebug()
 
-      expect(screen.getByTestId('debug-with-single-model')).toBeInTheDocument()
+      expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0])
+      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -535,15 +536,28 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('chat-user-input')).toBeInTheDocument()
-      fireEvent.click(screen.getAllByTestId('action-button')[1])
+      expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
+      fireEvent.click(screen.getAllByTestId('action-button')[1]!)
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
-    it('should not render refresh action when readonly is true', () => {
+    it('should keep refresh action available when readonly app still has test/run permission', () => {
       renderDebug({
         contextValue: {
           readonly: true,
+          canTestAndRun: true,
+        },
+      })
+
+      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not render refresh action when test/run permission is missing', () => {
+      renderDebug({
+        contextValue: {
+          readonly: false,
+          canTestAndRun: false,
         },
       })
 
@@ -560,7 +574,7 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('formatting-changed')).toBeInTheDocument()
+      expect(screen.getByTestId('formatting-changed'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('formatting-cancel'))
       expect(setFormattingChanged).toHaveBeenCalledWith(false)
     })
@@ -623,8 +637,8 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('prompt-value-panel')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+      expect(screen.getByTestId('prompt-value-panel'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
     })
 
     it('should notify when required input is missing', () => {
@@ -696,7 +710,7 @@ describe('Debug', () => {
       })
 
       fireEvent.click(screen.getByTestId('panel-send'))
-      expect(screen.getByTestId('cannot-query-dataset')).toBeInTheDocument()
+      expect(screen.getByTestId('cannot-query-dataset'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('cannot-query-confirm'))
       expect(screen.queryByTestId('cannot-query-dataset')).not.toBeInTheDocument()
@@ -752,7 +766,7 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = mockState.mockSendCompletionMessage.mock.calls[0]
+      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [unknown, any]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -763,9 +777,9 @@ describe('Debug', () => {
           dataset_query_variable: 'question',
         },
       })
-      expect(screen.getByTestId('text-generation')).toHaveTextContent('final answer')
-      expect(screen.getByTestId('text-generation')).toHaveAttribute('data-message-id', 'msg-1')
-      expect(screen.getByTestId('text-generation')).toHaveAttribute('data-tts', 'true')
+      expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
+      expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
+      expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
     })
 
     it('should notify when sending again while a response is in progress', async () => {
@@ -830,7 +844,7 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
     })
 
     it('should render prompt log modal in completion mode when store flag is enabled', () => {
@@ -845,7 +859,7 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('prompt-log-modal'))!.toBeInTheDocument()
     })
 
     it('should close prompt log modal in completion mode', () => {
@@ -904,7 +918,27 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' }))!.toBeDisabled()
+    })
+
+    it('should disable add-model button when test/run permission is missing', () => {
+      const onMultipleModelConfigsChange = vi.fn()
+
+      renderDebug({
+        contextValue: {
+          canTestAndRun: false,
+        },
+        props: {
+          debugWithMultipleModel: true,
+          multipleModelConfigs: [{ id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          onMultipleModelConfigsChange,
+        },
+      })
+
+      const addModelButton = screen.getByRole('button', { name: 'common.modelProvider.addModel(1/4)' })
+      expect(addModelButton).toBeDisabled()
+      fireEvent.click(addModelButton)
+      expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
     })
 
     it('should emit completion event in multiple-model completion mode', () => {
@@ -945,7 +979,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0])
+      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
       expect(mockState.mockEventEmitterEmit).toHaveBeenCalledWith({
         type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       })
@@ -1012,8 +1046,8 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
-      expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('prompt-log-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('agent-log-modal'))!.toBeInTheDocument()
     })
 
     it('should close prompt and agent log modals in multiple-model mode', () => {

@@ -4,20 +4,22 @@ import uuid
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.node_events import StreamCompletedEvent
-from graphon.nodes.llm.file_saver import LLMFileSaver
-from graphon.nodes.llm.node import LLMNode
-from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from graphon.nodes.protocols import HttpClientProtocol
-from graphon.runtime import GraphRuntimeState, VariablePool
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import ModelInstance
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.node_events import StreamCompletedEvent
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.node import LLMNode
+from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
+from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
+from graphon.nodes.protocols import HttpClientProtocol
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
@@ -53,7 +55,7 @@ def init_llm_node(config: dict) -> LLMNode:
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="aaa",
             app_id=app_id,
@@ -76,8 +78,8 @@ def init_llm_node(config: dict) -> LLMNode:
     llm_file_saver = MagicMock(spec=LLMFileSaver)
 
     node = LLMNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        data=LLMNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=MagicMock(spec=CredentialsProvider),
@@ -91,7 +93,11 @@ def init_llm_node(config: dict) -> LLMNode:
     return node
 
 
-def test_execute_llm():
+def _mock_db_session_close(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(db.session, "close", MagicMock())
+
+
+def test_execute_llm(monkeypatch):
     node = init_llm_node(
         config={
             "id": "llm",
@@ -118,7 +124,7 @@ def test_execute_llm():
         },
     )
 
-    db.session.close = MagicMock()
+    _mock_db_session_close(monkeypatch)
 
     def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal
@@ -195,7 +201,7 @@ def test_execute_llm():
                 assert item.node_run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
-def test_execute_llm_with_jinja2():
+def test_execute_llm_with_jinja2(monkeypatch):
     """
     Test execute LLM node with jinja2
     """
@@ -233,8 +239,7 @@ def test_execute_llm_with_jinja2():
         },
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
+    _mock_db_session_close(monkeypatch)
 
     def build_mock_model_instance() -> MagicMock:
         from decimal import Decimal

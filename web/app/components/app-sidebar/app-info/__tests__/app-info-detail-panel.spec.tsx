@@ -3,7 +3,18 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppInfoDetailPanel from '../app-info-detail-panel'
+
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.create_and_management'] as string[],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
 
 vi.mock('../../../base/app-icon', () => ({
   default: ({ size, icon }: { size: string, icon: string }) => (
@@ -11,17 +22,16 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/content-dialog', () => ({
-  default: ({ show, onClose, children, className }: {
-    show: boolean
+vi.mock('../app-info-detail-drawer', () => ({
+  AppInfoDetailDrawer: ({ open, onClose, children }: {
+    open: boolean
     onClose: () => void
     children: React.ReactNode
-    className?: string
   }) => (
-    show
+    open
       ? (
-          <div data-testid="content-dialog" className={className}>
-            <button type="button" data-testid="dialog-close" onClick={onClose}>Close</button>
+          <div data-testid="app-info-detail-drawer">
+            <button type="button" data-testid="drawer-close" onClick={onClose}>Close</button>
             {children}
           </div>
         )
@@ -35,7 +45,7 @@ vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view',
   ),
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, className, size, variant }: {
     children: React.ReactNode
     onClick?: () => void
@@ -67,6 +77,12 @@ vi.mock('../app-operations', () => ({
   ),
 }))
 
+const defaultAppPermissionKeys = [
+  AppACLPermission.Edit,
+  AppACLPermission.ImportExportDSL,
+  AppACLPermission.Delete,
+]
+
 const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
   id: 'app-1',
   name: 'Test App',
@@ -77,6 +93,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
   icon_url: '',
   description: 'A test description',
   use_icon_as_answer_icon: false,
+  permission_keys: defaultAppPermissionKeys,
   ...overrides,
 } as App & Partial<AppSSO>)
 
@@ -91,17 +108,18 @@ describe('AppInfoDetailPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
     it('should not render when show is false', () => {
       render(<AppInfoDetailPanel {...defaultProps} show={false} />)
-      expect(screen.queryByTestId('content-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('app-info-detail-drawer')).not.toBeInTheDocument()
     })
 
-    it('should render dialog when show is true', () => {
+    it('should render drawer when show is true', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
-      expect(screen.getByTestId('content-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('app-info-detail-drawer')).toBeInTheDocument()
     })
 
     it('should display app name', () => {
@@ -168,6 +186,14 @@ describe('AppInfoDetailPanel', () => {
       expect(defaultProps.openModal).toHaveBeenCalledWith('duplicate')
     })
 
+    it('should hide duplicate operation when app.create_and_management permission is missing', () => {
+      mockWorkspacePermissionKeys.value = []
+
+      render(<AppInfoDetailPanel {...defaultProps} />)
+
+      expect(screen.queryByTestId('op-duplicate')).not.toBeInTheDocument()
+    })
+
     it('should call exportCheck when export is clicked', async () => {
       const user = userEvent.setup()
       render(<AppInfoDetailPanel {...defaultProps} />)
@@ -215,6 +241,19 @@ describe('AppInfoDetailPanel', () => {
 
     it('should not show import DSL for chat mode', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
+      expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
+    })
+
+    it('should not show import DSL when import/export DSL permission is missing', () => {
+      render(
+        <AppInfoDetailPanel
+          {...defaultProps}
+          appDetail={createAppDetail({
+            mode: AppModeEnum.WORKFLOW,
+            permission_keys: [AppACLPermission.Edit],
+          })}
+        />,
+      )
       expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
     })
 
@@ -285,12 +324,12 @@ describe('AppInfoDetailPanel', () => {
     })
   })
 
-  describe('Dialog interactions', () => {
-    it('should call onClose when dialog close button is clicked', async () => {
+  describe('Drawer interactions', () => {
+    it('should call onClose when drawer close button is clicked', async () => {
       const user = userEvent.setup()
       render(<AppInfoDetailPanel {...defaultProps} />)
 
-      await user.click(screen.getByTestId('dialog-close'))
+      await user.click(screen.getByTestId('drawer-close'))
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })

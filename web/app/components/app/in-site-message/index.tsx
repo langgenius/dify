@@ -1,13 +1,13 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
-import { Button } from '@/app/components/base/ui/button'
 
 type InSiteMessageAction = 'link' | 'close'
-type InSiteMessageButtonType = 'primary' | 'default'
+type InSiteMessageButtonType = 'primary' | 'default' | 'outline'
 
 export type InSiteMessageActionItem = {
   action: InSiteMessageAction
@@ -53,6 +53,14 @@ function normalizeLinkData(data: unknown): { href: string, rel?: string, target?
 }
 
 const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
+
+function resolveButtonVariant(type: InSiteMessageButtonType) {
+  if (type === 'primary')
+    return 'primary'
+  if (type === 'outline')
+    return 'secondary'
+  return 'ghost'
+}
 
 function InSiteMessage({
   notificationId,
@@ -132,7 +140,7 @@ function InSiteMessage({
         {actions.map(item => (
           <Button
             key={`${item.type}-${item.action}-${item.text}`}
-            variant={item.type === 'primary' ? 'primary' : 'ghost'}
+            variant={resolveButtonVariant(item.type)}
             size="medium"
             className={cn(item.type === 'default' && 'text-text-secondary')}
             onClick={() => handleAction(item)}

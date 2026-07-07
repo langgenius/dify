@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ImageGallery, { ImageGalleryTest } from '..'
+import ImageGallery from '..'
 
 const getImages = (container: HTMLElement) => container.querySelectorAll('img')
 
@@ -11,7 +11,7 @@ describe('ImageGallery', () => {
 
       const imgs = getImages(container)
       expect(imgs).toHaveLength(1)
-      expect(imgs[0]).toHaveAttribute('src', 'https://example.com/img1.png')
+      expect(imgs[0])!.toHaveAttribute('src', 'https://example.com/img1.png')
     })
 
     it('should render multiple images', () => {
@@ -46,7 +46,7 @@ describe('ImageGallery', () => {
       const { container } = render(<ImageGallery srcs={['https://example.com/1.png']} />)
 
       const img = getImages(container)[0]
-      expect(img.style.maxWidth).toBe('100%')
+      expect(img!.style.maxWidth).toBe('100%')
     })
 
     it('should apply calc(50% - 4px) width for 2 images', () => {
@@ -88,11 +88,11 @@ describe('ImageGallery', () => {
     it('should show ImagePreview when an image is clicked', async () => {
       const user = userEvent.setup()
       const { container } = render(<ImageGallery srcs={['https://example.com/img1.png']} />)
-      await user.click(getImages(container)[0])
+      await user.click(getImages(container)[0]!)
 
       const previewContainer = screen.queryByTestId('image-preview-container')
-      expect(previewContainer).toBeInTheDocument()
-      expect(previewContainer?.querySelector('img')).toHaveAttribute('src', 'https://example.com/img1.png')
+      expect(previewContainer)!.toBeInTheDocument()
+      expect(previewContainer?.querySelector('img'))!.toHaveAttribute('src', 'https://example.com/img1.png')
     })
 
     it('should show preview for the specific clicked image', async () => {
@@ -100,20 +100,20 @@ describe('ImageGallery', () => {
       const srcs = ['https://example.com/1.png', 'https://example.com/2.png']
       const { container } = render(<ImageGallery srcs={srcs} />)
 
-      await user.click(getImages(container)[1])
+      await user.click(getImages(container)[1]!)
 
       const previewContainer = screen.queryByTestId('image-preview-container')
-      expect(previewContainer?.querySelector('img')).toHaveAttribute('src', 'https://example.com/2.png')
+      expect(previewContainer?.querySelector('img'))!.toHaveAttribute('src', 'https://example.com/2.png')
     })
 
     it('should hide ImagePreview when Escape is pressed', async () => {
       const user = userEvent.setup()
       const { container } = render(<ImageGallery srcs={['https://example.com/img1.png']} />)
 
-      await user.click(getImages(container)[0])
-      expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
+      await user.click(getImages(container)[0]!)
+      expect(screen.queryByTestId('image-preview-container'))!.toBeInTheDocument()
 
-      await user.keyboard('{Escape}')
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
@@ -126,19 +126,9 @@ describe('ImageGallery', () => {
       const { container } = render(<ImageGallery srcs={['https://example.com/broken.png']} />)
 
       const img = getImages(container)[0]
-      fireEvent.error(img)
+      fireEvent.error(img!)
 
       expect(getImages(container)).toHaveLength(0)
     })
-  })
-})
-
-describe('ImageGalleryTest', () => {
-  it('should render multiple ImageGallery instances', () => {
-    const { container } = render(<ImageGalleryTest />)
-
-    const imgs = getImages(container)
-    // 6 images renders galleries with 1+2+3+4+5+6 = 21 images total
-    expect(imgs.length).toBe(21)
   })
 })

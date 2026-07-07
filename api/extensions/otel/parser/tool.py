@@ -2,14 +2,14 @@
 Parser for tool nodes that captures tool-specific metadata.
 """
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey
-from graphon.graph_events import GraphNodeEventBase
-from graphon.nodes.base.node import Node
-from graphon.nodes.tool.entities import ToolNodeData
 from opentelemetry.trace import Span
 
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import ToolAttributes
+from graphon.enums import WorkflowNodeExecutionMetadataKey
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
+from graphon.nodes.tool.entities import ToolNodeData
 
 
 class ToolNodeOTelParser:

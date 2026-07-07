@@ -6,8 +6,8 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, overload
 
 from flask import Flask, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -21,9 +21,11 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
@@ -96,7 +98,10 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", True),
+            **extract_trace_session_id_from_args(args),
+        }
 
         # get conversation
         conversation = None
@@ -167,7 +172,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 ),
                 query=query,
                 files=list(file_objs),
-                parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+                parent_message_id=(
+                    args.get("parent_message_id")
+                    if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
+                    else UUID_NIL
+                ),
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
@@ -220,6 +229,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         context: contextvars.Context,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
@@ -245,6 +255,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = AgentChatAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,

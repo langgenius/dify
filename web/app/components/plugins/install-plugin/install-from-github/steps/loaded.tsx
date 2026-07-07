@@ -1,11 +1,11 @@
 'use client'
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { updateFromGitHub } from '@/service/plugins'
 import { useInstallPackageFromGitHub, usePluginTaskList } from '@/service/use-plugins'
@@ -55,7 +55,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
   useEffect(() => {
@@ -74,39 +74,45 @@ const Loaded: React.FC<LoadedProps> = ({
       let taskId
       let isInstalled
       if (updatePayload) {
-        const { all_installed, task_id } = await updateFromGitHub(
+        const response = await updateFromGitHub(
           `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
           updatePayload.originalPackageInfo.id,
           uniqueIdentifier,
         )
+        const { all_installed, task_id } = response
+        handleInstallTaskStart(response)
 
         taskId = task_id
         isInstalled = all_installed
       }
       else {
         if (hasInstalled) {
-          const {
-            all_installed,
-            task_id,
-          } = await updateFromGitHub(
+          const response = await updateFromGitHub(
             `${owner}/${repo}`,
             selectedVersion,
             selectedPackage,
             installedInfoPayload.uniqueIdentifier,
             uniqueIdentifier,
           )
+          const {
+            all_installed,
+            task_id,
+          } = response
+          handleInstallTaskStart(response)
           taskId = task_id
           isInstalled = all_installed
         }
         else {
-          const { all_installed, task_id } = await installPackageFromGitHub({
+          const response = await installPackageFromGitHub({
             repoUrl: `${owner}/${repo}`,
             selectedVersion,
             selectedPackage,
             uniqueIdentifier,
           })
+          const { all_installed, task_id } = response
+          handleInstallTaskStart(response)
 
           taskId = task_id
           isInstalled = all_installed
@@ -116,8 +122,6 @@ const Loaded: React.FC<LoadedProps> = ({
         onInstalled()
         return
       }
-
-      handleRefetch()
 
       const { status, error } = await check({
         taskId,
@@ -171,7 +175,7 @@ const Loaded: React.FC<LoadedProps> = ({
           onClick={handleInstall}
           disabled={isInstalling || isLoading}
         >
-          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

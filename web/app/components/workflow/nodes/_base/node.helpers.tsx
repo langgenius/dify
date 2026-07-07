@@ -24,7 +24,7 @@ export const getLoopIndexTextKey = (runningStatus: NodeRunningStatus | undefined
 }
 
 export const isEntryWorkflowNode = (type: NodeProps['data']['type']) => {
-  return isTriggerNode(type) || type === BlockEnum.Start
+  return isTriggerNode(type) || type === BlockEnum.Start || type === BlockEnum.StartPlaceholder
 }
 
 export const isContainerNode = (type: NodeProps['data']['type']) => {

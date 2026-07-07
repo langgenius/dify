@@ -1,7 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 
 import BuiltInPipelineList from '../built-in-pipeline-list'
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { enable_marketplace: true },
+})
 
 vi.mock('../create-card', () => ({
   default: () => <div data-testid="create-card">CreateCard</div>,
@@ -20,13 +26,6 @@ let mockLocale = 'en-US'
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale,
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn((selector) => {
-    const state = { systemFeatures: { enable_marketplace: true } }
-    return selector(state)
-  }),
 }))
 
 const mockUsePipelineTemplateList = vi.fn()
@@ -150,18 +149,8 @@ describe('BuiltInPipelineList', () => {
 
       const { container } = render(<BuiltInPipelineList />)
       const grid = container.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-1', 'gap-3', 'py-2')
-    })
-
-    it('should have responsive grid columns', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      const { container } = render(<BuiltInPipelineList />)
-      const grid = container.querySelector('.grid')
-      expect(grid).toHaveClass('sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4')
+      expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
+      expect(grid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4')
     })
   })
 

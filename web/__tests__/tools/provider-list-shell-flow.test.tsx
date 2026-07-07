@@ -1,8 +1,10 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ProviderList from '@/app/components/tools/provider-list'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import ProviderList from '@/app/components/integrations/tool-provider-list'
 import { CollectionType } from '@/app/components/tools/types'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockInvalidateInstalledPluginList = vi.fn()
 
@@ -12,18 +14,22 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      enable_marketplace: true,
-    },
-  }),
-}))
-
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     getTagLabel: (name: string) => name,
   }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    userProfile: { id: 'user-1', timezone: 'UTC' },
+    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
+    }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -75,6 +81,8 @@ vi.mock('@/service/use-plugins', () => ({
       : null,
   }),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useMutationPluginPermissionSettings: () => ({ mutate: vi.fn(), isPending: false }),
+  usePluginPermissionSettings: () => ({ data: undefined, isLoading: false, isFetching: false, error: null }),
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
@@ -158,8 +166,21 @@ vi.mock('@/app/components/tools/mcp', () => ({
   default: ({ searchText }: { searchText: string }) => <div data-testid="mcp-list">{searchText}</div>,
 }))
 
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
+  default: () => null,
+}))
+
 const renderProviderList = (searchParams = '') => {
-  return renderWithNuqs(<ProviderList />, { searchParams })
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: true },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
+  )
+  return { ...render(<ProviderList />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
 describe('Tool Provider List Shell Flow', () => {
@@ -174,7 +195,7 @@ describe('Tool Provider List Shell Flow', () => {
     fireEvent.click(screen.getByTestId('tool-card-plugin-tool'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('tool-plugin-detail-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('tool-plugin-detail-panel'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'update-plugin-detail' }))
@@ -196,10 +217,10 @@ describe('Tool Provider List Shell Flow', () => {
     fireEvent.click(screen.getByTestId('tab-item-workflow'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
+      expect(screen.getByTestId('workflow-empty'))!.toBeInTheDocument()
     })
 
-    const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+    const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
     expect(update.searchParams.get('category')).toBe('workflow')
   })
 })

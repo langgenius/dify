@@ -10,7 +10,7 @@ import { useFileUpload } from '../use-file-upload'
 // Mock notify function
 const mockNotify = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },
@@ -294,7 +294,7 @@ describe('useFileUpload', () => {
 
       // Should be called with at most batch_count_limit files
       if (prepareFileList.mock.calls.length > 0) {
-        const calledFiles = prepareFileList.mock.calls[0][0]
+        const calledFiles = prepareFileList.mock.calls[0]![0]
         expect(calledFiles.length).toBeLessThanOrEqual(mockFileUploadConfig.batch_count_limit)
       }
     })
@@ -413,7 +413,7 @@ describe('useFileUpload', () => {
         dropzone.dispatchEvent(dragOverEvent)
       })
 
-      expect(dropzone).toBeInTheDocument()
+      expect(dropzone)!.toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {
@@ -532,7 +532,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const calledFiles = prepareFileList.mock.calls[0][0]
+          const calledFiles = prepareFileList.mock.calls[0]![0]
           expect(calledFiles.length).toBe(1)
         }
       })
@@ -900,7 +900,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const files = prepareFileList.mock.calls[0][0]
+          const files = prepareFileList.mock.calls[0]![0]
           expect(files[0].progress).toBe(PROGRESS_NOT_STARTED)
         }
       })

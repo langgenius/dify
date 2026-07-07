@@ -19,6 +19,8 @@ const {
   mockFindUsedVarNodes,
   mockUpdateNodeVars,
   mockVariableTriggerState,
+  mockUpdateEnvironmentVariables,
+  mockGetSocket,
 } = vi.hoisted(() => ({
   mockDoSyncWorkflowDraft: vi.fn(() => Promise.resolve()),
   mockGetNodes: vi.fn<() => MockWorkflowNode[]>(() => []),
@@ -34,6 +36,8 @@ const {
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
+  mockUpdateEnvironmentVariables: vi.fn<(payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => Promise<unknown>>(() => Promise.resolve({})),
+  mockGetSocket: vi.fn<(appId: string) => { emit: (event: string, payload: unknown) => void } | null>(() => null),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
@@ -54,6 +58,16 @@ vi.mock('reactflow', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
   findUsedVarNodes: mockFindUsedVarNodes,
   updateNodeVars: mockUpdateNodeVars,
+}))
+
+vi.mock('@/service/workflow', () => ({
+  updateEnvironmentVariables: (payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => mockUpdateEnvironmentVariables(payload),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: (appId: string) => mockGetSocket(appId),
+  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
@@ -171,6 +185,8 @@ describe('EnvPanel container', () => {
     mockGetNodes.mockReturnValue([])
     mockFindUsedVarNodes.mockReturnValue([])
     mockVariableTriggerState.savePayload = undefined
+    mockUpdateEnvironmentVariables.mockResolvedValue({})
+    mockGetSocket.mockReturnValue(null)
   })
 
   it('should close the panel from the header action', async () => {
@@ -317,6 +333,7 @@ describe('EnvPanel container', () => {
       }),
       expect.objectContaining({ id: 'node-2' }),
     ])
+    expect(store.getState().controlPromptEditorRerenderKey).toBeGreaterThan(0)
   })
 
   it('should convert edited plain variables into secrets and store the masked secret value', async () => {

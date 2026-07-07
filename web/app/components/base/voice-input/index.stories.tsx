@@ -26,7 +26,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
   return (
     <div className="relative h-16 w-full overflow-hidden rounded-xl border-2 border-primary-600">
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         {/* Waveform visualization placeholder */}
         <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-[3px] px-2">
           {Array.from({ length: 40 }).map((_, i) => (
@@ -42,7 +42,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
         </div>
 
         {state === 'converting' && (
-          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-700 border-t-transparent" />
+          <div className="mr-2 size-4 animate-spin rounded-full border-2 border-primary-700 border-t-transparent" />
         )}
 
         <div className="z-10 grow">
@@ -56,16 +56,16 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
         {state === 'recording' && (
           <div
-            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
             onClick={handleStop}
           >
-            <div className="h-5 w-5 rounded-sm bg-primary-600" />
+            <div className="size-5 rounded-sm bg-primary-600" />
           </div>
         )}
 
         {state === 'converting' && (
           <div
-            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
             onClick={onCancel}
           >
             <span className="text-lg text-gray-500">×</span>
@@ -177,7 +177,7 @@ const ChatInputWithVoiceDemo = () => {
       {/* Existing messages */}
       <div className="mb-4 h-64 space-y-3 overflow-y-auto">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-sm text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-blue-500 text-sm text-white">
             U
           </div>
           <div className="flex-1">
@@ -187,7 +187,7 @@ const ChatInputWithVoiceDemo = () => {
           </div>
         </div>
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-green-500 text-sm text-white">
             A
           </div>
           <div className="flex-1">
@@ -260,7 +260,7 @@ const SearchWithVoiceDemo = () => {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
                   🔍
                 </span>
               </div>

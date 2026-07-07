@@ -1,8 +1,8 @@
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { fetchWebhookUrl } from '@/service/apps'
@@ -16,8 +16,6 @@ import {
 
 export const DEFAULT_STATUS_CODE = 200
 export const MAX_STATUS_CODE = 399
-export const normalizeStatusCode = (statusCode: number) => Math.min(Math.max(statusCode, DEFAULT_STATUS_CODE), MAX_STATUS_CODE)
-
 export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

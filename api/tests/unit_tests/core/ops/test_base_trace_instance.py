@@ -18,7 +18,7 @@ class ConcreteTraceInstance(BaseTraceInstance):
 
 
 @pytest.fixture
-def mock_db_session(monkeypatch):
+def mock_db_session(monkeypatch: pytest.MonkeyPatch):
     mock_session = MagicMock(spec=Session)
     mock_session.__enter__.return_value = mock_session
     mock_session.__exit__.return_value = None

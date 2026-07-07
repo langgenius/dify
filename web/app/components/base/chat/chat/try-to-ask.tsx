@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { OnSend } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 
 type TryToAskProps = {
   suggestedQuestions: string[]
@@ -29,7 +29,7 @@ const TryToAsk: FC<TryToAskProps> = ({
               size="small"
               key={index}
               variant="secondary-accent"
-              className="mr-1 mb-1 last:mr-0"
+              className="pointer-events-auto mr-1 mb-1 last:mr-0"
               onClick={() => onSend(suggestQuestion)}
             >
               {suggestQuestion}

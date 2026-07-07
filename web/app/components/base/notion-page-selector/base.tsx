@@ -4,7 +4,7 @@ import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } f
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import Header from '../../datasets/create/website/base/header'
 import Loading from '../loading'
@@ -36,7 +36,7 @@ const NotionPageSelector = ({
 }: NotionPageSelectorProps) => {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
 
@@ -119,19 +119,19 @@ const NotionPageSelector = ({
   }, [currentCredentialId, datasetId, invalidPreImportNotionPages, onSelect])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId]!)
 
     onSelect(selectedPages)
   }, [pagesMapAndSelectedPagesId, onSelect])
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
     if (onPreview)
-      onPreview(pagesMapAndSelectedPagesId[0][previewPageId])
+      onPreview(pagesMapAndSelectedPagesId[0][previewPageId]!)
   }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
-    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [setShowAccountSettingModal])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openIntegrationsSetting])
 
   if (isFetchingNotionPagesError) {
     return (
@@ -177,7 +177,7 @@ const NotionPageSelector = ({
                   value={selectedPagesId}
                   disabledValue={pagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}
-                  list={notionsPages!.notion_info?.[0].pages || []}
+                  list={notionsPages!.notion_info?.[0]!.pages || []}
                   pagesMap={pagesMapAndSelectedPagesId[0]}
                   onSelect={handleSelectPages}
                   canPreview={canPreview}

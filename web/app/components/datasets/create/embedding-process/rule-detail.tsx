@@ -112,7 +112,7 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
         <FieldInfo
           key={field}
           label={segmentationRuleLabels[field as keyof typeof segmentationRuleLabels]}
-          displayedValue={String(fieldValueGetters[field]())}
+          displayedValue={String(fieldValueGetters[field]!())}
         />
       ))}
       <FieldInfo

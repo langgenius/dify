@@ -12,10 +12,11 @@ from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
 from models import Account, AccountStatus
+from models.enums import EndUserType
 from models.model import App, EndUser, Site
 from services.account_service import AccountService
 from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.enterprise_service import PERMISSION_CHECK_MODES, EnterpriseService, WebAppAccessMode
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
@@ -34,7 +35,7 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             raise AccountNotFoundError()
 
@@ -54,7 +55,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             return None
 
@@ -102,7 +103,7 @@ class WebAppAuthService:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=email,
             name="enterpriseuser",
@@ -137,12 +138,8 @@ class WebAppAuthService:
         """
         Check if the app requires permission check based on its access mode.
         """
-        modes_requiring_permission_check = [
-            "private",
-            "private_all",
-        ]
         if access_mode:
-            return access_mode in modes_requiring_permission_check
+            return access_mode in PERMISSION_CHECK_MODES
 
         if not app_code and not app_id:
             raise ValueError("Either app_code or app_id must be provided.")
@@ -153,7 +150,7 @@ class WebAppAuthService:
             raise ValueError("App ID could not be determined from the provided app_code.")
 
         webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-        if webapp_settings and webapp_settings.access_mode in modes_requiring_permission_check:
+        if webapp_settings and webapp_settings.access_mode in PERMISSION_CHECK_MODES:
             return True
         return False
 
@@ -166,11 +163,11 @@ class WebAppAuthService:
             raise ValueError("Either app_code or access_mode must be provided.")
 
         if access_mode:
-            if access_mode == "public":
+            if access_mode == WebAppAccessMode.PUBLIC:
                 return WebAppAuthType.PUBLIC
-            elif access_mode in ["private", "private_all"]:
+            elif access_mode in PERMISSION_CHECK_MODES:
                 return WebAppAuthType.INTERNAL
-            elif access_mode == "sso_verified":
+            elif access_mode == WebAppAccessMode.SSO_VERIFIED:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:

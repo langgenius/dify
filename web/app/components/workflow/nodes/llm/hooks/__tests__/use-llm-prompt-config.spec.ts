@@ -226,8 +226,8 @@ describe('use-llm-prompt-config', () => {
     })
 
     expect(handleSetInputs).toHaveBeenCalled()
-    expect(handleSetInputs.mock.calls[0][0].prompt_config?.jinja2_variables).toHaveLength(2)
-    expect(handleSetInputs.mock.calls[1][0].prompt_config?.jinja2_variables).toEqual([
+    expect(handleSetInputs.mock.calls[0]![0].prompt_config?.jinja2_variables).toHaveLength(2)
+    expect(handleSetInputs.mock.calls[1]![0].prompt_config?.jinja2_variables).toEqual([
       {
         variable: 'old_name',
         value_selector: ['start', 'old_name'],
@@ -241,33 +241,35 @@ describe('use-llm-prompt-config', () => {
         value_selector: ['start', 'budget'],
       },
     ])
-    expect(handleSetInputs.mock.calls[2][0].prompt_config?.jinja2_variables).toEqual([{
+    expect(handleSetInputs.mock.calls[2]![0].prompt_config?.jinja2_variables).toEqual([{
       variable: 'city',
       value_selector: ['start', 'city'],
     }])
-    expect((handleSetInputs.mock.calls[3][0].prompt_template as Array<{ jinja2_text?: string }>)[0].jinja2_text).toBe('{{ new_name }}')
-    expect(handleSetInputs.mock.calls[4][0].context).toEqual({
+    expect((handleSetInputs.mock.calls[3]![0].prompt_template as Array<{
+      jinja2_text?: string
+    }>)[0]!.jinja2_text).toBe('{{ new_name }}')
+    expect(handleSetInputs.mock.calls[4]![0].context).toEqual({
       enabled: true,
       variable_selector: ['start', 'sys.query'],
     })
-    expect(handleSetInputs.mock.calls[5][0].context).toEqual({
+    expect(handleSetInputs.mock.calls[5]![0].context).toEqual({
       enabled: false,
       variable_selector: [],
     })
-    expect(handleSetInputs.mock.calls[6][0].prompt_template).toEqual([{
+    expect(handleSetInputs.mock.calls[6]![0].prompt_template).toEqual([{
       role: PromptRole.system,
       text: 'Updated prompt',
       edition_type: EditionType.basic,
     }])
-    expect(handleSetInputs.mock.calls[7][0].memory).toEqual({
+    expect(handleSetInputs.mock.calls[7]![0].memory).toEqual({
       window: {
         enabled: false,
         size: 10,
       },
       query_prompt_template: '{{#sys.query#}}',
     })
-    expect(handleSetInputs.mock.calls[8][0].memory?.query_prompt_template).toBe('custom query')
-    expect(handleSetInputs.mock.calls[9][0].memory).toEqual({
+    expect(handleSetInputs.mock.calls[8]![0].memory?.query_prompt_template).toBe('custom query')
+    expect(handleSetInputs.mock.calls[9]![0].memory).toEqual({
       window: {
         enabled: true,
         size: 6,

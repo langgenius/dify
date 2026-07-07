@@ -1,4 +1,7 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -7,9 +10,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { submitHumanInputForm } from '@/service/workflow'
 import {
   useWorkflowInteractions,
@@ -97,7 +99,7 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
   }, [])
 
@@ -116,9 +118,14 @@ const WorkflowPreview = () => {
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={() => handleCancelDebugAndPreviewPanel()}
+        >
+          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
+        </button>
       </div>
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
@@ -197,6 +204,17 @@ const WorkflowPreview = () => {
                   humanInputFilledFormDataList={humanInputFilledFormDataList}
                 />
               )}
+              {workflowRunningData?.reasoningContent && Object.values(workflowRunningData.reasoningContent).some(Boolean) && (
+                <ReasoningPanel
+                  content={workflowRunningData.reasoningContent}
+                  // freeze the timer once the answer starts streaming — reasoningFinished and status only flip at run end
+                  done={
+                    !!workflowRunningData?.resultText?.trim()
+                    || !!workflowRunningData?.reasoningFinished
+                    || workflowRunningData?.result?.status !== WorkflowRunningStatus.Running
+                  }
+                />
+              )}
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
@@ -217,7 +235,7 @@ const WorkflowPreview = () => {
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <span className="i-ri-clipboard-line h-3.5 w-3.5" />
+                  <span className="i-ri-clipboard-line size-3.5" />
                   <div>{t('operation.copy', { ns: 'common' })}</div>
                 </Button>
               )}

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode } from '@/models/datasets'
 
-import SegmentDetail from '../segment-detail'
+import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
@@ -167,44 +167,43 @@ describe('SegmentDetail', () => {
     onCancel: vi.fn(),
     isEditMode: false,
     docForm: ChunkingMode.text,
-    onModalStateChange: vi.fn(),
   }
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = render(<SegmentDetail {...defaultProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render title for view mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={false} />)
 
-      expect(screen.getByText(/segment\.chunkDetail/i)).toBeInTheDocument()
+      expect(screen.getByText(/segment\.chunkDetail/i))!.toBeInTheDocument()
     })
 
     it('should render title for edit mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByText(/segment\.editChunk/i)).toBeInTheDocument()
+      expect(screen.getByText(/segment\.editChunk/i))!.toBeInTheDocument()
     })
 
     it('should render chunk content component', () => {
       render(<SegmentDetail {...defaultProps} />)
 
-      expect(screen.getByTestId('chunk-content')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
     })
 
     it('should render image uploader', () => {
       render(<SegmentDetail {...defaultProps} />)
 
-      expect(screen.getByTestId('image-uploader')).toBeInTheDocument()
+      expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
     })
 
     it('should render segment index tag', () => {
       render(<SegmentDetail {...defaultProps} />)
 
-      expect(screen.getByTestId('segment-index-tag')).toBeInTheDocument()
+      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
     })
   })
 
@@ -213,25 +212,25 @@ describe('SegmentDetail', () => {
     it('should pass isEditMode to ChunkContent', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('edit-mode')).toHaveTextContent('editing')
+      expect(screen.getByTestId('edit-mode'))!.toHaveTextContent('editing')
     })
 
     it('should disable image uploader in view mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={false} />)
 
-      expect(screen.getByTestId('uploader-disabled')).toHaveTextContent('disabled')
+      expect(screen.getByTestId('uploader-disabled'))!.toHaveTextContent('disabled')
     })
 
     it('should enable image uploader in edit mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('uploader-disabled')).toHaveTextContent('enabled')
+      expect(screen.getByTestId('uploader-disabled'))!.toHaveTextContent('enabled')
     })
 
     it('should show action buttons in edit mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
 
     it('should not show action buttons in view mode (non-fullscreen)', () => {
@@ -248,7 +247,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} />)
 
-      expect(screen.getByTestId('keywords')).toBeInTheDocument()
+      expect(screen.getByTestId('keywords'))!.toBeInTheDocument()
     })
 
     it('should not show keywords when indexing is QUALIFIED', () => {
@@ -264,7 +263,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} isEditMode={false} />)
 
-      expect(screen.getByTestId('keywords-action')).toHaveTextContent('view')
+      expect(screen.getByTestId('keywords-action'))!.toHaveTextContent('view')
     })
 
     it('should pass edit action type when in edit mode', () => {
@@ -272,28 +271,24 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('keywords-action')).toHaveTextContent('edit')
+      expect(screen.getByTestId('keywords-action'))!.toHaveTextContent('edit')
     })
   })
 
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(<SegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
+      render(<SegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
 
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<SegmentDetail {...defaultProps} />)
+      render(<SegmentDetail {...defaultProps} />)
 
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -322,7 +317,7 @@ describe('SegmentDetail', () => {
         target: { value: 'Updated content' },
       })
 
-      expect(screen.getByTestId('question-input')).toHaveValue('Updated content')
+      expect(screen.getByTestId('question-input'))!.toHaveValue('Updated content')
     })
   })
 
@@ -333,7 +328,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('regenerate-btn')).toBeInTheDocument()
+      expect(screen.getByTestId('regenerate-btn'))!.toBeInTheDocument()
     })
 
     it('should not show regeneration button when runtimeMode is not general', () => {
@@ -349,38 +344,15 @@ describe('SegmentDetail', () => {
 
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 
-      expect(screen.getByTestId('regeneration-modal')).toBeInTheDocument()
-    })
-
-    it('should call onModalStateChange when regeneration modal opens', () => {
-      const mockOnModalStateChange = vi.fn()
-      render(
-        <SegmentDetail
-          {...defaultProps}
-          isEditMode={true}
-          onModalStateChange={mockOnModalStateChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(true)
+      expect(screen.getByTestId('regeneration-modal'))!.toBeInTheDocument()
     })
 
     it('should close modal when cancel is clicked', () => {
-      const mockOnModalStateChange = vi.fn()
-      render(
-        <SegmentDetail
-          {...defaultProps}
-          isEditMode={true}
-          onModalStateChange={mockOnModalStateChange}
-        />,
-      )
+      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 
       fireEvent.click(screen.getByTestId('cancel-regeneration'))
 
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(false)
       expect(screen.queryByTestId('regeneration-modal')).not.toBeInTheDocument()
     })
   })
@@ -392,7 +364,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
 
     it('should apply full screen styling when fullScreen is true', () => {
@@ -401,7 +373,7 @@ describe('SegmentDetail', () => {
       const { container } = render(<SegmentDetail {...defaultProps} />)
 
       const header = container.querySelector('.border-divider-subtle')
-      expect(header).toBeInTheDocument()
+      expect(header)!.toBeInTheDocument()
     })
   })
 
@@ -415,7 +387,7 @@ describe('SegmentDetail', () => {
 
       const { container } = render(<SegmentDetail {...defaultProps} segInfo={minimalSegInfo} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should handle empty keywords array', () => {
@@ -424,7 +396,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} segInfo={segInfo} />)
 
-      expect(screen.getByTestId('keywords-input')).toHaveValue('')
+      expect(screen.getByTestId('keywords-input'))!.toHaveValue('')
     })
 
     it('should maintain structure when rerendered', () => {
@@ -432,7 +404,7 @@ describe('SegmentDetail', () => {
 
       rerender(<SegmentDetail {...defaultProps} isEditMode={true} />)
 
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
   })
 
@@ -443,7 +415,7 @@ describe('SegmentDetail', () => {
 
       fireEvent.click(screen.getByTestId('add-attachment-btn'))
 
-      expect(screen.getByTestId('attachments-count')).toHaveTextContent('1')
+      expect(screen.getByTestId('attachments-count'))!.toHaveTextContent('1')
     })
 
     it('should pass attachments to onUpdate when save is clicked', () => {
@@ -476,7 +448,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} segInfo={segInfoWithAttachments} isEditMode={true} />)
 
-      expect(screen.getByTestId('attachments-count')).toHaveTextContent('1')
+      expect(screen.getByTestId('attachments-count'))!.toHaveTextContent('1')
     })
   })
 
@@ -504,22 +476,18 @@ describe('SegmentDetail', () => {
 
     it('should close modal and edit drawer when close after regeneration is clicked', () => {
       const mockOnCancel = vi.fn()
-      const mockOnModalStateChange = vi.fn()
       render(
         <SegmentDetail
           {...defaultProps}
           isEditMode={true}
           onCancel={mockOnCancel}
-          onModalStateChange={mockOnModalStateChange}
         />,
       )
 
-      // Open regeneration modal
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 
       fireEvent.click(screen.getByTestId('close-regeneration'))
 
-      expect(mockOnModalStateChange).toHaveBeenCalledWith(false)
       expect(mockOnCancel).toHaveBeenCalled()
     })
   })
@@ -529,7 +497,7 @@ describe('SegmentDetail', () => {
     it('should render answer input in QA mode', () => {
       render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
 
-      expect(screen.getByTestId('answer-input')).toBeInTheDocument()
+      expect(screen.getByTestId('answer-input'))!.toBeInTheDocument()
     })
 
     it('should update answer when input changes', () => {
@@ -539,14 +507,15 @@ describe('SegmentDetail', () => {
         target: { value: 'Updated answer' },
       })
 
-      expect(screen.getByTestId('answer-input')).toHaveValue('Updated answer')
+      expect(screen.getByTestId('answer-input'))!.toHaveValue('Updated answer')
     })
 
     it('should calculate word count correctly in QA mode', () => {
       render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
 
       // Assert - should show combined length of question and answer
-      expect(screen.getByText(/segment\.characters/i)).toBeInTheDocument()
+      // Assert - should show combined length of question and answer
+      expect(screen.getByText(/segment\.characters/i))!.toBeInTheDocument()
     })
   })
 
@@ -557,7 +526,7 @@ describe('SegmentDetail', () => {
 
       render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.parentChild} />)
 
-      expect(screen.getByTestId('segment-index-tag')).toBeInTheDocument()
+      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
     })
   })
 
@@ -571,7 +540,7 @@ describe('SegmentDetail', () => {
         target: { value: 'new,keywords' },
       })
 
-      expect(screen.getByTestId('keywords-input')).toHaveValue('new,keywords')
+      expect(screen.getByTestId('keywords-input'))!.toHaveValue('new,keywords')
     })
   })
 })

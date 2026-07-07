@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import PluginItem from '../plugin-item'
 
+vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
+  MagicBox: ({ className }: { className?: string }) => (
+    <svg data-testid="magic-box-icon" className={className} />
+  ),
+}))
+
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: ({ src, size }: { src: string, size: string }) => (
     <div data-testid="card-icon" data-src={src} data-size={size} />
@@ -108,6 +114,23 @@ describe('PluginItem', () => {
       expect(cardIcon).toHaveAttribute('data-src', 'https://example.com/icons/my-icon.svg')
       expect(cardIcon).toHaveAttribute('data-size', 'small')
     })
+
+    it('should show default tool icon when plugin icon is empty', () => {
+      const { container } = render(
+        <PluginItem
+          plugin={createPlugin({ icon: '' })}
+          getIconUrl={mockGetIconUrl}
+          language="en_US"
+          statusIcon={<span data-testid="status-icon" />}
+          statusText="status"
+        />,
+      )
+
+      expect(mockGetIconUrl).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('card-icon')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-testid="magic-box-icon"]')).toHaveClass('size-8', 'text-text-tertiary')
+      expect(screen.getByTestId('status-icon').parentElement).toHaveClass('absolute', '-bottom-0.5', '-right-0.5', 'z-10')
+    })
   })
 
   describe('Props', () => {
@@ -202,6 +225,7 @@ describe('PluginItem', () => {
       fireEvent.click(clearButton)
 
       expect(handleClear).toHaveBeenCalledTimes(1)
+      expect(clearButton).toHaveClass('invisible', 'flex', 'group-hover/item:visible')
     })
 
     it('should not render clear button when onClear is not provided', () => {

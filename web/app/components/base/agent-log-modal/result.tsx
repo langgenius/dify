@@ -6,7 +6,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusPanel from '@/app/components/workflow/run/status'
 import useTimestamp from '@/hooks/use-timestamp'
 
-type ResultPanelProps = {
+type ResultPanelProps = Readonly<{
   status: string
   elapsed_time?: number
   total_tokens?: number
@@ -18,7 +18,7 @@ type ResultPanelProps = {
   agentMode?: string
   tools?: string[]
   iterations?: number
-}
+}>
 
 const ResultPanel: FC<ResultPanelProps> = ({
   elapsed_time,
@@ -66,7 +66,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
       </div>
       <div className="px-4 py-2">
         <div className="relative">
-          <div className="h-6 text-xs font-medium leading-6 text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
+          <div className="h-6 text-xs/6 font-medium text-text-tertiary">{t('meta.title', { ns: 'runLog' })}</div>
           <div className="py-1">
             <div className="flex">
               <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">{t('meta.status', { ns: 'runLog' })}</div>

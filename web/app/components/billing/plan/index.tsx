@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBook2Line,
   RiFileEditLine,
-  RiGraduationCapLine,
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
@@ -11,27 +11,29 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import { Button } from '@/app/components/base/ui/button'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import { Loading } from '../../base/icons/src/public/thought'
 import { NUM_INFINITE } from '../config'
+import { useEducationDiscount } from '../hooks/use-education-discount'
 import { Plan, SelfHostedPlan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
 
-type Props = {
+type Props = Readonly<{
   loc: string
-}
+}>
 
 const PlanComp: FC<Props> = ({
   loc,
@@ -39,12 +41,13 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const path = usePathname()
-  const { userProfile } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
   const {
     type,
   } = plan
+  const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
   const {
     usage,
@@ -65,14 +68,17 @@ const PlanComp: FC<Props> = ({
   })()
 
   const [showModal, setShowModal] = React.useState(false)
+  const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setEducationVerifying = useSetEducationVerifying()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)
       return
     mutateAsync().then((res) => {
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      setEducationVerifying(null)
       if (unmountedRef.current)
         return
       router.push(`/education-apply?token=${res.token}`)
@@ -97,7 +103,7 @@ const PlanComp: FC<Props> = ({
         {plan.type === Plan.team && (
           <Team />
         )}
-        {(plan.type as any) === SelfHostedPlan.enterprise && (
+        {isEnterprisePlan && (
           <Enterprise />
         )}
         <div className="mt-1 flex items-center">
@@ -108,14 +114,21 @@ const PlanComp: FC<Props> = ({
             <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+            {IS_CLOUD_EDITION && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <span className="mr-1 i-ri-graduation-cap-line size-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {(plan.type as any) !== SelfHostedPlan.enterprise && (
+            {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && canManageBilling && (
+              <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
+                <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                {t('useEducationDiscount', { ns: 'education' })}
+                {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+              </Button>
+            )}
+            {IS_CLOUD_EDITION && !isEnterprisePlan && (
               <UpgradeBtn
                 className="shrink-0"
                 isPlain={type === Plan.team}

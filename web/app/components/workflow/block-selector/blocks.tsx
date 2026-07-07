@@ -1,5 +1,11 @@
-import type { NodeDefault } from '../types'
+import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassificationEnum } from './types'
+import {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
@@ -9,18 +15,22 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
 
 type BlocksProps = {
   searchText: string
-  onSelect: (type: BlockEnum) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }
+type BlockPreviewPayload = {
+  block: NodeDefault
+}
+
 const Blocks = ({
   searchText,
   onSelect,
@@ -30,6 +40,7 @@ const Blocks = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks = blocksFromProps || blocksFromHooks.map(block => ({
@@ -65,11 +76,17 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, searchText, availableBlocksTypes])
+  }, [blocks, availableBlocksTypes, searchText])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
-    const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
+    const list = [...groups[classification]!].sort((a, b) => {
+      if (a.metaData.type === BlockEnum.AgentV2)
+        return -1
+      if (b.metaData.type === BlockEnum.AgentV2)
+        return 1
+      return (a.metaData.sort || 0) - (b.metaData.sort || 0)
+    })
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
@@ -92,49 +109,68 @@ const Blocks = ({
           )
         }
         {
-          filteredList.map(block => (
-            <Tooltip
-              key={block.metaData.type}
-              position="right"
-              popupClassName="w-[200px] rounded-xl"
-              needsDelay={false}
-              popupContent={(
-                <div>
-                  <BlockIcon
-                    size="md"
-                    className="mb-2"
-                    type={block.metaData.type}
-                  />
-                  <div className="system-md-medium mb-1 text-text-primary">{block.metaData.title}</div>
-                  <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
-                </div>
-              )}
-            >
-              <div
-                key={block.metaData.type}
-                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-                onClick={() => onSelect(block.metaData.type)}
-              >
-                <BlockIcon
-                  className="mr-2 shrink-0"
-                  type={block.metaData.type}
+          filteredList.map((block) => {
+            if (block.metaData.type === BlockEnum.AgentV2) {
+              return (
+                <AgentBlockItem
+                  key={block.metaData.type}
+                  block={block}
+                  onSelect={agent =>
+                    onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'roster_agent',
+                        agent_id: agent.id,
+                      },
+                      agent_node_kind: 'dify_agent',
+                      version: '2',
+                    })}
+                  onStartFromScratch={() =>
+                    onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'inline_agent',
+                      },
+                      agent_node_kind: 'dify_agent',
+                      version: '2',
+                    })}
                 />
-                <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
-                {
-                  block.metaData.type === BlockEnum.LoopEnd && (
-                    <Badge
-                      text={t('nodes.loop.loopNode', { ns: 'workflow' })}
-                      className="ml-2 shrink-0"
+              )
+            }
+
+            return (
+              <PreviewCardTrigger
+                key={block.metaData.type}
+                delay={150}
+                closeDelay={150}
+                handle={previewCardHandle}
+                payload={{ block }}
+                render={(
+                  <button
+                    type="button"
+                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    onClick={() => onSelect(block.metaData.type)}
+                  >
+                    <BlockIcon
+                      className="mr-2 shrink-0"
+                      type={block.metaData.type}
                     />
-                  )
-                }
-              </div>
-            </Tooltip>
-          ))
+                    <span className="min-w-0 grow truncate text-sm text-text-secondary">{block.metaData.title}</span>
+                    {
+                      block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )
+                    }
+                  </button>
+                )}
+              />
+            )
+          })
         }
       </div>
     )
-  }, [groups, onSelect, t, store])
+  }, [groups, onSelect, previewCardHandle, t, store])
 
   return (
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
@@ -146,7 +182,42 @@ const Blocks = ({
       {
         !isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)
       }
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <BlockPreviewCard payload={payload as BlockPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
+  )
+}
+
+type BlockPreviewCardProps = {
+  payload?: BlockPreviewPayload
+}
+
+function BlockPreviewCard({
+  payload,
+}: BlockPreviewCardProps) {
+  if (!payload)
+    return null
+
+  const { block } = payload
+
+  return (
+    <PreviewCardContent
+      placement="right"
+      popupClassName="w-[200px] border-none px-3 py-2"
+    >
+      <div>
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={block.metaData.type}
+        />
+        <div className="mb-1 system-md-medium text-text-primary">{block.metaData.title}</div>
+        <div className="system-xs-regular wrap-break-word text-text-tertiary">{block.metaData.description}</div>
+      </div>
+    </PreviewCardContent>
   )
 }
 

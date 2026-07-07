@@ -1,10 +1,14 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
+
+const useTimestampMock = vi.hoisted(() =>
+  vi.fn(() => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') })),
+)
 
 vi.mock('@/service/base', () => ({
   sseGet: vi.fn(),
@@ -20,7 +24,7 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
   toast: {
     success: vi.fn(),
@@ -31,7 +35,7 @@ vi.mock('@/app/components/base/ui/toast', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
+  default: useTimestampMock,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -68,6 +72,7 @@ type HookCallbacks = {
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
   onTTSChunk: (messageId: string, audio: string) => void
   onTTSEnd: (messageId: string, audio: string) => void
+  onReasoning: (chunk: { data: { message_id?: string, reasoning: string, node_id?: string, is_final?: boolean } }) => void
 }
 type UseChatFormSettings = NonNullable<Parameters<typeof useChat>[1]>
 
@@ -90,6 +95,21 @@ describe('useChat', () => {
     expect(result.current.suggestedQuestions).toEqual([])
   })
 
+  it('should pass timestamp options to timestamp formatter', () => {
+    renderHook(() => useChat(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { timezone: 'UTC' },
+    ))
+
+    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
+  })
+
   it('should initialize with opening statement and suggested questions', () => {
     const config = {
       opening_statement: 'Hello {{name}}',
@@ -102,8 +122,8 @@ describe('useChat', () => {
     const { result } = renderHook(() => useChat(config as ChatConfig, formSettings))
 
     expect(result.current.chatList).toHaveLength(1)
-    expect(result.current.chatList[0].content).toBe('Hello Alice')
-    expect(result.current.chatList[0].suggestedQuestions).toEqual(['One', 'Two'])
+    expect(result.current.chatList[0]!.content).toBe('Hello Alice')
+    expect(result.current.chatList[0]!.suggestedQuestions).toEqual(['One', 'Two'])
   })
 
   it('should update existing opening statement if already present in threadMessages', () => {
@@ -121,7 +141,7 @@ describe('useChat', () => {
 
     const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]))
     expect(result.current.chatList).toHaveLength(1)
-    expect(result.current.chatList[0].content).toBe('Hello updated')
+    expect(result.current.chatList[0]!.content).toBe('Hello updated')
   })
 
   it('should update existing opening statement suggested questions using processed values', () => {
@@ -143,8 +163,8 @@ describe('useChat', () => {
 
     const { result } = renderHook(() => useChat(config as ChatConfig, formSettings as UseChatFormSettings, prevChatTree as ChatItemInTree[]))
 
-    expect(result.current.chatList[0].content).toBe('Hello Bob')
-    expect(result.current.chatList[0].suggestedQuestions).toEqual(['Ask Bob'])
+    expect(result.current.chatList[0]!.content).toBe('Hello Bob')
+    expect(result.current.chatList[0]!.suggestedQuestions).toEqual(['Ask Bob'])
   })
 
   describe('opening statement referential stability', () => {
@@ -162,8 +182,8 @@ describe('useChat', () => {
       const { result } = renderHook(() => useChat(config as ChatConfig))
 
       const openerInitial = result.current.chatList[0]
-      expect(openerInitial.isOpeningStatement).toBe(true)
-      expect(openerInitial.content).toBe('Welcome!')
+      expect(openerInitial!.isOpeningStatement).toBe(true)
+      expect(openerInitial!.content).toBe('Welcome!')
 
       act(() => {
         result.current.handleSend('url', { query: 'hello' }, {})
@@ -207,8 +227,8 @@ describe('useChat', () => {
       )
 
       const openerBefore = result.current.chatList[0]
-      expect(openerBefore.content).toBe('Hello Alice')
-      expect(openerBefore.suggestedQuestions).toEqual(['Ask about Alice'])
+      expect(openerBefore!.content).toBe('Hello Alice')
+      expect(openerBefore!.suggestedQuestions).toEqual(['Ask about Alice'])
 
       rerender({ fs: { inputs: { name: 'Alice' }, inputsForm: [] } })
 
@@ -232,8 +252,8 @@ describe('useChat', () => {
 
       const after = result.current.chatList[0]
       expect(after).not.toBe(before)
-      expect(after.content).toBe('Hello Bob')
-      expect(after.suggestedQuestions).toEqual(['Ask Bob'])
+      expect(after!.content).toBe('Hello Bob')
+      expect(after!.suggestedQuestions).toEqual(['Ask Bob'])
     })
 
     it('should keep content and suggestedQuestions stable for opener already in prevChatTree even when sibling metadata changes', () => {
@@ -259,11 +279,11 @@ describe('useChat', () => {
       )
 
       const openerBefore = result.current.chatList[0]
-      expect(openerBefore.content).toBe('Hello updated')
-      expect(openerBefore.suggestedQuestions).toEqual(['S1'])
+      expect(openerBefore!.content).toBe('Hello updated')
+      expect(openerBefore!.suggestedQuestions).toEqual(['S1'])
 
-      const contentBefore = openerBefore.content
-      const suggestionsBefore = openerBefore.suggestedQuestions
+      const contentBefore = openerBefore!.content
+      const suggestionsBefore = openerBefore!.suggestedQuestions
 
       act(() => {
         result.current.handleSend('url', { query: 'msg' }, {})
@@ -274,15 +294,15 @@ describe('useChat', () => {
 
       expect(result.current.chatList.length).toBeGreaterThan(1)
       const openerAfter = result.current.chatList[0]
-      expect(openerAfter.content).toBe(contentBefore)
-      expect(openerAfter.suggestedQuestions).toBe(suggestionsBefore)
+      expect(openerAfter!.content).toBe(contentBefore)
+      expect(openerAfter!.suggestedQuestions).toBe(suggestionsBefore)
     })
 
     it('should use a stable id of "opening-statement"', () => {
       const { result } = renderHook(() =>
         useChat({ opening_statement: 'Hi' } as ChatConfig),
       )
-      expect(result.current.chatList[0].id).toBe('opening-statement')
+      expect(result.current.chatList[0]!.id).toBe('opening-statement')
     })
   })
 
@@ -329,8 +349,76 @@ describe('useChat', () => {
       })
 
       expect(result.current.isResponding).toBe(false)
-      expect(result.current.chatList[1].content).toBe('hi there')
-      expect(result.current.chatList[1].id).toBe('m-1')
+      expect(result.current.chatList[1]!.content).toBe('hi there')
+      expect(result.current.chatList[1]!.id).toBe('m-1')
+    })
+
+    it('should process inputs with the per-send input form override', () => {
+      vi.mocked(ssePost).mockImplementation(async () => undefined)
+      const { result } = renderHook(() => useChat(undefined, {
+        inputs: {},
+        inputsForm: [{
+          type: InputVarType.textInput,
+          label: 'City',
+          variable: 'city',
+          required: true,
+          hide: false,
+        }],
+      }))
+
+      act(() => {
+        result.current.handleSend('test-url', {
+          query: 'hello',
+          inputs: {
+            enabled: undefined,
+          },
+          overrideInputsForm: [{
+            type: InputVarType.checkbox,
+            label: 'Enabled',
+            variable: 'enabled',
+            required: true,
+            hide: false,
+          }],
+        }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            inputs: {
+              enabled: false,
+            },
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('should settle a send once when the SSE stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hello' }, {
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
     })
 
     it('should handle onThought and different workflow events', async () => {
@@ -387,10 +475,10 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.agent_thoughts).toHaveLength(2)
-      expect(lastResponse.agent_thoughts![0].thought).toContain('thinking...')
-      expect(lastResponse.agent_thoughts![1].thought).toContain('second thought')
-      expect(lastResponse.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
+      expect(lastResponse!.agent_thoughts).toHaveLength(2)
+      expect(lastResponse!.agent_thoughts![0]!.thought).toContain('thinking...')
+      expect(lastResponse!.agent_thoughts![1]!.thought).toContain('second thought')
+      expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
     it('should handle human input forms, pauses, TTS, and message ends', async () => {
@@ -411,7 +499,7 @@ describe('useChat', () => {
 
         // Human input required
         callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true } }) // update existing
+        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true, form_content: '{{#$output.answer#}}', inputs: [] } }) // update existing
 
         // setTimeout for timeout form
         callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
@@ -435,11 +523,15 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.humanInputFormDataList).toHaveLength(0) // Removed when filled
-      expect(lastResponse.humanInputFilledFormDataList).toHaveLength(2)
+      expect(lastResponse!.humanInputFormDataList).toHaveLength(0) // Removed when filled
+      expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(2)
+      expect(lastResponse!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
       expect(sseGet).toHaveBeenCalled() // from workflowPaused
-      expect(lastResponse.annotation?.id).toBe('anno-1')
-      expect(lastResponse.content).toBe('Replaced content')
+      expect(lastResponse!.annotation?.id).toBe('anno-1')
+      expect(lastResponse!.content).toBe('Replaced content')
       expect(result.current.isResponding).toBe(false) // from onError
     })
 
@@ -466,8 +558,8 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.message_files).toHaveLength(1)
-      expect(lastResponse.agent_thoughts![0].message_files).toHaveLength(1)
+      expect(lastResponse!.message_files).toHaveLength(1)
+      expect(lastResponse!.agent_thoughts![0]!.message_files).toHaveLength(1)
     })
 
     it('should fetch conversation messages and suggested questions onCompleted', async () => {
@@ -487,6 +579,7 @@ describe('useChat', () => {
           answer_tokens: 10,
           message_tokens: 5,
           provider_response_latency: 0.5,
+          workflow_run_id: 'workflow-run-from-history',
           inputs: {},
           query: 'hi',
         }],
@@ -521,10 +614,10 @@ describe('useChat', () => {
 
       expect(onGetConversationMessages).toHaveBeenCalled()
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
-      expect(onConversationComplete).toHaveBeenCalledWith('c-1')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
 
       const updatedResponse = result.current.chatList[1]
-      expect(updatedResponse.content).toBe('Updated answer from history') // Fetched from mock
+      expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
       expect(result.current.suggestedQuestions).toEqual(['Suggested 1', 'Suggested 2'])
     })
 
@@ -590,8 +683,8 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.workflowProcess?.tracing).toHaveLength(3) // node, iter, loop
-      expect(lastResponse.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iter, loop
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
     })
 
     it('should handle early exits in tracing events during iteration or loop', async () => {
@@ -629,7 +722,7 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { id: 'n-1', iteration_id: 'iter-1' } })
       })
 
-      const traceLen1 = result.current.chatList[result.current.chatList.length - 1].workflowProcess?.tracing?.length
+      const traceLen1 = result.current.chatList[result.current.chatList.length - 1]!.workflowProcess?.tracing?.length
       expect(traceLen1).toBe(0) // None added due to iteration early hits
     })
 
@@ -678,8 +771,31 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.workflowProcess?.tracing).toBeDefined()
-      expect(lastResponse.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.tracing).toBeDefined()
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
+    })
+
+    it('should store workflow finished error on workflow process state', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'failed workflow' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-err', task_id: 't-err' })
+        callbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.error).toBe('Invalid upload file')
     })
 
     it('should insert and then replace child QA when sending with parent_message_id', () => {
@@ -713,7 +829,7 @@ describe('useChat', () => {
 
       expect(result.current.chatList.some(item => item.id === 'question-m-child')).toBe(true)
       expect(result.current.chatList.some(item => item.id === 'm-child')).toBe(true)
-      expect(result.current.chatList[result.current.chatList.length - 1].content).toBe('child answer')
+      expect(result.current.chatList[result.current.chatList.length - 1]!.content).toBe('child answer')
     })
 
     it('should strip local file urls before sending payload', () => {
@@ -746,7 +862,7 @@ describe('useChat', () => {
         result.current.handleSend('test-url', { query: 'file payload', files: [localFile as FileEntity, remoteFile as FileEntity] }, {})
       })
 
-      const payload = vi.mocked(ssePost).mock.calls[0][1] as {
+      const payload = vi.mocked(ssePost).mock.calls[0]![1] as {
         body: {
           files: Array<{
             transfer_method: string
@@ -776,10 +892,10 @@ describe('useChat', () => {
         result.current.handleSend('test-url', { query: 'first request' }, {})
       })
       act(() => {
-        callbacksList[0].getAbortController(previousWorkflowAbort)
+        callbacksList[0]!.getAbortController(previousWorkflowAbort)
       })
       await act(async () => {
-        await callbacksList[0].onCompleted(true)
+        await callbacksList[0]!.onCompleted(true)
       })
 
       act(() => {
@@ -811,7 +927,7 @@ describe('useChat', () => {
       })
 
       expect(onGetConversationMessages).toHaveBeenCalled()
-      expect(result.current.chatList[result.current.chatList.length - 1].content).toBe('streamed content')
+      expect(result.current.chatList[result.current.chatList.length - 1]!.content).toBe('streamed content')
     })
 
     it('should clear suggested questions when suggestion fetch fails after completion', async () => {
@@ -858,7 +974,7 @@ describe('useChat', () => {
       })
 
       const latestResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(latestResponse.workflowProcess?.tracing).toHaveLength(0)
+      expect(latestResponse!.workflowProcess?.tracing).toHaveLength(0)
     })
 
     it('should handle paused workflow finish, thought id binding, empty tts chunk, and human-input pause updates', () => {
@@ -885,11 +1001,11 @@ describe('useChat', () => {
       })
 
       const latestResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(latestResponse.id).toBe('m-th-bind')
-      expect(latestResponse.conversationId).toBe('c-th-bind')
-      expect(latestResponse.workflowProcess?.status).toBe('succeeded')
-      expect(latestResponse.humanInputFormDataList?.map(item => item.node_id)).toEqual(['human-node', 'human-node-2'])
-      expect(latestResponse.workflowProcess?.tracing?.find(item => item.node_id === 'human-node')?.status).toBe('paused')
+      expect(latestResponse!.id).toBe('m-th-bind')
+      expect(latestResponse!.conversationId).toBe('c-th-bind')
+      expect(latestResponse!.workflowProcess?.status).toBe('succeeded')
+      expect(latestResponse!.humanInputFormDataList?.map(item => item.node_id)).toEqual(['human-node', 'human-node-2'])
+      expect(latestResponse!.workflowProcess?.tracing?.find(item => item.node_id === 'human-node')?.status).toBe('paused')
     })
   })
 
@@ -978,13 +1094,13 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(lastResponse.agent_thoughts![0].thought).toContain('resumed')
+      expect(lastResponse!.agent_thoughts![0]!.thought).toContain('resumed')
 
-      expect(lastResponse.workflowProcess?.tracing?.length).toBeGreaterThan(0)
-      expect(lastResponse.workflowProcess?.status).toBe('paused')
-      expect(lastResponse.humanInputFilledFormDataList).toHaveLength(1)
-      expect(lastResponse.humanInputFormDataList).toHaveLength(0)
-      expect(lastResponse.content).toBe('replaced resume')
+      expect(lastResponse!.workflowProcess?.tracing?.length).toBeGreaterThan(0)
+      expect(lastResponse!.workflowProcess?.status).toBe('paused')
+      expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
+      expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
+      expect(lastResponse!.content).toBe('replaced resume')
     })
 
     it('should handle non-agent mode resume', async () => {
@@ -1017,7 +1133,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.content).toBe('initial append')
+      expect(lastResponse!.content).toBe('initial append')
     })
 
     it('should stop resume completion flow early when hasError is true', async () => {
@@ -1059,6 +1175,44 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
     })
 
+    it('should settle a resume once when the event stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-resume-error',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-resume-error', 'wr-error', {
+          isPublicAPI: true,
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should abort previous workflow event stream when resuming again', () => {
       const callbacksList: HookCallbacks[] = []
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
@@ -1084,7 +1238,7 @@ describe('useChat', () => {
         result.current.handleResume('m-resume', 'wr-1', { isPublicAPI: true })
       })
       act(() => {
-        callbacksList[0].getAbortController(previousWorkflowAbort)
+        callbacksList[0]!.getAbortController(previousWorkflowAbort)
       })
       act(() => {
         result.current.handleResume('m-resume', 'wr-2', { isPublicAPI: true })
@@ -1127,7 +1281,7 @@ describe('useChat', () => {
         callbacks.onTTSChunk('m-guard', '')
       })
 
-      expect(result.current.chatList[1].content).toBe('initial')
+      expect(result.current.chatList[1]!.content).toBe('initial')
     })
 
     it('should clear suggested questions when resume suggestion fetch fails', async () => {
@@ -1168,7 +1322,7 @@ describe('useChat', () => {
         await callbacks.onCompleted()
       })
 
-      expect(onConversationComplete).toHaveBeenCalledWith('c-resume')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-resume', 'wr-1')
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
       expect(result.current.suggestedQuestions).toEqual([])
     })
@@ -1207,9 +1361,9 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.humanInputFormDataList?.map(item => item.node_id)).toEqual(['node-2'])
-      expect(lastResponse.humanInputFilledFormDataList?.map(item => item.node_id)).toEqual(['node-1', 'node-3'])
-      expect(lastResponse.workflowProcess?.tracing?.find(item => item.node_id === 'node-1')?.status).toBe('paused')
+      expect(lastResponse!.humanInputFormDataList?.map(item => item.node_id)).toEqual(['node-2'])
+      expect(lastResponse!.humanInputFilledFormDataList?.map(item => item.node_id)).toEqual(['node-1', 'node-3'])
+      expect(lastResponse!.workflowProcess?.tracing?.find(item => item.node_id === 'node-1')?.status).toBe('paused')
     })
 
     it('should handle resume non-annotation lifecycle branches and parallel node finish', () => {
@@ -1256,17 +1410,17 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.message_files).toHaveLength(1)
-      expect(lastResponse.conversationId).toBe('c-resume-branches')
-      expect(lastResponse.citation).toEqual([{ id: 'r-1' }])
-      expect(lastResponse.workflowProcess?.status).toBe('succeeded')
-      expect(lastResponse.workflowProcess?.tracing?.some(item => item.id === 'n-parallel')).toBe(true)
+      expect(lastResponse!.message_files).toHaveLength(1)
+      expect(lastResponse!.conversationId).toBe('c-resume-branches')
+      expect(lastResponse!.citation).toEqual([{ id: 'r-1' }])
+      expect(lastResponse!.workflowProcess?.status).toBe('succeeded')
+      expect(lastResponse!.workflowProcess?.tracing?.some(item => item.id === 'n-parallel')).toBe(true)
     })
   })
 
   describe('createAudioPlayerManager branch cases', () => {
     it('should handle ttsUrl generation for appId with installed apps', async () => {
-      vi.mocked(usePathname).mockReturnValue('/explore/installed/app')
+      vi.mocked(usePathname).mockReturnValue('/installed/app-1')
       vi.mocked(useParams).mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
 
       let callbacks: HookCallbacks
@@ -1349,7 +1503,7 @@ describe('useChat', () => {
       })
 
       // Simulate taskIdRef population
-      const callbacks = vi.mocked(ssePost).mock.calls[0][2] as HookCallbacks
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
       act(() => {
         callbacks.onWorkflowStarted({ task_id: 'task-123' })
       })
@@ -1442,6 +1596,45 @@ describe('useChat', () => {
 
       expect(clearChatListCallback).toHaveBeenCalledWith(false)
     })
+
+    it('should keep the first send after a reset acknowledgement', () => {
+      let clearChatList = true
+      const clearChatListCallback = vi.fn((nextClearChatList: boolean) => {
+        clearChatList = nextClearChatList
+      })
+      const { rerender, result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        clearChatList,
+        clearChatListCallback,
+      ))
+
+      expect(clearChatListCallback).toHaveBeenCalledWith(false)
+
+      rerender()
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'first after reset' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            query: 'first after reset',
+          }),
+        }),
+        expect.any(Object),
+      )
+      expect(result.current.chatList).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          content: 'first after reset',
+          isAnswer: false,
+        }),
+      ]))
+    })
   })
 
   describe('annotations and siblings', () => {
@@ -1467,21 +1660,21 @@ describe('useChat', () => {
       act(() => {
         result.current.handleAnnotationEdited('edited query', 'edited answer', 1)
       })
-      expect(result.current.chatList[0].content).toBe('edited query')
-      expect(result.current.chatList[1].content).toBe('edited answer')
+      expect(result.current.chatList[0]!.content).toBe('edited query')
+      expect(result.current.chatList[1]!.content).toBe('edited answer')
 
       // Added
       act(() => {
         result.current.handleAnnotationAdded('anno-1', 'admin', 'q2', 'a2', 1)
       })
-      expect(result.current.chatList[1].annotation?.id).toBe('anno-1')
-      expect(result.current.chatList[1].annotation?.authorName).toBe('admin')
+      expect(result.current.chatList[1]!.annotation?.id).toBe('anno-1')
+      expect(result.current.chatList[1]!.annotation?.authorName).toBe('admin')
 
       // Removed
       act(() => {
         result.current.handleAnnotationRemoved(1)
       })
-      expect(result.current.chatList[1].annotation?.id).toBe('')
+      expect(result.current.chatList[1]!.annotation?.id).toBe('')
     })
 
     it('should handle switch sibling and trigger handleResume if human input', () => {
@@ -1554,13 +1747,13 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.message_files).toHaveLength(3)
-      expect(lastResponse.message_files![0].type).toBe('video/mp4')
-      expect(lastResponse.message_files![0].supportFileType).toBe('video')
-      expect(lastResponse.message_files![1].type).toBe('audio/mpeg')
-      expect(lastResponse.message_files![1].supportFileType).toBe('audio')
-      expect(lastResponse.message_files![2].type).toBe('application/octet-stream')
-      expect(lastResponse.message_files![2].supportFileType).toBe('document')
+      expect(lastResponse!.message_files).toHaveLength(3)
+      expect(lastResponse!.message_files![0]!.type).toBe('video/mp4')
+      expect(lastResponse!.message_files![0]!.supportFileType).toBe('video')
+      expect(lastResponse!.message_files![1]!.type).toBe('audio/mpeg')
+      expect(lastResponse!.message_files![1]!.supportFileType).toBe('audio')
+      expect(lastResponse!.message_files![2]!.type).toBe('application/octet-stream')
+      expect(lastResponse!.message_files![2]!.supportFileType).toBe('document')
     })
 
     it('should handle onMessageEnd empty citation and empty processed files fallbacks', () => {
@@ -1580,7 +1773,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.citation).toEqual([])
+      expect(lastResponse!.citation).toEqual([])
     })
 
     it('should handle iteration and loop tracing edge cases (lazy arrays, node finish index -1)', () => {
@@ -1660,9 +1853,9 @@ describe('useChat', () => {
 
       // Ensure the tracing array exists and holds the loop item
       const lastResponse = result3.current.chatList[1]
-      expect(lastResponse.workflowProcess?.tracing).toBeDefined()
-      expect(lastResponse.workflowProcess?.tracing).toHaveLength(1)
-      expect(lastResponse.workflowProcess?.tracing![0].node_id).toBe('loop-1')
+      expect(lastResponse!.workflowProcess?.tracing).toBeDefined()
+      expect(lastResponse!.workflowProcess?.tracing).toHaveLength(1)
+      expect(lastResponse!.workflowProcess?.tracing![0]!.node_id).toBe('loop-1')
     })
 
     it('should handle onCompleted fallback to answer when agent thought does not match and provider latency is 0', async () => {
@@ -1699,9 +1892,9 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.content).toBe('final answer')
-      expect(lastResponse.more?.latency).toBe('0.00')
-      expect(lastResponse.more?.tokens_per_second).toBeUndefined()
+      expect(lastResponse!.content).toBe('final answer')
+      expect(lastResponse!.more?.latency).toBe('0.00')
+      expect(lastResponse!.more?.tokens_per_second).toBeUndefined()
     })
 
     it('should handle onCompleted using agent thought when thought matches answer', async () => {
@@ -1738,7 +1931,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.content).toBe('') // isUseAgentThought sets content to empty string
+      expect(lastResponse!.content).toBe('') // isUseAgentThought sets content to empty string
     })
 
     it('should cover pausedStateRef reset on workflowFinished and missing tracing arrays in node finish / human input', () => {
@@ -1781,7 +1974,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse.workflowProcess?.status).toBe('succeeded')
+      expect(lastResponse!.workflowProcess?.status).toBe('succeeded')
     })
 
     it('should cover onThought creating tracing and appending message correctly when isAgentMode=true', () => {
@@ -1806,8 +1999,8 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(lastResponse.agent_thoughts).toHaveLength(1)
-      expect(lastResponse.agent_thoughts![0].thought).toBe('initial thought appended')
+      expect(lastResponse!.agent_thoughts).toHaveLength(1)
+      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought appended')
     })
   })
 
@@ -1897,10 +2090,10 @@ describe('useChat', () => {
     })
 
     const lastSendResponse = result.current.chatList[1]
-    expect(lastSendResponse.message_files).toHaveLength(2)
+    expect(lastSendResponse!.message_files).toHaveLength(2)
 
     const lastResumeResponse = resumeResult.current.chatList[1]
-    expect(lastResumeResponse.message_files).toHaveLength(1)
+    expect(lastResumeResponse!.message_files).toHaveLength(1)
   })
 
   it('should cover parallel_id tracing matches in iteration and loop finish', () => {
@@ -1931,10 +2124,10 @@ describe('useChat', () => {
     })
 
     const lastResponse = result.current.chatList[1]
-    const tracing = lastResponse.workflowProcess!.tracing!
+    const tracing = lastResponse!.workflowProcess!.tracing!
     expect(tracing).toHaveLength(3)
-    expect(tracing[0].status).toBe('succeeded')
-    expect(tracing[1].status).toBe('succeeded')
+    expect(tracing[0]!.status).toBe('succeeded')
+    expect(tracing[1]!.status).toBe('succeeded')
   })
 
   it('should cover baseFile with ALL fields, avoiding all fallbacks', () => {
@@ -1964,9 +2157,9 @@ describe('useChat', () => {
     })
 
     const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-    expect(lastResponse.message_files).toHaveLength(1)
-    expect(lastResponse.message_files![0].type).toBe('custom/mime')
-    expect(lastResponse.message_files![0].size).toBe(1024)
+    expect(lastResponse!.message_files).toHaveLength(1)
+    expect(lastResponse!.message_files![0]!.type).toBe('custom/mime')
+    expect(lastResponse!.message_files![0]!.size).toBe(1024)
   })
 
   it('should cover handleResume missing branches for onMessageEnd, onFile fallbacks, and workflow edges', () => {
@@ -2010,13 +2203,14 @@ describe('useChat', () => {
       resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'timeout-id' } })
 
       // Empty file list
-      result.current.chatList[1].message_files = undefined
+      // Empty file list
+      result.current.chatList[1]!.message_files = undefined
       // Call onFile while agent_thoughts is empty/undefined to hit the `else` fallback branch
       resumeCallbacks.onFile({ id: 'f-agent', type: 'image', url: 'agent.png' })
     })
 
     const lastResponse = result.current.chatList[1]
-    expect(lastResponse.message_files![0]).toBeDefined()
+    expect(lastResponse!.message_files![0]).toBeDefined()
   })
 
   it('should cover edge case where node_id is missing or index is -1 in handleResume onNodeFinished and onLoopFinish', () => {
@@ -2054,7 +2248,7 @@ describe('useChat', () => {
     })
 
     const lastResponse = result.current.chatList[1]
-    expect(lastResponse.workflowProcess?.tracing).toHaveLength(0) // None were updated
+    expect(lastResponse!.workflowProcess?.tracing).toHaveLength(0) // None were updated
   })
 
   it('should cover TTS chunks branching where audio is empty', () => {
@@ -2092,7 +2286,8 @@ describe('useChat', () => {
       sendCallbacks.onData(' append', false, { conversationId: 'c-1' } as Record<string, unknown>)
 
       // Empty message files fallback
-      result.current.chatList[1].message_files = undefined
+      // Empty message files fallback
+      result.current.chatList[1]!.message_files = undefined
       sendCallbacks.onFile({ id: 'f-send', type: 'image', url: 'img.png' })
 
       // Empty message files passing to processing fallback
@@ -2113,7 +2308,7 @@ describe('useChat', () => {
       sendCallbacks.onHumanInputFormTimeout({ data: { node_id: 'timeout' } } as Record<string, unknown>)
     })
 
-    expect(result.current.chatList[1].message_files).toBeDefined()
+    expect(result.current.chatList[1]!.message_files).toBeDefined()
   })
 
   it('should cover handleSwitchSibling target message not found early returns', () => {
@@ -2137,7 +2332,7 @@ describe('useChat', () => {
     act(() => {
       sendCallbacks.onNodeStarted({ data: { node_id: 'n-new', id: 'n-new' } })
     })
-    expect(result.current.chatList[1].workflowProcess).toBeUndefined()
+    expect(result.current.chatList[1]!.workflowProcess).toBeUndefined()
   })
 
   it('should cover handleSend onNodeStarted missing tracing in workflowProcess (L969)', () => {
@@ -2155,14 +2350,14 @@ describe('useChat', () => {
     // Get the shared reference from the tree to mutate the local closed-over responseItem's workflowProcess
     act(() => {
       const response = result.current.chatList[1]
-      if (response.workflowProcess) {
+      if (response!.workflowProcess) {
         // @ts-expect-error deliberately removing tracing to cover the fallback branch
         delete response.workflowProcess.tracing
       }
       sendCallbacks.onNodeStarted({ data: { node_id: 'n-new', id: 'n-new' } })
     })
-    expect(result.current.chatList[1].workflowProcess?.tracing).toBeDefined()
-    expect(result.current.chatList[1].workflowProcess?.tracing?.length).toBe(1)
+    expect(result.current.chatList[1]!.workflowProcess?.tracing).toBeDefined()
+    expect(result.current.chatList[1]!.workflowProcess?.tracing?.length).toBe(1)
   })
 
   it('should cover handleSend onTTSChunk and onTTSEnd truthy audio strings', () => {
@@ -2256,7 +2451,7 @@ describe('useChat', () => {
       sendCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
     })
 
-    expect(result.current.chatList[1].workflowProcess!.tracing).toHaveLength(1)
+    expect(result.current.chatList[1]!.workflowProcess!.tracing).toHaveLength(1)
   })
 
   it('should cover handleResume onHumanInputFormFilled splicing and onHumanInputFormTimeout updating', () => {
@@ -2292,8 +2487,8 @@ describe('useChat', () => {
     })
 
     const lastResponse = result.current.chatList[1]
-    expect(lastResponse.humanInputFormDataList).toHaveLength(0)
-    expect(lastResponse.humanInputFilledFormDataList).toHaveLength(1)
+    expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
+    expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
   it('should cover handleResume branches where workflowProcess exists but tracing is missing (L386, L414, L472)', () => {
@@ -2333,7 +2528,7 @@ describe('useChat', () => {
     })
 
     const lastResponse = result.current.chatList[1]
-    expect(lastResponse.workflowProcess?.tracing).toHaveLength(3)
+    expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3)
   })
 
   it('should cover handleRestart with and without callback', () => {
@@ -2363,10 +2558,10 @@ describe('useChat', () => {
       // (annotationId, authorName, query, answer, index)
       result.current.handleAnnotationAdded('anno-id', 'author', 'q-new', 'a-new', 1)
     })
-    expect(result.current.chatList[0].content).toBe('q-new')
-    expect(result.current.chatList[1].content).toBe('a')
-    expect(result.current.chatList[1].annotation?.logAnnotation?.content).toBe('a-new')
-    expect(result.current.chatList[1].annotation?.id).toBe('anno-id')
+    expect(result.current.chatList[0]!.content).toBe('q-new')
+    expect(result.current.chatList[1]!.content).toBe('a')
+    expect(result.current.chatList[1]!.annotation?.logAnnotation?.content).toBe('a-new')
+    expect(result.current.chatList[1]!.annotation?.id).toBe('anno-id')
   })
 
   it('should cover handleAnnotationEdited updating node', async () => {
@@ -2381,8 +2576,8 @@ describe('useChat', () => {
       // (query, answer, index)
       result.current.handleAnnotationEdited('q-edit', 'a-edit', 1)
     })
-    expect(result.current.chatList[0].content).toBe('q-edit')
-    expect(result.current.chatList[1].content).toBe('a-edit')
+    expect(result.current.chatList[0]!.content).toBe('q-edit')
+    expect(result.current.chatList[1]!.content).toBe('a-edit')
   })
 
   it('should cover handleAnnotationRemoved updating node', () => {
@@ -2402,6 +2597,100 @@ describe('useChat', () => {
     act(() => {
       result.current.handleAnnotationRemoved(1)
     })
-    expect(result.current.chatList[1].annotation?.id).toBe('')
+    expect(result.current.chatList[1]!.annotation?.id).toBe('')
+  })
+
+  describe('reasoning (separated mode)', () => {
+    it('accumulates reasoning deltas per node and marks finished on is_final (handleSend)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hi' }, {})
+      })
+      act(() => {
+        callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' } })
+      })
+
+      const responseItem = result.current.chatList[1]!
+      expect(responseItem.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(responseItem.reasoningFinished).toBeUndefined()
+      // answer stays clean — reasoning never leaks into content
+      expect(responseItem.content).toBe('answer')
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true } })
+      })
+      expect(result.current.chatList[1]!.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(result.current.chatList[1]!.reasoningFinished).toBe(true)
+    })
+
+    it('keys reasoning by node and falls back to "_" when node_id is absent (handleSend)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hi' }, {})
+      })
+      act(() => {
+        callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'c' } })
+      })
+
+      expect(result.current.chatList[1]!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', '_': 'c' })
+    })
+
+    it('accumulates reasoning onto an existing answer node on resume (handleResume / sseGet)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-1',
+          content: 'initial',
+          isAnswer: true,
+          message_files: [],
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'resumed ', node_id: 'llm' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'thought', node_id: 'llm', is_final: true } })
+      })
+
+      const responseItem = result.current.chatList.find(item => item.id === 'm-1')!
+      expect(responseItem.reasoningContent).toEqual({ llm: 'resumed thought' })
+      expect(responseItem.reasoningFinished).toBe(true)
+    })
   })
 })

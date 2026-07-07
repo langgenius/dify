@@ -43,19 +43,19 @@ describe('ConversationOpener', () => {
   it('should render the conversation opener title', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.conversationOpener\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.conversationOpener\.title/))!.toBeInTheDocument()
   })
 
   it('should render description when not enabled', () => {
     renderWithProvider()
 
-    expect(screen.getByText(/feature\.conversationOpener\.description/)).toBeInTheDocument()
+    expect(screen.getByText(/feature\.conversationOpener\.description/))!.toBeInTheDocument()
   })
 
   it('should render a switch toggle', () => {
     renderWithProvider()
 
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('switch'))!.toBeInTheDocument()
   })
 
   it('should call onChange when toggled', () => {
@@ -72,7 +72,7 @@ describe('ConversationOpener', () => {
       opening: { enabled: true, opening_statement: 'Welcome to the app!' },
     })
 
-    expect(screen.getByText('Welcome to the app!')).toBeInTheDocument()
+    expect(screen.getByText('Welcome to the app!'))!.toBeInTheDocument()
   })
 
   it('should show placeholder when enabled but no opening statement', () => {
@@ -80,7 +80,7 @@ describe('ConversationOpener', () => {
       opening: { enabled: true, opening_statement: '' },
     })
 
-    expect(screen.getByText(/openingStatement\.placeholder/)).toBeInTheDocument()
+    expect(screen.getByText(/openingStatement\.placeholder/))!.toBeInTheDocument()
   })
 
   it('should show edit button when hovering over enabled feature', () => {
@@ -91,7 +91,7 @@ describe('ConversationOpener', () => {
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
 
-    expect(screen.getByText(/openingStatement\.writeOpener/)).toBeInTheDocument()
+    expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
   })
 
   it('should open modal when edit button is clicked', () => {
@@ -127,7 +127,7 @@ describe('ConversationOpener', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
-    const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
+    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
     expect(modalCall.payload).toBeDefined()
     expect(modalCall.onSaveCallback).toBeDefined()
     expect(modalCall.onCancelCallback).toBeDefined()
@@ -143,7 +143,7 @@ describe('ConversationOpener', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
-    const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
+    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
     act(() => {
       modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated' })
     })
@@ -161,7 +161,7 @@ describe('ConversationOpener', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
-    const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
+    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
     modalCall.onCancelCallback()
 
     expect(onChange).toHaveBeenCalled()
@@ -173,18 +173,21 @@ describe('ConversationOpener', () => {
     })
 
     // Before hover, opening statement visible
-    expect(screen.getByText('Welcome!')).toBeInTheDocument()
+    // Before hover, opening statement visible
+    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
 
     const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
 
     // After hover, button visible, statement hidden
-    expect(screen.getByText(/openingStatement\.writeOpener/)).toBeInTheDocument()
+    // After hover, button visible, statement hidden
+    expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
 
     fireEvent.mouseLeave(card)
 
     // After leave, statement visible again
-    expect(screen.getByText('Welcome!')).toBeInTheDocument()
+    // After leave, statement visible again
+    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
   })
 
   it('should return early from opener handler when disabled and hovered', () => {
@@ -208,7 +211,7 @@ describe('ConversationOpener', () => {
     fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
-    const modalCall = mockSetShowOpeningModal.mock.calls[0][0]
+    const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
     act(() => {
       modalCall.onSaveCallback({ enabled: true, opening_statement: 'Updated without callback' })
       modalCall.onCancelCallback()
@@ -221,6 +224,6 @@ describe('ConversationOpener', () => {
     renderWithProvider()
 
     fireEvent.click(screen.getByRole('switch'))
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('switch'))!.toBeInTheDocument()
   })
 })

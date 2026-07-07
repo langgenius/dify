@@ -2,7 +2,7 @@ import type { ToolNodeType } from '../../nodes/tool/types'
 import type { ToolWithProvider } from '../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
-import { CHUNK_TYPE_MAP, getToolCheckParams, wrapStructuredVarItem } from '../tool'
+import { getToolCheckParams, wrapStructuredVarItem } from '../tool'
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
@@ -66,7 +66,7 @@ describe('getToolCheckParams', () => {
       { label: 'Query', variable: 'query', type: 'string', required: true },
     ])
     expect(result.toolSettingSchema).toHaveLength(1)
-    expect(result.toolSettingSchema[0].variable).toBe('api_key')
+    expect(result.toolSettingSchema[0]!.variable).toBe('api_key')
   })
 
   it('should mark notAuthed for builtin tools without team auth', () => {
@@ -157,17 +157,7 @@ describe('getToolCheckParams', () => {
       'ja_JP',
     )
 
-    expect(result.toolInputsSchema[0].label).toBe('Query')
-  })
-})
-
-describe('CHUNK_TYPE_MAP', () => {
-  it('should contain all expected chunk type mappings', () => {
-    expect(CHUNK_TYPE_MAP).toEqual({
-      general_chunks: 'GeneralStructureChunk',
-      parent_child_chunks: 'ParentChildStructureChunk',
-      qa_chunks: 'QAStructureChunk',
-    })
+    expect(result.toolInputsSchema[0]!.label).toBe('Query')
   })
 })
 

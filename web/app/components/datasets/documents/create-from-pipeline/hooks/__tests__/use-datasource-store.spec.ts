@@ -85,7 +85,7 @@ describe('useOnlineDocument', () => {
 
     const { result } = renderHook(() => useOnlineDocument(), { wrapper: createWrapper(store) })
     expect(result.current.PagesMapAndSelectedPagesId).toHaveProperty('p1')
-    expect(result.current.PagesMapAndSelectedPagesId.p1.workspace_id).toBe('w1')
+    expect(result.current.PagesMapAndSelectedPagesId.p1!.workspace_id).toBe('w1')
   })
 
   it('should hide preview online document', () => {

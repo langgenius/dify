@@ -3,10 +3,10 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 
 from core.entities.model_entities import ModelStatus
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from models.provider import ProviderType
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
@@ -90,7 +90,7 @@ class TestModelProviderServiceConfiguration:
         )
         manager.get_configurations.return_value = {"openai": allowed, "embedding": filtered}
 
-        result = service.get_provider_list(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_provider_list(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert len(result) == 1
         assert result[0].provider == "openai"
@@ -215,12 +215,13 @@ class TestModelProviderServiceDelegation:
 
         get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
         provider_method = getattr(provider_configuration, provider_method_name)
-        if isinstance(provider_call_kwargs, tuple):
-            provider_method.assert_called_once_with(*provider_call_kwargs)
-        elif isinstance(provider_call_kwargs, dict):
-            provider_method.assert_called_once_with(**provider_call_kwargs)
-        else:
-            provider_method.assert_called_once_with(provider_call_kwargs)
+        match provider_call_kwargs:
+            case tuple():
+                provider_method.assert_called_once_with(*provider_call_kwargs)
+            case dict():
+                provider_method.assert_called_once_with(**provider_call_kwargs)
+            case _:
+                provider_method.assert_called_once_with(provider_call_kwargs)
         if method_name == "get_provider_credential":
             assert result == {"token": "abc"}
 
@@ -232,7 +233,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -245,7 +246,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                 },
@@ -258,7 +259,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
@@ -277,7 +278,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_id": "cred-1",
@@ -298,7 +299,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -311,7 +312,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -324,7 +325,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -337,7 +338,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "model": "gpt-4o",
                 },
                 "delete_custom_model",
@@ -367,6 +368,70 @@ class TestModelProviderServiceDelegation:
         getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
         if method_name == "get_model_credential":
             assert result == {"api_key": "x"}
+
+    @pytest.mark.parametrize(
+        ("method_name", "method_kwargs", "provider_method_name", "expected_kwargs"),
+        [
+            (
+                "get_model_credential",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                    "credential_id": "cred-1",
+                },
+                "get_custom_model_credential",
+                {"model_type": ModelType.LLM, "model": "gpt-4o", "credential_id": "cred-1"},
+            ),
+            (
+                "create_model_credential",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                    "credentials": {"api_key": "x"},
+                    "credential_name": "cred-a",
+                },
+                "create_custom_model_credential",
+                {
+                    "model_type": ModelType.LLM,
+                    "model": "gpt-4o",
+                    "credentials": {"api_key": "x"},
+                    "credential_name": "cred-a",
+                },
+            ),
+            (
+                "remove_model",
+                {
+                    "tenant_id": "tenant-1",
+                    "provider": "openai",
+                    "model_type": "text-generation",
+                    "model": "gpt-4o",
+                },
+                "delete_custom_model",
+                {"model_type": ModelType.LLM, "model": "gpt-4o"},
+            ),
+        ],
+    )
+    def test_custom_model_methods_use_model_type_constructor_directly(
+        self,
+        method_name: str,
+        method_kwargs: dict[str, Any],
+        provider_method_name: str,
+        expected_kwargs: dict[str, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        service = ModelProviderService()
+        provider_configuration = MagicMock()
+        get_provider_config_mock = MagicMock(return_value=provider_configuration)
+        monkeypatch.setattr(service, "_get_provider_configuration", get_provider_config_mock)
+
+        getattr(service, method_name)(**method_kwargs)
+
+        get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
+        getattr(provider_configuration, provider_method_name).assert_called_once_with(**expected_kwargs)
 
 
 class TestModelProviderServiceListingsAndDefaults:
@@ -425,7 +490,7 @@ class TestModelProviderServiceListingsAndDefaults:
         provider_configurations = SimpleNamespace(get_models=MagicMock(return_value=models))
         manager.get_configurations.return_value = provider_configurations
 
-        result = service.get_models_by_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_models_by_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
         assert len(result) == 1
@@ -495,7 +560,7 @@ class TestModelProviderServiceListingsAndDefaults:
             ),
         )
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is not None
         assert result.model == "gpt-4o"
@@ -506,7 +571,7 @@ class TestModelProviderServiceListingsAndDefaults:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.return_value = None
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is None
 
@@ -514,7 +579,7 @@ class TestModelProviderServiceListingsAndDefaults:
         service, manager = _create_service_with_mocked_manager()
         manager.get_default_model.side_effect = RuntimeError("boom")
 
-        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM.value)
+        result = service.get_default_model_of_model_type(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert result is None
 
@@ -523,7 +588,7 @@ class TestModelProviderServiceListingsAndDefaults:
 
         service.update_default_model_of_model_type(
             tenant_id="tenant-1",
-            model_type=ModelType.LLM.value,
+            model_type=ModelType.LLM,
             provider="openai",
             model="gpt-4o",
         )
@@ -593,7 +658,7 @@ class TestModelProviderServiceListingsAndDefaults:
             tenant_id="tenant-1",
             provider="openai",
             model="gpt-4o",
-            model_type=ModelType.LLM.value,
+            model_type=ModelType.LLM,
         )
 
         getattr(provider_configuration, provider_method_name).assert_called_once_with(

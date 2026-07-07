@@ -1,6 +1,7 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
@@ -17,7 +18,6 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -36,12 +36,12 @@ import { BlockEnum } from '../types'
 import Empty from './empty'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
   isValueFetching?: boolean
-}
+}>
 
 const Right = ({
   nodeId,
@@ -111,9 +111,6 @@ const Right = ({
     if (blockType === BlockEnum.LLM)
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
 
-    // if (blockType === BlockEnum.Agent) {
-    //   return node?.data?.agent_parameters?.instruction?.value
-    // }
     if (blockType === BlockEnum.Code)
       return node?.data?.code
   }, [canShowPromptGenerator])
@@ -139,12 +136,6 @@ const Right = ({
           }
           break
 
-        //  Agent is a plugin, may has many instructions, can not locate which one to update
-        // case BlockEnum.Agent:
-        //   if (draft?.agent_parameters?.instruction) {
-        //     draft.agent_parameters.instruction.value = res.modified
-        //   }
-        //   break
         case BlockEnum.Code:
           draft.code = res.modified
           break
@@ -167,7 +158,7 @@ const Right = ({
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <ActionButton className="shrink-0" onClick={handleOpenMenu}>
-            <RiMenuLine className="h-4 w-4" />
+            <RiMenuLine className="size-4" />
           </ActionButton>
         )}
         <div className="flex w-0 grow items-center gap-1">
@@ -217,25 +208,40 @@ const Right = ({
           {currentNodeVar && (
             <>
               {canShowPromptGenerator && (
-                <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
-                  <div
-                    className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
-                    onClick={handleShowPromptGenerator}
-                  >
-                    <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
-                  </div>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <div
+                        className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
+                        onClick={handleShowPromptGenerator}
+                      >
+                        <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                      </div>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('generate.optimizePromptTooltip', { ns: 'appDebug' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {isTruncated && (
-                <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
-                  <ActionButton>
-                    <a
-                      href={fullContent?.download_url}
-                      target="_blank"
-                    >
-                      <RiFileDownloadFill className="size-4" />
-                    </a>
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton>
+                        <a
+                          href={fullContent?.download_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <RiFileDownloadFill className="size-4" />
+                        </a>
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
@@ -245,17 +251,31 @@ const Right = ({
                 </Badge>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
-                  <ActionButton onClick={resetValue}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton onClick={resetValue}>
+                        <RiArrowGoBackLine className="size-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.reset', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
-                  <ActionButton onClick={handleClear}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton onClick={handleClear}>
+                        <RiArrowGoBackLine className="size-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {currentNodeVar.var.value_type !== 'secret' && (
@@ -264,7 +284,7 @@ const Right = ({
             </>
           )}
           <ActionButton onClick={handleClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
       </div>

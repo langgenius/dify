@@ -19,7 +19,7 @@ import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
 import Wrap from './wrap'
 
-type Props = {
+type Props = Readonly<{
   nodeId?: string
   className?: string
   title: React.JSX.Element | string
@@ -41,7 +41,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   footer?: React.ReactNode
-}
+}>
 
 const Base: FC<Props> = ({
   nodeId,
@@ -108,10 +108,10 @@ const Base: FC<Props> = ({
             <ActionButton className="ml-1" onClick={handleCopy}>
               {!isCopied
                 ? (
-                    <Copy className="h-4 w-4 cursor-pointer" />
+                    <Copy className="size-4 cursor-pointer" />
                   )
                 : (
-                    <CopyCheck className="h-4 w-4" />
+                    <CopyCheck className="size-4" />
                   )}
             </ActionButton>
             <div className="ml-1">

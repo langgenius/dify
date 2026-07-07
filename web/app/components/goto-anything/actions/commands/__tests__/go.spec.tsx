@@ -40,15 +40,15 @@ describe('goCommand', () => {
       const results = await goCommand.search('plugins', 'en')
 
       expect(results).toHaveLength(1)
-      expect(results[0].id).toBe('go-plugins')
+      expect(results[0]!.id).toBe('go-plugins')
     })
 
     it('filters by label match (case-insensitive)', async () => {
       const results = await goCommand.search('Knowledge', 'en')
 
       expect(results).toHaveLength(1)
-      expect(results[0].id).toBe('go-datasets')
-      expect(results[0].title).toBe('Knowledge')
+      expect(results[0]!.id).toBe('go-datasets')
+      expect(results[0]!.title).toBe('Knowledge')
     })
 
     it('returns command results with navigation.go data', async () => {
@@ -85,9 +85,9 @@ describe('goCommand', () => {
     it('registered handler navigates to the provided path', async () => {
       Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
       goCommand.register?.({} as Record<string, never>)
-      const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+      const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
 
-      await handlers['navigation.go']({ path: '/datasets' })
+      await handlers['navigation.go']!({ path: '/datasets' })
 
       expect(window.location.href).toBe('/datasets')
     })
@@ -95,10 +95,10 @@ describe('goCommand', () => {
     it('registered handler does nothing when path is missing', async () => {
       Object.defineProperty(window, 'location', { value: { href: '/current' }, writable: true })
       goCommand.register?.({} as Record<string, never>)
-      const handlers = vi.mocked(registerCommands).mock.calls[0][0]
+      const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
 
-      await handlers['navigation.go']()
-      await handlers['navigation.go']({})
+      await handlers['navigation.go']!()
+      await handlers['navigation.go']!({})
 
       expect(window.location.href).toBe('/current')
     })

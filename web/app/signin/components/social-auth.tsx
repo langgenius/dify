@@ -1,9 +1,11 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { API_PREFIX } from '@/config'
+import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
+import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
 type SocialAuthProps = {
@@ -13,11 +15,19 @@ type SocialAuthProps = {
 export default function SocialAuth(props: SocialAuthProps) {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
+  const locale = useLocale()
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
-    if (searchParams.has('invite_token'))
-      return `${url}?${searchParams.toString()}`
+    const params = new URLSearchParams(searchParams.toString())
+    const timezone = getBrowserTimezone()
+    if (timezone)
+      params.set('timezone', timezone)
+    params.set('language', locale)
+
+    const query = params.toString()
+    if (query)
+      return `${url}?${query}`
 
     return url
   }
@@ -31,7 +41,7 @@ export default function SocialAuth(props: SocialAuthProps) {
           >
             <>
               <span className={
-                cn(style.githubIcon, 'mr-2 h-5 w-5')
+                cn(style.githubIcon, 'mr-2 size-5')
               }
               />
               <span className="truncate leading-normal">{t('withGitHub', { ns: 'login' })}</span>
@@ -47,7 +57,7 @@ export default function SocialAuth(props: SocialAuthProps) {
           >
             <>
               <span className={
-                cn(style.googleIcon, 'mr-2 h-5 w-5')
+                cn(style.googleIcon, 'mr-2 size-5')
               }
               />
               <span className="truncate leading-normal">{t('withGoogle', { ns: 'login' })}</span>

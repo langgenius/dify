@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserAction
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -18,6 +17,7 @@ from core.workflow.human_input_compat import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
+from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
 from models.account import (
     Account,
     AccountStatus,
@@ -69,7 +69,7 @@ def _build_form_params(delivery_methods: list[DeliveryChannelConfig]) -> FormCre
         title="Human Approval",
         delivery_methods=delivery_methods,
         form_content="<p>Approve?</p>",
-        user_actions=[UserAction(id="approve", title="Approve")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
     )
     return FormCreateParams(
         workflow_execution_id=str(uuid4()),
@@ -185,7 +185,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 title="Human Approval",
                 form_content="<p>Approve?</p>",
                 inputs=[],
-                user_actions=[UserAction(id="approve", title="Approve")],
+                user_actions=[UserActionConfig(id="approve", title="Approve")],
             ),
             rendered_content="<p>Approve?</p>",
             delivery_methods=[],
@@ -220,7 +220,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 title="Human Approval",
                 form_content="<p>Approve?</p>",
                 inputs=[],
-                user_actions=[UserAction(id="approve", title="Approve")],
+                user_actions=[UserActionConfig(id="approve", title="Approve")],
                 delivery_methods=[WebAppDeliveryMethod()],
             ),
             rendered_content="<p>Approve?</p>",

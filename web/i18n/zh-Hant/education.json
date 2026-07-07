@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "你目前有生效中的訂閱。訂閱到期後即可使用教育優惠。請前往 <stripeLink>Stripe</stripeLink> 確認你的訂閱。",
+  "applied.noPaymentPermission.description": "你沒有此工作空間的付款權限。請切換到你可以管理帳單的工作空間，以使用教育優惠。",
+  "applied.noPaymentPermission.returnHome": "返回 Dify",
+  "applied.step1.description": "您已成功申請教育優惠。",
+  "applied.step2.description": "選擇要使用教育優惠的 workspace。",
   "currentSigned": "當前以以下身份登入",
+  "educationPricingConfirm.cancel": "保留目前方案",
+  "educationPricingConfirm.continue": "切換到 Professional 年付",
+  "educationPricingConfirm.description": "教育優惠僅適用於 Professional 年付方案。保留目前方案將不包含此優惠。",
+  "educationPricingConfirm.title": "你選擇的方案不支援教育優惠",
   "emailLabel": "您當前的電子郵件",
   "form.schoolName.placeholder": "請輸入您學校的正式全名",
   "form.schoolName.title": "你的學校名稱",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "立即重新驗證，以獲得即將到來的學年新優惠券。我們會將其新增到您的帳戶中，您可以用於下一次升級。",
   "notice.stillInEducation.isAboutToExpire": "現在重新驗證以獲得即將到來的學年新優惠券。它將保存在您的帳戶中，並在下次續訂時隨時可以使用。",
   "notice.stillInEducation.title": "仍在接受教育嗎？",
+  "planNotSupportEducationDiscount": "不適用教育優惠價格",
   "rejectContent": "不幸的是，您不符合教育驗證狀態，因此如果您使用此電子郵件地址，將無法獲得 Dify 專業計劃的 100% 獨家優惠券。",
   "rejectTitle": "您的 Dify 教育驗證已被拒絕",
   "submit": "提交",
   "submitError": "表單提交失敗。請稍後再試。",
-  "successContent": "我們已經向您的帳戶發放了 Dify 專業計劃的 100% 折扣優惠券。該優惠券有效期為一年，請在有效期內使用它。",
-  "successTitle": "您已獲得 Dify 教育認證",
   "toVerified": "獲取教育證明",
   "toVerifiedTip.coupon": "獨家 100% 優惠券",
   "toVerifiedTip.end": "用於 Dify 專業計劃。",
-  "toVerifiedTip.front": "您現在符合教育驗證狀態的資格。請在下面輸入您的教育資訊以完成此流程並獲得一個"
+  "toVerifiedTip.front": "您現在符合教育驗證狀態的資格。請在下面輸入您的教育資訊以完成此流程並獲得一個",
+  "useEducationDiscount": "使用教育優惠"
 }

@@ -5,26 +5,36 @@ Console/Studio Human Input Form APIs.
 import json
 import logging
 from collections.abc import Generator
+from typing import Any
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.fields import EventStreamResponse
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.web.error import InvalidArgumentError, NotFoundError
+from controllers.console.wraps import (
+    account_initialization_required,
+    model_validate,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
-from libs.login import current_account_with_tenant, login_required
-from models import App
+from libs.login import login_required
+from models import Account, App
 from models.enums import CreatorUserRole
-from models.human_input import RecipientType
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
@@ -34,9 +44,21 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 logger = logging.getLogger(__name__)
 
 
-class HumanInputFormSubmitPayload(BaseModel):
-    inputs: dict
-    action: str
+class ConsoleHumanInputFormDefinitionResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+class ConsoleHumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+register_schema_models(console_ns, HumanInputFormSubmitPayload)
+register_response_schema_models(
+    console_ns,
+    ConsoleHumanInputFormDefinitionResponse,
+    ConsoleHumanInputFormSubmitResponse,
+    EventStreamResponse,
+)
 
 
 def _jsonify_form_definition(form: Form) -> Response:
@@ -50,16 +72,22 @@ class ConsoleHumanInputFormApi(Resource):
     """Console API for getting human input form definition."""
 
     @staticmethod
-    def _ensure_console_access(form: Form):
-        _, current_tenant_id = current_account_with_tenant()
-
+    def _ensure_console_access(form: Form, current_tenant_id: str) -> None:
+        """Ensure a console form token resolves only inside the current tenant."""
         if form.tenant_id != current_tenant_id:
             raise NotFoundError("App not found")
+
+    @staticmethod
+    def _ensure_console_recipient_type(form: Form) -> None:
+        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
+            raise NotFoundError("form not found")
 
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, form_token: str):
+    @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormDefinitionResponse.__name__])
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, form_token: str):
         """
         Get human input form definition by form token.
 
@@ -70,13 +98,24 @@ class ConsoleHumanInputFormApi(Resource):
         if form is None:
             raise NotFoundError(f"form not found, token={form_token}")
 
-        self._ensure_console_access(form)
+        self._ensure_console_access(form, current_tenant_id)
 
         return _jsonify_form_definition(form)
 
     @account_initialization_required
     @login_required
-    def post(self, form_token: str):
+    @with_current_user
+    @with_current_tenant_id
+    @model_validate(HumanInputFormSubmitPayload)
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormSubmitResponse.__name__])
+    def post(
+        self,
+        payload: HumanInputFormSubmitPayload,
+        current_tenant_id: str,
+        current_user: Account,
+        form_token: str,
+    ):
         """
         Submit human input form by form token.
 
@@ -90,19 +129,14 @@ class ConsoleHumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
-        current_user, _ = current_account_with_tenant()
-
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
             raise NotFoundError(f"form not found, token={form_token}")
 
-        self._ensure_console_access(form)
-
+        self._ensure_console_access(form, current_tenant_id)
+        self._ensure_console_recipient_type(form)
         recipient_type = form.recipient_type
-        if recipient_type not in {RecipientType.CONSOLE, RecipientType.BACKSTAGE}:
-            raise NotFoundError(f"form not found, token={form_token}")
         # The type checker is not smart enought to validate the following invariant.
         # So we need to assert it manually.
         assert recipient_type is not None, "recipient_type cannot be None here."
@@ -122,9 +156,12 @@ class ConsoleHumanInputFormApi(Resource):
 class ConsoleWorkflowEventsApi(Resource):
     """Console API for getting workflow execution events after resume."""
 
+    @console_ns.response(200, "SSE event stream", console_ns.models[EventStreamResponse.__name__])
     @account_initialization_required
     @login_required
-    def get(self, workflow_run_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, workflow_run_id: str):
         """
         Get workflow execution events stream after resume.
 
@@ -132,8 +169,6 @@ class ConsoleWorkflowEventsApi(Resource):
 
         Returns Server-Sent Events stream.
         """
-
-        user, tenant_id = current_account_with_tenant()
         session_maker = sessionmaker(db.engine)
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(

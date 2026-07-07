@@ -4,13 +4,13 @@ import type {
 import type {
   Var,
 } from '@/app/components/workflow/types'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -41,9 +41,16 @@ const FormItem = ({
 }: FormItemProps) => {
   const { t } = useTranslation()
   const { value_type, var_type, value } = item
+  const normalizedVarValue = useMemo(() => {
+    return Array.isArray(value) ? value : []
+  }, [value])
 
   const handleInputChange = useCallback((e: any) => {
     onChange(e.target.value)
+  }, [onChange])
+
+  const handleValueChange = useCallback((value: string) => {
+    onChange(value)
   }, [onChange])
 
   const handleChange = useCallback((value: any) => {
@@ -79,7 +86,7 @@ const FormItem = ({
             readonly={false}
             nodeId={nodeId}
             isShowNodeName
-            value={value}
+            value={normalizedVarValue}
             onChange={handleChange}
             filterVar={filterVar}
             placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
@@ -89,8 +96,9 @@ const FormItem = ({
       {
         value_type === ValueType.constant && var_type === VarType.string && (
           <Textarea
+            aria-label={item.label}
             value={value}
-            onChange={handleInputChange}
+            onValueChange={handleValueChange}
             className="min-h-12 w-full"
           />
         )

@@ -32,8 +32,8 @@ describe('useWorkflowNodeHumanInputRequired', () => {
 
     const state = store.getState().workflowRunningData!
     expect(state.humanInputFormDataList).toHaveLength(1)
-    expect(state.humanInputFormDataList![0].form_id).toBe('f1')
-    expect(state.tracing![0].status).toBe(NodeRunningStatus.Paused)
+    expect(state.humanInputFormDataList![0]!.form_id).toBe('f1')
+    expect(state.tracing![0]!.status).toBe(NodeRunningStatus.Paused)
 
     await waitFor(() => {
       expect(getNodeRuntimeState(result.current.nodes.find(item => item.id === 'n1'))._runningStatus).toBe(NodeRunningStatus.Paused)
@@ -65,7 +65,7 @@ describe('useWorkflowNodeHumanInputRequired', () => {
 
     const formList = store.getState().workflowRunningData!.humanInputFormDataList!
     expect(formList).toHaveLength(1)
-    expect(formList[0].form_id).toBe('new')
+    expect(formList[0]!.form_id).toBe('new')
   })
 
   it('appends a new form entry for a different node_id', () => {

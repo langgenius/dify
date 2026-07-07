@@ -1,7 +1,7 @@
 import type { ShortcutMapping } from './test-run-menu-helpers'
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { forwardRef, isValidElement, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
 export enum TriggerType {
@@ -127,7 +127,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
   }), [hasSingleEnabledOption, runSoleOption])
 
   const renderOption = (option: TriggerOption) => {
-    return <OptionRow option={option} shortcutKey={shortcutKeyById.get(option.id)} onSelect={handleSelect} />
+    return <OptionRow key={option.id} option={option} shortcutKey={shortcutKeyById.get(option.id)} onSelect={handleSelect} />
   }
 
   const { hasUserInput, hasTriggers, hasRunAll } = useMemo(() => getMenuVisibility(options), [options])
@@ -141,27 +141,37 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
   }
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{ mainAxis: 8, crossAxis: -4 }}
     >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(!open)}>
-        <div style={{ userSelect: 'none' }}>
-          {children}
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-12">
-        <div className="w-[284px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
-          <div className="mb-2 px-3 pt-2 text-sm font-medium text-text-primary">
+      {isValidElement(children)
+        ? (
+            <DropdownMenuTrigger
+              render={children}
+              style={{ userSelect: 'none' }}
+            />
+          )
+        : (
+            <DropdownMenuTrigger style={{ userSelect: 'none' }}>
+              {children}
+            </DropdownMenuTrigger>
+          )}
+      <DropdownMenuContent
+        placement="bottom-start"
+        sideOffset={8}
+        alignOffset={-4}
+        popupClassName="w-[284px] p-1"
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">
             {t('common.chooseStartNodeToRun', { ns: 'workflow' })}
-          </div>
+          </DropdownMenuLabel>
           <div>
             {hasUserInput && renderOption(options.userInput!)}
 
             {(hasTriggers || hasRunAll) && hasUserInput && (
-              <div className="mx-3 my-1 h-px bg-divider-subtle" />
+              <DropdownMenuSeparator className="mx-3" />
             )}
 
             {hasRunAll && renderOption(options.runAll!)}
@@ -170,9 +180,9 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
               .filter(trigger => trigger.enabled !== false)
               .map(trigger => renderOption(trigger))}
           </div>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 })
 

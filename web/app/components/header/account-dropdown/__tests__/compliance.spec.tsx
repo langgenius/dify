@@ -1,13 +1,14 @@
 import type { ModalContextState } from '@/context/modal-context'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
-import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
+import { expectLoadingButton } from '@/test/button'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
 
@@ -99,7 +100,8 @@ describe('Compliance', () => {
       renderCompliance()
 
       // Assert
-      expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.userProfile.compliance'))!.toBeInTheDocument()
     })
 
     it('should show SOC2, ISO, GDPR items when opened', () => {
@@ -107,10 +109,11 @@ describe('Compliance', () => {
       openMenuAndRender()
 
       // Assert
-      expect(screen.getByText('common.compliance.soc2Type1')).toBeInTheDocument()
-      expect(screen.getByText('common.compliance.soc2Type2')).toBeInTheDocument()
-      expect(screen.getByText('common.compliance.iso27001')).toBeInTheDocument()
-      expect(screen.getByText('common.compliance.gdpr')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.compliance.soc2Type1'))!.toBeInTheDocument()
+      expect(screen.getByText('common.compliance.soc2Type2'))!.toBeInTheDocument()
+      expect(screen.getByText('common.compliance.iso27001'))!.toBeInTheDocument()
+      expect(screen.getByText('common.compliance.gdpr'))!.toBeInTheDocument()
     })
   })
 
@@ -158,7 +161,7 @@ describe('Compliance', () => {
       // Act
       openMenuAndRender()
       const downloadButtons = screen.getAllByText('common.operation.download')
-      fireEvent.click(downloadButtons[0])
+      fireEvent.click(downloadButtons[0]!)
 
       // Assert
       await waitFor(() => {
@@ -183,7 +186,7 @@ describe('Compliance', () => {
       // Act
       openMenuAndRender()
       const downloadButtons = screen.getAllByText('common.operation.download')
-      fireEvent.click(downloadButtons[0])
+      fireEvent.click(downloadButtons[0]!)
 
       // Assert
       await waitFor(() => {
@@ -198,7 +201,7 @@ describe('Compliance', () => {
       // Act
       openMenuAndRender()
       const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
-      fireEvent.click(upgradeBadges[0])
+      fireEvent.click(upgradeBadges[0]!)
 
       // Assert
       expect(mockSetShowPricingModal).toHaveBeenCalled()
@@ -218,7 +221,7 @@ describe('Compliance', () => {
       openMenuAndRender()
       // SOC2 Type II is restricted for professional
       const upgradeBadges = screen.getAllByText('billing.upgradeBtn.encourageShort')
-      fireEvent.click(upgradeBadges[0])
+      fireEvent.click(upgradeBadges[0]!)
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
@@ -226,7 +229,7 @@ describe('Compliance', () => {
       })
     })
 
-    // isPending branches: spinner visible, disabled class, guard blocks second call
+    // isPending branches: spinner visible, loading button contract, guard blocks second call
     it('should show spinner and guard against duplicate download when isPending is true', async () => {
       // Arrange
       let resolveDownload: (value: { url: string }) => void
@@ -247,12 +250,12 @@ describe('Compliance', () => {
       expect(menuItem).not.toBeNull()
       fireEvent.click(menuItem!)
 
-      // Assert - button should become busy while mutation is pending
+      // Assert - button should enter the loading-disabled state while mutation is pending
       await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expect(busyButton).toBeDisabled()
-        expect(busyButton!.querySelector('.animate-spin')).not.toBeNull()
+        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+        expect(loadingButton).not.toBeNull()
+        expectLoadingButton(loadingButton)
+        expect(loadingButton!.querySelector('.animate-spin')).not.toBeNull()
       }, { timeout: 10000 })
 
       // Cleanup: resolve the pending promise
@@ -284,9 +287,9 @@ describe('Compliance', () => {
 
       // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expect(busyButton).toBeDisabled()
+        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+        expect(loadingButton).not.toBeNull()
+        expectLoadingButton(loadingButton)
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
       }, { timeout: 10000 })
 

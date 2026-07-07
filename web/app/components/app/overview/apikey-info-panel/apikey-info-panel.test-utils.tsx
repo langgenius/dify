@@ -4,10 +4,14 @@ import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
-import { useModalContext as actualUseModalContext } from '@/context/modal-context'
+import { useModalContext as actualUseModalContext, useModalContextSelector as actualUseModalContextSelector } from '@/context/modal-context'
 
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import APIKeyInfoPanel from './index'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
 
 // Mock the modules before importing the functions
 vi.mock('@/context/provider-context', () => ({
@@ -16,21 +20,31 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
 }))
 
 // Type casting for mocks
 const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
 const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
+const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<typeof actualUseModalContextSelector>
 
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
   refreshModelProviders: noop,
+  isLoadingModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -58,7 +72,6 @@ const defaultProviderContext = {
 
 const defaultModalContext: ModalContextState = {
   setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,
@@ -94,6 +107,13 @@ function setupMocks(overrides: MockOverrides = {}) {
     ...defaultModalContext,
     ...overrides.modalContext,
   })
+
+  mockUseModalContextSelector.mockImplementation(selector =>
+    selector({
+      ...defaultModalContext,
+      ...overrides.modalContext,
+    }),
+  )
 }
 
 // Custom render function
@@ -212,4 +232,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockUseModalContext }
+export { defaultModalContext, mockRouterPush, mockUseModalContext }

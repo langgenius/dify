@@ -10,7 +10,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
     error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
@@ -54,7 +54,7 @@ describe('CSVUploader', () => {
     const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
     renderComponent()
 
-    fireEvent.click(screen.getByText('appAnnotation.batchModal.browse'))
+    fireEvent.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.browse' }))
 
     expect(clickSpy).toHaveBeenCalledTimes(1)
     clickSpy.mockRestore()
@@ -137,7 +137,7 @@ describe('CSVUploader', () => {
     clickSpy.mockRestore()
 
     const valueSetter = vi.spyOn(fileInput, 'value', 'set')
-    const removeTrigger = screen.getByTestId('remove-file-button')
+    const removeTrigger = screen.getByRole('button', { name: /operation\.delete$/ })
     fireEvent.click(removeTrigger)
 
     expect(updateFile).toHaveBeenCalledWith()

@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ObjectValueItem } from './variable-modal.helpers'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraftLine, RiInputField } from '@remixicon/react'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '../type'
@@ -120,7 +121,7 @@ export const ValueSection = ({
           className="text-text-tertiary"
           onClick={() => onEditorChange(!editInJSON)}
         >
-          {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+          {editInJSON ? <RiInputField className="mr-1 size-3.5" /> : <RiDraftLine className="mr-1 size-3.5" />}
           {t(toggleLabelKey, { ns: 'workflow' })}
         </Button>
       )}
@@ -195,6 +196,7 @@ export const ValueSection = ({
 
 type DescriptionSectionProps = {
   description: string
+  maxLength: number
   onChange: (value: string) => void
   placeholder: string
   title: string
@@ -202,6 +204,7 @@ type DescriptionSectionProps = {
 
 export const DescriptionSection = ({
   description,
+  maxLength,
   onChange,
   placeholder,
   title,
@@ -215,6 +218,11 @@ export const DescriptionSection = ({
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
       />
+    </div>
+    <div className={cn('mt-1 text-right system-xs-regular', description.length > maxLength ? 'text-text-destructive' : 'text-text-quaternary')}>
+      {description.length}
+      /
+      {maxLength}
     </div>
   </div>
 )

@@ -29,26 +29,26 @@ type ModalSnapshot = {
   className?: string
 }
 let mockModalProps: ModalSnapshot | null = null
-vi.mock('../../../base/modal', () => ({
-  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean, children: React.ReactNode, onClose: () => void, closable?: boolean, className?: string }) => {
+let mockOnOpenChange: ((open: boolean) => void) | undefined
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ open, onOpenChange, children }: { open?: boolean, onOpenChange?: (open: boolean) => void, children: React.ReactNode }) => {
+    mockOnOpenChange = onOpenChange
+    mockModalProps = { isShow: open !== false }
+    return open === false ? null : <>{children}</>
+  },
+  DialogContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
     mockModalProps = {
-      isShow,
-      closable,
+      isShow: true,
+      closable: true,
       className,
     }
-    if (!isShow)
-      return null
     return (
       <div data-testid="annotation-full-modal" data-classname={className ?? ''}>
-        {closable && (
-          <button type="button" data-testid="mock-modal-close" onClick={onClose}>
-            close
-          </button>
-        )}
         {children}
       </div>
     )
   },
+  DialogCloseButton: () => <button type="button" data-testid="mock-modal-close" onClick={() => mockOnOpenChange?.(false)}>close</button>,
 }))
 
 describe('AnnotationFullModal', () => {
@@ -56,6 +56,7 @@ describe('AnnotationFullModal', () => {
     vi.clearAllMocks()
     mockUpgradeBtnProps = null
     mockModalProps = null
+    mockOnOpenChange = undefined
   })
 
   // Rendering marketing copy inside modal
@@ -71,8 +72,9 @@ describe('AnnotationFullModal', () => {
       expect(mockModalProps).toEqual(expect.objectContaining({
         isShow: true,
         closable: true,
-        className: 'p-0!',
+        className: expect.stringContaining('p-0!'),
       }))
+      expect(mockModalProps?.className).toContain('w-full')
     })
   })
 

@@ -5,6 +5,9 @@ import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Pagination } from '@langgenius/dify-ui/pagination'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import * as React from 'react'
@@ -14,29 +17,29 @@ import ActionButton from '@/app/components/base/action-button'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
-import Switch from '@/app/components/base/switch'
-import { toast } from '@/app/components/base/ui/toast'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { APP_PAGE_LIMIT } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation, delAnnotation, delAnnotations, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
+import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
-import List from './list'
+import { List } from './list'
 import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
-type Props = {
+type Props = Readonly<{
   appDetail: App
-}
+}>
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
@@ -49,6 +52,7 @@ const Annotation: FC<Props> = (props) => {
   const [limit, setLimit] = useState(APP_PAGE_LIMIT)
   const [list, setList] = useState<AnnotationItem[]>([])
   const [total, setTotal] = useState(0)
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const [isLoading, setIsLoading] = useState(false)
   const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
@@ -144,14 +148,19 @@ const Annotation: FC<Props> = (props) => {
 
   return (
     <div className="flex h-full flex-col">
-      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
-      <div className="relative flex h-full flex-1 flex-col py-4">
+      <PageTitle
+        title={t('title', { ns: 'appAnnotation' })}
+        description={t('noData.description', { ns: 'appAnnotation' })}
+        learnMoreHref={docLink('/use-dify/monitor/annotation-reply')}
+        learnMoreLabel={t('operation.learnMore', { ns: 'common' })}
+      />
+      <div className="relative flex min-h-0 flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className="flex items-center space-x-2">
             {isChatApp && (
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
-                  <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
+                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
                   <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
@@ -176,10 +185,10 @@ const Annotation: FC<Props> = (props) => {
                   >
                   </Switch>
                   {annotationConfig?.enabled && (
-                    <div className="flex items-center pl-1.5">
+                    <div className="flex items-center pr-1 pl-1.5">
                       <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}
@@ -210,7 +219,6 @@ const Annotation: FC<Props> = (props) => {
                   selectedIds={selectedIds}
                   onSelectedIdsChange={setSelectedIds}
                   onBatchDelete={handleBatchDelete}
-                  onCancel={() => setSelectedIds([])}
                 />
               )
             : <div className="flex h-full grow items-center justify-center"><EmptyElement /></div>}
@@ -218,11 +226,22 @@ const Annotation: FC<Props> = (props) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={currPage}
-                onChange={setCurrPage}
-                total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={page => setCurrPage(page - 1)}
+                labels={{
+                  previous: t('pagination.previous', { ns: 'common' }),
+                  next: t('pagination.next', { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                }}
+                pageSize={{
+                  value: limit,
+                  options: [10, 25, 50],
+                  onValueChange: setLimit,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }}
               />
             )
           : null}

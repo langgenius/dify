@@ -1,6 +1,6 @@
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
 import Header from '../header'
 
 function renderHeader(onClose: () => void) {

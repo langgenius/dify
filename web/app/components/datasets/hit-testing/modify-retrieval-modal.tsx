@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../create/step-two'
 import type { RetrievalConfig } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -17,13 +17,13 @@ import { useDocLink } from '@/context/i18n'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import { checkShowMultiModalTip } from '../settings/utils'
 
-type Props = {
+type Props = Readonly<{
   indexMethod: string
   value: RetrievalConfig
   isShow: boolean
   onHide: () => void
   onSave: (value: RetrievalConfig) => void
-}
+}>
 const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, onSave }) => {
   const ref = useRef(null)
   const { t } = useTranslation()
@@ -85,9 +85,14 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
           </div>
         </div>
         <div className="flex">
-          <div onClick={onHide} className="flex h-8 w-8 cursor-pointer items-center justify-center">
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onHide}
+          >
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
       </div>
 

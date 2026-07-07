@@ -2,21 +2,20 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
-import Loading from '@/app/components/base/loading'
-import { Button } from '@/app/components/base/ui/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import { appDefaultIconBackground } from '@/config'
 import { AppModeEnum } from '@/types/app'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
@@ -46,11 +45,8 @@ type AccessSectionProps = {
 
 type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
   | 'hasTriggerNode'
-  | 'inputs'
   | 'missingStartNode'
-  | 'onRefreshData'
   | 'toolPublished'
-  | 'outputs'
   | 'publishedAt'
   | 'workflowToolAvailable'> & {
     appDetail: {
@@ -67,9 +63,15 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     disabledFunctionTooltip?: string
     handleEmbed: () => void
     handleOpenInExplore: () => void
+    handleOpenRunConfig?: (url: string) => void
     handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
     published: boolean
+    showBatchRunConfig?: boolean
+    showRunConfig?: boolean
+    workflowToolIsLoading: boolean
+    workflowToolOutdated: boolean
     workflowToolMessage?: string
+    onConfigureWorkflowTool: () => void
   }
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
@@ -82,7 +84,7 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
 
   return (
     <>
-      <span className={`${icon} h-4 w-4 shrink-0 text-text-secondary`} />
+      <span className={`${icon} size-4 shrink-0 text-text-secondary`} />
       <div className="grow truncate">
         <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
@@ -160,20 +162,24 @@ export const PublisherSummarySection = ({
                   : (
                       <div className="flex gap-1">
                         <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                        <ShortcutsName keys={publishShortcut} bgColor="white" />
+                        <KbdGroup>
+                          {publishShortcut.map(key => (
+                            <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                          ))}
+                        </KbdGroup>
                       </div>
                     )}
               </Button>
               {startNodeLimitExceeded && (
                 <div className="mt-3 flex flex-col items-stretch">
                   <p
-                    className="text-sm leading-5 font-semibold text-transparent"
+                    className="text-sm/5 font-semibold text-transparent"
                     style={upgradeHighlightStyle}
                   >
                     <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
                     <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
                   </p>
-                  <p className="mt-1 text-xs leading-4 text-text-secondary">
+                  <p className="mt-1 text-xs/4 text-text-secondary">
                     {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
                   </p>
                   <UpgradeBtn
@@ -216,8 +222,8 @@ export const PublisherAccessSection = ({
               <AccessModeDisplay mode={accessMode} />
             </div>
             {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
-            <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-              <span className="i-ri-arrow-right-s-line h-4 w-4 text-text-quaternary" />
+            <div className="flex size-4 shrink-0 items-center justify-center">
+              <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
             </div>
           </div>
           {!isAppAccessSet && <p className="mt-1 system-xs-regular text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
@@ -256,18 +262,19 @@ export const PublisherActionsSection = ({
   disabledFunctionTooltip,
   handleEmbed,
   handleOpenInExplore,
-  handlePublish,
+  handleOpenRunConfig,
   hasHumanInputNode = false,
   hasTriggerNode = false,
-  inputs,
   missingStartNode = false,
-  onRefreshData,
-  outputs,
-  published,
   publishedAt,
+  showBatchRunConfig = false,
+  showRunConfig = false,
   toolPublished,
   workflowToolAvailable = true,
+  workflowToolIsLoading,
+  workflowToolOutdated,
   workflowToolMessage,
+  onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
   const { t } = useTranslation()
 
@@ -283,7 +290,14 @@ export const PublisherActionsSection = ({
           className="flex-1"
           disabled={disabledFunctionButton}
           link={appURL}
-          icon={<span className="i-ri-play-circle-line h-4 w-4" />}
+          icon={<span className="i-ri-play-circle-line size-4" />}
+          actionButton={showRunConfig
+            ? {
+                ariaLabel: t('operation.config', { ns: 'common' }),
+                icon: <span className="i-ri-settings-2-line size-4" />,
+                onClick: () => handleOpenRunConfig?.(appURL),
+              }
+            : undefined}
         >
           {t('common.runApp', { ns: 'workflow' })}
         </SuggestedAction>
@@ -295,7 +309,14 @@ export const PublisherActionsSection = ({
                 className="flex-1"
                 disabled={disabledFunctionButton}
                 link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                icon={<span className="i-ri-play-list-2-line h-4 w-4" />}
+                icon={<span className="i-ri-play-list-2-line size-4" />}
+                actionButton={showBatchRunConfig
+                  ? {
+                      ariaLabel: t('operation.config', { ns: 'common' }),
+                      icon: <span className="i-ri-settings-2-line size-4" />,
+                      onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
+                    }
+                  : undefined}
               >
                 {t('common.batchRunApp', { ns: 'workflow' })}
               </SuggestedAction>
@@ -305,7 +326,7 @@ export const PublisherActionsSection = ({
             <SuggestedAction
               onClick={handleEmbed}
               disabled={!publishedAt}
-              icon={<CodeBrowser className="h-4 w-4" />}
+              icon={<span className="i-custom-vender-line-development-code-browser size-4" />}
             >
               {t('common.embedIntoSite', { ns: 'workflow' })}
             </SuggestedAction>
@@ -318,7 +339,7 @@ export const PublisherActionsSection = ({
               handleOpenInExplore()
           }}
           disabled={disabledFunctionButton}
-          icon={<span className="i-ri-planet-line h-4 w-4" />}
+          icon={<span className="i-ri-planet-line size-4" />}
         >
           {t('common.openInExplore', { ns: 'workflow' })}
         </SuggestedAction>
@@ -331,7 +352,7 @@ export const PublisherActionsSection = ({
           className="flex-1"
           disabled={!publishedAt || missingStartNode}
           link="./develop"
-          icon={<span className="i-ri-terminal-box-line h-4 w-4" />}
+          icon={<span className="i-ri-terminal-box-line size-4" />}
         >
           {t('common.accessAPIReference', { ns: 'workflow' })}
         </SuggestedAction>
@@ -340,18 +361,9 @@ export const PublisherActionsSection = ({
         <WorkflowToolConfigureButton
           disabled={workflowToolDisabled}
           published={!!toolPublished}
-          detailNeedUpdate={!!toolPublished && published}
-          workflowAppId={appDetail?.id ?? ''}
-          icon={{
-            content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-            background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-          }}
-          name={appDetail?.name ?? ''}
-          description={appDetail?.description ?? ''}
-          inputs={inputs}
-          outputs={outputs}
-          handlePublish={handlePublish}
-          onRefreshData={onRefreshData}
+          isLoading={workflowToolIsLoading}
+          outdated={workflowToolOutdated}
+          onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />
       )}

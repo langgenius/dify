@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,6 +13,7 @@ from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Tenant
 from models.model import (
     App,
@@ -35,6 +35,21 @@ logger = logging.getLogger(__name__)
 
 
 class ClearFreePlanTenantExpiredLogs:
+    @staticmethod
+    def _serialize_record(record: object) -> dict[str, object]:
+        if hasattr(record, "to_dict"):
+            return record.to_dict()  # type: ignore[no-any-return]
+
+        table = getattr(record, "__table__", None)
+        columns = getattr(table, "columns", None)
+        if columns is None:
+            raise TypeError(f"Unsupported record type for serialization: {type(record)!r}")
+
+        record_dict: dict[str, object] = {}
+        for column in columns:
+            record_dict[column.name] = getattr(record, column.name)
+        return record_dict
+
     @classmethod
     def _clear_message_related_tables(cls, session: Session, tenant_id: str, batch_message_ids: list[str]):
         """
@@ -77,14 +92,7 @@ class ClearFreePlanTenantExpiredLogs:
                 record_data = []
                 for record in records:
                     try:
-                        if hasattr(record, "to_dict"):
-                            record_data.append(record.to_dict())
-                        else:
-                            # if record doesn't have to_dict method, we need to transform it to dict manually
-                            record_dict = {}
-                            for column in record.__table__.columns:
-                                record_dict[column.name] = getattr(record, column.name)
-                            record_data.append(record_dict)
+                        record_data.append(cls._serialize_record(record))
                     except Exception:
                         logger.exception("Failed to transform %s record: %s", table_name, record.id)
                         continue
@@ -117,9 +125,9 @@ class ClearFreePlanTenantExpiredLogs:
             )
 
     @classmethod
-    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
+    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int, session: Session):
         with flask_app.app_context():
-            apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
+            apps = session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
                 with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
@@ -222,7 +230,12 @@ class ClearFreePlanTenantExpiredLogs:
                     f"{tenant_id}/workflow_node_executions/{datetime.datetime.now().strftime('%Y-%m-%d')}"
                     f"-{time.time()}.json",
                     json.dumps(
-                        jsonable_encoder(workflow_node_executions),
+                        jsonable_encoder(
+                            [
+                                cls._serialize_record(workflow_node_execution)
+                                for workflow_node_execution in workflow_node_executions
+                            ]
+                        ),
                     ).encode("utf-8"),
                 )
 
@@ -362,7 +375,8 @@ class ClearFreePlanTenantExpiredLogs:
                     or BillingService.get_info(tenant_id)["subscription"]["plan"] == CloudPlan.SANDBOX
                 ):
                     # only process sandbox tenant
-                    cls.process_tenant(flask_app, tenant_id, days, batch)
+                    with sessionmaker(db.engine).begin() as session:
+                        cls.process_tenant(flask_app, tenant_id, days, batch, session)
             except Exception:
                 logger.exception("Failed to process tenant %s", tenant_id)
             finally:

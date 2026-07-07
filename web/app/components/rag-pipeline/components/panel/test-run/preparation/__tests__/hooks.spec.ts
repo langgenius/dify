@@ -56,8 +56,8 @@ describe('useTestRunSteps', () => {
     const { result } = renderHook(() => useTestRunSteps())
 
     expect(result.current.steps).toHaveLength(2)
-    expect(result.current.steps[0].value).toBe('dataSource')
-    expect(result.current.steps[1].value).toBe('documentProcessing')
+    expect(result.current.steps[0]!.value).toBe('dataSource')
+    expect(result.current.steps[1]!.value).toBe('documentProcessing')
   })
 
   it('should increment step on handleNextStep', () => {
@@ -87,8 +87,8 @@ describe('useTestRunSteps', () => {
   it('should have translated step labels', () => {
     const { result } = renderHook(() => useTestRunSteps())
 
-    expect(result.current.steps[0].label).toBeDefined()
-    expect(typeof result.current.steps[0].label).toBe('string')
+    expect(result.current.steps[0]!.label).toBeDefined()
+    expect(typeof result.current.steps[0]!.label).toBe('string')
   })
 })
 
@@ -137,7 +137,7 @@ describe('useDatasourceOptions', () => {
     const { result } = renderHook(() => useDatasourceOptions())
 
     expect(result.current).toHaveLength(1)
-    expect(result.current[0].value).toBe('ds-1')
+    expect(result.current[0]!.value).toBe('ds-1')
   })
 })
 

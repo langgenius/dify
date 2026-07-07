@@ -161,11 +161,9 @@ describe('Uploading', () => {
       })
     })
 
-    // NOTE: The uploadFile API has an unconventional contract where it always rejects.
-    // Success vs failure is determined by whether response.message exists:
-    // - If response.message exists → treated as failure (calls onFailed)
-    // - If response.message is absent → treated as success (calls onPackageUploaded/onBundleUploaded)
-    // This explains why we use mockRejectedValue for "success" scenarios below.
+    // NOTE: Some upload endpoints have historically returned successful plugin upload
+    // payloads through rejected XHR objects, so the component accepts both resolved
+    // responses and rejected responses without an error message.
 
     it('should call onPackageUploaded when upload rejects without error message (success case)', async () => {
       const mockResult = {
@@ -193,11 +191,53 @@ describe('Uploading', () => {
       })
     })
 
+    it('should call onPackageUploaded when upload resolves with package response', async () => {
+      const mockResult = {
+        unique_identifier: 'test-uid',
+        manifest: createMockManifest(),
+      }
+      mockUploadFile.mockResolvedValue(mockResult)
+
+      const onPackageUploaded = vi.fn()
+      render(
+        <Uploading
+          {...defaultProps}
+          isBundle={false}
+          onPackageUploaded={onPackageUploaded}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(onPackageUploaded).toHaveBeenCalledWith({
+          uniqueIdentifier: mockResult.unique_identifier,
+          manifest: mockResult.manifest,
+        })
+      })
+    })
+
     it('should call onBundleUploaded when upload rejects without error message (success case)', async () => {
       const mockDependencies = createMockDependencies()
       mockUploadFile.mockRejectedValue({
         response: mockDependencies,
       })
+
+      const onBundleUploaded = vi.fn()
+      render(
+        <Uploading
+          {...defaultProps}
+          isBundle
+          onBundleUploaded={onBundleUploaded}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
+      })
+    })
+
+    it('should call onBundleUploaded when upload resolves with bundle response', async () => {
+      const mockDependencies = createMockDependencies()
+      mockUploadFile.mockResolvedValue(mockDependencies)
 
       const onBundleUploaded = vi.fn()
       render(
@@ -260,35 +300,48 @@ describe('Uploading', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle empty response gracefully', async () => {
+    it('should fail gracefully when upload response is empty', async () => {
       mockUploadFile.mockRejectedValue({
         response: {},
       })
 
       const onPackageUploaded = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)
+      const onFailed = vi.fn()
+      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
 
       await waitFor(() => {
-        expect(onPackageUploaded).toHaveBeenCalledWith({
-          uniqueIdentifier: undefined,
-          manifest: undefined,
-        })
+        expect(onPackageUploaded).not.toHaveBeenCalled()
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.uploadFailed')
       })
     })
 
-    it('should handle response with only unique_identifier', async () => {
+    it('should fail gracefully when upload response has no manifest', async () => {
       mockUploadFile.mockRejectedValue({
         response: { unique_identifier: 'only-uid' },
       })
 
       const onPackageUploaded = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)
+      const onFailed = vi.fn()
+      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
 
       await waitFor(() => {
-        expect(onPackageUploaded).toHaveBeenCalledWith({
-          uniqueIdentifier: 'only-uid',
-          manifest: undefined,
-        })
+        expect(onPackageUploaded).not.toHaveBeenCalled()
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.uploadFailed')
+      })
+    })
+
+    it('should fail gracefully when upload response is null', async () => {
+      mockUploadFile.mockRejectedValue({
+        response: null,
+      })
+
+      const onPackageUploaded = vi.fn()
+      const onFailed = vi.fn()
+      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
+
+      await waitFor(() => {
+        expect(onPackageUploaded).not.toHaveBeenCalled()
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.uploadFailed')
       })
     })
 

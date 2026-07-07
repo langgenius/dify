@@ -38,9 +38,9 @@ describe('Chunk Preview Formatting', () => {
       expect(Array.isArray(result)).toBe(true)
       const chunks = result as Array<{ content: string, summary?: string }>
       expect(chunks).toHaveLength(2)
-      expect(chunks[0].content).toBe('Chunk 1 content')
-      expect(chunks[0].summary).toBe('Summary 1')
-      expect(chunks[1].content).toBe('Chunk 2 content')
+      expect(chunks[0]!.content).toBe('Chunk 1 content')
+      expect(chunks[0]!.summary).toBe('Summary 1')
+      expect(chunks[1]!.content).toBe('Chunk 2 content')
     })
 
     it('should limit chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM', () => {
@@ -84,9 +84,9 @@ describe('Chunk Preview Formatting', () => {
 
       expect(result.parent_mode).toBe('paragraph')
       expect(result.parent_child_chunks).toHaveLength(1)
-      expect(result.parent_child_chunks[0].parent_content).toBe('Parent paragraph')
-      expect(result.parent_child_chunks[0].parent_summary).toBe('Parent summary')
-      expect(result.parent_child_chunks[0].child_contents).toEqual(['Child 1', 'Child 2'])
+      expect(result.parent_child_chunks[0]!.parent_content).toBe('Parent paragraph')
+      expect(result.parent_child_chunks[0]!.parent_summary).toBe('Parent summary')
+      expect(result.parent_child_chunks[0]!.child_contents).toEqual(['Child 1', 'Child 2'])
     })
 
     it('should limit parent chunks in paragraph mode', () => {
@@ -129,8 +129,8 @@ describe('Chunk Preview Formatting', () => {
       }
 
       expect(result.parent_child_chunks).toHaveLength(1)
-      expect(result.parent_child_chunks[0].parent_content).toBe('Full document content')
-      expect(result.parent_child_chunks[0].parent_mode).toBe('full-doc')
+      expect(result.parent_child_chunks[0]!.parent_content).toBe('Full document content')
+      expect(result.parent_child_chunks[0]!.parent_mode).toBe('full-doc')
     })
 
     it('should limit child chunks in full-doc mode', () => {
@@ -149,7 +149,7 @@ describe('Chunk Preview Formatting', () => {
         parent_child_chunks: Array<{ child_contents: string[] }>
       }
 
-      expect(result.parent_child_chunks[0].child_contents).toHaveLength(3) // Mocked limit
+      expect(result.parent_child_chunks[0]!.child_contents).toHaveLength(3) // Mocked limit
     })
   })
 
@@ -168,8 +168,8 @@ describe('Chunk Preview Formatting', () => {
       }
 
       expect(result.qa_chunks).toHaveLength(2)
-      expect(result.qa_chunks[0].question).toBe('What is AI?')
-      expect(result.qa_chunks[0].answer).toBe('Artificial Intelligence is...')
+      expect(result.qa_chunks[0]!.question).toBe('What is AI?')
+      expect(result.qa_chunks[0]!.answer).toBe('Artificial Intelligence is...')
     })
 
     it('should limit QA chunks', () => {

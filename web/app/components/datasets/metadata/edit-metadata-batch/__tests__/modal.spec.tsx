@@ -1,5 +1,6 @@
 import type { MetadataItemInBatchEdit, MetadataItemWithEdit } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType, UpdateType } from '../../types'
 import EditMetadataBatchModal from '../modal'
@@ -30,7 +31,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 
 // Mock Toast to verify notifications
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
   },
@@ -56,42 +57,44 @@ type AddRowProps = {
   onRemove: () => void
 }
 
-type SelectModalProps = {
-  trigger: React.ReactNode
-  onSelect: (item: MetadataItemInBatchEdit) => void
-  onSave: (data: { name: string, type: DataType }) => Promise<void>
-  onManage: () => void
-}
-
-// Mock child components with callback exposure
+// Mock row components to exercise parent state transitions with accessible controls.
 vi.mock('../edit-row', () => ({
   default: ({ payload, onChange, onRemove, onReset }: EditRowProps) => (
-    <div data-testid="edit-row" data-id={payload.id}>
-      <span data-testid="edit-row-name">{payload.name}</span>
-      <button data-testid={`change-${payload.id}`} onClick={() => onChange({ ...payload, value: 'changed', isUpdated: true, updateType: UpdateType.changeValue })}>Change</button>
-      <button data-testid={`remove-${payload.id}`} onClick={() => onRemove(payload.id)}>Remove</button>
-      <button data-testid={`reset-${payload.id}`} onClick={() => onReset(payload.id)}>Reset</button>
+    <div role="group" aria-label={`Edit metadata ${payload.name}`}>
+      <span>{payload.name}</span>
+      <button type="button" onClick={() => onChange({ ...payload, value: 'changed', isUpdated: true, updateType: UpdateType.changeValue })}>
+        Change
+        {' '}
+        {payload.name}
+      </button>
+      <button type="button" onClick={() => onRemove(payload.id)}>
+        Remove
+        {' '}
+        {payload.name}
+      </button>
+      <button type="button" onClick={() => onReset(payload.id)}>
+        Reset
+        {' '}
+        {payload.name}
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../add-row', () => ({
   default: ({ payload, onChange, onRemove }: AddRowProps) => (
-    <div data-testid="add-row" data-id={payload.id}>
-      <span data-testid="add-row-name">{payload.name}</span>
-      <button data-testid={`add-change-${payload.id}`} onClick={() => onChange({ ...payload, value: 'new_value' })}>Change</button>
-      <button data-testid="add-remove" onClick={onRemove}>Remove</button>
-    </div>
-  ),
-}))
-
-vi.mock('../../metadata-dataset/select-metadata-modal', () => ({
-  default: ({ trigger, onSelect, onSave, onManage }: SelectModalProps) => (
-    <div data-testid="select-modal">
-      {trigger}
-      <button data-testid="select-metadata" onClick={() => onSelect({ id: 'new-1', name: 'new_field', type: DataType.string, value: null, isMultipleValue: false })}>Select</button>
-      <button data-testid="save-metadata" onClick={() => onSave({ name: 'created_field', type: DataType.string }).catch(() => { })}>Save</button>
-      <button data-testid="manage-metadata" onClick={onManage}>Manage</button>
+    <div role="group" aria-label={`Added metadata ${payload.name}`}>
+      <span>{payload.name}</span>
+      <button type="button" onClick={() => onChange({ ...payload, value: 'new_value' })}>
+        Change
+        {' '}
+        {payload.name}
+      </button>
+      <button type="button" onClick={onRemove}>
+        Remove
+        {' '}
+        {payload.name}
+      </button>
     </div>
   ),
 }))
@@ -116,49 +119,66 @@ describe('EditMetadataBatchModal', () => {
     mockCheckNameResult = { errorMsg: '' }
   })
 
+  const getEditRows = () => screen.getAllByRole('group', { name: /^Edit metadata / })
+  const getEditRow = (name: string) => screen.getByRole('group', { name: `Edit metadata ${name}` })
+  const getAddedRow = (name: string) => screen.getByRole('group', { name: `Added metadata ${name}` })
+  const queryAddedRow = (name: string) => screen.queryByRole('group', { name: `Added metadata ${name}` })
+  const openMetadataPicker = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+  }
+  const selectMetadata = async (name = 'existing_field') => {
+    openMetadataPicker()
+    fireEvent.click(await screen.findByRole('option', { name: new RegExp(name) }))
+  }
+  const createMetadata = async (name = 'created_field') => {
+    openMetadataPicker()
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), { target: { value: name } })
+    const saveButtons = screen.getAllByRole('button', { name: 'common.operation.save' })
+    fireEvent.click(saveButtons[saveButtons.length - 1]!)
+  }
+
   describe('Rendering', () => {
     it('should render without crashing', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
 
     it('should render document count', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByText(/5/)).toBeInTheDocument()
+        expect(screen.getByText(/5/))!.toBeInTheDocument()
       })
     })
 
     it('should render all edit rows for existing items', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        const editRows = screen.getAllByTestId('edit-row')
-        expect(editRows).toHaveLength(2)
+        expect(getEditRows()).toHaveLength(2)
       })
     })
 
     it('should render field names for existing items', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByText('field_one')).toBeInTheDocument()
-        expect(screen.getByText('field_two')).toBeInTheDocument()
+        expect(screen.getByText('field_one'))!.toBeInTheDocument()
+        expect(screen.getByText('field_two'))!.toBeInTheDocument()
       })
     })
 
     it('should render checkbox for apply to all', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        const checkboxes = document.querySelectorAll('[data-testid*="checkbox"]')
-        expect(checkboxes.length).toBeGreaterThan(0)
+        expect(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' })).toBeInTheDocument()
       })
     })
 
-    it('should render select metadata modal', async () => {
+    it('should render dataset metadata picker', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByTestId('select-modal')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))!.toBeInTheDocument()
       })
     })
   })
@@ -169,7 +189,7 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onHide={onHide} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       const cancelButton = screen.getByText(/cancel/i)
@@ -183,32 +203,29 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find the primary save button (not the one in SelectMetadataModal)
+      // Find the primary save button (not the one in DatasetMetadataPicker)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalled()
     })
 
     it('should toggle apply to all checkbox', async () => {
+      const user = userEvent.setup()
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const checkboxContainer = document.querySelector('[data-testid*="checkbox"]')
-      expect(checkboxContainer).toBeInTheDocument()
+      const checkbox = screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' })
+      await user.click(checkbox)
 
-      if (checkboxContainer) {
-        fireEvent.click(checkboxContainer)
-        await waitFor(() => {
-          const checkIcon = screen.getByTestId('check-icon-apply-to-all')
-          expect(checkIcon).toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(checkbox).toHaveAttribute('aria-checked', 'true')
+      })
     })
 
     it('should call onHide when modal close button is clicked', async () => {
@@ -216,7 +233,7 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onHide={onHide} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
   })
@@ -226,41 +243,41 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('change-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Change field_one' }))
 
       // The component should update internally
-      expect(screen.getAllByTestId('edit-row').length).toBe(2)
+      expect(getEditRows()).toHaveLength(2)
     })
 
     it('should mark item as deleted when remove is clicked', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('remove-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove field_one' }))
 
       // The component should update internally - item marked as deleted
-      expect(screen.getAllByTestId('edit-row').length).toBe(2)
+      expect(getEditRows()).toHaveLength(2)
     })
 
     it('should reset item when reset is clicked', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // First change the item
-      fireEvent.click(screen.getByTestId('change-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Change field_one' }))
       // Then reset it
-      fireEvent.click(screen.getByTestId('reset-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Reset field_one' }))
 
-      expect(screen.getAllByTestId('edit-row').length).toBe(2)
+      expect(getEditRows()).toHaveLength(2)
     })
   })
 
@@ -269,14 +286,14 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('select-metadata'))
+      await selectMetadata()
 
       // Should now have add-row for the new item
       await waitFor(() => {
-        expect(screen.getByTestId('add-row')).toBeInTheDocument()
+        expect(getAddedRow('existing_field'))!.toBeInTheDocument()
       })
     })
 
@@ -284,21 +301,21 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // First add an item
-      fireEvent.click(screen.getByTestId('select-metadata'))
+      await selectMetadata()
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-row')).toBeInTheDocument()
+        expect(getAddedRow('existing_field'))!.toBeInTheDocument()
       })
 
       // Then remove it
-      fireEvent.click(screen.getByTestId('add-remove'))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove existing_field' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('add-row')).not.toBeInTheDocument()
+        expect(queryAddedRow('existing_field')).not.toBeInTheDocument()
       })
     })
 
@@ -306,20 +323,20 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // First add an item
-      fireEvent.click(screen.getByTestId('select-metadata'))
+      await selectMetadata()
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-row')).toBeInTheDocument()
+        expect(getAddedRow('existing_field'))!.toBeInTheDocument()
       })
 
       // Then change it
-      fireEvent.click(screen.getByTestId('add-change-new-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Change existing_field' }))
 
-      expect(screen.getByTestId('add-row')).toBeInTheDocument()
+      expect(getAddedRow('existing_field'))!.toBeInTheDocument()
     })
 
     it('should call doAddMetaData when saving new metadata with valid name', async () => {
@@ -328,10 +345,10 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('save-metadata'))
+      await createMetadata()
 
       await waitFor(() => {
         expect(mockDoAddMetaData).toHaveBeenCalled()
@@ -344,10 +361,10 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('save-metadata'))
+      await createMetadata()
 
       await waitFor(() => {
         expect(mockDoAddMetaData).toHaveBeenCalled()
@@ -368,10 +385,10 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('save-metadata'))
+      await createMetadata()
 
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith(
@@ -388,10 +405,11 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onShowManage={onShowManage} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('manage-metadata'))
+      openMetadataPicker()
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }))
 
       expect(onShowManage).toHaveBeenCalled()
     })
@@ -401,21 +419,21 @@ describe('EditMetadataBatchModal', () => {
     it('should pass correct datasetId', async () => {
       render(<EditMetadataBatchModal {...defaultProps} datasetId="custom-ds" />)
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
 
     it('should display correct document number', async () => {
       render(<EditMetadataBatchModal {...defaultProps} documentNum={10} />)
       await waitFor(() => {
-        expect(screen.getByText(/10/)).toBeInTheDocument()
+        expect(screen.getByText(/10/))!.toBeInTheDocument()
       })
     })
 
     it('should handle empty list', async () => {
       render(<EditMetadataBatchModal {...defaultProps} list={[]} />)
       await waitFor(() => {
-        expect(screen.queryByTestId('edit-row')).not.toBeInTheDocument()
+        expect(screen.queryByRole('group', { name: /^Edit metadata / })).not.toBeInTheDocument()
       })
     })
   })
@@ -427,7 +445,7 @@ describe('EditMetadataBatchModal', () => {
       ]
       render(<EditMetadataBatchModal {...defaultProps} list={multipleValueList} />)
       await waitFor(() => {
-        expect(screen.getByTestId('edit-row')).toBeInTheDocument()
+        expect(getEditRow('field'))!.toBeInTheDocument()
       })
     })
 
@@ -436,7 +454,7 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // Find the primary save button
@@ -453,7 +471,7 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -466,16 +484,15 @@ describe('EditMetadataBatchModal', () => {
     })
 
     it('should pass isApplyToAllSelectDocument as true when checked', async () => {
+      const user = userEvent.setup()
       const onSave = vi.fn()
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const checkboxContainer = document.querySelector('[data-testid*="checkbox"]')
-      if (checkboxContainer)
-        fireEvent.click(checkboxContainer)
+      await user.click(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' }))
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -493,17 +510,17 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} onSave={onSave} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // Remove an item
-      fireEvent.click(screen.getByTestId('remove-1'))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove field_one' }))
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalled()
       // The first argument should not contain the deleted item (id '1')
-      const savedList = onSave.mock.calls[0][0] as MetadataItemInBatchEdit[]
+      const savedList = onSave.mock.calls[0]![0] as MetadataItemInBatchEdit[]
       const hasDeletedItem = savedList.some(item => item.id === '1')
       expect(hasDeletedItem).toBe(false)
     })
@@ -512,26 +529,26 @@ describe('EditMetadataBatchModal', () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // Add first item
-      fireEvent.click(screen.getByTestId('select-metadata'))
+      await selectMetadata()
       await waitFor(() => {
-        expect(screen.getByTestId('add-row')).toBeInTheDocument()
+        expect(getAddedRow('existing_field'))!.toBeInTheDocument()
       })
 
       // Remove it
-      fireEvent.click(screen.getByTestId('add-remove'))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove existing_field' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('add-row')).not.toBeInTheDocument()
+        expect(queryAddedRow('existing_field')).not.toBeInTheDocument()
       })
 
       // Add again
-      fireEvent.click(screen.getByTestId('select-metadata'))
+      await selectMetadata()
       await waitFor(() => {
-        expect(screen.getByTestId('add-row')).toBeInTheDocument()
+        expect(getAddedRow('existing_field'))!.toBeInTheDocument()
       })
     })
   })

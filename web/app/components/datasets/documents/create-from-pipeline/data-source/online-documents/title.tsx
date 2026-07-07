@@ -11,7 +11,7 @@ const Title = ({
   const { t } = useTranslation()
 
   return (
-    <div className="system-sm-medium px-[5px] py-1 text-text-secondary">
+    <div className="px-[5px] py-1 system-sm-medium text-text-secondary">
       {t('onlineDocument.pageSelectorTitle', { ns: 'datasetPipeline', name })}
     </div>
   )

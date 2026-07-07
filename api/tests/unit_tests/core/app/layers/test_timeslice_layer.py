@@ -1,8 +1,10 @@
+import logging
 from unittest.mock import Mock, patch
 
-from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
+import pytest
 
 from core.app.layers.timeslice_layer import TimeSliceLayer
+from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import SchedulerCommand
 
@@ -65,21 +67,19 @@ class TestTimeSliceLayer:
 
         scheduler.remove_job.assert_called_once_with("job-1")
 
-    def test_checker_job_handles_resource_limit_without_command_channel(self):
+    def test_checker_job_handles_resource_limit_without_command_channel(self, caplog: pytest.LogCaptureFixture):
         scheduler = Mock()
         scheduler.running = True
         cfs_plan_scheduler = Mock(plan=Mock())
         cfs_plan_scheduler.can_schedule.return_value = SchedulerCommand.RESOURCE_LIMIT_REACHED
 
-        with (
-            patch("core.app.layers.timeslice_layer.TimeSliceLayer.scheduler", scheduler),
-            patch("core.app.layers.timeslice_layer.logger") as mock_logger,
-        ):
+        with patch("core.app.layers.timeslice_layer.TimeSliceLayer.scheduler", scheduler):
             layer = TimeSliceLayer(cfs_plan_scheduler=cfs_plan_scheduler)
-            layer._checker_job("job-1")
+            with caplog.at_level(logging.ERROR, logger="core.app.layers.timeslice_layer"):
+                layer._checker_job("job-1")
 
         scheduler.remove_job.assert_called_once_with("job-1")
-        mock_logger.exception.assert_called_once()
+        assert any(record.levelno == logging.ERROR for record in caplog.records)
 
     def test_checker_job_sends_pause_command(self):
         scheduler = Mock()

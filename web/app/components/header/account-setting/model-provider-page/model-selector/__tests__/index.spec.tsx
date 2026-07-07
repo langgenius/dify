@@ -25,18 +25,27 @@ vi.mock('../model-selector-trigger', () => ({
   },
 }))
 
-vi.mock('../popup', () => ({
-  default: ({ onHide, onSelect }: { onHide: () => void, onSelect: (provider: string, model: ModelItem) => void }) => (
-    <>
-      <button type="button" onClick={() => onSelect('openai', { model: 'gpt-4' } as ModelItem)}>
-        select
-      </button>
-      <button type="button" onClick={onHide}>
-        hide
-      </button>
-    </>
-  ),
-}))
+vi.mock('../popup', async () => {
+  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>('@langgenius/dify-ui/combobox')
+
+  return {
+    default: ({ onConfigureEmptyState, onHide }: { onConfigureEmptyState?: () => void, onHide: () => void }) => (
+      <>
+        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>
+          select
+        </ComboboxItem>
+        <button type="button" onClick={onHide}>
+          hide
+        </button>
+        {onConfigureEmptyState && (
+          <button type="button" onClick={onConfigureEmptyState}>
+            configure-empty-state
+          </button>
+        )}
+      </>
+    ),
+  }
+})
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   model: 'gpt-4',
@@ -82,7 +91,7 @@ describe('ModelSelector', () => {
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+    const triggerButton = screen.getByRole('combobox')
 
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
@@ -96,22 +105,57 @@ describe('ModelSelector', () => {
     const onSelect = vi.fn()
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
+    fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByText('select'))
 
-    expect(onSelect).toHaveBeenCalledWith({ provider: 'openai', model: 'gpt-4' })
+    expect(onSelect).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4',
+      plugin_id: 'langgenius/openai',
+    })
   })
 
   it('should close popup when popup requests hide', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+    const triggerButton = screen.getByRole('combobox')
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('hide')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('hide'))
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('should close popup before running the empty-state configure action', () => {
+    const onConfigureEmptyState = vi.fn()
+    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />)
+
+    const triggerButton = screen.getByRole('combobox')
+    fireEvent.click(triggerButton)
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByText('configure-empty-state'))
+
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
+  })
+
+  it('should use the default model settings popup width when the trigger is narrow', () => {
+    renderWithQueryClient(
+      <div className="w-[355px]">
+        <ModelSelector modelList={[makeModel()]} />
+      </div>,
+    )
+
+    fireEvent.click(screen.getByRole('combobox'))
+
+    expect(
+      Array.from(document.body.querySelectorAll('[class]')).some(element =>
+        element.className.includes('w-[432px]')
+        && element.className.includes('max-w-[432px]'),
+      ),
+    ).toBe(true)
   })
 
   it('should not open popup when readonly', () => {

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import InputTypeSelectField from '../index'
 
 const mockField = {
@@ -20,17 +21,20 @@ describe('InputTypeSelectField', () => {
   })
 
   it('should render label and selected option', () => {
-    render(<InputTypeSelectField label="Input type" supportFile={true} />)
+    const { container } = render(<InputTypeSelectField label="Input type" supportFile={true} />)
 
     expect(screen.getByText('Input type')).toBeInTheDocument()
     expect(screen.getByText('appDebug.variableConfig.text-input')).toBeInTheDocument()
+    expect(container.querySelector('[role="combobox"] span > div')).not.toBeInTheDocument()
+    expect(container.querySelector('[role="combobox"] > span > span')).toHaveClass('flex', 'min-w-0', 'items-center', 'gap-x-0.5')
   })
 
-  it('should update value when users choose another input type', () => {
+  it('should update value when users choose another input type', async () => {
+    const user = userEvent.setup()
     render(<InputTypeSelectField label="Input type" supportFile={true} />)
 
-    fireEvent.click(screen.getByText('appDebug.variableConfig.text-input'))
-    fireEvent.click(screen.getByText('appDebug.variableConfig.number'))
+    await user.click(screen.getByRole('combobox', { name: 'Input type' }))
+    await user.click(screen.getByRole('option', { name: /appDebug.variableConfig.number/ }))
 
     expect(mockField.handleChange).toHaveBeenCalledWith('number')
   })

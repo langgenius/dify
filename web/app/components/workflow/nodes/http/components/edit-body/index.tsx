@@ -17,12 +17,12 @@ import { isSupportedHttpBodyVariable } from './supported-body-vars'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   payload: Body
   onChange: (payload: Body) => void
-}
+}>
 
 const allTypes = [
   BodyType.none,
@@ -114,7 +114,7 @@ const EditBody: FC<Props> = ({
           value: '',
         })
       }
-      (draft.data as BodyPayload)[0].value = value
+      (draft.data as BodyPayload)[0]!.value = value
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -127,7 +127,7 @@ const EditBody: FC<Props> = ({
           type: BodyPayloadValueType.file,
         })
       }
-      (draft.data as BodyPayload)[0].file = value as ValueSelector
+      (draft.data as BodyPayload)[0]!.file = value as ValueSelector
     })
     onChange(newBody)
   }, [onChange, payload])

@@ -1,4 +1,4 @@
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import { AppSourceType, textToAudioStream } from '@/service/share'
 
 declare global {
@@ -136,6 +136,10 @@ export default class AudioPlayer {
     }
     else {
       this.isLoadData = true
+      this.audioContext.resume().then((_) => {
+        this.audio.play()
+        this.callback?.('play')
+      })
       this.loadAudio()
     }
   }

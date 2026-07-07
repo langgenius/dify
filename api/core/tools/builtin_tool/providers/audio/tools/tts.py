@@ -1,20 +1,23 @@
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from sqlalchemy.orm import Session
 
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from services.model_provider_service import ModelProviderService
 
 
 class TTSTool(BuiltinTool):
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -67,6 +70,7 @@ class TTSTool(BuiltinTool):
                 items.append((provider, model.model, voices))
         return items
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,

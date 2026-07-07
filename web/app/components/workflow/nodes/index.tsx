@@ -14,7 +14,7 @@ import {
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
-  const NodeComponent = useMemo(() => NodeComponentMap[nodeData.type], [nodeData.type])
+  const NodeComponent = useMemo(() => NodeComponentMap[nodeData.type], [nodeData.type])!
 
   return (
     <>
@@ -40,14 +40,13 @@ export const Panel = memo((props: PanelProps) => {
   const PanelComponent = useMemo(() => {
     if (nodeClass === CUSTOM_NODE)
       return PanelComponentMap[nodeData.type]
-
     return () => null
-  }, [nodeClass, nodeData.type])
+  }, [nodeClass, nodeData.type])!
 
   if (nodeClass === CUSTOM_NODE) {
     return (
       <BasePanel
-        key={props.id}
+        key={`${props.id}-${nodeData.type}`}
         id={props.id}
         data={props.data}
       >

@@ -296,10 +296,10 @@ describe('llm/use-config', () => {
 
     await waitFor(() => {
       expect(appendDefaultPromptConfig).toHaveBeenCalled()
-      expect(appendDefaultPromptConfig.mock.calls[0][1]).toEqual(expect.objectContaining({
+      expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(expect.objectContaining({
         prompt_templates: expect.any(Object),
       }))
-      expect(appendDefaultPromptConfig.mock.calls[0][2]).toBe(true)
+      expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(true)
       expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
         model: expect.objectContaining({
           provider: 'anthropic',

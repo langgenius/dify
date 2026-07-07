@@ -1,28 +1,50 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Protocol, cast
 
-from graphon.nodes.human_input.entities import (
-    FormDefinition,
-    HumanInputSubmissionValidationError,
-    validate_human_input_submission,
-)
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
+from core.workflow.human_input_policy import resolve_variable_select_input_options
+from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    FormInputConfig,
+    HumanInputSubmissionValidationError,
+    SelectInputConfig,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.entities import (
+    validate_human_input_submission as graphon_validate_human_input_submission,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.file import FileUploadConfig
+from graphon.runtime import GraphRuntimeState
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+_file_access_controller = DatabaseFileAccessController()
+
+
+_JsonObjectAdapter: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
+_JsonValueAdapter: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+_MappingSequenceAdapter: TypeAdapter[Sequence[Mapping[str, Any]]] = TypeAdapter(Sequence[Mapping[str, Any]])
 
 
 class Form:
@@ -82,7 +104,7 @@ class HumanInputError(Exception):
     pass
 
 
-class FormSubmittedError(HumanInputError, BaseHTTPException):
+class FormSubmittedError(BaseHTTPException, HumanInputError):
     error_code = "human_input_form_submitted"
     description = "This form has already been submitted by another user, form_id={form_id}"
     code = 412
@@ -90,35 +112,46 @@ class FormSubmittedError(HumanInputError, BaseHTTPException):
     def __init__(self, form_id: str):
         template = self.description or "This form has already been submitted by another user, form_id={form_id}"
         description = template.format(form_id=form_id)
-        super().__init__(description=description)
+        BaseHTTPException.__init__(self, description=description)
 
 
-class FormNotFoundError(HumanInputError, BaseHTTPException):
+class FormNotFoundError(BaseHTTPException, HumanInputError):
     error_code = "human_input_form_not_found"
     code = 404
 
 
-class InvalidFormDataError(HumanInputError, BaseHTTPException):
+class InvalidFormDataError(BaseHTTPException, HumanInputError):
     error_code = "invalid_form_data"
     code = 400
 
     def __init__(self, description: str):
-        super().__init__(description=description)
+        BaseHTTPException.__init__(self, description=description)
 
 
 class WebAppDeliveryNotEnabledError(HumanInputError, BaseException):
     pass
 
 
-class FormExpiredError(HumanInputError, BaseHTTPException):
+class FormExpiredError(BaseHTTPException, HumanInputError):
     error_code = "human_input_form_expired"
     code = 412
 
     def __init__(self, form_id: str):
-        super().__init__(description=f"This form has expired, form_id={form_id}")
+        BaseHTTPException.__init__(
+            self,
+            description=f"This form has expired, form_id={form_id}",
+        )
 
 
 logger = logging.getLogger(__name__)
+
+
+class FormDefinitionProtocol(Protocol):
+    @property
+    def inputs(self) -> Sequence[FormInputConfig]: ...
+
+    @property
+    def user_actions(self) -> Sequence[UserActionConfig]: ...
 
 
 class HumanInputService:
@@ -152,12 +185,19 @@ class HumanInputService:
         self._ensure_not_submitted(form)
         return form
 
+    def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
+        variable_pool = self._load_variable_pool_for_form(form)
+        return resolve_variable_select_input_options(
+            form.get_definition().inputs,
+            variable_pool=variable_pool,
+        )
+
     def submit_form_by_token(
         self,
         recipient_type: RecipientType,
         form_token: str,
         selected_action_id: str,
-        form_data: Mapping[str, Any],
+        form_data: Mapping[str, JsonValue],
         submission_end_user_id: str | None = None,
         submission_user_id: str | None = None,
     ):
@@ -166,22 +206,29 @@ class HumanInputService:
             raise WebAppDeliveryNotEnabledError()
 
         self.ensure_form_active(form)
-        self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
+        normalized_form_data = self._validate_submission(
+            form=form,
+            selected_action_id=selected_action_id,
+            form_data=form_data,
+        )
 
         result = self._form_repository.mark_submitted(
             form_id=form.id,
             recipient_id=form.recipient_id,
             selected_action_id=selected_action_id,
-            form_data=form_data,
+            form_data=normalized_form_data,
             submission_user_id=submission_user_id,
             submission_end_user_id=submission_end_user_id,
         )
 
         if result.form_kind != HumanInputFormKind.RUNTIME:
             return
-        if result.workflow_run_id is None:
-            return
-        self.enqueue_resume(result.workflow_run_id)
+        # A RUNTIME form is owned by a workflow run (workflow Agent node) or a
+        # conversation (ENG-635: Agent v2 chat). Route the resume accordingly.
+        if result.workflow_run_id is not None:
+            self.enqueue_resume(result.workflow_run_id)
+        elif result.conversation_id is not None:
+            self.enqueue_agent_app_resume(conversation_id=result.conversation_id, form_id=result.form_id)
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
@@ -198,12 +245,17 @@ class HumanInputService:
         if form.submitted:
             raise FormSubmittedError(form.id)
 
-    def _validate_submission(self, form: Form, selected_action_id: str, form_data: Mapping[str, Any]) -> None:
+    def _validate_submission(
+        self,
+        form: Form,
+        selected_action_id: str,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, JsonValue]:
         definition = form.get_definition()
         try:
-            validate_human_input_submission(
-                inputs=definition.inputs,
-                user_actions=definition.user_actions,
+            return self.validate_and_normalize_submission(
+                tenant_id=form.tenant_id,
+                form_definition=definition,
                 selected_action_id=selected_action_id,
                 form_data=form_data,
             )
@@ -237,6 +289,38 @@ class HumanInputService:
 
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
 
+    def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
+        """ENG-635: resume an Agent v2 chat after its ask_human form is submitted.
+
+        Enqueues a background turn for the conversation; the Agent App runner
+        continues the agent run, threading the human's reply into the request as
+        ``deferred_tool_results``.
+        """
+        from tasks.app_generate.resume_agent_app_task import resume_agent_app_execution
+
+        try:
+            resume_agent_app_execution.apply_async(
+                kwargs={"conversation_id": conversation_id, "form_id": form_id},
+            )
+        except Exception:  # pragma: no cover
+            logger.exception("Failed to enqueue Agent App resume for conversation %s form %s", conversation_id, form_id)
+
+    def _load_variable_pool_for_form(self, form: Form) -> ReadOnlyVariablePool | None:
+        workflow_run_id = form.workflow_run_id
+        if workflow_run_id is None:
+            return None
+
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+
+        if pause_entity is None or pause_entity.resumed_at is not None:
+            return None
+
+        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+        runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
+        return runtime_state.variable_pool
+
     def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
         global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
         if global_timeout_seconds <= 0:
@@ -247,3 +331,176 @@ class HumanInputService:
         created_at = ensure_naive_utc(form.created_at)
         global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
         return global_deadline <= current
+
+    @classmethod
+    def validate_and_normalize_submission(
+        cls,
+        *,
+        tenant_id: str,
+        form_definition: FormDefinitionProtocol,
+        selected_action_id: str,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, JsonValue]:
+        """
+        Normalize Dify-owned runtime payloads before delegating shape validation to graphon.
+
+        graphon owns the form schema and validation rules, while Dify owns tenant-aware file
+        reconstruction and persistence compatibility for submitted payloads.
+        """
+        normalized_form_data = cls.normalize_submission_data(
+            tenant_id=tenant_id,
+            form_definition=form_definition,
+            form_data=form_data,
+        )
+        graphon_validate_human_input_submission(
+            inputs=form_definition.inputs,
+            user_actions=form_definition.user_actions,
+            selected_action_id=selected_action_id,
+            form_data=normalized_form_data,
+        )
+        return normalized_form_data
+
+    @classmethod
+    def normalize_submission_data(
+        cls,
+        *,
+        tenant_id: str,
+        form_definition: FormDefinitionProtocol,
+        form_data: Mapping[str, Any],
+    ) -> dict[str, JsonValue]:
+        normalized_form_data: dict[str, JsonValue] = _JsonObjectAdapter.validate_python(form_data)
+        inputs_by_name = {form_input.output_variable_name: form_input for form_input in form_definition.inputs}
+        for name, form_input in inputs_by_name.items():
+            if name not in form_data:
+                continue
+            normalized_form_data[name] = cls._normalize_input_value(
+                tenant_id=tenant_id,
+                form_input=form_input,
+                value=form_data[name],
+            )
+
+        return normalized_form_data
+
+    @classmethod
+    def _normalize_input_value(
+        cls,
+        *,
+        tenant_id: str,
+        form_input: FormInputConfig,
+        value: Any,
+    ) -> JsonValue:
+        if isinstance(form_input, SelectInputConfig):
+            return cls._normalize_select_value(form_input=form_input, value=value)
+        if isinstance(form_input, FileInputConfig):
+            return cls._normalize_file_value(
+                tenant_id=tenant_id,
+                form_input=form_input,
+                value=value,
+            )
+        if isinstance(form_input, FileListInputConfig):
+            return cls._normalize_file_list_value(
+                tenant_id=tenant_id,
+                form_input=form_input,
+                value=value,
+            )
+        return _JsonValueAdapter.validate_python(value)
+
+    @classmethod
+    def _normalize_select_value(
+        cls,
+        *,
+        form_input: SelectInputConfig,
+        value: Any,
+    ) -> JsonValue:
+        if not isinstance(value, str):
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for select input '{form_input.output_variable_name}': expected string"
+            )
+        option_source = form_input.option_source
+        if option_source.type == ValueSourceType.CONSTANT and value not in option_source.value:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for select input '{form_input.output_variable_name}': {value}"
+            )
+        return value
+
+    @classmethod
+    def _normalize_file_value(
+        cls,
+        *,
+        tenant_id: str,
+        form_input: FileInputConfig,
+        value: Any,
+    ) -> JsonValue:
+        if not isinstance(value, Mapping):
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file input '{form_input.output_variable_name}': expected mapping"
+            )
+        upload_config = cls._build_file_upload_config(form_input=form_input, number_limits=1)
+        try:
+            # `build_from_mapping` enforces tenant ownership for persisted upload references.
+            file = build_from_mapping(
+                mapping=value,
+                tenant_id=tenant_id,
+                config=upload_config,
+                strict_type_validation=True,
+                access_controller=_file_access_controller,
+            )
+        except ValueError as exc:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file input '{form_input.output_variable_name}': {exc}"
+            ) from exc
+        return cast(JsonValue, file.to_dict())
+
+    @classmethod
+    def _normalize_file_list_value(
+        cls,
+        *,
+        tenant_id: str,
+        form_input: FileListInputConfig,
+        value: Any,
+    ) -> JsonValue:
+        try:
+            validated_value = _MappingSequenceAdapter.validate_python(value)
+        except ValidationError as exc:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file list input '{form_input.output_variable_name}': {exc}"
+            ) from exc
+        if not isinstance(value, list):
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file list input '{form_input.output_variable_name}': expected list"
+            )
+        if any(not isinstance(item, Mapping) for item in value):
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file list input '{form_input.output_variable_name}': expected list of mappings"
+            )
+        upload_config = cls._build_file_upload_config(
+            form_input=form_input,
+            number_limits=form_input.number_limits,
+        )
+        try:
+            # `build_from_mappings` performs the same tenant-aware ownership validation in batch.
+            files = build_from_mappings(
+                mappings=validated_value,
+                tenant_id=tenant_id,
+                config=upload_config,
+                strict_type_validation=True,
+                access_controller=_file_access_controller,
+            )
+        except ValueError as exc:
+            raise HumanInputSubmissionValidationError(
+                f"Invalid value for file list input '{form_input.output_variable_name}': {exc}"
+            ) from exc
+        return cast(JsonValue, [file.to_dict() for file in files])
+
+    @staticmethod
+    def _build_file_upload_config(
+        *,
+        form_input: FileInputConfig | FileListInputConfig,
+        number_limits: int,
+    ) -> FileUploadConfig:
+        return FileUploadConfig(
+            allowed_file_types=list(form_input.allowed_file_types),
+            allowed_file_extensions=list(form_input.allowed_file_extensions),
+            allowed_file_upload_methods=list(form_input.allowed_file_upload_methods),
+            number_limits=number_limits,
+        )

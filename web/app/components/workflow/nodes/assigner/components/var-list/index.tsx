@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -10,7 +11,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -20,7 +20,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../types'
 import OperationSelector from '../operation-selector'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: AssignerNodeOperation[]
@@ -33,7 +33,7 @@ type Props = {
   writeModeTypes?: WriteMode[]
   writeModeTypesArr?: WriteMode[]
   writeModeTypesNum?: WriteMode[]
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,
@@ -53,10 +53,10 @@ const VarList: FC<Props> = ({
   const handleAssignedVarChange = useCallback((index: number) => {
     return (value: ValueSelector | string) => {
       const newList = produce(list, (draft) => {
-        draft[index].variable_selector = value as ValueSelector
-        draft[index].operation = WriteMode.overwrite
-        draft[index].input_type = AssignerNodeInputType.variable
-        draft[index].value = undefined
+        draft[index]!.variable_selector = value as ValueSelector
+        draft[index]!.operation = WriteMode.overwrite
+        draft[index]!.input_type = AssignerNodeInputType.variable
+        draft[index]!.value = undefined
       })
       onChange(newList, value as ValueSelector)
     }
@@ -65,16 +65,16 @@ const VarList: FC<Props> = ({
   const handleOperationChange = useCallback((index: number, varType: VarType) => {
     return (item: { value: string | number }) => {
       const newList = produce(list, (draft) => {
-        draft[index].operation = item.value as WriteMode
-        draft[index].value = '' // Clear value when operation changes
+        draft[index]!.operation = item.value as WriteMode
+        draft[index]!.value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
           || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
           if (varType === VarType.boolean)
-            draft[index].value = false
-          draft[index].input_type = AssignerNodeInputType.constant
+            draft[index]!.value = false
+          draft[index]!.input_type = AssignerNodeInputType.constant
         }
         else {
-          draft[index].input_type = AssignerNodeInputType.variable
+          draft[index]!.input_type = AssignerNodeInputType.variable
         }
       })
       onChange(newList)
@@ -84,7 +84,7 @@ const VarList: FC<Props> = ({
   const handleToAssignedVarChange = useCallback((index: number) => {
     return (value: ValueSelector | string | number | boolean) => {
       const newList = produce(list, (draft) => {
-        draft[index].value = value as ValueSelector
+        draft[index]!.value = value as ValueSelector
       })
       onChange(newList, value as ValueSelector)
     }
@@ -105,7 +105,7 @@ const VarList: FC<Props> = ({
 
   const handleFilterToAssignedVar = useCallback((index: number) => {
     return (payload: Var) => {
-      const { variable_selector, operation } = list[index]
+      const { variable_selector, operation } = list[index]!
       if (!variable_selector || !operation || !filterToAssignedVar)
         return true
 
@@ -190,8 +190,9 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
+                      aria-label={item.variable_selector?.join('.') || t('nodes.assigner.setParameter', { ns: 'workflow' })}
                       value={item.value as string}
-                      onChange={e => handleToAssignedVarChange(index)(e.target.value)}
+                      onValueChange={value => handleToAssignedVarChange(index)(value)}
                       className="w-full"
                     />
                   )}
@@ -228,7 +229,7 @@ const VarList: FC<Props> = ({
               className="group shrink-0 hover:bg-state-destructive-hover!"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+              <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )

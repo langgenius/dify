@@ -9,11 +9,11 @@ import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { getNodeInfoById, isSystemVar } from './variable/utils'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   value: string
   className?: string
-}
+}>
 
 const VAR_PLACEHOLDER = '@#!@#!'
 
@@ -41,7 +41,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
-      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
+      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]!))?.data
       const isShowAPart = value.length > 2
 
       return (

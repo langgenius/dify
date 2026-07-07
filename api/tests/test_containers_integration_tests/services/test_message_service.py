@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from models.enums import ConversationFromSource, FeedbackRating, InvokeFrom
 from models.model import MessageFeedback
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
@@ -98,21 +98,22 @@ class TestMessageService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Setup app creation arguments
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "advanced-chat",  # Use advanced-chat mode to use mocked workflow
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="advanced-chat",  # Use advanced-chat mode to use mocked workflow,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         # Create app
         app_service = AppService()
@@ -648,8 +649,11 @@ class TestMessageService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(other_account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            other_account, name=fake.company(), session=db_session_with_containers
+        )
 
         # Test getting message with different user
         with pytest.raises(MessageNotExistsError):

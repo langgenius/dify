@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 
-export type Props = {
+export type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
-}
+}>
 
 const CSVUploader: FC<Props> = ({
   file,
@@ -97,10 +97,16 @@ const CSVUploader: FC<Props> = ({
               <CSVIcon className="shrink-0" />
               <div className="text-text-tertiary">
                 {t('batchModal.csvUploadTitle', { ns: 'appAnnotation' })}
-                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('batchModal.browse', { ns: 'appAnnotation' })}</span>
+                <button
+                  type="button"
+                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={selectHandle}
+                >
+                  {t('batchModal.browse', { ns: 'appAnnotation' })}
+                </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
           </div>
         )}
         {file && (
@@ -113,9 +119,14 @@ const CSVUploader: FC<Props> = ({
             <div className="hidden items-center group-hover:flex">
               <Button variant="secondary" onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-divider-regular" />
-              <div className="cursor-pointer p-2" onClick={removeFile} data-testid="remove-file-button">
-                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
-              </div>
+              <button
+                type="button"
+                className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                aria-label={t('operation.delete', { ns: 'common' })}
+                onClick={removeFile}
+              >
+                <RiDeleteBinLine className="size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
             </div>
           </div>
         )}

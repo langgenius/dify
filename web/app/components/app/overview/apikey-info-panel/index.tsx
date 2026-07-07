@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Button } from '@/app/components/base/ui/button'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { IS_CE_EDITION } from '@/config'
-import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
 
   const { isAPIKeySet } = useProviderContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const { t } = useTranslation()
 
@@ -49,10 +49,10 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         variant="primary"
         className="mt-2 space-x-2"
-        onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+        onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
       >
         <div className="text-sm font-medium">{t('apiKeyInfo.setAPIBtn', { ns: 'appOverview' })}</div>
-        <LinkExternal02 className="h-4 w-4" />
+        <LinkExternal02 className="size-4" />
       </Button>
       {!isCloud && (
         <a
@@ -62,14 +62,14 @@ const APIKeyInfoPanel: FC = () => {
           rel="noopener noreferrer"
         >
           <div>{t('apiKeyInfo.tryCloud', { ns: 'appOverview' })}</div>
-          <LinkExternal02 className="h-3 w-3" />
+          <LinkExternal02 className="size-3" />
         </a>
       )}
       <div
         onClick={() => setIsShow(false)}
-        className="absolute top-4 right-4 flex h-8 w-8 cursor-pointer items-center justify-center"
+        className="absolute top-4 right-4 flex size-8 cursor-pointer items-center justify-center"
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+        <RiCloseLine className="size-4 text-text-tertiary" />
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
+import { render, screen } from '@testing-library/react'
 import { createMockPlan } from '@/__mocks__/provider-context'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../type'
@@ -15,6 +16,14 @@ const setupPlan = (planType: Plan) => {
   useProviderContextMock.mockReturnValue(createMockPlan(planType))
 }
 
+const renderPriorityLabel = (className?: string) => {
+  return render(
+    <TooltipProvider delay={0} closeDelay={0}>
+      <PriorityLabel className={className} />
+    </TooltipProvider>,
+  )
+}
+
 describe('PriorityLabel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -24,7 +33,7 @@ describe('PriorityLabel', () => {
     it('should render the standard priority label when plan is sandbox', () => {
       setupPlan(Plan.sandbox)
 
-      render(<PriorityLabel />)
+      renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.standard')).toBeInTheDocument()
     })
@@ -35,7 +44,7 @@ describe('PriorityLabel', () => {
     it('should apply custom className to the label container', () => {
       setupPlan(Plan.sandbox)
 
-      render(<PriorityLabel className="custom-class" />)
+      renderPriorityLabel('custom-class')
 
       const label = screen.getByText('billing.plansCommon.priority.standard').closest('div')
       expect(label).toHaveClass('custom-class')
@@ -47,7 +56,7 @@ describe('PriorityLabel', () => {
     it('should render priority label and icon when plan is professional', () => {
       setupPlan(Plan.professional)
 
-      const { container } = render(<PriorityLabel />)
+      const { container } = renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.priority')).toBeInTheDocument()
       expect(container.querySelector('svg')).toBeInTheDocument()
@@ -56,7 +65,7 @@ describe('PriorityLabel', () => {
     it('should render top priority label and icon when plan is team', () => {
       setupPlan(Plan.team)
 
-      const { container } = render(<PriorityLabel />)
+      const { container } = renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.top-priority')).toBeInTheDocument()
       expect(container.querySelector('svg')).toBeInTheDocument()
@@ -65,7 +74,7 @@ describe('PriorityLabel', () => {
     it('should render standard label without icon when plan is sandbox', () => {
       setupPlan(Plan.sandbox)
 
-      const { container } = render(<PriorityLabel />)
+      const { container } = renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.standard')).toBeInTheDocument()
       expect(container.querySelector('svg')).not.toBeInTheDocument()
@@ -77,7 +86,7 @@ describe('PriorityLabel', () => {
     it('should render top-priority label with icon for enterprise plan', () => {
       setupPlan(Plan.enterprise)
 
-      const { container } = render(<PriorityLabel />)
+      const { container } = renderPriorityLabel()
 
       expect(screen.getByText('billing.plansCommon.priority.top-priority')).toBeInTheDocument()
       expect(container.querySelector('svg')).toBeInTheDocument()
@@ -85,29 +94,21 @@ describe('PriorityLabel', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should show the tip text when priority is not top priority', async () => {
+    it('should render a non-top priority trigger without mounting tooltip content by default', () => {
       setupPlan(Plan.sandbox)
 
-      render(<PriorityLabel />)
-      const label = screen.getByText('billing.plansCommon.priority.standard').closest('div')
-      fireEvent.mouseEnter(label as HTMLElement)
+      renderPriorityLabel()
 
-      expect(await screen.findByText(
-        'billing.plansCommon.documentProcessingPriority: billing.plansCommon.priority.standard',
-      )).toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.documentProcessingPriorityTip')).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.priority.standard')).toBeInTheDocument()
+      expect(screen.queryByText('billing.plansCommon.documentProcessingPriority')).not.toBeInTheDocument()
     })
 
-    it('should hide the tip text when priority is top priority', async () => {
+    it('should render a top priority trigger without mounting upgrade tip by default', () => {
       setupPlan(Plan.enterprise)
 
-      render(<PriorityLabel />)
-      const label = screen.getByText('billing.plansCommon.priority.top-priority').closest('div')
-      fireEvent.mouseEnter(label as HTMLElement)
+      renderPriorityLabel()
 
-      expect(await screen.findByText(
-        'billing.plansCommon.documentProcessingPriority: billing.plansCommon.priority.top-priority',
-      )).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.priority.top-priority')).toBeInTheDocument()
       expect(screen.queryByText('billing.plansCommon.documentProcessingPriorityTip')).not.toBeInTheDocument()
     })
   })

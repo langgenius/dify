@@ -1,14 +1,15 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
-import { LicenseStatus } from '@/types/feature'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
@@ -17,7 +18,7 @@ const NormalForm = () => {
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -56,9 +57,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
@@ -72,9 +73,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
@@ -88,9 +89,9 @@ const NormalForm = () => {
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-            <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-              <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
+            <div className="shadows-shadow-lg relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+              <RiContractLine className="size-5" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
             <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
@@ -155,8 +156,8 @@ const NormalForm = () => {
           {allMethodsAreDisabled && (
             <>
               <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
-                <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
-                  <RiDoorLockLine className="h-5 w-5" />
+                <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
+                  <RiDoorLockLine className="size-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
                 <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>

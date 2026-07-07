@@ -3,22 +3,25 @@ import type {
   DSLImportResponse,
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useSelector } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 
 type DSLPayload = {
@@ -32,7 +35,7 @@ type DSLPayload = {
   description?: string
 }
 type ResponseCallback = {
-  onSuccess?: () => void
+  onSuccess?: (payload: DSLImportResponse) => void
   onPending?: (payload: DSLImportResponse) => void
   onFailed?: () => void
 }
@@ -40,10 +43,14 @@ export const useImportDSL = () => {
   const { t } = useTranslation()
   const [isFetching, setIsFetching] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const handleImportDSL = useCallback(async (
     payload: DSLPayload,
@@ -70,6 +77,7 @@ export const useImportDSL = () => {
         app_mode,
         imported_dsl_version,
         current_dsl_version,
+        permission_keys,
       } = response
 
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
@@ -85,10 +93,16 @@ export const useImportDSL = () => {
           toast.success(message)
         else
           toast.warning(message, { description })
-        onSuccess?.()
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        onSuccess?.(response)
+        setNeedRefresh('1')
+        invalidateAppList()
         await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id, mode: app_mode }, push)
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          currentUserId: userProfile?.id,
+          resourceMaintainer: userProfile?.id,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -110,7 +124,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching])
+  }, [isFetching, t, handleCheckPluginDependencies, isRbacEnabled, push, setNeedRefresh, invalidateAppList, userProfile?.id, workspacePermissionKeys])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -129,16 +143,22 @@ export const useImportDSL = () => {
         import_id: importIdRef.current,
       })
 
-      const { status, app_id, app_mode } = response
+      const { status, app_id, app_mode, permission_keys } = response
       if (!app_id)
         return
 
       if (status === DSLImportStatus.COMPLETED) {
-        onSuccess?.()
+        onSuccess?.(response)
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        setNeedRefresh('1')
+        invalidateAppList()
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          currentUserId: userProfile?.id,
+          resourceMaintainer: userProfile?.id,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -152,7 +172,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching])
+  }, [isFetching, t, handleCheckPluginDependencies, isRbacEnabled, setNeedRefresh, push, invalidateAppList, userProfile?.id, workspacePermissionKeys])
 
   return {
     handleImportDSL,

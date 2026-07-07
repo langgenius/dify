@@ -37,7 +37,7 @@ const extractUrlParams = (url: string) => {
 
   return {
     url: urlParts[0],
-    params: urlParts[1].replace(/&/g, '\n').replace(/=/g, ': '),
+    params: urlParts[1]!.replace(/&/g, '\n').replace(/=/g, ': '),
   }
 }
 
@@ -46,7 +46,7 @@ const getNextArg = (args: string[], index: number, error: string): { value: stri
     return { value: null, error }
 
   return {
-    value: stripWrappedQuotes(args[index + 1]),
+    value: stripWrappedQuotes(args[index + 1]!),
     error: null,
   }
 }
@@ -97,7 +97,7 @@ const applyFormArg = (node: Partial<HttpNodeType>, args: string[], index: number
   const typeMatch = /^(.+?);type=(.+)$/.exec(value)
   if (typeMatch) {
     const [, actualValue, mimeType] = typeMatch
-    value = actualValue
+    value = actualValue!
     node.headers += `${node.headers ? '\n' : ''}Content-Type: ${mimeType}`
   }
 
@@ -150,7 +150,7 @@ export const parseCurl = (curlCommand: string): { node: HttpNodeType | null, err
   let hasData = false
 
   for (let i = 1; i < args.length; i++) {
-    const result = handleCurlArg(stripWrappedQuotes(args[i]), node, args, i)
+    const result = handleCurlArg(stripWrappedQuotes(args[i]!), node, args, i)
     if (result.error)
       return { node: null, error: result.error }
 

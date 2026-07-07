@@ -115,7 +115,7 @@ describe('node sections', () => {
     expect(document.querySelector('.i-ri-pause-circle-fill')).toBeInTheDocument()
   })
 
-  it('should render success icon when inspect vars exist without running status and hide description for loop nodes', () => {
+  it('should render success icon when inspect vars exist without running status and hide description for non-description nodes', () => {
     const t = ((key: string) => key) as unknown as TFunction
     const { rerender } = render(
       <NodeHeaderMeta
@@ -131,5 +131,8 @@ describe('node sections', () => {
 
     rerender(<NodeDescription data={{ type: BlockEnum.Loop, desc: 'hidden' } as never} />)
     expect(screen.queryByText('hidden')).not.toBeInTheDocument()
+
+    rerender(<NodeDescription data={{ type: BlockEnum.StartPlaceholder, desc: 'old placeholder description' } as never} />)
+    expect(screen.queryByText('old placeholder description')).not.toBeInTheDocument()
   })
 })

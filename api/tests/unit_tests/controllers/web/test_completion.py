@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from graphon.model_runtime.errors.invoke import InvokeError
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
+    AgentNotPublishedError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -18,7 +18,9 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 
 
 def _completion_app() -> SimpleNamespace:
@@ -141,6 +143,19 @@ class TestChatApi:
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(CompletionRequestError):
                 ChatApi().post(_chat_app(), _end_user())
+
+    @patch(
+        "controllers.web.completion.AppGenerateService.generate",
+        side_effect=AgentAppNotPublishedError("Agent has not been published"),
+    )
+    @patch("controllers.web.completion.web_ns")
+    def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
+        mock_ns.payload = {"inputs": {}, "query": "x"}
+        app_model = SimpleNamespace(id="app-1", mode="agent")
+
+        with app.test_request_context("/chat-messages", method="POST"):
+            with pytest.raises(AgentNotPublishedError):
+                ChatApi().post(app_model, _end_user())
 
 
 # ---------------------------------------------------------------------------

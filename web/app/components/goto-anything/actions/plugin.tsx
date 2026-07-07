@@ -1,9 +1,10 @@
-import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'
+import type { PluginsFromMarketplaceResponse } from '@dify/contracts/marketplace'
+import type { Plugin } from '../../plugins/types'
 import type { ActionItem, PluginSearchResult } from './types'
 import { renderI18nObject } from '@/i18n-config'
 import { postMarketplace } from '@/service/base'
 import Icon from '../../plugins/card/base/card-icon'
-import { getPluginIconInMarketplace } from '../../plugins/marketplace/utils'
+import { getFormattedPlugin } from '../../plugins/marketplace/utils'
 
 const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {
   return plugins.map((plugin) => {
@@ -39,10 +40,7 @@ export const pluginAction: ActionItem = {
         return []
       }
 
-      const list = response.data.plugins.map(plugin => ({
-        ...plugin,
-        icon: getPluginIconInMarketplace(plugin),
-      }))
+      const list = response.data.plugins.map(plugin => getFormattedPlugin(plugin))
       return parser(list, locale!)
     }
     catch (error) {

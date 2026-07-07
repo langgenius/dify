@@ -70,7 +70,7 @@ describe('variable-assigner/use-single-run-form-params', () => {
       ['source-node', 'uniqueVar'],
       ['source-node', 'sharedVar'],
     ])
-    expect(result.current.forms[0].inputs).toEqual([
+    expect(result.current.forms[0]!.inputs).toEqual([
       {
         label: 'Shared',
         variable: 'sharedVar',
@@ -85,7 +85,7 @@ describe('variable-assigner/use-single-run-form-params', () => {
       },
     ])
 
-    result.current.forms[0].onChange({ sharedVar: 'updated' })
+    result.current.forms[0]!.onChange({ sharedVar: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ sharedVar: 'updated' })
     expect(result.current.getDependentVars()).toEqual([

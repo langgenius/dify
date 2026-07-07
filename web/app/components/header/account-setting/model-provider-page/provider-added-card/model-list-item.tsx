@@ -1,18 +1,19 @@
 import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
@@ -31,10 +32,11 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
+  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
-  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+  const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
     input: {
       params: {
         provider: provider.provider,
@@ -76,6 +78,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
         showContextSize
@@ -85,12 +88,12 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       </ModelName>
       <div className="flex shrink-0 items-center">
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && !model.has_invalid_load_balancing_configs && (
-          <Badge className="mr-1 h-[18px] w-[18px] items-center justify-center border-text-accent-secondary p-0">
-            <Balance className="h-3 w-3 text-text-accent-secondary" />
+          <Badge className="mr-1 h-4.5 w-4.5 items-center justify-center border-text-accent-secondary p-0">
+            <Balance className="size-3 text-text-accent-secondary" />
           </Badge>
         )}
         {
-          (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
+          (canConfigureModels && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
               loadBalancingEnabled={model.load_balancing_enabled}
@@ -102,16 +105,14 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         {
           model.deprecated
             ? (
-                <Tooltip
-                  popupContent={
-                    <span className="font-semibold">{t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}</span>
-                  }
-                  offset={{ mainAxis: 4 }}
-                >
-                  <Switch checked={false} disabled size="md" />
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger nativeButton={false} openOnHover render={<span><Switch checked={false} disabled size="md" /></span>} />
+                  <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+                    {t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}
+                  </PopoverContent>
+                </Popover>
               )
-            : (isCurrentWorkspaceManager && (
+            : (canConfigureModels && (
                 <Switch
                   className="ml-2"
                   checked={model?.status === ModelStatusEnum.active}

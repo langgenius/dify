@@ -11,7 +11,7 @@ from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -89,21 +89,22 @@ class TestWorkflowToolManageService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)

@@ -1,6 +1,7 @@
 'use client'
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -12,14 +13,13 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
-type Props = {
+type Props = Readonly<{
   logs: TriggerLogEntity[]
   className?: string
-}
+}>
 
 enum LogTypeEnum {
   REQUEST = 'request',
@@ -93,7 +93,7 @@ const LogViewer = ({ logs, className }: Props) => {
             }}
             className="rounded-md p-0.5 hover:bg-components-panel-border"
           >
-            <RiFileCopyLine className="h-4 w-4 text-text-tertiary" />
+            <RiFileCopyLine className="size-4 text-text-tertiary" />
           </button>
         </div>
         <div className="px-2 pt-1 pb-2">
@@ -128,7 +128,7 @@ const LogViewer = ({ logs, className }: Props) => {
           >
             {isError && (
               <div className="pointer-events-none absolute top-0 left-0 h-7 w-[179px]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className="h-full w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className="size-full">
                   <g filter="url(#filter0_f_error_glow)">
                     <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25" />
                   </g>
@@ -153,10 +153,10 @@ const LogViewer = ({ logs, className }: Props) => {
               <div className="flex items-center gap-0">
                 {isExpanded
                   ? (
-                      <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+                      <RiArrowDownSLine className="size-4 text-text-tertiary" />
                     )
                   : (
-                      <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+                      <RiArrowRightSLine className="size-4 text-text-tertiary" />
                     )}
                 <div className="system-xs-semibold-uppercase text-text-secondary">
                   {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
@@ -170,13 +170,13 @@ const LogViewer = ({ logs, className }: Props) => {
                 <div className="system-xs-regular text-text-tertiary">
                   {dayjs(log.created_at).format('HH:mm:ss')}
                 </div>
-                <div className="h-3.5 w-3.5">
+                <div className="size-3.5">
                   {isSuccess
                     ? (
-                        <RiCheckboxCircleFill className="h-full w-full text-text-success" />
+                        <RiCheckboxCircleFill className="size-full text-text-success" />
                       )
                     : (
-                        <RiErrorWarningFill className="h-full w-full text-text-destructive" />
+                        <RiErrorWarningFill className="size-full text-text-destructive" />
                       )}
                 </div>
               </div>

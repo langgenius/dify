@@ -84,7 +84,7 @@ class IndexProcessor:
                     select(DocumentSegment).where(DocumentSegment.document_id == original_document_id)
                 ).all()
                 if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments]
+                    index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
         indexing_start_at = time.perf_counter()
         # delete from vector index

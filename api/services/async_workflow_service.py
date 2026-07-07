@@ -22,6 +22,7 @@ from models.trigger import WorkflowTriggerLog, WorkflowTriggerLogDict
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
+from services.quota_service import QuotaService, unlimited
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow_service import WorkflowService
@@ -88,7 +89,10 @@ class AsyncWorkflowService:
             raise WorkflowNotFoundError(f"App not found: {trigger_data.app_id}")
 
         # 2. Get workflow
-        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
+        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id, session=session)
+
+        # commit read only session before starting the billig rpc call
+        session.commit()
 
         # 3. Get dispatcher based on tenant subscription
         dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
@@ -131,9 +135,10 @@ class AsyncWorkflowService:
         trigger_log = trigger_log_repo.create(trigger_log)
         session.commit()
 
-        # 7. Check and consume quota
+        # 7. Reserve quota (commit after successful dispatch)
+        quota_charge = unlimited()
         try:
-            QuotaType.WORKFLOW.consume(trigger_data.tenant_id)
+            quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, trigger_data.tenant_id)
         except QuotaExceededError as e:
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
@@ -153,13 +158,18 @@ class AsyncWorkflowService:
         # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
-        task: AsyncResult[Any] | None = None
-        if queue_name == QueuePriority.PROFESSIONAL:
-            task = execute_workflow_professional.delay(task_data_dict)
-        elif queue_name == QueuePriority.TEAM:
-            task = execute_workflow_team.delay(task_data_dict)
-        else:  # SANDBOX
-            task = execute_workflow_sandbox.delay(task_data_dict)
+        try:
+            task: AsyncResult[Any] | None = None
+            if queue_name == QueuePriority.PROFESSIONAL:
+                task = execute_workflow_professional.delay(task_data_dict)
+            elif queue_name == QueuePriority.TEAM:
+                task = execute_workflow_team.delay(task_data_dict)
+            else:  # SANDBOX
+                task = execute_workflow_sandbox.delay(task_data_dict)
+            quota_charge.commit()
+        except Exception:
+            quota_charge.refund()
+            raise
 
         # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
@@ -295,13 +305,21 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @staticmethod
-    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: str | None = None) -> Workflow:
+    def _get_workflow(
+        workflow_service: WorkflowService,
+        app_model: App,
+        workflow_id: str | None = None,
+        session: Session | None = None,
+    ) -> Workflow:
         """
         Get workflow for the app
 
         Args:
             app_model: App model instance
             workflow_id: Optional specific workflow ID
+            session: Reuse this SQLAlchemy session for the lookup when provided,
+                so the caller's explicit session bears the connection cost
+                instead of Flask's request-scoped ``db.session``.
 
         Returns:
             Workflow instance
@@ -311,12 +329,12 @@ class AsyncWorkflowService:
         """
         if workflow_id:
             # Get specific published workflow
-            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id)
+            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id, session=session)
             if not workflow:
                 raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
         else:
             # Get default published workflow
-            workflow = workflow_service.get_published_workflow(app_model)
+            workflow = workflow_service.get_published_workflow(app_model, session=session)
             if not workflow:
                 raise WorkflowNotFoundError(f"No published workflow found for app: {app_model.id}")
 

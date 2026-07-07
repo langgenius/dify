@@ -1,30 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiMoreFill } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-// import { Button } from '@/app/components/base/ui/button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { useDownloadPlugin } from '@/service/use-plugins'
+import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   onOpenChange: (v: boolean) => void
   author: string
   name: string
   version: string
-}
+}>
 
 const OperationDropdown: FC<Props> = ({
   open,
@@ -35,67 +33,60 @@ const OperationDropdown: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const queryClient = useQueryClient()
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    onOpenChange(v)
-    openRef.current = v
-  }, [onOpenChange])
 
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
+  const downloadMutation = useMutation(marketplaceQuery.downloadPlugin.mutationOptions({
+    onSuccess: (blob) => {
+      downloadBlob({ data: blob, fileName: `${author}-${name}_${version}.zip` })
+    },
+  }))
 
-  const [needDownload, setNeedDownload] = useState(false)
-  const downloadInfo = useMemo(() => ({
-    organization: author,
-    pluginName: name,
-    version,
-  }), [author, name, version])
-  const { data: blob, isLoading } = useDownloadPlugin(downloadInfo, needDownload)
-  const handleDownload = useCallback(() => {
-    if (isLoading)
+  const handleDownload = () => {
+    if (downloadMutation.isPending)
       return
-    queryClient.removeQueries({
-      queryKey: ['plugins', 'downloadPlugin', downloadInfo],
-      exact: true,
-    })
-    setNeedDownload(true)
-  }, [downloadInfo, isLoading, queryClient])
 
-  useEffect(() => {
-    if (!needDownload || !blob)
-      return
-    const fileName = `${author}-${name}_${version}.zip`
-    downloadBlob({ data: blob, fileName })
-    setNeedDownload(false)
-    queryClient.removeQueries({
-      queryKey: ['plugins', 'downloadPlugin', downloadInfo],
-      exact: true,
+    onOpenChange(false)
+    downloadMutation.mutate({
+      params: {
+        organization: author,
+        pluginName: name,
+        version,
+      },
     })
-  }, [author, blob, downloadInfo, name, needDownload, queryClient, version])
+  }
+
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 0,
-        crossAxis: 0,
-      }}
+      onOpenChange={onOpenChange}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <ActionButton className={cn(open && 'bg-state-base-hover')}>
-          <RiMoreFill className="h-4 w-4 text-components-button-secondary-accent-text" />
-        </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-9999">
-        <div className="min-w-[176px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          <div onClick={handleDownload} className="cursor-pointer rounded-lg px-3 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover">{t('operation.download', { ns: 'common' })}</div>
-          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="block cursor-pointer rounded-lg px-3 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover">{t('operation.viewDetails', { ns: 'common' })}</a>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+            aria-label={t('operation.more', { ns: 'common' })}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4 text-components-button-secondary-accent-text" />
+          </ActionButton>
+        )}
+      />
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="min-w-[176px]"
+      >
+        <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
+          {t('operation.download', { ns: 'common' })}
+        </DropdownMenuItem>
+        <DropdownMenuLinkItem
+          className="system-md-regular"
+          href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('operation.viewDetails', { ns: 'common' })}
+        </DropdownMenuLinkItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 export default React.memo(OperationDropdown)

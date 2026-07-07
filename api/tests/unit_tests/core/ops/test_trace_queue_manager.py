@@ -19,7 +19,7 @@ import pytest
 
 
 @pytest.fixture
-def trace_queue_manager_and_task(monkeypatch):
+def trace_queue_manager_and_task(monkeypatch: pytest.MonkeyPatch):
     """Fixture to provide TraceQueueManager and TraceTask with delayed imports."""
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:

@@ -4,6 +4,9 @@ from collections.abc import Generator, Sequence
 from decimal import Decimal
 from json import dumps
 
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.plugin.impl.model import PluginModelClient
+
 # import monkeypatch
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
@@ -22,9 +25,6 @@ from graphon.model_runtime.entities.model_entities import (
     ModelType,
 )
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
-
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
-from core.plugin.impl.model import PluginModelClient
 
 
 class MockModelClass(PluginModelClient):
@@ -246,5 +246,6 @@ class MockModelClass(PluginModelClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
+        app_id: str | None = None,
     ):
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

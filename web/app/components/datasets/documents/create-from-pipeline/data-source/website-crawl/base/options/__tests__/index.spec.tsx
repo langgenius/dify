@@ -4,14 +4,15 @@ import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { CrawlStep } from '@/models/datasets'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { expectLoadingButton } from '@/test/button'
 import Options from '../index'
 
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -257,12 +258,12 @@ describe('Options', () => {
         expect(screen.getByText(/running/i)).toBeInTheDocument()
       })
 
-      it('should disable button when step is running', () => {
+      it('should keep button loading-disabled when step is running', () => {
         const props = createDefaultProps({ step: CrawlStep.running })
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).toBeDisabled()
+        expectLoadingButton(screen.getByRole('button'))
       })
 
       it('should enable button when step is finished', () => {
@@ -271,16 +272,6 @@ describe('Options', () => {
         render(<Options {...props} />)
 
         expect(screen.getByRole('button')).not.toBeDisabled()
-      })
-
-      it('should show loading state on button when step is running', () => {
-        const props = createDefaultProps({ step: CrawlStep.running })
-
-        render(<Options {...props} />)
-
-        // Assert - Button should have loading prop which disables it
-        const button = screen.getByRole('button')
-        expect(button).toBeDisabled()
       })
     })
 
@@ -306,7 +297,7 @@ describe('Options', () => {
 
         render(<Options {...props} />)
 
-        expect(screen.getByRole('button')).toBeDisabled()
+        expectLoadingButton(screen.getByRole('button'))
       })
 
       it('should default runDisabled to undefined (falsy)', () => {
@@ -495,9 +486,8 @@ describe('Options', () => {
 
       render(<Options {...props} />)
 
-      // Assert - Button should be in loading state
       const button = screen.getByRole('button')
-      expect(button).toBeDisabled()
+      expectLoadingButton(button)
       expect(screen.getByText(/running/i)).toBeInTheDocument()
     })
 
@@ -772,7 +762,9 @@ describe('Options', () => {
       render(<Options {...props} />)
 
       const button = screen.getByRole('button')
-      if (expectedDisabled)
+      if (propVariation.step === CrawlStep.running)
+        expectLoadingButton(button)
+      else if (expectedDisabled)
         expect(button).toBeDisabled()
       else
         expect(button).not.toBeDisabled()

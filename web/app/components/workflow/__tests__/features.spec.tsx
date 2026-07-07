@@ -8,8 +8,25 @@ import { InputVarType } from '../types'
 import { createStartNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleAddVariable = vi.fn()
+const mockUpdateFeatures = vi.fn()
+const mockFeaturesStore = {
+  getState: () => ({
+    features: {
+      opening: {
+        enabled: false,
+        opening_statement: '',
+        suggested_questions: [],
+      },
+      suggested: false,
+      text2speech: false,
+      speech2text: false,
+      citation: false,
+      moderation: false,
+      file: false,
+    },
+  }),
+}
 
 let mockIsChatMode = true
 let mockNodesReadOnly = false
@@ -22,9 +39,6 @@ vi.mock('../hooks', async () => {
     useNodesReadOnly: () => ({
       nodesReadOnly: mockNodesReadOnly,
     }),
-    useNodesSyncDraft: () => ({
-      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-    }),
   }
 })
 
@@ -32,6 +46,14 @@ vi.mock('../nodes/start/use-config', () => ({
   default: () => ({
     handleAddVariable: mockHandleAddVariable,
   }),
+}))
+
+vi.mock('@/service/workflow', () => ({
+  updateFeatures: (...args: unknown[]) => mockUpdateFeatures(...args),
+}))
+
+vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeaturesStore: () => mockFeaturesStore,
 }))
 
 vi.mock('@/app/components/base/features/new-feature-panel', () => ({
@@ -112,21 +134,29 @@ const DelayedFeatures = () => {
   return <Features />
 }
 
-const renderFeatures = (options?: Omit<Parameters<typeof renderWorkflowFlowComponent>[1], 'nodes' | 'edges'>) =>
-  renderWorkflowFlowComponent(
+const renderFeatures = (options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>) => {
+  const mergedInitialStoreState = {
+    appId: 'app-1',
+    ...(options?.initialStoreState || {}),
+  }
+
+  return renderWorkflowFlowComponent(
     <DelayedFeatures />,
     {
       nodes: [startNode],
       edges: [],
       ...options,
+      initialStoreState: mergedInitialStoreState,
     },
   )
+}
 
 describe('Features', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsChatMode = true
     mockNodesReadOnly = false
+    mockUpdateFeatures.mockResolvedValue(undefined)
   })
 
   describe('Rendering', () => {
@@ -146,8 +176,10 @@ describe('Features', () => {
 
       await user.click(screen.getByRole('button', { name: 'open features' }))
 
-      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-      expect(store.getState().showFeaturesPanel).toBe(true)
+      await vi.waitFor(() => {
+        expect(mockUpdateFeatures).toHaveBeenCalledTimes(1)
+        expect(store.getState().showFeaturesPanel).toBe(true)
+      })
     })
 
     it('should close the workflow feature panel and transform required prompt variables', async () => {

@@ -12,11 +12,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from celery import shared_task
-from graphon.enums import WorkflowExecutionStatus
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
@@ -28,20 +26,23 @@ from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
+    EndUserType,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
-from models.model import EndUser
+from models.model import App, EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -98,23 +99,25 @@ def dispatch_trigger_debug_event(
         return 0
 
 
-def _get_latest_workflows_by_app_ids(
+def _get_published_workflows_by_app_ids(
     session: Session, subscribers: Sequence[WorkflowPluginTrigger]
 ) -> Mapping[str, Workflow]:
-    """Get the latest workflows by app_ids"""
-    workflow_query = (
-        select(Workflow.app_id, func.max(Workflow.created_at).label("max_created_at"))
-        .where(
-            Workflow.app_id.in_({t.app_id for t in subscribers}),
-            Workflow.version != Workflow.VERSION_DRAFT,
-        )
-        .group_by(Workflow.app_id)
-        .subquery()
-    )
+    """Get current published workflows through apps.workflow_id."""
+    app_ids = {trigger.app_id for trigger in subscribers}
+    tenant_ids = {trigger.tenant_id for trigger in subscribers}
+    if not app_ids or not tenant_ids:
+        return {}
+
     workflows = session.scalars(
-        select(Workflow).join(
-            workflow_query,
-            (Workflow.app_id == workflow_query.c.app_id) & (Workflow.created_at == workflow_query.c.max_created_at),
+        select(Workflow)
+        .join(App, App.workflow_id == Workflow.id)
+        .where(
+            App.id.in_(app_ids),
+            App.tenant_id.in_(tenant_ids),
+            App.workflow_id.isnot(None),
+            Workflow.app_id == App.id,
+            Workflow.tenant_id == App.tenant_id,
+            Workflow.version != Workflow.VERSION_DRAFT,
         )
     ).all()
     return {w.app_id: w for w in workflows}
@@ -258,59 +261,58 @@ def dispatch_triggered_workflow(
         tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
     )
     trigger_entity: TriggerProviderEntity = provider_controller.entity
+
+    # Ensure expire_on_commit is set to False to remain workflows available
     with session_factory.create_session() as session:
-        workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
+        workflows: Mapping[str, Workflow] = _get_published_workflows_by_app_ids(session, subscribers)
 
-        end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
-            type=InvokeFrom.TRIGGER,
-            tenant_id=subscription.tenant_id,
-            app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
-            user_id=user_id,
-        )
-        for plugin_trigger in subscribers:
-            # Get workflow from mapping
-            workflow: Workflow | None = workflows.get(plugin_trigger.app_id)
-            if not workflow:
-                logger.error(
-                    "Workflow not found for app %s",
-                    plugin_trigger.app_id,
-                )
-                continue
+    end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
+        type=EndUserType.TRIGGER,
+        tenant_id=subscription.tenant_id,
+        app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
+        user_id=user_id,
+    )
 
-            # Find the trigger node in the workflow
-            event_node = None
-            for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
-                if node_id == plugin_trigger.node_id:
-                    event_node = node_config
-                    break
-
-            if not event_node:
-                logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
-                continue
-
-            # invoke trigger
-            trigger_metadata = PluginTriggerMetadata(
-                plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
-                endpoint_id=subscription.endpoint_id,
-                provider_id=subscription.provider_id,
-                event_name=event_name,
-                icon_filename=trigger_entity.identity.icon or "",
-                icon_dark_filename=trigger_entity.identity.icon_dark or "",
+    for plugin_trigger in subscribers:
+        workflow: Workflow | None = workflows.get(plugin_trigger.app_id)
+        if not workflow:
+            logger.error(
+                "Workflow not found for app %s",
+                plugin_trigger.app_id,
             )
+            continue
 
-            # consume quota before invoking trigger
-            quota_charge = unlimited()
-            try:
-                quota_charge = QuotaType.TRIGGER.consume(subscription.tenant_id)
-            except QuotaExceededError:
-                AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
-                logger.info(
-                    "Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id
-                )
-                return 0
+        event_node = None
+        for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
+            if node_id == plugin_trigger.node_id:
+                event_node = node_config
+                break
 
-            node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
-            invoke_response: TriggerInvokeEventResponse | None = None
+        if not event_node:
+            logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
+            continue
+
+        trigger_metadata = PluginTriggerMetadata(
+            plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
+            endpoint_id=subscription.endpoint_id,
+            provider_id=subscription.provider_id,
+            event_name=event_name,
+            icon_filename=trigger_entity.identity.icon or "",
+            icon_dark_filename=trigger_entity.identity.icon_dark or "",
+        )
+
+        quota_charge = unlimited()
+        try:
+            quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
+        except QuotaExceededError:
+            AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
+            logger.info("Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id)
+            return dispatched_count
+
+        node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
+        invoke_response: TriggerInvokeEventResponse | None = None
+
+        with session_factory.create_session() as session:
             try:
                 invoke_response = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
@@ -387,6 +389,7 @@ def dispatch_triggered_workflow(
                     raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
 
                 AsyncWorkflowService.trigger_workflow_async(session=session, user=end_user, trigger_data=trigger_data)
+                quota_charge.commit()
                 dispatched_count += 1
                 logger.info(
                     "Triggered workflow for app %s with trigger event %s",
@@ -401,7 +404,7 @@ def dispatch_triggered_workflow(
                     plugin_trigger.app_id,
                 )
 
-        return dispatched_count
+    return dispatched_count
 
 
 def dispatch_triggered_workflows(

@@ -118,8 +118,8 @@ describe('formatToTracingNodeList', () => {
       expect.objectContaining({ node_id: 'c' }),
       expect.objectContaining({ node_id: 'b' }),
     ])
-    expect(mockFormatHumanInputNode).toHaveBeenCalledWith(mockFormatAgentNode.mock.results[0].value)
-    expect(mockFormatRetryNode).toHaveBeenCalledWith(mockFormatHumanInputNode.mock.results[0].value)
+    expect(mockFormatHumanInputNode).toHaveBeenCalledWith(mockFormatAgentNode.mock.results[0]!.value)
+    expect(mockFormatRetryNode).toHaveBeenCalledWith(mockFormatHumanInputNode.mock.results[0]!.value)
     expect(mockFormatParallelNode).toHaveBeenLastCalledWith(expect.any(Array), t)
     expect(result).toEqual([
       expect.objectContaining({ node_id: 'a', parallelFormatted: true }),

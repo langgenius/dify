@@ -129,7 +129,7 @@ describe('DatasourceIcon', () => {
     it('should render without crashing', () => {
       const { container } = render(<DatasourceIcon iconUrl="https://example.com/icon.png" />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render icon with background image', () => {
@@ -138,15 +138,16 @@ describe('DatasourceIcon', () => {
       const { container } = render(<DatasourceIcon iconUrl={iconUrl} />)
 
       const iconDiv = container.querySelector('[style*="background-image"]')
-      expect(iconDiv).toHaveStyle({ backgroundImage: `url(${iconUrl})` })
+      expect(iconDiv)!.toHaveStyle({ backgroundImage: `url(${iconUrl})` })
     })
 
     it('should render with default size (sm)', () => {
       const { container } = render(<DatasourceIcon iconUrl="https://example.com/icon.png" />)
 
       // Assert - Default size is 'sm' which maps to 'w-5 h-5'
-      expect(container.firstChild).toHaveClass('w-5')
-      expect(container.firstChild).toHaveClass('h-5')
+      // Assert - Default size is 'sm' which maps to 'w-5 h-5'
+      expect(container.firstChild)!.toHaveClass('w-5')
+      expect(container.firstChild)!.toHaveClass('h-5')
     })
   })
 
@@ -157,9 +158,9 @@ describe('DatasourceIcon', () => {
           <DatasourceIcon iconUrl="https://example.com/icon.png" size="xs" />,
         )
 
-        expect(container.firstChild).toHaveClass('w-4')
-        expect(container.firstChild).toHaveClass('h-4')
-        expect(container.firstChild).toHaveClass('rounded-[5px]')
+        expect(container.firstChild)!.toHaveClass('w-4')
+        expect(container.firstChild)!.toHaveClass('h-4')
+        expect(container.firstChild)!.toHaveClass('rounded-[5px]')
       })
 
       it('should render with sm size', () => {
@@ -167,9 +168,9 @@ describe('DatasourceIcon', () => {
           <DatasourceIcon iconUrl="https://example.com/icon.png" size="sm" />,
         )
 
-        expect(container.firstChild).toHaveClass('w-5')
-        expect(container.firstChild).toHaveClass('h-5')
-        expect(container.firstChild).toHaveClass('rounded-md')
+        expect(container.firstChild)!.toHaveClass('w-5')
+        expect(container.firstChild)!.toHaveClass('h-5')
+        expect(container.firstChild)!.toHaveClass('rounded-md')
       })
 
       it('should render with md size', () => {
@@ -177,9 +178,9 @@ describe('DatasourceIcon', () => {
           <DatasourceIcon iconUrl="https://example.com/icon.png" size="md" />,
         )
 
-        expect(container.firstChild).toHaveClass('w-6')
-        expect(container.firstChild).toHaveClass('h-6')
-        expect(container.firstChild).toHaveClass('rounded-lg')
+        expect(container.firstChild)!.toHaveClass('w-6')
+        expect(container.firstChild)!.toHaveClass('h-6')
+        expect(container.firstChild)!.toHaveClass('rounded-lg')
       })
     })
 
@@ -189,7 +190,7 @@ describe('DatasourceIcon', () => {
           <DatasourceIcon iconUrl="https://example.com/icon.png" className="custom-class" />,
         )
 
-        expect(container.firstChild).toHaveClass('custom-class')
+        expect(container.firstChild)!.toHaveClass('custom-class')
       })
 
       it('should merge custom className with default classes', () => {
@@ -197,9 +198,9 @@ describe('DatasourceIcon', () => {
           <DatasourceIcon iconUrl="https://example.com/icon.png" className="custom-class" size="sm" />,
         )
 
-        expect(container.firstChild).toHaveClass('custom-class')
-        expect(container.firstChild).toHaveClass('w-5')
-        expect(container.firstChild).toHaveClass('h-5')
+        expect(container.firstChild)!.toHaveClass('custom-class')
+        expect(container.firstChild)!.toHaveClass('w-5')
+        expect(container.firstChild)!.toHaveClass('h-5')
       })
     })
 
@@ -208,7 +209,7 @@ describe('DatasourceIcon', () => {
         const { container } = render(<DatasourceIcon iconUrl="" />)
 
         const iconDiv = container.querySelector('[style*="background-image"]')
-        expect(iconDiv).toHaveStyle({ backgroundImage: 'url()' })
+        expect(iconDiv)!.toHaveStyle({ backgroundImage: 'url()' })
       })
 
       it('should handle special characters in iconUrl', () => {
@@ -217,7 +218,7 @@ describe('DatasourceIcon', () => {
         const { container } = render(<DatasourceIcon iconUrl={iconUrl} />)
 
         const iconDiv = container.querySelector('[style*="background-image"]')
-        expect(iconDiv).toHaveStyle({ backgroundImage: `url(${iconUrl})` })
+        expect(iconDiv)!.toHaveStyle({ backgroundImage: `url(${iconUrl})` })
       })
 
       it('should handle data URL as iconUrl', () => {
@@ -226,7 +227,7 @@ describe('DatasourceIcon', () => {
         const { container } = render(<DatasourceIcon iconUrl={dataUrl} />)
 
         const iconDiv = container.querySelector('[style*="background-image"]')
-        expect(iconDiv).toBeInTheDocument()
+        expect(iconDiv)!.toBeInTheDocument()
       })
     })
   })
@@ -235,25 +236,26 @@ describe('DatasourceIcon', () => {
     it('should have flex container classes', () => {
       const { container } = render(<DatasourceIcon iconUrl="https://example.com/icon.png" />)
 
-      expect(container.firstChild).toHaveClass('flex')
-      expect(container.firstChild).toHaveClass('items-center')
-      expect(container.firstChild).toHaveClass('justify-center')
+      expect(container.firstChild)!.toHaveClass('flex')
+      expect(container.firstChild)!.toHaveClass('items-center')
+      expect(container.firstChild)!.toHaveClass('justify-center')
     })
 
     it('should have shadow-xs class from size map', () => {
       const { container } = render(<DatasourceIcon iconUrl="https://example.com/icon.png" />)
 
       // Assert - Default size 'sm' has shadow-xs
-      expect(container.firstChild).toHaveClass('shadow-xs')
+      // Assert - Default size 'sm' has shadow-xs
+      expect(container.firstChild)!.toHaveClass('shadow-xs')
     })
 
     it('should have inner div with bg-cover class', () => {
       const { container } = render(<DatasourceIcon iconUrl="https://example.com/icon.png" />)
 
       const innerDiv = container.querySelector('.bg-cover')
-      expect(innerDiv).toBeInTheDocument()
-      expect(innerDiv).toHaveClass('bg-center')
-      expect(innerDiv).toHaveClass('rounded-md')
+      expect(innerDiv)!.toBeInTheDocument()
+      expect(innerDiv)!.toHaveClass('bg-center')
+      expect(innerDiv)!.toHaveClass('rounded-md')
     })
   })
 })
@@ -519,13 +521,13 @@ describe('OptionCard', () => {
     it('should render without crashing', () => {
       renderWithProviders(<OptionCard {...defaultProps} />)
 
-      expect(screen.getByText('Test Option')).toBeInTheDocument()
+      expect(screen.getByText('Test Option'))!.toBeInTheDocument()
     })
 
     it('should render label text', () => {
       renderWithProviders(<OptionCard {...defaultProps} label="Custom Label" />)
 
-      expect(screen.getByText('Custom Label')).toBeInTheDocument()
+      expect(screen.getByText('Custom Label'))!.toBeInTheDocument()
     })
 
     it('should render DatasourceIcon component', () => {
@@ -533,7 +535,7 @@ describe('OptionCard', () => {
 
       // Assert - DatasourceIcon container should exist
       const iconContainer = container.querySelector('.size-8')
-      expect(iconContainer).toBeInTheDocument()
+      expect(iconContainer)!.toBeInTheDocument()
     })
 
     it('should set title attribute for label truncation', () => {
@@ -542,7 +544,7 @@ describe('OptionCard', () => {
       renderWithProviders(<OptionCard {...defaultProps} label={longLabel} />)
 
       const labelElement = screen.getByText(longLabel)
-      expect(labelElement).toHaveAttribute('title', longLabel)
+      expect(labelElement)!.toHaveAttribute('title', longLabel)
     })
   })
 
@@ -554,8 +556,8 @@ describe('OptionCard', () => {
         )
 
         const card = container.firstChild
-        expect(card).toHaveClass('border-components-option-card-option-selected-border')
-        expect(card).toHaveClass('bg-components-option-card-option-selected-bg')
+        expect(card)!.toHaveClass('border-components-option-card-option-selected-border')
+        expect(card)!.toHaveClass('bg-components-option-card-option-selected-bg')
       })
 
       it('should apply unselected styles when selected is false', () => {
@@ -564,22 +566,22 @@ describe('OptionCard', () => {
         )
 
         const card = container.firstChild
-        expect(card).toHaveClass('border-components-option-card-option-border')
-        expect(card).toHaveClass('bg-components-option-card-option-bg')
+        expect(card)!.toHaveClass('border-components-option-card-option-border')
+        expect(card)!.toHaveClass('bg-components-option-card-option-bg')
       })
 
       it('should apply text-text-primary to label when selected', () => {
         renderWithProviders(<OptionCard {...defaultProps} selected={true} />)
 
         const label = screen.getByText('Test Option')
-        expect(label).toHaveClass('text-text-primary')
+        expect(label)!.toHaveClass('text-text-primary')
       })
 
       it('should apply text-text-secondary to label when not selected', () => {
         renderWithProviders(<OptionCard {...defaultProps} selected={false} />)
 
         const label = screen.getByText('Test Option')
-        expect(label).toHaveClass('text-text-secondary')
+        expect(label)!.toHaveClass('text-text-secondary')
       })
     })
 
@@ -593,7 +595,7 @@ describe('OptionCard', () => {
         // Act - Click on the label text's parent card
         const labelElement = screen.getByText('Test Option')
         const card = labelElement.closest('[class*="cursor-pointer"]')
-        expect(card).toBeInTheDocument()
+        expect(card)!.toBeInTheDocument()
         fireEvent.click(card!)
 
         expect(mockOnClick).toHaveBeenCalledTimes(1)
@@ -607,11 +609,12 @@ describe('OptionCard', () => {
         // Act - Click on the label text's parent card should not throw
         const labelElement = screen.getByText('Test Option')
         const card = labelElement.closest('[class*="cursor-pointer"]')
-        expect(card).toBeInTheDocument()
+        expect(card)!.toBeInTheDocument()
         fireEvent.click(card!)
 
         // Assert - Component should still be rendered
-        expect(screen.getByText('Test Option')).toBeInTheDocument()
+        // Assert - Component should still be rendered
+        expect(screen.getByText('Test Option'))!.toBeInTheDocument()
       })
     })
 
@@ -631,35 +634,35 @@ describe('OptionCard', () => {
     it('should have cursor-pointer class', () => {
       const { container } = renderWithProviders(<OptionCard {...defaultProps} />)
 
-      expect(container.firstChild).toHaveClass('cursor-pointer')
+      expect(container.firstChild)!.toHaveClass('cursor-pointer')
     })
 
     it('should have flex layout classes', () => {
       const { container } = renderWithProviders(<OptionCard {...defaultProps} />)
 
-      expect(container.firstChild).toHaveClass('flex')
-      expect(container.firstChild).toHaveClass('items-center')
-      expect(container.firstChild).toHaveClass('gap-2')
+      expect(container.firstChild)!.toHaveClass('flex')
+      expect(container.firstChild)!.toHaveClass('items-center')
+      expect(container.firstChild)!.toHaveClass('gap-2')
     })
 
     it('should have rounded-xl border', () => {
       const { container } = renderWithProviders(<OptionCard {...defaultProps} />)
 
-      expect(container.firstChild).toHaveClass('rounded-xl')
-      expect(container.firstChild).toHaveClass('border')
+      expect(container.firstChild)!.toHaveClass('rounded-xl')
+      expect(container.firstChild)!.toHaveClass('border')
     })
 
     it('should have padding p-3', () => {
       const { container } = renderWithProviders(<OptionCard {...defaultProps} />)
 
-      expect(container.firstChild).toHaveClass('p-3')
+      expect(container.firstChild)!.toHaveClass('p-3')
     })
 
     it('should have line-clamp-2 for label truncation', () => {
       renderWithProviders(<OptionCard {...defaultProps} />)
 
       const label = screen.getByText('Test Option')
-      expect(label).toHaveClass('line-clamp-2')
+      expect(label)!.toHaveClass('line-clamp-2')
     })
   })
 
@@ -669,7 +672,7 @@ describe('OptionCard', () => {
       expect(OptionCard).toBeDefined()
       // React.memo wraps the component, so we check it renders correctly
       const { container } = renderWithProviders(<OptionCard {...defaultProps} />)
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
   })
 })
@@ -698,27 +701,27 @@ describe('DataSourceOptions', () => {
     it('should render without crashing', () => {
       renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-      expect(screen.getByText('Data Source 1')).toBeInTheDocument()
-      expect(screen.getByText('Data Source 2')).toBeInTheDocument()
-      expect(screen.getByText('Data Source 3')).toBeInTheDocument()
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source 3'))!.toBeInTheDocument()
     })
 
     it('should render correct number of option cards', () => {
       renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-      expect(screen.getByText('Data Source 1')).toBeInTheDocument()
-      expect(screen.getByText('Data Source 2')).toBeInTheDocument()
-      expect(screen.getByText('Data Source 3')).toBeInTheDocument()
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Data Source 3'))!.toBeInTheDocument()
     })
 
     it('should render with grid layout', () => {
       const { container } = renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
       const gridContainer = container.firstChild
-      expect(gridContainer).toHaveClass('grid')
-      expect(gridContainer).toHaveClass('w-full')
-      expect(gridContainer).toHaveClass('grid-cols-4')
-      expect(gridContainer).toHaveClass('gap-1')
+      expect(gridContainer)!.toHaveClass('grid')
+      expect(gridContainer)!.toHaveClass('w-full')
+      expect(gridContainer)!.toHaveClass('grid-cols-4')
+      expect(gridContainer)!.toHaveClass('gap-1')
     })
 
     it('should render no option cards when options is empty', () => {
@@ -728,16 +731,17 @@ describe('DataSourceOptions', () => {
 
       expect(screen.queryByText('Data Source')).not.toBeInTheDocument()
       // Grid container should still exist
-      expect(container.firstChild).toHaveClass('grid')
+      // Grid container should still exist
+      expect(container.firstChild)!.toHaveClass('grid')
     })
 
     it('should render single option card when only one option exists', () => {
-      const singleOption = [createMockDatasourceOption(defaultNodes[0])]
+      const singleOption = [createMockDatasourceOption(defaultNodes[0]!)]
       mockUseDatasourceOptions.mockReturnValue(singleOption)
 
       renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-      expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
       expect(screen.queryByText('Data Source 2')).not.toBeInTheDocument()
     })
   })
@@ -778,7 +782,7 @@ describe('DataSourceOptions', () => {
 
         // Assert - Check for selected styling on second card
         const cards = container.querySelectorAll('.rounded-xl.border')
-        expect(cards[1]).toHaveClass('border-components-option-card-option-selected-border')
+        expect(cards[1])!.toHaveClass('border-components-option-card-option-selected-border')
       })
 
       it('should show no selection when datasourceNodeId is empty', () => {
@@ -816,7 +820,7 @@ describe('DataSourceOptions', () => {
 
         // Assert initial selection
         let cards = container.querySelectorAll('.rounded-xl.border')
-        expect(cards[0]).toHaveClass('border-components-option-card-option-selected-border')
+        expect(cards[0])!.toHaveClass('border-components-option-card-option-selected-border')
 
         // Act - Change selection
         rerender(
@@ -831,7 +835,7 @@ describe('DataSourceOptions', () => {
         // Assert new selection
         cards = container.querySelectorAll('.rounded-xl.border')
         expect(cards[0]).not.toHaveClass('border-components-option-card-option-selected-border')
-        expect(cards[1]).toHaveClass('border-components-option-card-option-selected-border')
+        expect(cards[1])!.toHaveClass('border-components-option-card-option-selected-border')
       })
     })
 
@@ -847,7 +851,8 @@ describe('DataSourceOptions', () => {
         )
 
         // Assert - Component renders without error
-        expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+        // Assert - Component renders without error
+        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
       })
     })
   })
@@ -870,7 +875,7 @@ describe('DataSourceOptions', () => {
         expect(mockOnSelect).toHaveBeenCalledTimes(1)
         expect(mockOnSelect).toHaveBeenCalledWith({
           nodeId: 'node-1',
-          nodeData: defaultOptions[0].data,
+          nodeData: defaultOptions[0]!.data,
         } satisfies Datasource)
       })
 
@@ -948,7 +953,8 @@ describe('DataSourceOptions', () => {
       )
 
       // Get initial click handlers
-      expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+      // Get initial click handlers
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
 
       // Trigger clicks to test handlers work
       fireEvent.click(screen.getByText('Data Source 1'))
@@ -1003,7 +1009,7 @@ describe('DataSourceOptions', () => {
       expect(mockOnSelect2).toHaveBeenCalledTimes(1)
       expect(mockOnSelect2).toHaveBeenCalledWith({
         nodeId: 'node-3',
-        nodeData: defaultOptions[2].data,
+        nodeData: defaultOptions[2]!.data,
       })
     })
 
@@ -1022,7 +1028,7 @@ describe('DataSourceOptions', () => {
       fireEvent.click(screen.getByText('Data Source 1'))
       expect(mockOnSelect).toHaveBeenCalledWith({
         nodeId: 'node-1',
-        nodeData: defaultOptions[0].data,
+        nodeData: defaultOptions[0]!.data,
       })
 
       // Act - Change options
@@ -1045,8 +1051,8 @@ describe('DataSourceOptions', () => {
 
       // Assert - Callback receives new option data
       expect(mockOnSelect).toHaveBeenLastCalledWith({
-        nodeId: newOptions[0].value,
-        nodeData: newOptions[0].data,
+        nodeId: newOptions[0]!.value,
+        nodeData: newOptions[0]!.data,
       })
     })
   })
@@ -1070,7 +1076,7 @@ describe('DataSourceOptions', () => {
         expect(mockOnSelect).toHaveBeenCalledTimes(1)
         expect(mockOnSelect).toHaveBeenCalledWith({
           nodeId: 'node-2',
-          nodeData: defaultOptions[1].data,
+          nodeData: defaultOptions[1]!.data,
         } satisfies Datasource)
       })
 
@@ -1090,7 +1096,7 @@ describe('DataSourceOptions', () => {
         expect(mockOnSelect).toHaveBeenCalledTimes(1)
         expect(mockOnSelect).toHaveBeenCalledWith({
           nodeId: 'node-1',
-          nodeData: defaultOptions[0].data,
+          nodeData: defaultOptions[0]!.data,
         })
       })
 
@@ -1112,15 +1118,15 @@ describe('DataSourceOptions', () => {
         expect(mockOnSelect).toHaveBeenCalledTimes(3)
         expect(mockOnSelect).toHaveBeenNthCalledWith(1, {
           nodeId: 'node-1',
-          nodeData: defaultOptions[0].data,
+          nodeData: defaultOptions[0]!.data,
         })
         expect(mockOnSelect).toHaveBeenNthCalledWith(2, {
           nodeId: 'node-2',
-          nodeData: defaultOptions[1].data,
+          nodeData: defaultOptions[1]!.data,
         })
         expect(mockOnSelect).toHaveBeenNthCalledWith(3, {
           nodeId: 'node-3',
-          nodeData: defaultOptions[2].data,
+          nodeData: defaultOptions[2]!.data,
         })
       })
     })
@@ -1164,7 +1170,7 @@ describe('DataSourceOptions', () => {
           />,
         )
 
-        expect(container.firstChild).toBeInTheDocument()
+        expect(container.firstChild)!.toBeInTheDocument()
       })
 
       it('should not crash when datasourceNodeId is undefined', () => {
@@ -1176,7 +1182,7 @@ describe('DataSourceOptions', () => {
           />,
         )
 
-        expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
       })
     })
 
@@ -1202,7 +1208,7 @@ describe('DataSourceOptions', () => {
 
         renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-        expect(screen.getByText('Minimal Option')).toBeInTheDocument()
+        expect(screen.getByText('Minimal Option'))!.toBeInTheDocument()
       })
     })
 
@@ -1219,8 +1225,8 @@ describe('DataSourceOptions', () => {
           />,
         )
 
-        expect(screen.getByText('Data Source 1')).toBeInTheDocument()
-        expect(screen.getByText('Data Source 50')).toBeInTheDocument()
+        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Data Source 50'))!.toBeInTheDocument()
       })
     })
 
@@ -1243,7 +1249,8 @@ describe('DataSourceOptions', () => {
         )
 
         // Assert - Special characters should be escaped/rendered safely
-        expect(screen.getByText('Data Source <script>alert("xss")</script>')).toBeInTheDocument()
+        // Assert - Special characters should be escaped/rendered safely
+        expect(screen.getByText('Data Source <script>alert("xss")</script>'))!.toBeInTheDocument()
       })
 
       it('should handle unicode characters in option labels', () => {
@@ -1263,7 +1270,7 @@ describe('DataSourceOptions', () => {
           />,
         )
 
-        expect(screen.getByText('数据源 📁 Source émoji')).toBeInTheDocument()
+        expect(screen.getByText('数据源 📁 Source émoji'))!.toBeInTheDocument()
       })
 
       it('should handle empty string as option value', () => {
@@ -1276,13 +1283,13 @@ describe('DataSourceOptions', () => {
 
         renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
-        expect(screen.getByText('Empty Value Option')).toBeInTheDocument()
+        expect(screen.getByText('Empty Value Option'))!.toBeInTheDocument()
       })
     })
 
     describe('Boundary Conditions', () => {
       it('should handle single option selection correctly', () => {
-        const singleOption = [createMockDatasourceOption(defaultNodes[0])]
+        const singleOption = [createMockDatasourceOption(defaultNodes[0]!)]
         mockUseDatasourceOptions.mockReturnValue(singleOption)
         const mockOnSelect = vi.fn()
 
@@ -1327,7 +1334,7 @@ describe('DataSourceOptions', () => {
         const labels = screen.getAllByText('Duplicate Label')
         expect(labels).toHaveLength(2)
 
-        fireEvent.click(labels[1])
+        fireEvent.click(labels[1]!)
         expect(mockOnSelect).toHaveBeenCalledWith({
           nodeId: 'node-b',
           nodeData: expect.objectContaining({ plugin_id: 'plugin-b' }),
@@ -1348,6 +1355,37 @@ describe('DataSourceOptions', () => {
         unmount()
 
         // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
+        // Assert - No errors thrown, component cleanly unmounted
         expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
       })
 
@@ -1367,6 +1405,37 @@ describe('DataSourceOptions', () => {
         // Unmount during/after interaction
         unmount()
 
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
+        // Assert - Should not throw
         // Assert - Should not throw
         expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
       })
@@ -1392,7 +1461,7 @@ describe('DataSourceOptions', () => {
 
       const cards = container.querySelectorAll('.rounded-xl.border')
       expect(cards[0]).not.toHaveClass('border-components-option-card-option-selected-border')
-      expect(cards[1]).toHaveClass('border-components-option-card-option-selected-border')
+      expect(cards[1])!.toHaveClass('border-components-option-card-option-selected-border')
       expect(cards[2]).not.toHaveClass('border-components-option-card-option-selected-border')
     })
 
@@ -1427,7 +1496,7 @@ describe('DataSourceOptions', () => {
         />,
       )
 
-      expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+      expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
     })
 
     it.each([
@@ -1449,7 +1518,7 @@ describe('DataSourceOptions', () => {
       )
 
       if (count > 0)
-        expect(screen.getByText('Data Source 1')).toBeInTheDocument()
+        expect(screen.getByText('Data Source 1'))!.toBeInTheDocument()
       else
         expect(screen.queryByText('Data Source 1')).not.toBeInTheDocument()
     })

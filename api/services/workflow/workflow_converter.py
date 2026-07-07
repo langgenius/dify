@@ -1,11 +1,6 @@
 import json
 from typing import Any, TypedDict
 
-from graphon.file import FileUploadConfig
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes import BuiltinNodeTypes
-from graphon.variables.input_entities import VariableEntity
 from sqlalchemy import select
 
 from core.app.app_config.entities import (
@@ -24,6 +19,11 @@ from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.app_event import app_was_created
 from extensions.ext_database import db
+from graphon.file import FileUploadConfig
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes import BuiltinNodeTypes
+from graphon.variables.input_entities import VariableEntity
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig, IconType
@@ -95,6 +95,7 @@ class WorkflowConverter:
         new_app.is_demo = False
         new_app.is_public = app_model.is_public
         new_app.created_by = account.id
+        new_app.maintainer = account.id
         new_app.updated_by = account.id
         db.session.add(new_app)
         db.session.flush()

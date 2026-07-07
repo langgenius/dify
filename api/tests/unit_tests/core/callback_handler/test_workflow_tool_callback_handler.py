@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, call
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.callback_handler.workflow_tool_callback_handler import (
     DifyWorkflowCallbackHandler,
@@ -26,13 +27,21 @@ def handler():
 
 
 @pytest.fixture
-def mock_print_text(mocker):
+def mock_print_text(mocker: MockerFixture):
     """Mock print_text to avoid real stdout printing."""
     return mocker.patch("core.callback_handler.workflow_tool_callback_handler.print_text")
 
 
+@pytest.fixture
+def enable_debug(mocker: MockerFixture):
+    """Force DEBUG on so the handler emits its verbose stdout traces."""
+    mocker.patch("core.callback_handler.workflow_tool_callback_handler.dify_config.DEBUG", True)
+
+
 class TestDifyWorkflowCallbackHandler:
-    def test_on_tool_execution_single_output_success(self, handler, mock_print_text):
+    def test_on_tool_execution_single_output_success(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
+    ):
         # Arrange
         tool_name = "test_tool"
         tool_inputs = {"a": 1}
@@ -62,7 +71,9 @@ class TestDifyWorkflowCallbackHandler:
             ]
         )
 
-    def test_on_tool_execution_multiple_outputs(self, handler, mock_print_text):
+    def test_on_tool_execution_multiple_outputs(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
+    ):
         # Arrange
         tool_name = "multi_tool"
         outputs = [
@@ -83,7 +94,7 @@ class TestDifyWorkflowCallbackHandler:
         assert results == outputs
         assert mock_print_text.call_count == 4 * len(outputs)
 
-    def test_on_tool_execution_empty_iterable(self, handler, mock_print_text):
+    def test_on_tool_execution_empty_iterable(self, handler: DifyWorkflowCallbackHandler, mock_print_text):
         # Arrange
         tool_name = "empty_tool"
 
@@ -100,6 +111,29 @@ class TestDifyWorkflowCallbackHandler:
         assert results == []
         mock_print_text.assert_not_called()
 
+    def test_on_tool_execution_skips_print_when_debug_disabled(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, mocker: MockerFixture
+    ):
+        """When DEBUG is off, outputs are still yielded but nothing is printed
+        and model_dump_json() is never invoked."""
+        # Arrange
+        mocker.patch("core.callback_handler.workflow_tool_callback_handler.dify_config.DEBUG", False)
+        message = MagicMock()
+
+        # Act
+        results = list(
+            handler.on_tool_execution(
+                tool_name="quiet_tool",
+                tool_inputs={},
+                tool_outputs=[message],
+            )
+        )
+
+        # Assert
+        assert results == [message]
+        mock_print_text.assert_not_called()
+        message.model_dump_json.assert_not_called()
+
     @pytest.mark.parametrize(
         ("invalid_outputs", "expected_exception"),
         [
@@ -108,7 +142,9 @@ class TestDifyWorkflowCallbackHandler:
             ("not_iterable", AttributeError),
         ],
     )
-    def test_on_tool_execution_invalid_outputs_type(self, handler, invalid_outputs, expected_exception):
+    def test_on_tool_execution_invalid_outputs_type(
+        self, handler: DifyWorkflowCallbackHandler, invalid_outputs, expected_exception, enable_debug
+    ):
         # Arrange
         tool_name = "invalid_tool"
 
@@ -122,7 +158,9 @@ class TestDifyWorkflowCallbackHandler:
                 )
             )
 
-    def test_on_tool_execution_long_json_truncation(self, handler, mock_print_text):
+    def test_on_tool_execution_long_json_truncation(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
+    ):
         # Arrange
         tool_name = "long_json_tool"
         long_json = "x" * 1500
@@ -144,7 +182,9 @@ class TestDifyWorkflowCallbackHandler:
             color="blue",
         )
 
-    def test_on_tool_execution_model_dump_json_exception(self, handler, mock_print_text):
+    def test_on_tool_execution_model_dump_json_exception(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
+    ):
         # Arrange
         tool_name = "exception_tool"
         bad_message = MagicMock()
@@ -163,7 +203,9 @@ class TestDifyWorkflowCallbackHandler:
         # Ensure first two prints happened before failure
         assert mock_print_text.call_count >= 2
 
-    def test_on_tool_execution_none_message_id_and_trace_manager(self, handler, mock_print_text):
+    def test_on_tool_execution_none_message_id_and_trace_manager(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text, enable_debug
+    ):
         # Arrange
         tool_name = "optional_params_tool"
         message = DummyToolInvokeMessage('{"data": "ok"}')

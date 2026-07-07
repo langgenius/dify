@@ -1,6 +1,7 @@
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '@/app/components/plugins/types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getPluginKey, useInstallMultiState } from '../use-install-multi-state'
 
@@ -21,10 +22,6 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({
     installedInfo: mockInstalledInfo,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({

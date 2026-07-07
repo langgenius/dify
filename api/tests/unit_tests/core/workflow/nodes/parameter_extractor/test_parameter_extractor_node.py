@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
+
+from factories.variable_factory import build_segment_with_type
 from graphon.model_runtime.entities import LLMMode
 from graphon.nodes.llm import ModelConfig, VisionConfig
 from graphon.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
@@ -17,8 +19,6 @@ from graphon.nodes.parameter_extractor.exc import (
 )
 from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from graphon.variables.types import SegmentType
-
-from factories.variable_factory import build_segment_with_type
 
 
 @dataclass
@@ -122,7 +122,7 @@ class TestValidateResult:
                 parameters=[
                     ParameterConfig(
                         name="status",
-                        type="select",  # pyright: ignore[reportArgumentType]
+                        type="select",
                         description="Status",
                         required=True,
                         options=["active", "inactive"],

@@ -2,6 +2,9 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../../constants'
 import ContextBlockComponent from '../component'
+
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 // Mock the hooks used by ContextBlockComponent
 const mockUseSelectOrDelete = vi.fn()
 const mockUseTrigger = vi.fn()
@@ -223,6 +226,21 @@ describe('ContextBlockComponent', () => {
   })
 
   describe('User Interactions', () => {
+    it('should keep the popover closed when the trigger prevents the default click', async () => {
+      const user = userEvent.setup()
+      const { triggerSetOpen } = defaultSetup()
+      render(
+        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
+      )
+
+      await user.click(screen.getByTestId('popover-trigger'))
+
+      expect(triggerSetOpen).not.toHaveBeenCalled()
+      expect(
+        screen.queryByText('common.promptEditor.context.modal.add'),
+      ).not.toBeInTheDocument()
+    })
+
     it('should call onAddContext when add button is clicked', async () => {
       defaultSetup({ open: true })
       const handleAddContext = vi.fn()
@@ -234,7 +252,7 @@ describe('ContextBlockComponent', () => {
         />,
       )
 
-      const addButton = screen.getByTestId('add-button')
+      const addButton = screen.getByRole('button', { name: 'common.promptEditor.context.modal.add' })
       await userEvent.click(addButton)
       expect(handleAddContext).toHaveBeenCalledTimes(1)
     })
@@ -344,6 +362,29 @@ describe('ContextBlockComponent', () => {
       expect(screen.queryByText('Should Not Appear')).not.toBeInTheDocument()
       // Original datasets still there
       expect(screen.getByText('Dataset A')).toBeInTheDocument()
+    })
+
+    it('should ignore string events from the event emitter', () => {
+      defaultSetup({ open: true })
+      let subscriptionCallback: (v: Record<string, unknown> | string) => void = () => { }
+      mockUseSubscription.mockImplementation((cb: (v: Record<string, unknown> | string) => void) => {
+        subscriptionCallback = cb
+      })
+
+      render(
+        <ContextBlockComponent
+          nodeKey="test-key"
+          datasets={mockDatasets}
+          onAddContext={vi.fn()}
+        />,
+      )
+
+      act(() => {
+        subscriptionCallback('ignore-me')
+      })
+
+      expect(screen.getByText('Dataset A')).toBeInTheDocument()
+      expect(screen.getByText('Dataset B')).toBeInTheDocument()
     })
   })
 

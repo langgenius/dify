@@ -1,9 +1,9 @@
 import pytest
+
+from core.workflow.node_factory import get_node_type_classes_mapping
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
-
-from core.workflow.node_factory import get_node_type_classes_mapping
 
 # Ensures that all production node classes are imported and registered.
 _ = get_node_type_classes_mapping()

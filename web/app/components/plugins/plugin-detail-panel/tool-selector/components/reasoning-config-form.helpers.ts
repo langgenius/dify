@@ -1,19 +1,18 @@
-import type { Node } from 'reactflow'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
-export type ReasoningConfigInputValue = {
+type ReasoningConfigInputValue = {
   type?: VarKindType
   value?: unknown
   [key: string]: unknown
 } | null
 
-export type ReasoningConfigInput = {
+type ReasoningConfigInput = {
   value: ReasoningConfigInputValue
   auto?: 0 | 1
 }
@@ -112,7 +111,7 @@ export const updateVariableTypeValue = (
   defaultValue: unknown,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: newType,
       value: newType === VarKindType.variable ? '' : defaultValue,
     }
@@ -126,7 +125,7 @@ export const updateReasoningValue = (
   newValue: unknown,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: getVarKindType(type),
       value: newValue,
     }
@@ -139,8 +138,8 @@ export const mergeReasoningValue = (
   newValue: Record<string, unknown>,
 ) => {
   return produce(value, (draft) => {
-    const currentValue = draft[variable].value as Record<string, unknown> | undefined
-    draft[variable].value = {
+    const currentValue = draft[variable]!.value as Record<string, unknown> | undefined
+    draft[variable]!.value = {
       ...currentValue,
       ...newValue,
     }
@@ -153,7 +152,7 @@ export const updateVariableSelectorValue = (
   newValue: ValueSelector | string,
 ) => {
   return produce(value, (draft) => {
-    draft[variable].value = {
+    draft[variable]!.value = {
       type: VarKindType.variable,
       value: newValue,
     }
@@ -211,23 +210,3 @@ export const createPickerProps = ({
 export const getFieldTitle = (labels: { [key: string]: string }, language: string) => {
   return labels[language] || labels.en_US
 }
-
-export const createEmptyAppValue = () => ({
-  app_id: '',
-  inputs: {},
-  files: [],
-})
-
-export const createReasoningFormContext = ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-}: {
-  availableNodes: Node[]
-  nodeId: string
-  nodeOutputVars: NodeOutPutVar[]
-}) => ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-})

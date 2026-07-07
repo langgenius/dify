@@ -1,5 +1,5 @@
+from core.db.session_factory import session_factory
 from events.app_event import app_was_created
-from extensions.ext_database import db
 from models.model import InstalledApp
 
 
@@ -12,5 +12,6 @@ def handle(sender, **kwargs):
         app_id=app.id,
         app_owner_tenant_id=app.tenant_id,
     )
-    db.session.add(installed_app)
-    db.session.commit()
+    with session_factory.create_session() as session:
+        session.add(installed_app)
+        session.commit()

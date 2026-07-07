@@ -61,15 +61,15 @@ describe('QAItem', () => {
     it('should render question type with Q prefix', () => {
       render(<QAItem type={QAItemType.Question} text="What is this?" />)
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
-      expect(screen.getByText('What is this?')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
+      expect(screen.getByText('What is this?'))!.toBeInTheDocument()
     })
 
     it('should render answer type with A prefix', () => {
       render(<QAItem type={QAItemType.Answer} text="This is the answer." />)
 
-      expect(screen.getByText('A')).toBeInTheDocument()
-      expect(screen.getByText('This is the answer.')).toBeInTheDocument()
+      expect(screen.getByText('A'))!.toBeInTheDocument()
+      expect(screen.getByText('This is the answer.'))!.toBeInTheDocument()
     })
   })
 
@@ -77,7 +77,7 @@ describe('QAItem', () => {
     it('should render with empty text', () => {
       render(<QAItem type={QAItemType.Question} text="" />)
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
     })
 
     it('should render with long text content', () => {
@@ -85,7 +85,7 @@ describe('QAItem', () => {
 
       render(<QAItem type={QAItemType.Answer} text={longText} />)
 
-      expect(screen.getByText(longText)).toBeInTheDocument()
+      expect(screen.getByText(longText))!.toBeInTheDocument()
     })
 
     it('should render with special characters in text', () => {
@@ -93,7 +93,7 @@ describe('QAItem', () => {
 
       render(<QAItem type={QAItemType.Question} text={specialText} />)
 
-      expect(screen.getByText(specialText)).toBeInTheDocument()
+      expect(screen.getByText(specialText))!.toBeInTheDocument()
     })
   })
 
@@ -101,11 +101,11 @@ describe('QAItem', () => {
     it('should be memoized with React.memo', () => {
       const { rerender } = render(<QAItem type={QAItemType.Question} text="Test" />)
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
-      expect(screen.getByText('Test')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
+      expect(screen.getByText('Test'))!.toBeInTheDocument()
 
       rerender(<QAItem type={QAItemType.Question} text="Test" />)
-      expect(screen.getByText('Q')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
     })
   })
 })
@@ -120,14 +120,14 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={27}
           positionId={1}
         />,
       )
 
-      expect(screen.getByText('This is the first chunk of text content.')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText('This is the first chunk of text content.'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
     })
 
     it('should render QA chunk type with question and answer', () => {
@@ -145,10 +145,10 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
-      expect(screen.getByText('What is React?')).toBeInTheDocument()
-      expect(screen.getByText('A')).toBeInTheDocument()
-      expect(screen.getByText('React is a JavaScript library.')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
+      expect(screen.getByText('What is React?'))!.toBeInTheDocument()
+      expect(screen.getByText('A'))!.toBeInTheDocument()
+      expect(screen.getByText('React is a JavaScript library.'))!.toBeInTheDocument()
     })
 
     it('should render parent-child chunk type with child contents', () => {
@@ -164,10 +164,10 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Child 1 content')).toBeInTheDocument()
-      expect(screen.getByText('Child 2 content')).toBeInTheDocument()
-      expect(screen.getByText('C-1')).toBeInTheDocument()
-      expect(screen.getByText('C-2')).toBeInTheDocument()
+      expect(screen.getByText('Child 1 content'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 2 content'))!.toBeInTheDocument()
+      expect(screen.getByText('C-1'))!.toBeInTheDocument()
+      expect(screen.getByText('C-2'))!.toBeInTheDocument()
     })
   })
 
@@ -183,7 +183,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText(/Parent-Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText(/Parent-Chunk-01/))!.toBeInTheDocument()
     })
 
     it('should hide segment index tag for full-doc mode', () => {
@@ -205,13 +205,13 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={12}
           positionId={5}
         />,
       )
 
-      expect(screen.getByText(/Chunk-05/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-05/))!.toBeInTheDocument()
     })
   })
 
@@ -220,26 +220,26 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={1234}
           positionId={1}
         />,
       )
 
-      expect(screen.getByText(/1,234/)).toBeInTheDocument()
+      expect(screen.getByText(/1,234/))!.toBeInTheDocument()
     })
 
     it('should display word count with character translation key', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={100}
           positionId={1}
         />,
       )
 
-      expect(screen.getByText(/100\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText(/100\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
 
     it('should not display word count info for full-doc mode', () => {
@@ -262,39 +262,39 @@ describe('ChunkCard', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={7}
           positionId={42}
         />,
       )
 
-      expect(screen.getByText(/Chunk-42/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-42/))!.toBeInTheDocument()
     })
 
     it('should handle string position ID', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={7}
           positionId="99"
         />,
       )
 
-      expect(screen.getByText(/Chunk-99/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-99/))!.toBeInTheDocument()
     })
 
     it('should pad single digit position ID', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={7}
           positionId={3}
         />,
       )
 
-      expect(screen.getByText(/Chunk-03/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-03/))!.toBeInTheDocument()
     })
   })
 
@@ -310,7 +310,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText(/Parent-Chunk/)).toBeInTheDocument()
+      expect(screen.getByText(/Parent-Chunk/))!.toBeInTheDocument()
 
       rerender(
         <ChunkCard
@@ -338,7 +338,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Initial content')).toBeInTheDocument()
+      expect(screen.getByText('Initial content'))!.toBeInTheDocument()
 
       rerender(
         <ChunkCard
@@ -349,7 +349,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Updated content')).toBeInTheDocument()
+      expect(screen.getByText('Updated content'))!.toBeInTheDocument()
       expect(screen.queryByText('Initial content')).not.toBeInTheDocument()
     })
 
@@ -364,7 +364,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Text content')).toBeInTheDocument()
+      expect(screen.getByText('Text content'))!.toBeInTheDocument()
 
       const qaContent: QAChunk = { question: 'Q?', answer: 'A.' }
       rerender(
@@ -376,8 +376,8 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
-      expect(screen.getByText('Q?')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
+      expect(screen.getByText('Q?'))!.toBeInTheDocument()
     })
   })
 
@@ -393,7 +393,7 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText(/Parent-Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText(/Parent-Chunk-01/))!.toBeInTheDocument()
     })
 
     it('should handle QA chunk with empty strings', () => {
@@ -408,8 +408,8 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText('Q')).toBeInTheDocument()
-      expect(screen.getByText('A')).toBeInTheDocument()
+      expect(screen.getByText('Q'))!.toBeInTheDocument()
+      expect(screen.getByText('A'))!.toBeInTheDocument()
     })
 
     it('should handle very long content', () => {
@@ -425,20 +425,20 @@ describe('ChunkCard', () => {
         />,
       )
 
-      expect(screen.getByText(longContent)).toBeInTheDocument()
+      expect(screen.getByText(longContent))!.toBeInTheDocument()
     })
 
     it('should handle zero word count', () => {
       render(
         <ChunkCard
           chunkType={ChunkingMode.text}
-          content={createGeneralChunks()[0]}
+          content={createGeneralChunks()[0]!}
           wordCount={0}
           positionId={1}
         />,
       )
 
-      expect(screen.getByText(/0\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText(/0\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
   })
 })
@@ -459,9 +459,9 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(chunks[0].content)).toBeInTheDocument()
-      expect(screen.getByText(chunks[1].content)).toBeInTheDocument()
-      expect(screen.getByText(chunks[2].content)).toBeInTheDocument()
+      expect(screen.getByText(chunks[0]!.content))!.toBeInTheDocument()
+      expect(screen.getByText(chunks[1]!.content))!.toBeInTheDocument()
+      expect(screen.getByText(chunks[2]!.content))!.toBeInTheDocument()
     })
 
     it('should render parent-child chunks correctly', () => {
@@ -475,9 +475,9 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Child content 1')).toBeInTheDocument()
-      expect(screen.getByText('Child content 2')).toBeInTheDocument()
-      expect(screen.getByText('Another child 1')).toBeInTheDocument()
+      expect(screen.getByText('Child content 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Child content 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Another child 1'))!.toBeInTheDocument()
     })
 
     it('should render QA chunks correctly', () => {
@@ -490,10 +490,10 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('What is the answer to life?')).toBeInTheDocument()
-      expect(screen.getByText('The answer is 42.')).toBeInTheDocument()
-      expect(screen.getByText('How does this work?')).toBeInTheDocument()
-      expect(screen.getByText('It works by processing data.')).toBeInTheDocument()
+      expect(screen.getByText('What is the answer to life?'))!.toBeInTheDocument()
+      expect(screen.getByText('The answer is 42.'))!.toBeInTheDocument()
+      expect(screen.getByText('How does this work?'))!.toBeInTheDocument()
+      expect(screen.getByText('It works by processing data.'))!.toBeInTheDocument()
     })
   })
 
@@ -511,8 +511,8 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Chunk 1')).toBeInTheDocument()
-      expect(screen.getByText('Chunk 2')).toBeInTheDocument()
+      expect(screen.getByText('Chunk 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Chunk 2'))!.toBeInTheDocument()
     })
 
     it('should extract parent_child_chunks from ParentChildChunks for parentChild mode', () => {
@@ -530,7 +530,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Specific child')).toBeInTheDocument()
+      expect(screen.getByText('Specific child'))!.toBeInTheDocument()
     })
 
     it('should extract qa_chunks from QAChunks for qa mode', () => {
@@ -547,8 +547,8 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Specific Q')).toBeInTheDocument()
-      expect(screen.getByText('Specific A')).toBeInTheDocument()
+      expect(screen.getByText('Specific Q'))!.toBeInTheDocument()
+      expect(screen.getByText('Specific A'))!.toBeInTheDocument()
     })
 
     it('should update chunkList when chunkInfo changes', () => {
@@ -561,7 +561,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Initial chunk')).toBeInTheDocument()
+      expect(screen.getByText('Initial chunk'))!.toBeInTheDocument()
 
       const updatedChunks = createGeneralChunks([{ content: 'Updated chunk' }])
       rerender(
@@ -571,7 +571,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Updated chunk')).toBeInTheDocument()
+      expect(screen.getByText('Updated chunk'))!.toBeInTheDocument()
       expect(screen.queryByText('Initial chunk')).not.toBeInTheDocument()
     })
   })
@@ -587,7 +587,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(/5\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText(/5\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
 
     it('should calculate word count for parent-child chunks using parent_content length', () => {
@@ -608,7 +608,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(/6\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText(/6\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
 
     it('should calculate word count for QA chunks using question + answer length', () => {
@@ -625,7 +625,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(/5\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText(/5\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
   })
 
@@ -644,9 +644,9 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-02/)).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-03/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-02/))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-03/))!.toBeInTheDocument()
     })
   })
 
@@ -662,7 +662,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
 
     it('should merge custom className with default classes', () => {
@@ -676,10 +676,10 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toHaveClass('flex')
-      expect(container.firstChild).toHaveClass('w-full')
-      expect(container.firstChild).toHaveClass('flex-col')
-      expect(container.firstChild).toHaveClass('my-custom-class')
+      expect(container.firstChild)!.toHaveClass('flex')
+      expect(container.firstChild)!.toHaveClass('w-full')
+      expect(container.firstChild)!.toHaveClass('flex-col')
+      expect(container.firstChild)!.toHaveClass('my-custom-class')
     })
 
     it('should render without className prop', () => {
@@ -692,8 +692,8 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toHaveClass('flex')
-      expect(container.firstChild).toHaveClass('w-full')
+      expect(container.firstChild)!.toHaveClass('flex')
+      expect(container.firstChild)!.toHaveClass('w-full')
     })
   })
 
@@ -738,7 +738,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
     })
   })
 
@@ -753,7 +753,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
       expect(container.firstChild?.childNodes.length).toBe(0)
     })
 
@@ -771,7 +771,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
       expect(container.firstChild?.childNodes.length).toBe(0)
     })
 
@@ -787,7 +787,7 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
       expect(container.firstChild?.childNodes.length).toBe(0)
     })
 
@@ -801,8 +801,8 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Single chunk')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText('Single chunk'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
     })
 
     it('should handle large number of chunks', () => {
@@ -815,9 +815,9 @@ describe('ChunkCardList', () => {
         />,
       )
 
-      expect(screen.getByText('Chunk number 1')).toBeInTheDocument()
-      expect(screen.getByText('Chunk number 100')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-100/)).toBeInTheDocument()
+      expect(screen.getByText('Chunk number 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Chunk number 100'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-100/))!.toBeInTheDocument()
     })
   })
 
@@ -861,15 +861,15 @@ describe('ChunkCardList Integration', () => {
         />,
       )
 
-      expect(screen.getByText('First paragraph of the document.')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
-      expect(screen.getByText(/32\s+(?:\S.*)?characters/)).toBeInTheDocument()
+      expect(screen.getByText('First paragraph of the document.'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
+      expect(screen.getByText(/32\s+(?:\S.*)?characters/))!.toBeInTheDocument()
 
-      expect(screen.getByText('Second paragraph with more information.')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-02/)).toBeInTheDocument()
+      expect(screen.getByText('Second paragraph with more information.'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-02/))!.toBeInTheDocument()
 
-      expect(screen.getByText('Final paragraph concluding the content.')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-03/)).toBeInTheDocument()
+      expect(screen.getByText('Final paragraph concluding the content.'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-03/))!.toBeInTheDocument()
     })
 
     it('should render complete parent-child chunking workflow', () => {
@@ -894,11 +894,11 @@ describe('ChunkCardList Integration', () => {
         />,
       )
 
-      expect(screen.getByText('React components are building blocks.')).toBeInTheDocument()
-      expect(screen.getByText('Lifecycle methods control component behavior.')).toBeInTheDocument()
-      expect(screen.getByText('C-1')).toBeInTheDocument()
-      expect(screen.getByText('C-2')).toBeInTheDocument()
-      expect(screen.getByText(/Parent-Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText('React components are building blocks.'))!.toBeInTheDocument()
+      expect(screen.getByText('Lifecycle methods control component behavior.'))!.toBeInTheDocument()
+      expect(screen.getByText('C-1'))!.toBeInTheDocument()
+      expect(screen.getByText('C-2'))!.toBeInTheDocument()
+      expect(screen.getByText(/Parent-Chunk-01/))!.toBeInTheDocument()
     })
 
     it('should render complete QA chunking workflow', () => {
@@ -927,10 +927,10 @@ describe('ChunkCardList Integration', () => {
       expect(qLabels.length).toBe(2)
       expect(aLabels.length).toBe(2)
 
-      expect(screen.getByText('What is Dify?')).toBeInTheDocument()
-      expect(screen.getByText('Dify is an open-source LLM application development platform.')).toBeInTheDocument()
-      expect(screen.getByText('How do I get started?')).toBeInTheDocument()
-      expect(screen.getByText('You can start by installing the platform using Docker.')).toBeInTheDocument()
+      expect(screen.getByText('What is Dify?'))!.toBeInTheDocument()
+      expect(screen.getByText('Dify is an open-source LLM application development platform.'))!.toBeInTheDocument()
+      expect(screen.getByText('How do I get started?'))!.toBeInTheDocument()
+      expect(screen.getByText('You can start by installing the platform using Docker.'))!.toBeInTheDocument()
     })
   })
 
@@ -946,7 +946,7 @@ describe('ChunkCardList Integration', () => {
         />,
       )
 
-      expect(screen.getByText('Text content')).toBeInTheDocument()
+      expect(screen.getByText('Text content'))!.toBeInTheDocument()
 
       rerender(
         <ChunkCardList
@@ -956,7 +956,7 @@ describe('ChunkCardList Integration', () => {
       )
 
       expect(screen.queryByText('Text content')).not.toBeInTheDocument()
-      expect(screen.getByText('What is the answer to life?')).toBeInTheDocument()
+      expect(screen.getByText('What is the answer to life?'))!.toBeInTheDocument()
     })
 
     it('should handle switching from text to parent-child type', () => {
@@ -970,8 +970,8 @@ describe('ChunkCardList Integration', () => {
         />,
       )
 
-      expect(screen.getByText('Simple text')).toBeInTheDocument()
-      expect(screen.getByText(/Chunk-01/)).toBeInTheDocument()
+      expect(screen.getByText('Simple text'))!.toBeInTheDocument()
+      expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
 
       rerender(
         <ChunkCardList

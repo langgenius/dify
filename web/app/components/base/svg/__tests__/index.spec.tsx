@@ -6,7 +6,7 @@ describe('SVGBtn', () => {
     it('renders correctly', () => {
       const setIsSVG = vi.fn()
       render(<SVGBtn isSVG={false} setIsSVG={setIsSVG} />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
   })
 
@@ -19,7 +19,7 @@ describe('SVGBtn', () => {
       fireEvent.click(button)
 
       expect(setIsSVG).toHaveBeenCalledTimes(1)
-      const toggleFunc = setIsSVG.mock.calls[0][0]
+      const toggleFunc = setIsSVG.mock.calls[0]![0]
       expect(typeof toggleFunc).toBe('function')
       expect(toggleFunc(false)).toBe(true)
       expect(toggleFunc(true)).toBe(false)

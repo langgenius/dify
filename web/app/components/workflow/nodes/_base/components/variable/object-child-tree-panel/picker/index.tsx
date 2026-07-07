@@ -8,14 +8,14 @@ import * as React from 'react'
 import { useRef } from 'react'
 import Field from './field'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   root: { nodeId?: string, nodeName?: string, attrName: string, attrAlias?: string }
   payload: StructuredOutput
   readonly?: boolean
   onSelect?: (valueSelector: ValueSelector) => void
   onHovering?: (value: boolean) => void
-}
+}>
 
 export const PickerPanelMain: FC<Props> = ({
   className,
@@ -59,7 +59,7 @@ export const PickerPanelMain: FC<Props> = ({
         <Field
           key={name}
           name={name}
-          payload={schema.properties[name]}
+          payload={schema.properties[name]!}
           readonly={readonly}
           valueSelector={[root.nodeId!, root.attrName]}
           onSelect={onSelect}

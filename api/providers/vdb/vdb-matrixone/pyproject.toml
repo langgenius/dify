@@ -3,7 +3,7 @@ name = "dify-vdb-matrixone"
 version = "0.0.1"
 
 dependencies = [
-    "mo-vector~=0.1.13",
+    "mo-vector==0.1.13",
 ]
 description = "Dify vector store backend (dify-vdb-matrixone)."
 

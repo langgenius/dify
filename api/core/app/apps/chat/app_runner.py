@@ -1,9 +1,8 @@
 import logging
 from typing import cast
 
-from graphon.file import File
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -13,11 +12,14 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
+from graphon.file import File
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ class ChatAppRunner(AppRunner):
 
     def run(
         self,
+        session: Session,
         application_generate_entity: ChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
@@ -46,7 +49,10 @@ class ChatAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.scalar(stmt)
+        with create_session() as session:
+            app_record = session.scalar(stmt)
+            if app_record:
+                session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -159,6 +165,7 @@ class ChatAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -216,6 +223,8 @@ class ChatAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
+        # is not held for the lifetime of the provider response.
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(
@@ -223,6 +232,7 @@ class ChatAppRunner(AppRunner):
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
+            request_metadata={"app_id": app_config.app_id},
         )
 
         # handle invoke result

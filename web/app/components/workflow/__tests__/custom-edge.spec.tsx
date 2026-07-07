@@ -231,5 +231,9 @@ describe('CustomEdge', () => {
 
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-normal)')
     expect(screen.getByTestId('block-selector')).toHaveAttribute('data-trigger-class', 'hover:scale-150 transition-all')
+    expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
+      opacity: '0',
+      pointerEvents: 'none',
+    })
   })
 })

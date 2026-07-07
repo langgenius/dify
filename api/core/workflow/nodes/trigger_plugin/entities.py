@@ -1,12 +1,12 @@
 from collections.abc import Mapping
 from typing import Any, Literal, Union
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import NodeType
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.entities.entities import EventParameter
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 
 from .exc import TriggerEventParameterError
 

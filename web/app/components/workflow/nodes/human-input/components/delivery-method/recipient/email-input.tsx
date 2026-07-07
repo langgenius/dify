@@ -1,20 +1,19 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import EmailItem from './email-item'
 import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   email: string
   value: RecipientItem[]
   list: Member[]
@@ -22,7 +21,7 @@ type Props = {
   onSelect: (value: string) => void
   onAdd: (email: string) => void
   disabled?: boolean
-}
+}>
 
 const EmailInput = ({
   email,
@@ -58,8 +57,7 @@ const EmailInput = ({
     if (disabled)
       return
     setIsFocus(true)
-    const input = inputRef.current?.children[0] as HTMLInputElement
-    input?.focus()
+    inputRef.current?.focus()
   }
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +104,8 @@ const EmailInput = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+
     if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
@@ -113,7 +113,7 @@ const EmailInput = ({
     else if (e.key === 'Backspace') {
       if (searchKey === '' && value.length > 0) {
         e.preventDefault()
-        onDelete(value[value.length - 1])
+        onDelete(value[value.length - 1]!)
         setSearchKey('')
         setOpen(false)
       }
@@ -141,28 +141,25 @@ const EmailInput = ({
           />
         ))}
         {!disabled && (
-          <PortalToFollowElem
-            open={open}
-            onOpenChange={setOpen}
-            placement="bottom-start"
-            offset={{
-              mainAxis: 4,
-              crossAxis: -40,
-            }}
-          >
-            <PortalToFollowElemTrigger className="block h-6 min-w-[166px]">
-              <input
-                ref={inputRef}
-                className="h-6 min-w-[166px] appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
-                placeholder={placeholder}
-                onFocus={() => setIsFocus(true)}
-                onBlur={handleInputBlur}
-                value={searchKey}
-                onChange={handleValueChange}
-                onKeyDown={handleKeyDown}
-              />
-            </PortalToFollowElemTrigger>
-            <PortalToFollowElemContent className="z-1000">
+          <Popover open={open} onOpenChange={setOpen}>
+            <input
+              ref={inputRef}
+              className="h-6 min-w-[166px] appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
+              placeholder={placeholder}
+              onFocus={() => setIsFocus(true)}
+              onBlur={handleInputBlur}
+              value={searchKey}
+              onChange={handleValueChange}
+              onKeyDown={handleKeyDown}
+            />
+            <PopoverContent
+              placement="bottom-start"
+              sideOffset={4}
+              alignOffset={-40}
+              popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+              popupProps={{ initialFocus: false, finalFocus: false }}
+              positionerProps={{ anchor: inputRef }}
+            >
               <MemberList
                 searchValue={searchKey}
                 list={list}
@@ -172,8 +169,8 @@ const EmailInput = ({
                 email={email}
                 hideSearch
               />
-            </PortalToFollowElemContent>
-          </PortalToFollowElem>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
     </div>

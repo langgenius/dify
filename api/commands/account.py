@@ -2,6 +2,7 @@ import base64
 import secrets
 
 import click
+from sqlalchemy.orm import Session
 
 from constants.languages import languages
 from extensions.ext_database import db
@@ -24,7 +25,7 @@ def reset_password(email, new_password, password_confirm):
         return
     normalized_email = email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(db.session, email.strip())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -43,10 +44,11 @@ def reset_password(email, new_password, password_confirm):
     # encrypt password with salt
     password_hashed = hash_password(new_password, salt)
     base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account = db.session.merge(account)
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
+    with Session(db.engine) as session:
+        account = session.merge(account)
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        session.commit()
     AccountService.reset_login_error_rate_limit(normalized_email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
@@ -65,7 +67,7 @@ def reset_email(email, new_email, email_confirm):
         return
     normalized_new_email = new_email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(db.session, email.strip())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -77,9 +79,10 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
-    account = db.session.merge(account)
-    account.email = normalized_new_email
-    db.session.commit()
+    with Session(db.engine) as session:
+        account = session.merge(account)
+        account.email = normalized_new_email
+        session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -110,8 +113,18 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
     # Validates name encoding for non-Latin characters.
     name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
-    # generate random password
-    new_password = secrets.token_urlsafe(16)
+    # Generate a random password that satisfies the password policy.
+    # The iteration limit guards against infinite loops caused by unexpected bugs in valid_password.
+    for _ in range(100):
+        new_password = secrets.token_urlsafe(16)
+        try:
+            valid_password(new_password)
+            break
+        except Exception:
+            continue
+    else:
+        click.echo(click.style("Failed to generate a valid password. Please try again.", fg="red"))
+        return
 
     # register account
     account = RegisterService.register(
@@ -120,8 +133,9 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         password=new_password,
         language=language,
         create_workspace_required=False,
+        session=db.session,
     )
-    TenantService.create_owner_tenant_if_not_exist(account, name)
+    TenantService.create_owner_tenant_if_not_exist(account, name, session=db.session)
 
     click.echo(
         click.style(

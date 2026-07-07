@@ -1,5 +1,5 @@
 /* eslint-disable ts/no-explicit-any */
-import { buildChartOptions, getChartValueField, getDefaultChartData, getSummaryValue, getTokenSummary } from '../app-chart-utils'
+import { buildChartOptions, getChartValueField, getDefaultChartData, getSummaryValue, getTokenSummary, hasNonZeroChartData } from '../app-chart-utils'
 
 describe('app-chart-utils', () => {
   describe('getDefaultChartData', () => {
@@ -13,6 +13,20 @@ describe('app-chart-utils', () => {
       expect(rows).toHaveLength(3)
       expect(rows[0]).toEqual({ date: 'Jan 1, 2024', interactions: 0 })
       expect(rows[2]).toEqual({ date: 'Jan 3, 2024', interactions: 0 })
+    })
+  })
+
+  describe('hasNonZeroChartData', () => {
+    it('should detect whether rows contain a non-zero chart value', () => {
+      expect(hasNonZeroChartData([
+        { date: 'Jan 1, 2024', count: 0 },
+        { date: 'Jan 2, 2024', count: '0' },
+      ], 'count')).toBe(false)
+
+      expect(hasNonZeroChartData([
+        { date: 'Jan 1, 2024', count: 0 },
+        { date: 'Jan 2, 2024', count: 1 },
+      ], 'count')).toBe(true)
     })
   })
 
@@ -91,13 +105,17 @@ describe('app-chart-utils', () => {
       })
 
       const dataset = options.dataset as { dimensions: string[], source: Array<Record<string, unknown>> }
+      const grid = options.grid as { top: number, left: number, right: number }
       const yAxis = options.yAxis as { max: number }
       const series = options.series as Array<{ lineStyle: { color: string } }>
 
       expect(dataset.dimensions).toEqual(['date', 'count'])
       expect(dataset.source).toHaveLength(2)
+      expect(grid.top).toBe(16)
+      expect(grid.left).toBe(0)
+      expect(grid.right).toBe(0)
       expect(yAxis.max).toBe(100)
-      expect(series[0].lineStyle.color).toBe('rgba(6, 148, 162, 1)')
+      expect(series[0]!.lineStyle.color).toBe('rgba(6, 148, 162, 1)')
     })
 
     it('should build token-aware tooltip content and split-line intervals for cost charts', () => {
@@ -112,11 +130,11 @@ describe('app-chart-utils', () => {
       })
 
       const xAxis = options.xAxis as Array<Record<string, any>>
-      const formatter = xAxis[0].axisLabel.formatter as (value: string) => string
-      const outerInterval = xAxis[0].splitLine.interval as (index: number) => boolean
-      const innerInterval = xAxis[1].splitLine.interval as (_index: number, value: string) => boolean
+      const formatter = xAxis[0]!.axisLabel.formatter as (value: string) => string
+      const outerInterval = xAxis[0]!.splitLine.interval as (index: number) => boolean
+      const innerInterval = xAxis[1]!.splitLine.interval as (_index: number, value: string) => boolean
       const series = options.series as Array<Record<string, any>>
-      const tooltipFormatter = series[0].tooltip.formatter as (params: { name: string, data: { total_cost: number, total_price: string } }) => string
+      const tooltipFormatter = series[0]!.tooltip.formatter as (params: { name: string, data: { total_cost: number, total_price: string } }) => string
 
       expect(formatter('Jan 2, 2024')).toBe('Jan 2, 2024')
       expect(outerInterval(0)).toBe(true)

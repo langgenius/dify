@@ -2,7 +2,9 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { expectLoadingButton } from '@/test/button'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
@@ -21,12 +23,25 @@ const mockUserProfile = {
   avatar_url: '',
   role: 'owner',
 }
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: unknown) => unknown) => {
     const state = {
-      isCurrentWorkspaceDatasetOperator: false,
       userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
     }
     return selector(state)
   },
@@ -98,6 +113,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 })
 
@@ -130,14 +146,6 @@ vi.mock('@/service/use-common', () => ({
         { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
       ],
     },
-  }),
-  useCurrentWorkspace: () => ({
-    data: {
-      trial_credits: 1000,
-      trial_credits_used: 100,
-      next_credit_reset_date: undefined,
-    },
-    isPending: false,
   }),
 }))
 
@@ -184,7 +192,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    isCurrentWorkspaceDatasetOperator: false,
     supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
@@ -193,7 +200,7 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
     success: vi.fn(),
@@ -244,6 +251,7 @@ describe('Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -389,14 +397,13 @@ describe('Form', () => {
       const saveButton = screen.getByRole('button', { name: /form\.save/i })
       fireEvent.click(saveButton)
 
-      // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expectLoadingButton(saveButton)
       })
     })
 
     it('should show error when trying to save with empty name', async () => {
-      const { toast } = await import('@/app/components/base/ui/toast')
+      const { toast } = await import('@langgenius/dify-ui/toast')
       render(<Form />)
 
       // Clear the name
@@ -467,6 +474,15 @@ describe('Form', () => {
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
       expect(descriptionTextarea).toBeDisabled()
+    })
+
+    it('should disable save when dataset only has readonly ACL permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+      render(<Form />)
+
+      const saveButton = screen.getByRole('button', { name: /form\.save/i })
+      expect(saveButton).toBeDisabled()
     })
   })
 

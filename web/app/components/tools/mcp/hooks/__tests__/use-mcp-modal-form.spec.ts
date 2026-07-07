@@ -160,10 +160,10 @@ describe('useMCPModalForm', () => {
         const { result } = renderHook(() => useMCPModalForm(mockData))
 
         expect(result.current.state.headers).toHaveLength(2)
-        expect(result.current.state.headers[0].key).toBe('Authorization')
-        expect(result.current.state.headers[0].value).toBe('***')
-        expect(result.current.state.headers[1].key).toBe('X-Custom')
-        expect(result.current.state.headers[1].value).toBe('value')
+        expect(result.current.state.headers[0]!.key).toBe('Authorization')
+        expect(result.current.state.headers[0]!.value).toBe('***')
+        expect(result.current.state.headers[1]!.key).toBe('X-Custom')
+        expect(result.current.state.headers[1]!.value).toBe('value')
       })
 
       it('should initialize emoji icon from data', () => {
@@ -495,6 +495,53 @@ describe('useMCPModalForm', () => {
 
       expect(result.current.state.appIcon.type).toBe('image')
       expect(((result.current.state.appIcon) as AppIconImageSelection).url).toBe('https://example.com/icon.png')
+    })
+  })
+
+  // M3 — Forward-user-identity toggle (PR #36840). The hook stores a bool,
+  // hydrates it from data.identity_mode (true iff non-"off"), and exposes a
+  // setter.
+  describe('Forward-user-identity toggle', () => {
+    it('defaults to false in create mode', () => {
+      const { result } = renderHook(() => useMCPModalForm())
+      expect(result.current.state.forwardUserIdentity).toBe(false)
+    })
+
+    it('hydrates as true when data.identity_mode is "idp_token"', () => {
+      const mockData = {
+        id: 'existing-1',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'idp_token',
+      } as unknown as ToolWithProvider
+
+      const { result } = renderHook(() => useMCPModalForm(mockData))
+      expect(result.current.state.forwardUserIdentity).toBe(true)
+    })
+
+    it('hydrates as false when data.identity_mode is missing or "off"', () => {
+      const mockData = {
+        id: 'existing-2',
+        icon: { content: '🔗', background: '#6366F1' },
+        // identity_mode intentionally omitted
+      } as unknown as ToolWithProvider
+
+      const { result } = renderHook(() => useMCPModalForm(mockData))
+      expect(result.current.state.forwardUserIdentity).toBe(false)
+    })
+
+    it('updates state via setForwardUserIdentity', () => {
+      const { result } = renderHook(() => useMCPModalForm())
+      expect(result.current.state.forwardUserIdentity).toBe(false)
+
+      act(() => {
+        result.current.actions.setForwardUserIdentity(true)
+      })
+      expect(result.current.state.forwardUserIdentity).toBe(true)
+
+      act(() => {
+        result.current.actions.setForwardUserIdentity(false)
+      })
+      expect(result.current.state.forwardUserIdentity).toBe(false)
     })
   })
 })

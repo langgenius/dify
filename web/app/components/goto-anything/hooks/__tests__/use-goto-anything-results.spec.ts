@@ -111,8 +111,8 @@ describe('useGotoAnythingResults', () => {
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
       expect(result.current.dedupedResults).toHaveLength(2)
-      expect(result.current.dedupedResults[0].id).toBe('1')
-      expect(result.current.dedupedResults[1].id).toBe('2')
+      expect(result.current.dedupedResults[0]!.id).toBe('1')
+      expect(result.current.dedupedResults[1]!.id).toBe('2')
     })
 
     it('should keep first occurrence when duplicates exist', () => {
@@ -129,7 +129,7 @@ describe('useGotoAnythingResults', () => {
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
       expect(result.current.dedupedResults).toHaveLength(1)
-      expect(result.current.dedupedResults[0].title).toBe('First')
+      expect(result.current.dedupedResults[0]!.title).toBe('First')
     })
 
     it('should handle different types with same id', () => {

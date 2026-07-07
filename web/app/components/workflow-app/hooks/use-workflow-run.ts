@@ -26,7 +26,10 @@ import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import {
+  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
+} from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,
@@ -48,12 +51,61 @@ import {
   validateWorkflowRunRequest,
 } from './use-workflow-run-utils'
 
-export const useWorkflowRun = () => {
+type WorkflowRunParams = Record<string, unknown> & {
+  token?: string
+  appId?: string
+}
+
+type DebugAbortController = {
+  abort: () => void
+}
+
+type WorkflowDebugWindow = Window & {
+  __webhookDebugAbortController?: DebugAbortController
+  __pluginDebugAbortController?: DebugAbortController
+  __scheduleDebugAbortController?: DebugAbortController
+  __allTriggersDebugAbortController?: DebugAbortController
+}
+
+const stringifyWorkflowData = (workflowData: unknown) => {
+  if (!workflowData)
+    return undefined
+
+  try {
+    return JSON.stringify(workflowData)
+  }
+  catch {
+    return undefined
+  }
+}
+
+const getWorkflowStatus = (workflowData: unknown) => {
+  if (typeof workflowData !== 'object' || workflowData === null)
+    return undefined
+
+  const result = (workflowData as Record<string, unknown>).result
+  if (typeof result !== 'object' || result === null)
+    return undefined
+
+  const status = (result as Record<string, unknown>).status
+  return typeof status === 'string' ? status : undefined
+}
+
+const getWorkflowTracingCount = (workflowData: unknown) => {
+  if (typeof workflowData !== 'object' || workflowData === null)
+    return undefined
+
+  const tracing = (workflowData as Record<string, unknown>).tracing
+  return Array.isArray(tracing) ? tracing.length : undefined
+}
+
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
   const configsMap = useConfigsMap()
@@ -86,6 +138,7 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowReasoning,
     handleWorkflowPaused,
   } = useWorkflowRunEvent()
 
@@ -141,12 +194,12 @@ export const useWorkflowRun = () => {
   }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
   const handleRun = useCallback(async (
-    params: any,
+    params: WorkflowRunParams | null | undefined,
     callback?: IOtherOptions,
     options?: HandleRunOptions,
   ) => {
     const runMode = options?.mode ?? TriggerType.UserInput
-    const resolvedParams = params ?? {}
+    const resolvedParams: WorkflowRunParams = params ?? {}
     const {
       getNodes,
       setNodes,
@@ -274,6 +327,7 @@ export const useWorkflowRun = () => {
       handleWorkflowAgentLog,
       handleWorkflowTextChunk,
       handleWorkflowTextReplace,
+      handleWorkflowReasoning,
       handleWorkflowPaused,
     }
     const userCallbacks = {
@@ -297,9 +351,34 @@ export const useWorkflowRun = () => {
       onCompleted,
     }
 
-    const trackWorkflowRunFailed = (eventParams: unknown) => {
-      const payload = eventParams as { error?: string, node_type?: string }
-      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: payload?.error, node_type: payload?.node_type })
+    const getWorkflowRunningData = () => workflowStore.getState().workflowRunningData
+
+    const trackWorkflowRunFailed = (eventParams: unknown, workflowData: unknown) => {
+      const payload = typeof eventParams === 'object' && eventParams !== null
+        ? eventParams as Record<string, unknown>
+        : undefined
+      const reason = typeof eventParams === 'string'
+        ? eventParams
+        : eventParams instanceof Error
+          ? eventParams.message
+          : typeof payload?.error === 'string'
+            ? payload.error
+            : undefined
+      const nodeType = typeof payload?.node_type === 'string'
+        ? payload.node_type
+        : undefined
+
+      trackEvent('workflow_run_failed', {
+        workflow_id: flowId,
+        reason,
+        node_type: nodeType,
+        data: {
+          workflow_status: getWorkflowStatus(workflowData),
+          workflow_tracing_count: getWorkflowTracingCount(workflowData),
+          workflow_data: workflowData,
+          workflow_data_json: stringifyWorkflowData(workflowData),
+        },
+      })
     }
 
     const baseSseOptions = createBaseWorkflowRunCallbacks({
@@ -312,6 +391,7 @@ export const useWorkflowRun = () => {
       invalidateRunHistory,
       clearAbortController,
       clearListeningState: clearListeningStateInStore,
+      getWorkflowRunningData,
       trackWorkflowRunFailed,
       handlers: workflowRunEventHandlers,
       callbacks: userCallbacks,
@@ -346,6 +426,7 @@ export const useWorkflowRun = () => {
       invalidateRunHistory,
       clearAbortController,
       clearListeningState: clearListeningStateInStore,
+      getWorkflowRunningData,
       trackWorkflowRunFailed,
       handlers: workflowRunEventHandlers,
       callbacks: userCallbacks,
@@ -364,7 +445,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowReasoning, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
@@ -393,19 +474,21 @@ export const useWorkflowRun = () => {
     }
 
     // Try webhook debug controller from global variable first
-    const webhookController = (window as any).__webhookDebugAbortController
+    const debugWindow = window as WorkflowDebugWindow
+
+    const webhookController = debugWindow.__webhookDebugAbortController
     if (webhookController)
       webhookController.abort()
 
-    const pluginController = (window as any).__pluginDebugAbortController
+    const pluginController = debugWindow.__pluginDebugAbortController
     if (pluginController)
       pluginController.abort()
 
-    const scheduleController = (window as any).__scheduleDebugAbortController
+    const scheduleController = debugWindow.__scheduleDebugAbortController
     if (scheduleController)
       scheduleController.abort()
 
-    const allTriggerController = (window as any).__allTriggersDebugAbortController
+    const allTriggerController = debugWindow.__allTriggersDebugAbortController
     if (allTriggerController)
       allTriggerController.abort()
 
@@ -437,4 +520,16 @@ export const useWorkflowRun = () => {
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
   }
+}
+
+export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
+}
+
+export const useWorkflowRun = () => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
 }

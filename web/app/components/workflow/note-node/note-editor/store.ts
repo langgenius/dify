@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { use } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -7,7 +7,7 @@ import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
-  setLinkAnchorElement: (open?: boolean) => void
+  setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
   linkOperatorShow: boolean
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
   selectedIsBold: boolean
@@ -28,6 +28,11 @@ export const createNoteEditorStore = () => {
   return createStore<Shape>(set => ({
     linkAnchorElement: null,
     setLinkAnchorElement: (open) => {
+      if (open instanceof HTMLElement) {
+        set(() => ({ linkAnchorElement: open }))
+        return
+      }
+
       if (open) {
         setTimeout(() => {
           const nativeSelection = window.getSelection()
@@ -60,7 +65,7 @@ export const createNoteEditorStore = () => {
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(NoteEditorContext)
+  const store = use(NoteEditorContext)
   if (!store)
     throw new Error('Missing NoteEditorContext.Provider in the tree')
 
@@ -68,5 +73,5 @@ export function useStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useNoteEditorStore = () => {
-  return useContext(NoteEditorContext)!
+  return use(NoteEditorContext)!
 }

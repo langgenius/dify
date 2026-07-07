@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import type { Plugin, PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
@@ -22,6 +24,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [installPayload, setInstallPayload] = useState<{ uniqueIdentifier: string, manifest: Plugin } | null>(null)
   const [isFetching, setIsFetching] = useState(false)
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   const handleInstallFromMarketplace = useCallback(async () => {
     const parts = plugin.plugin_id.split('/')
@@ -30,14 +33,14 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
     const [org, name] = parts
     setIsFetching(true)
     try {
-      const response = await fetchPluginInfoFromMarketPlace({ org, name })
+      const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
       const info = response.data.plugin
       const manifest: Plugin = {
         plugin_id: plugin.plugin_id,
         type: info.category as Plugin['type'],
-        category: info.category,
-        name,
-        org,
+        category: info.category as Plugin['category'],
+        name: name!,
+        org: org!,
         version: info.latest_version,
         latest_version: info.latest_version,
         latest_package_identifier: info.latest_package_identifier,
@@ -75,7 +78,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
   const errorMsg = t(errorMsgKey, { ns: 'plugin' })
 
   const renderAction = () => {
-    if (source === PluginSource.marketplace) {
+    if (source === PluginSource.marketplace && canInstallPlugin) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small" loading={isFetching} onClick={handleInstallFromMarketplace}>
@@ -84,7 +87,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         </div>
       )
     }
-    if (source === PluginSource.github) {
+    if (source === PluginSource.github && canInstallPlugin) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small">
@@ -103,12 +106,12 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         getIconUrl={getIconUrl}
         language={language}
         statusIcon={(
-          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
-            <span className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+          <span className="flex size-4 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
+            <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
           </span>
         )}
         statusText={(
-          <span className="whitespace-pre-line">
+          <span className="block max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
             {plugin.message || errorMsg}
           </span>
         )}
@@ -116,16 +119,21 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         action={renderAction()}
         onClear={onClear}
       />
-      {showInstallModal && installPayload && (
-        <InstallFromMarketplace
-          uniqueIdentifier={installPayload.uniqueIdentifier}
-          manifest={installPayload.manifest}
-          onClose={() => setShowInstallModal(false)}
-          onSuccess={() => {
-            setShowInstallModal(false)
-            onClear()
-          }}
-        />
+      {showInstallModal && installPayload && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            uniqueIdentifier={installPayload.uniqueIdentifier}
+            manifest={installPayload.manifest}
+            onClose={() => setShowInstallModal(false)}
+            onSuccess={() => {
+              setShowInstallModal(false)
+              onClear()
+            }}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </>
   )

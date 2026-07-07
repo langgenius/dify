@@ -55,6 +55,7 @@ const CustomEdge = ({
     curvature: 0.16,
   })
   const [open, setOpen] = useState(false)
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
@@ -62,6 +63,7 @@ const CustomEdge = ({
     _sourceRunningStatus,
     _targetRunningStatus,
   } = data
+  const isTriggerVisible = !!(data?._hovering || isTriggerHovered || open)
 
   const linearGradientId = useMemo(() => {
     if (
@@ -142,24 +144,30 @@ const CustomEdge = ({
       <EdgeLabelRenderer>
         <div
           className={cn(
-            'nopan nodrag hover:scale-125',
-            data?._hovering ? 'block' : 'hidden',
-            open && 'block!',
+            'nopan nodrag',
+            'transition-opacity duration-150',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
             data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
           )}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',
-            opacity: data._waitingRun ? 0.7 : 1,
+            pointerEvents: isTriggerVisible ? 'all' : 'none',
+            opacity: isTriggerVisible ? (data._waitingRun ? 0.7 : 1) : 0,
           }}
+          onMouseEnter={() => setIsTriggerHovered(true)}
+          onMouseLeave={() => setIsTriggerHovered(false)}
         >
           <BlockSelector
             open={open}
             onOpenChange={handleOpenChange}
-            asChild
             onSelect={handleInsert}
+            snippetInsertPayload={{
+              prevNodeId: source,
+              prevNodeSourceHandle: sourceHandleId || 'source',
+              nextNodeId: target,
+              nextNodeTargetHandle: targetHandleId || 'target',
+            }}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}
           />

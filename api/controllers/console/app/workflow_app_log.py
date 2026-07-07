@@ -4,18 +4,25 @@ from typing import Any
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource
-from graphon.enums import WorkflowExecutionStatus
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
+from graphon.enums import WorkflowExecutionStatus
+from libs.helper import to_timestamp
 from libs.login import login_required
 from models import App
 from models.model import AppMode
@@ -82,9 +89,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowRunForArchivedLogResponse(ResponseModel):
@@ -117,9 +122,7 @@ class WorkflowAppLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowArchivedLogPartialResponse(ResponseModel):
@@ -133,9 +136,7 @@ class WorkflowArchivedLogPartialResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
 
 
 class WorkflowAppLogPaginationResponse(ResponseModel):
@@ -171,7 +172,7 @@ class WorkflowAppLogApi(Resource):
     @console_ns.doc("get_workflow_app_logs")
     @console_ns.doc(description="Get workflow application execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowAppLogQuery))
     @console_ns.response(
         200,
         "Workflow app logs retrieved successfully",
@@ -180,12 +181,13 @@ class WorkflowAppLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get workflow app logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
@@ -214,7 +216,7 @@ class WorkflowArchivedLogApi(Resource):
     @console_ns.doc("get_workflow_archived_logs")
     @console_ns.doc(description="Get workflow archived execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowAppLogQuery))
     @console_ns.response(
         200,
         "Workflow archived logs retrieved successfully",
@@ -223,12 +225,13 @@ class WorkflowArchivedLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get workflow archived logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         workflow_app_service = WorkflowAppService()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:

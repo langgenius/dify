@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { Button } from '@/app/components/base/ui/button'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   text: string
   onClick: () => void
-}
+}>
 
 const AddButton: FC<Props> = ({
   className,
@@ -25,7 +25,7 @@ const AddButton: FC<Props> = ({
       size="medium"
       onClick={onClick}
     >
-      <RiAddLine className="mr-1 h-3.5 w-3.5" />
+      <RiAddLine className="mr-1 size-3.5" />
       <div>{text}</div>
     </Button>
   )

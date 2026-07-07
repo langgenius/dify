@@ -1,5 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { ConfigurationMethodEnum } from '../declarations'
 
 type ConfigurationButtonProps = {
@@ -22,9 +23,7 @@ const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationBu
         {t('nodes.agent.notAuthorized', { ns: 'workflow' })}
       </div>
       <div className="flex h-[14px] w-[14px] items-center justify-center">
-        <div className="h-2 w-2 shrink-0 rounded-[3px] border border-components-badge-status-light-warning-border-inner
-          bg-components-badge-status-light-warning-bg shadow-components-badge-status-light-warning-halo"
-        />
+        <StatusDot status="warning" />
       </div>
     </Button>
   )

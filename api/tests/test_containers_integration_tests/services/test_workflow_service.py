@@ -12,9 +12,10 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 
 
@@ -33,7 +34,7 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -49,7 +50,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -62,7 +63,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -77,7 +78,7 @@ class TestWorkflowService:
 
         return account
 
-    def _create_test_app(self, db_session_with_containers: Session, fake=None):
+    def _create_test_app(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test app with realistic data.
 
@@ -109,7 +110,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake: Faker | None = None):
         """
         Helper method to create a test workflow associated with an app.
 
@@ -1319,10 +1320,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1350,10 +1350,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=non_existent_workflow_id,
-            tenant_id=app.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=app.tenant_id, owner_id=app.id, workflow_id=non_existent_workflow_id),
         )
 
         # Assert
@@ -1385,10 +1384,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1421,7 +1419,8 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.delete_workflow(
-            session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+            session=db_session_with_containers,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1456,7 +1455,8 @@ class TestWorkflowService:
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_in_use_error(self, db_session_with_containers: Session):
@@ -1487,7 +1487,8 @@ class TestWorkflowService:
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_not_found_error(self, db_session_with_containers: Session):
@@ -1507,7 +1508,12 @@ class TestWorkflowService:
         # Act & Assert
         with pytest.raises(ValueError, match=f"Workflow with ID {non_existent_workflow_id} not found"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=non_existent_workflow_id, tenant_id=app.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(
+                    tenant_id=app.tenant_id,
+                    owner_id=app.id,
+                    workflow_id=non_existent_workflow_id,
+                ),
             )
 
     def test_run_free_workflow_node_success(self, db_session_with_containers: Session):

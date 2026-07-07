@@ -8,10 +8,11 @@ from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,
 )
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.schedule_service import ScheduleService
 from services.workflow.entities import ScheduleTriggerData
@@ -32,6 +33,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
         TenantOwnerNotFoundError: If no owner/admin for tenant
         ScheduleExecutionError: If workflow trigger fails
     """
+    # Ensure expire_on_commit is set to False to remain schedule/tenant_owner available
     with session_factory.create_session() as session:
         schedule = session.get(WorkflowSchedulePlan, schedule_id)
         if not schedule:
@@ -41,16 +43,16 @@ def run_schedule_trigger(schedule_id: str) -> None:
         if not tenant_owner:
             raise TenantOwnerNotFoundError(f"No owner or admin found for tenant {schedule.tenant_id}")
 
-        quota_charge = unlimited()
-        try:
-            quota_charge = QuotaType.TRIGGER.consume(schedule.tenant_id)
-        except QuotaExceededError:
-            AppTriggerService.mark_tenant_triggers_rate_limited(schedule.tenant_id)
-            logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
-            return
+    quota_charge = unlimited()
+    try:
+        quota_charge = QuotaService.reserve(QuotaType.TRIGGER, schedule.tenant_id)
+    except QuotaExceededError:
+        AppTriggerService.mark_tenant_triggers_rate_limited(schedule.tenant_id)
+        logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
+        return
 
-        try:
-            # Production dispatch: Trigger the workflow normally
+    try:
+        with session_factory.create_session() as session:
             response = AsyncWorkflowService.trigger_workflow_async(
                 session=session,
                 user=tenant_owner,
@@ -61,9 +63,10 @@ def run_schedule_trigger(schedule_id: str) -> None:
                     tenant_id=schedule.tenant_id,
                 ),
             )
-            logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
-        except Exception as e:
-            quota_charge.refund()
-            raise ScheduleExecutionError(
-                f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"
-            ) from e
+        quota_charge.commit()
+        logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
+    except Exception as e:
+        quota_charge.refund()
+        raise ScheduleExecutionError(
+            f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"
+        ) from e

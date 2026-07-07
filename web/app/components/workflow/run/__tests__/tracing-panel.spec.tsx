@@ -105,11 +105,11 @@ describe('TracingPanel', () => {
       </div>,
     )
 
-    expect(screen.getByText('Parallel Group')).toBeInTheDocument()
-    expect(screen.getByText('Branch A')).toBeInTheDocument()
-    expect(screen.getByText('Branch B')).toBeInTheDocument()
-    expect(screen.getByTestId('node-child-1')).toBeInTheDocument()
-    expect(screen.getByTestId('node-node-2')).toBeInTheDocument()
+    expect(screen.getByText('Parallel Group'))!.toBeInTheDocument()
+    expect(screen.getByText('Branch A'))!.toBeInTheDocument()
+    expect(screen.getByText('Branch B'))!.toBeInTheDocument()
+    expect(screen.getByTestId('node-child-1'))!.toBeInTheDocument()
+    expect(screen.getByTestId('node-node-2'))!.toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.py-2') as HTMLElement)
     expect(parentClick).not.toHaveBeenCalled()
@@ -132,9 +132,9 @@ describe('TracingPanel', () => {
 
     fireEvent.mouseLeave(hoverTarget)
 
-    fireEvent.click(screen.getAllByRole('button')[0])
-    expect(container.querySelector('[data-parallel-id="parallel-1"] > div:last-child')).toHaveClass('hidden')
-    fireEvent.click(screen.getAllByRole('button')[0])
+    fireEvent.click(screen.getAllByRole('button')[0]!)
+    expect(container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'))!.toHaveClass('hidden')
+    fireEvent.click(screen.getAllByRole('button')[0]!)
     expect(container.querySelector('[data-parallel-id="parallel-1"] > div:last-child')).not.toHaveClass('hidden')
     expect(mockNodePanel).toHaveBeenCalledWith(expect.objectContaining({
       hideInfo: true,
@@ -170,7 +170,7 @@ describe('TracingPanel', () => {
 
     render(<TracingPanel list={[]} />)
 
-    expect(screen.getByTestId('special-result-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('special-result-panel'))!.toBeInTheDocument()
     expect(mockSpecialResultPanel).toHaveBeenCalledWith(expect.objectContaining({
       showRetryDetail: true,
       retryResultList: [{ id: 'retry-1' }],

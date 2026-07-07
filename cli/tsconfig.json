@@ -1,0 +1,20 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@test/*": [
+        "./test/*"
+      ]
+    },
+    "types": ["node"],
+    "noEmit": true, // we already have bundlers to handle this.
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"], // tests must be included for typechecking
+  "exclude": ["node_modules", "dist"]
+}

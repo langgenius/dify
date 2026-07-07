@@ -1,8 +1,8 @@
 import math
 from collections import Counter
+from typing import override
 
 import numpy as np
-from graphon.model_runtime.entities.model_entities import ModelType
 
 from core.model_manager import ModelManager
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
@@ -12,6 +12,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class WeightRerankRunner(BaseRerankRunner):
@@ -19,6 +20,7 @@ class WeightRerankRunner(BaseRerankRunner):
         self.tenant_id = tenant_id
         self.weights = weights
 
+    @override
     def run(
         self,
         query: str,

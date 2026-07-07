@@ -188,6 +188,31 @@ class TestWebAppAuth:
 
         req.send_request.assert_called_once_with("DELETE", "/webapp/clean", params={"appId": "a1"})
 
+    def test_list_externally_accessible_apps_minimal_call(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            result = EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=1, limit=10)
+
+        assert result == {"data": [], "total": 0, "hasMore": False}
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 1, "limit": 10},
+            timeout=5.0,
+        )
+
+    def test_list_externally_accessible_apps_with_filters(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=2, limit=5, mode="workflow", name="alpha")
+
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 2, "limit": 5, "mode": "workflow", "name": "alpha"},
+            timeout=5.0,
+        )
+
 
 class TestJoinDefaultWorkspace:
     def test_join_default_workspace_success(self):
@@ -441,3 +466,126 @@ class TestGetCachedLicenseStatus:
 
             assert EnterpriseService.get_cached_license_status() is None
             mock_redis.setex.assert_not_called()
+
+
+class TestIssueMCPToken:
+    """Coverage for EnterpriseService.issue_mcp_token (M2).
+
+    The function wraps `POST /inner/api/mcp/issue-token` and must map
+    EnterpriseServiceError subclasses to MCP-typed errors so the workflow
+    layer can halt with a precise message instead of leaking transport text.
+    """
+
+    @staticmethod
+    def _call():
+        return EnterpriseService.issue_mcp_token(
+            user_id="user-uuid",
+            tenant_id="tenant-uuid",
+            app_id="app-uuid",
+            audience="https://mcp.example.com/mcp/",
+        )
+
+    def test_happy_path_returns_token_and_expiry(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "abc.def.ghi", "expires_at": 1900000000}
+            token, exp = self._call()
+
+        assert token == "abc.def.ghi"
+        assert exp == 1900000000
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/mcp/issue-token",
+            json={
+                "user_id": "user-uuid",
+                "tenant_id": "tenant-uuid",
+                "app_id": "app-uuid",
+                "audience": "https://mcp.example.com/mcp/",
+                "user_type": "account",
+            },
+        )
+
+    def test_end_user_type_is_forwarded(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000}
+            EnterpriseService.issue_mcp_token(
+                user_id="end-user-uuid",
+                tenant_id="tenant-uuid",
+                app_id="app-uuid",
+                audience="https://mcp.example.com/mcp/",
+                user_type="end_user",
+            )
+        body = req.send_request.call_args.kwargs["json"]
+        assert body["user_type"] == "end_user"
+        assert body["app_id"] == "app-uuid"
+
+    def test_401_maps_to_identity_refresh_error(self):
+        from services.enterprise.base import MCPIdentityRefreshError
+        from services.errors.enterprise import EnterpriseAPIUnauthorizedError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIUnauthorizedError("refresh rejected by IdP")
+            with pytest.raises(MCPIdentityRefreshError, match="refresh rejected"):
+                self._call()
+
+    def test_428_maps_to_no_refresh_token_error(self):
+        from services.enterprise.base import MCPNoRefreshTokenError
+        from services.errors.enterprise import EnterpriseAPIError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            # 428 PreconditionRequired is what EE returns when there's no
+            # stored SSO refresh token for the user.
+            req.send_request.side_effect = EnterpriseAPIError("user has not completed SSO", status_code=428)
+            with pytest.raises(MCPNoRefreshTokenError, match="SSO"):
+                self._call()
+
+    def test_403_maps_to_identity_refresh_error_for_license(self):
+        from services.enterprise.base import MCPIdentityRefreshError
+        from services.errors.enterprise import EnterpriseAPIForbiddenError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIForbiddenError("not licensed for MCP forwarding")
+            with pytest.raises(MCPIdentityRefreshError, match="not licensed"):
+                self._call()
+
+    def test_other_status_maps_to_generic_token_error(self):
+        from services.enterprise.base import MCPTokenError
+        from services.errors.enterprise import EnterpriseAPIError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIError("upstream 502", status_code=502)
+            with pytest.raises(MCPTokenError, match="status=502"):
+                self._call()
+
+    def test_malformed_response_shape_raises_token_error(self):
+        from services.enterprise.base import MCPTokenError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = "not-a-dict"
+            with pytest.raises(MCPTokenError, match="invalid response shape"):
+                self._call()
+
+    def test_missing_token_field_raises_token_error(self):
+        from services.enterprise.base import MCPTokenError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"expires_at": 1700000000}  # no token
+            with pytest.raises(MCPTokenError, match="missing or non-string token"):
+                self._call()
+
+    def test_float_expires_at_is_accepted(self):
+        """expires_at may arrive as float (time.time()) — must be coerced."""
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000.5}
+            token, exp = self._call()
+        assert token == "t"
+        assert exp == 1900000000
+        assert isinstance(exp, int)
+
+    def test_bool_expires_at_is_rejected(self):
+        """bool is a subclass of int — must NOT be accepted as expires_at."""
+        from services.enterprise.base import MCPTokenError
+
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": True}
+            with pytest.raises(MCPTokenError, match="non-numeric expires_at"):
+                self._call()

@@ -7,9 +7,6 @@ from typing import Any, NotRequired, TypedDict
 
 import orjson
 from flask import request
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.file import FileTransferMethod
-from graphon.variables.types import ArrayValidation, SegmentType
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,7 +14,6 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
@@ -31,15 +27,20 @@ from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
-from models.enums import AppTriggerStatus, AppTriggerType
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.file import FileTransferMethod
+from graphon.variables.types import ArrayValidation, SegmentType
+from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
+from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+from services.workflow_service import WorkflowService
 
 try:
     import magic
@@ -114,6 +115,7 @@ class WebhookService:
                 workflow = session.scalar(
                     select(Workflow)
                     .where(
+                        Workflow.tenant_id == webhook_trigger.tenant_id,
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version == Workflow.VERSION_DRAFT,
                     )
@@ -125,6 +127,7 @@ class WebhookService:
                 app_trigger = session.scalar(
                     select(AppTrigger)
                     .where(
+                        AppTrigger.tenant_id == webhook_trigger.tenant_id,
                         AppTrigger.app_id == webhook_trigger.app_id,
                         AppTrigger.node_id == webhook_trigger.node_id,
                         AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
@@ -145,16 +148,18 @@ class WebhookService:
                 if app_trigger.status != AppTriggerStatus.ENABLED:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
-                # Get workflow
-                workflow = session.scalar(
-                    select(Workflow)
+                app = session.scalar(
+                    select(App)
                     .where(
-                        Workflow.app_id == webhook_trigger.app_id,
-                        Workflow.version != Workflow.VERSION_DRAFT,
+                        App.tenant_id == webhook_trigger.tenant_id,
+                        App.id == webhook_trigger.app_id,
                     )
-                    .order_by(Workflow.created_at.desc())
                     .limit(1)
                 )
+                if not app:
+                    raise ValueError(f"App not found for webhook {webhook_id}")
+
+                workflow = WorkflowService().get_published_workflow(app, session=session)
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 
@@ -401,7 +406,7 @@ class WebhookService:
         for name, file in files.items():
             if file and file.filename:
                 try:
-                    file_content = file.read()
+                    file_content = file.stream.read()
                     mimetype = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
                     file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                     processed_files[name] = file_obj.to_dict()
@@ -798,45 +803,47 @@ class WebhookService:
             Exception: If workflow execution fails
         """
         try:
-            with Session(db.engine) as session:
-                # Prepare inputs for the webhook node
-                # The webhook node expects webhook_data in the inputs
-                workflow_inputs = cls.build_workflow_inputs(webhook_data)
+            workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
-                # Create trigger data
-                trigger_data = WebhookTriggerData(
-                    app_id=webhook_trigger.app_id,
-                    workflow_id=workflow.id,
-                    root_node_id=webhook_trigger.node_id,  # Start from the webhook node
-                    inputs=workflow_inputs,
-                    tenant_id=webhook_trigger.tenant_id,
+            trigger_data = WebhookTriggerData(
+                app_id=webhook_trigger.app_id,
+                workflow_id=workflow.id,
+                root_node_id=webhook_trigger.node_id,
+                inputs=workflow_inputs,
+                tenant_id=webhook_trigger.tenant_id,
+            )
+
+            end_user = EndUserService.get_or_create_end_user_by_type(
+                type=EndUserType.TRIGGER,
+                tenant_id=webhook_trigger.tenant_id,
+                app_id=webhook_trigger.app_id,
+                user_id=None,
+            )
+
+            try:
+                quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
+            except QuotaExceededError:
+                AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                logger.info(
+                    "Tenant %s rate limited, skipping webhook trigger %s",
+                    webhook_trigger.tenant_id,
+                    webhook_trigger.webhook_id,
                 )
+                raise
 
-                end_user = EndUserService.get_or_create_end_user_by_type(
-                    type=InvokeFrom.TRIGGER,
-                    tenant_id=webhook_trigger.tenant_id,
-                    app_id=webhook_trigger.app_id,
-                    user_id=None,
-                )
-
-                # consume quota before triggering workflow execution
-                try:
-                    QuotaType.TRIGGER.consume(webhook_trigger.tenant_id)
-                except QuotaExceededError:
-                    AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
-                    logger.info(
-                        "Tenant %s rate limited, skipping webhook trigger %s",
-                        webhook_trigger.tenant_id,
-                        webhook_trigger.webhook_id,
+            try:
+                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
+                # trigger_workflow_async need to handle multipe session commits internally
+                with Session(db.engine, expire_on_commit=False) as session:
+                    AsyncWorkflowService.trigger_workflow_async(
+                        session,
+                        end_user,
+                        trigger_data,
                     )
-                    raise
-
-                # Trigger workflow execution asynchronously
-                AsyncWorkflowService.trigger_workflow_async(
-                    session,
-                    end_user,
-                    trigger_data,
-                )
+                quota_charge.commit()
+            except Exception:
+                quota_charge.refund()
+                raise
 
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)

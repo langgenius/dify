@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.app_config.entities import (
+    AdvancedChatMessageEntity,
+    AdvancedChatPromptTemplateEntity,
+    AdvancedCompletionPromptTemplateEntity,
+    PromptTemplateEntity,
+)
+from core.app.apps.base_app_runner import AppRunner
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -13,16 +25,6 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
-
-from core.app.app_config.entities import (
-    AdvancedChatMessageEntity,
-    AdvancedChatPromptTemplateEntity,
-    AdvancedCompletionPromptTemplateEntity,
-    PromptTemplateEntity,
-)
-from core.app.apps.base_app_runner import AppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from models.model import AppMode
 
 
@@ -41,8 +43,25 @@ class _QueueRecorder:
         self.events.append(event)
 
 
+class _ClosableStream:
+    def __init__(self, chunks: list[LLMResultChunk]) -> None:
+        self._chunks = chunks
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self._chunks:
+            raise StopIteration
+        return self._chunks.pop(0)
+
+    def close(self) -> None:
+        self.closed = True
+
+
 class TestAppRunner:
-    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch):
+    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         model_schema = SimpleNamespace(
@@ -65,7 +84,7 @@ class TestAppRunner:
 
         assert model_config.parameters["max_tokens"] == 20
 
-    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(self, monkeypatch):
+    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         model_schema = SimpleNamespace(
@@ -86,7 +105,7 @@ class TestAppRunner:
 
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1
 
-    def test_direct_output_streaming_publishes_chunks_and_end(self, monkeypatch):
+    def test_direct_output_streaming_publishes_chunks_and_end(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         app_generate_entity = SimpleNamespace(model_conf=SimpleNamespace(model="mock"), stream=True)
@@ -133,7 +152,7 @@ class TestAppRunner:
                 stream=True,
             )
 
-    def test_organize_prompt_messages_simple_template(self, monkeypatch):
+    def test_organize_prompt_messages_simple_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="chat", stop=["STOP"])
         prompt_template_entity = PromptTemplateEntity(
@@ -158,7 +177,7 @@ class TestAppRunner:
         assert prompt_messages == ["simple-message"]
         assert stop == ["simple-stop"]
 
-    def test_organize_prompt_messages_advanced_completion_template(self, monkeypatch):
+    def test_organize_prompt_messages_advanced_completion_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="completion", stop=["<END>"])
         captured: dict[str, object] = {}
@@ -191,7 +210,7 @@ class TestAppRunner:
         assert memory_config.role_prefix.user == "U"
         assert memory_config.role_prefix.assistant == "A"
 
-    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch):
+    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="chat", stop=["<END>"])
         captured: dict[str, object] = {}
@@ -245,11 +264,11 @@ class TestAppRunner:
                 files=[],
             )
 
-    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, monkeypatch):
+    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         runner = AppRunner()
         queue = _QueueRecorder()
-        warning_logger = MagicMock()
-        monkeypatch.setattr("core.app.apps.base_app_runner._logger.warning", warning_logger)
 
         image_content = ImagePromptMessageContent(
             url="https://example.com/image.png", format="png", mime_type="image/png"
@@ -272,23 +291,24 @@ class TestAppRunner:
                 ),
             )
 
-        runner._handle_invoke_result(
-            invoke_result=_stream(),
-            queue_manager=queue,
-            stream=True,
-            agent=False,
-        )
+        with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_runner"):
+            runner._handle_invoke_result(
+                invoke_result=_stream(),
+                queue_manager=queue,
+                stream=True,
+                agent=False,
+            )
 
         assert isinstance(queue.events[0], QueueLLMChunkEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.message.content == "abc"
-        warning_logger.assert_called_once()
+        assert "Received multimodal output but missing required parameters" in caplog.messages
 
-    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(self, monkeypatch):
+    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         runner = AppRunner()
         queue = _QueueRecorder()
-        exception_logger = MagicMock()
-        monkeypatch.setattr("core.app.apps.base_app_runner._logger.exception", exception_logger)
 
         monkeypatch.setattr(
             runner,
@@ -317,21 +337,44 @@ class TestAppRunner:
                 ),
             )
 
-        runner._handle_invoke_result_stream(
-            invoke_result=_stream(),
-            queue_manager=queue,
-            agent=True,
-            message_id="message-id",
-            user_id="user-id",
-            tenant_id="tenant-id",
-        )
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.base_app_runner"):
+            runner._handle_invoke_result_stream(
+                invoke_result=_stream(),
+                queue_manager=queue,
+                agent=True,
+                message_id="message-id",
+                user_id="user-id",
+                tenant_id="tenant-id",
+            )
 
         assert isinstance(queue.events[0], QueueAgentMessageEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.usage == usage
-        exception_logger.assert_called_once()
+        assert "Failed to handle multimodal image output" in caplog.messages
 
-    def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch):
+    def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
+        runner = AppRunner()
+        chunk = LLMResultChunk(
+            model="stream-model",
+            prompt_messages=[AssistantPromptMessage(content="prompt")],
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="a")),
+        )
+        stream = _ClosableStream([chunk])
+
+        queue_manager = SimpleNamespace(
+            publish=MagicMock(side_effect=GenerateTaskStoppedError("stopped")),
+        )
+
+        with pytest.raises(GenerateTaskStoppedError):
+            runner._handle_invoke_result_stream(
+                invoke_result=stream,
+                queue_manager=queue_manager,
+                agent=False,
+            )
+
+        assert stream.closed is True
+
+    def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         class _ToggleBool:
@@ -367,7 +410,7 @@ class TestAppRunner:
         db_session.add.assert_not_called()
         queue_manager.publish.assert_not_called()
 
-    def test_check_hosting_moderation_direct_output_called(self, monkeypatch):
+    def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         app_generate_entity = SimpleNamespace(stream=False)
@@ -388,7 +431,7 @@ class TestAppRunner:
         assert result is True
         assert direct_output.called
 
-    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch):
+    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.ExternalDataFetch.fetch",
@@ -405,7 +448,7 @@ class TestAppRunner:
 
         assert result == {"foo": "bar"}
 
-    def test_moderation_for_inputs_returns_result(self, monkeypatch):
+    def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.InputModeration.check",
@@ -424,7 +467,7 @@ class TestAppRunner:
 
         assert result == (True, {}, "")
 
-    def test_query_app_annotations_to_reply(self, monkeypatch):
+    def test_query_app_annotations_to_reply(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.AnnotationReplyFeature.query",

@@ -7,6 +7,12 @@ class AppUnavailableError(BaseHTTPException):
     code = 400
 
 
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the web app."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Please check if your Completion app mode matches the right API route."
@@ -121,13 +127,3 @@ class WebFormRateLimitExceededError(BaseHTTPException):
     error_code = "web_form_rate_limit_exceeded"
     description = "Too many form requests. Please try again later."
     code = 429
-
-
-class NotFoundError(BaseHTTPException):
-    error_code = "not_found"
-    code = 404
-
-
-class InvalidArgumentError(BaseHTTPException):
-    error_code = "invalid_param"
-    code = 400

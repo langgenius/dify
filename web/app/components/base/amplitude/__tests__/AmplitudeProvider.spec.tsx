@@ -2,12 +2,13 @@ import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AmplitudeProvider from '../AmplitudeProvider'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
   IS_CLOUD_EDITION: true,
 }))
+
+let AmplitudeProvider: typeof import('../AmplitudeProvider').default
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -31,10 +32,12 @@ vi.mock('@amplitude/plugin-session-replay-browser', () => ({
 }))
 
 describe('AmplitudeProvider', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
+    ;({ default: AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
   describe('Component', () => {
@@ -43,6 +46,17 @@ describe('AmplitudeProvider', () => {
 
       expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
+      expect(amplitude.add).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not re-initialize amplitude on remount', () => {
+      const { unmount } = render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+
+      unmount()
+      render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
 

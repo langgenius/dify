@@ -91,18 +91,12 @@ describe('WorkflowOnboardingModal', () => {
       expect(getTriggerHeading()).toBeInTheDocument()
     })
 
-    it('should render ESC tip when shown', () => {
+    it('should not render ESC tip', () => {
       renderComponent({ isShow: true })
 
-      expect(screen.getByText('workflow.onboarding.escTip.press')).toBeInTheDocument()
-      expect(screen.getByText('workflow.onboarding.escTip.key')).toBeInTheDocument()
-      expect(screen.getByText('workflow.onboarding.escTip.toDismiss')).toBeInTheDocument()
-    })
-
-    it('should not render ESC tip when hidden', () => {
-      renderComponent({ isShow: false })
-
       expect(screen.queryByText('workflow.onboarding.escTip.press')).not.toBeInTheDocument()
+      expect(screen.queryByText('workflow.onboarding.escTip.key')).not.toBeInTheDocument()
+      expect(screen.queryByText('workflow.onboarding.escTip.toDismiss')).not.toBeInTheDocument()
     })
 
     it('should have correct styling for title', () => {
@@ -386,20 +380,6 @@ describe('WorkflowOnboardingModal', () => {
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should have visible ESC key hint', () => {
-      renderComponent({ isShow: true })
-
-      const escKey = screen.getByText('workflow.onboarding.escTip.key')
-      expect(escKey.closest('.system-kbd')).toBeInTheDocument()
-    })
-
-    it('should have descriptive text for ESC functionality', () => {
-      renderComponent({ isShow: true })
-
-      expect(screen.getByText('workflow.onboarding.escTip.press')).toBeInTheDocument()
-      expect(screen.getByText('workflow.onboarding.escTip.toDismiss')).toBeInTheDocument()
-    })
-
     it('should have proper text color classes', () => {
       renderComponent()
 
@@ -443,8 +423,6 @@ describe('WorkflowOnboardingModal', () => {
       expect(dialog).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.title')).toBeInTheDocument()
       expect(getUserInputHeading()).toBeInTheDocument()
-      expect(screen.getByText('workflow.onboarding.escTip.key')).toBeInTheDocument()
-      expect(dialog).not.toContainElement(screen.getByText('workflow.onboarding.escTip.key'))
     })
 
     it('should coordinate between keyboard and click interactions', async () => {

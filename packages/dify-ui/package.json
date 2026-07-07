@@ -1,24 +1,206 @@
 {
   "name": "@langgenius/dify-ui",
+  "type": "module",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "import": "./src/tailwind-preset.ts",
-      "types": "./src/tailwind-preset.ts"
-    },
     "./cn": {
-      "import": "./src/cn.ts",
-      "types": "./src/cn.ts"
+      "types": "./src/cn.ts",
+      "import": "./src/cn.ts"
+    },
+    "./alert-dialog": {
+      "types": "./src/alert-dialog/index.tsx",
+      "import": "./src/alert-dialog/index.tsx"
+    },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
+    },
+    "./avatar": {
+      "types": "./src/avatar/index.tsx",
+      "import": "./src/avatar/index.tsx"
+    },
+    "./button": {
+      "types": "./src/button/index.tsx",
+      "import": "./src/button/index.tsx"
+    },
+    "./checkbox": {
+      "types": "./src/checkbox/index.tsx",
+      "import": "./src/checkbox/index.tsx"
+    },
+    "./checkbox-group": {
+      "types": "./src/checkbox-group/index.tsx",
+      "import": "./src/checkbox-group/index.tsx"
+    },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
+    },
+    "./collapsible": {
+      "types": "./src/collapsible/index.tsx",
+      "import": "./src/collapsible/index.tsx"
+    },
+    "./context-menu": {
+      "types": "./src/context-menu/index.tsx",
+      "import": "./src/context-menu/index.tsx"
+    },
+    "./dialog": {
+      "types": "./src/dialog/index.tsx",
+      "import": "./src/dialog/index.tsx"
+    },
+    "./drawer": {
+      "types": "./src/drawer/index.tsx",
+      "import": "./src/drawer/index.tsx"
+    },
+    "./dropdown-menu": {
+      "types": "./src/dropdown-menu/index.tsx",
+      "import": "./src/dropdown-menu/index.tsx"
+    },
+    "./field": {
+      "types": "./src/field/index.tsx",
+      "import": "./src/field/index.tsx"
+    },
+    "./fieldset": {
+      "types": "./src/fieldset/index.tsx",
+      "import": "./src/fieldset/index.tsx"
+    },
+    "./file-tree": {
+      "types": "./src/file-tree/index.tsx",
+      "import": "./src/file-tree/index.tsx"
+    },
+    "./form": {
+      "types": "./src/form/index.tsx",
+      "import": "./src/form/index.tsx"
+    },
+    "./input": {
+      "types": "./src/input/index.tsx",
+      "import": "./src/input/index.tsx"
+    },
+    "./kbd": {
+      "types": "./src/kbd/index.tsx",
+      "import": "./src/kbd/index.tsx"
+    },
+    "./meter": {
+      "types": "./src/meter/index.tsx",
+      "import": "./src/meter/index.tsx"
+    },
+    "./progress": {
+      "types": "./src/progress/index.tsx",
+      "import": "./src/progress/index.tsx"
+    },
+    "./number-field": {
+      "types": "./src/number-field/index.tsx",
+      "import": "./src/number-field/index.tsx"
+    },
+    "./pagination": {
+      "types": "./src/pagination/index.tsx",
+      "import": "./src/pagination/index.tsx"
+    },
+    "./radio": {
+      "types": "./src/radio/index.tsx",
+      "import": "./src/radio/index.tsx"
+    },
+    "./popover": {
+      "types": "./src/popover/index.tsx",
+      "import": "./src/popover/index.tsx"
+    },
+    "./preview-card": {
+      "types": "./src/preview-card/index.tsx",
+      "import": "./src/preview-card/index.tsx"
+    },
+    "./scroll-area": {
+      "types": "./src/scroll-area/index.tsx",
+      "import": "./src/scroll-area/index.tsx"
+    },
+    "./select": {
+      "types": "./src/select/index.tsx",
+      "import": "./src/select/index.tsx"
+    },
+    "./status-dot": {
+      "types": "./src/status-dot/index.tsx",
+      "import": "./src/status-dot/index.tsx"
+    },
+    "./slider": {
+      "types": "./src/slider/index.tsx",
+      "import": "./src/slider/index.tsx"
+    },
+    "./switch": {
+      "types": "./src/switch/index.tsx",
+      "import": "./src/switch/index.tsx"
+    },
+    "./segmented-control": {
+      "types": "./src/segmented-control/index.tsx",
+      "import": "./src/segmented-control/index.tsx"
+    },
+    "./tabs": {
+      "types": "./src/tabs/index.tsx",
+      "import": "./src/tabs/index.tsx"
+    },
+    "./textarea": {
+      "types": "./src/textarea/index.tsx",
+      "import": "./src/textarea/index.tsx"
+    },
+    "./toast": {
+      "types": "./src/toast/index.tsx",
+      "import": "./src/toast/index.tsx"
+    },
+    "./tooltip": {
+      "types": "./src/tooltip/index.tsx",
+      "import": "./src/tooltip/index.tsx"
     }
+  },
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build",
+    "test": "vp test --project unit",
+    "test:storybook": "vp test --project storybook --run",
+    "test:watch": "vp test --project unit --watch",
+    "type-check": "tsgo"
+  },
+  "peerDependencies": {
+    "@base-ui/react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   },
   "dependencies": {
     "clsx": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:"
+    "@base-ui/react": "catalog:",
+    "@chromatic-com/storybook": "catalog:",
+    "@dify/tsconfig": "workspace:*",
+    "@egoist/tailwindcss-icons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
+    "@storybook/addon-links": "catalog:",
+    "@storybook/addon-themes": "catalog:",
+    "@storybook/addon-vitest": "catalog:",
+    "@storybook/react-vite": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "class-variance-authority": "catalog:",
+    "playwright": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "storybook": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "vitest-browser-react": "catalog:"
   }
 }

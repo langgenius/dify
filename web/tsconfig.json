@@ -1,15 +1,7 @@
 {
+  "extends": "@dify/tsconfig/nextjs.json",
   "compilerOptions": {
     "incremental": true,
-    "target": "es2022",
-    "jsx": "react-jsx",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "module": "esnext",
-    "moduleResolution": "bundler",
     "paths": {
       "@/*": [
         "./*"
@@ -23,18 +15,8 @@
       "vitest/globals",
       "node"
     ],
-    "allowJs": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "allowImportingTsExtensions": true,
+    "allowJs": true
   },
   "include": [
     "next-env.d.ts",

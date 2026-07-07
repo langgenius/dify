@@ -21,7 +21,7 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -119,12 +119,23 @@ describe('AgentLogModal', () => {
     })
   })
 
+  it('should render the floating modal through a dialog portal', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+
+    const { container } = render(<AgentLogModal {...mockProps} floating />)
+
+    const modal = screen.getByRole('dialog')
+    expect(container).not.toContainElement(modal)
+    expect(document.body).toContainElement(modal)
+    expect(modal).toHaveClass('fixed', 'z-50', 'w-[480px]!', 'left-[max(8px,calc(100vw-1136px))]!')
+  })
+
   it('should call onCancel when close button is clicked', () => {
     vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
 
     render(<AgentLogModal {...mockProps} />)
 
-    const closeBtn = screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).nextElementSibling!
+    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(closeBtn)
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
@@ -155,6 +166,20 @@ describe('AgentLogModal', () => {
     })
 
     render(<AgentLogModal {...mockProps} />)
+
+    expect(mockProps.onCancel).not.toHaveBeenCalled()
+  })
+
+  it('should not use click-away to close the floating dialog', () => {
+    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+
+    let clickAwayHandler!: (event: Event) => void
+    vi.mocked(useClickAway).mockImplementation((callback) => {
+      clickAwayHandler = callback
+    })
+
+    render(<AgentLogModal {...mockProps} floating />)
+    clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })

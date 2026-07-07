@@ -35,7 +35,7 @@ vi.mock('@/app/components/base/badge', () => ({
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/button', () => ({
+vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
     <button type="button" data-testid={`action-${variant}`}>{children}</button>
   ),
@@ -64,10 +64,14 @@ vi.mock('../variable-in-markdown', () => ({
   rehypeNotes: vi.fn(),
   rehypeVariable: vi.fn(),
   Variable: ({ path }: { path: string }) => <div data-testid="variable-path">{path}</div>,
-  Note: ({ defaultInput, nodeName }: {
-    defaultInput: { selector: string[] }
+  Note: ({ input, nodeName }: {
+    input: { type: string, default?: { selector: string[] }, option_source?: { selector: string[] } }
     nodeName: (nodeId: string) => string
-  }) => <div data-testid="note">{nodeName(defaultInput.selector[0])}</div>,
+  }) => (
+    <div data-testid="note">
+      {input.default?.selector?.length ? nodeName(input.default.selector[0]!) : input.option_source?.selector?.join('.') || input.type}
+    </div>
+  ),
 }))
 
 describe('FormContentPreview', () => {
@@ -108,13 +112,13 @@ describe('FormContentPreview', () => {
       />,
     )
 
-    expect(container.firstChild).toHaveStyle({ right: '328px' })
-    expect(screen.getByTestId('badge')).toHaveTextContent('nodes.humanInput.formContent.preview')
-    expect(screen.getByTestId('variable-path')).toHaveTextContent('#Classifier.answer#')
-    expect(screen.getByTestId('note')).toHaveTextContent('Classifier')
-    expect(screen.getByText(/Can't find note:/)).toHaveTextContent('missing_field')
-    expect(screen.getByTestId('action-primary')).toHaveTextContent('Approve')
-    expect(screen.getByText('nodes.humanInput.editor.previewTip')).toBeInTheDocument()
+    expect(container.firstChild)!.toHaveStyle({ right: '328px' })
+    expect(screen.getByTestId('badge'))!.toHaveTextContent('nodes.humanInput.formContent.preview')
+    expect(screen.getByTestId('variable-path'))!.toHaveTextContent('#Classifier.answer#')
+    expect(screen.getByTestId('note'))!.toHaveTextContent('Classifier')
+    expect(screen.getByText(/Can't find note:/))!.toHaveTextContent('missing_field')
+    expect(screen.getByTestId('action-primary'))!.toHaveTextContent('Approve')
+    expect(screen.getByText('nodes.humanInput.editor.previewTip'))!.toBeInTheDocument()
   })
 
   it('should close the preview when the close action is clicked', () => {
@@ -130,5 +134,26 @@ describe('FormContentPreview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close-preview' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should pass non-paragraph inputs through the preview note renderer', () => {
+    render(
+      <FormContentPreview
+        content="content"
+        formInputs={[{
+          type: 'select' as never,
+          output_variable_name: 'field_1',
+          option_source: {
+            type: 'variable',
+            selector: ['node-1', 'items'],
+            value: [],
+          },
+        }]}
+        userActions={[]}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByTestId('note')).toHaveTextContent('node-1.items')
   })
 })

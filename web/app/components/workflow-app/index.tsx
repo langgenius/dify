@@ -24,6 +24,7 @@ import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -44,11 +45,16 @@ const WorkflowAppWithAdditionalContext = () => {
     fileUploadConfigResponse,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
   const appId = appDetail?.id
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
@@ -78,15 +84,18 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [workflowStore])
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
-
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
+      return processedNodes
+    }
     return []
   }, [data])
-  const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
 
+  const edgesData = useMemo(() => {
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+      return processedEdges
+    }
     return []
   }, [data])
 
@@ -95,7 +104,7 @@ const WorkflowAppWithAdditionalContext = () => {
   const replayRunId = searchParams.get('replayRunId')
 
   useEffect(() => {
-    if (!replayRunId)
+    if (!replayRunId || !appACLCapabilities.canTestAndRun)
       return
     const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
     if (!runUrl)
@@ -124,11 +133,11 @@ const WorkflowAppWithAdditionalContext = () => {
       setShowInputsPanel(true)
       setShowDebugAndPreviewPanel(true)
     })
-  }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+  }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
-      <div className="relative flex h-full w-full items-center justify-center">
+      <div className="relative flex size-full items-center justify-center">
         <Loading />
       </div>
     )

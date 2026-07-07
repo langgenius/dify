@@ -28,7 +28,7 @@ const ResultItem: FC<ResultItemProps> = ({ result, onSelect }) => {
           </div>
         )}
       </div>
-      <div className="text-xs capitalize text-text-quaternary">
+      <div className="text-xs text-text-quaternary capitalize">
         {result.type}
       </div>
     </Command.Item>

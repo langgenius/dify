@@ -4,6 +4,14 @@ import type {
 } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   memo,
   useMemo,
   useState,
@@ -12,17 +20,12 @@ import { useTranslation } from 'react-i18next'
 import {
   useEdges,
 } from 'reactflow'
-import {
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   useChecklist,
   useNodesInteractions,
 } from '../../hooks'
+import { useHooksStore } from '../../hooks-store/store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
@@ -41,8 +44,10 @@ const WorkflowChecklist = ({
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
+  const checklistLabel = t('panel.checklist', { ns: 'workflow' })
 
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
@@ -71,16 +76,18 @@ const WorkflowChecklist = ({
           <button
             type="button"
             className={cn(
-              'relative ml-0.5 flex h-7 w-7 items-center justify-center rounded-md border-none bg-transparent p-0',
+              'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
               disabled && 'cursor-not-allowed opacity-50',
             )}
             disabled={disabled || undefined}
+            aria-label={checklistLabel}
           >
             <span
-              className={cn('group flex h-full w-full items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
+              className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover"
             >
               <span
-                className={cn('i-ri-list-check-3 h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
+                className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
+                aria-hidden="true"
               />
             </span>
             {!!needWarningNodes.length && (
@@ -104,19 +111,22 @@ const WorkflowChecklist = ({
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
               <div className="min-w-0 grow pr-8">
-                <h2 className="text-base leading-6 font-semibold text-text-primary">
-                  {t('panel.checklist', { ns: 'workflow' })}
+                <PopoverTitle className="text-base/6 font-semibold text-text-primary">
+                  {checklistLabel}
                   {needWarningNodes.length > 0 && `(${needWarningNodes.length})`}
-                </h2>
+                </PopoverTitle>
               </div>
-              <PopoverClose className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg">
-                <span className="i-ri-close-line size-4 text-text-tertiary" />
+              <PopoverClose
+                className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
+                aria-label={t('operation.close', { ns: 'common' })}
+              >
+                <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
               </PopoverClose>
             </div>
             {needWarningNodes.length > 0 && (
-              <p className="px-1 text-xs leading-4 text-text-tertiary">
+              <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">
                 {t('panel.checklistDescription', { ns: 'workflow' })}
-              </p>
+              </PopoverDescription>
             )}
           </div>
 

@@ -1,12 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import {
   cloneElement,
   isValidElement,
   useEffect,
 } from 'react'
-import ShortcutsName from '../shortcuts-name'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
   option: TriggerOption
@@ -27,21 +28,20 @@ export const OptionRow = ({
   onSelect: (option: TriggerOption) => void
 }) => {
   return (
-    <div
-      key={option.id}
-      className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
+    <DropdownMenuItem
+      className="h-auto px-3 py-1.5 system-md-regular"
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+        <div className="flex size-6 shrink-0 items-center justify-center">
           {option.icon}
         </div>
         <span className="ml-2 truncate">{option.name}</span>
       </div>
       {shortcutKey && (
-        <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
+        <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />
       )}
-    </div>
+    </DropdownMenuItem>
   )
 }
 
@@ -111,8 +111,8 @@ export const SingleOptionTrigger = ({
   }
 
   return (
-    <span onClick={handleRunClick}>
+    <button type="button" onClick={handleRunClick}>
       {children}
-    </span>
+    </button>
   )
 }

@@ -20,27 +20,21 @@ describe('tool/copy-id', () => {
   it('should copy content and reset copied state when mouse leaves', () => {
     const { container } = render(<CopyId content="tool-123" />)
 
-    const trigger = screen.getByText('tool-123').parentElement as HTMLElement
+    const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
     const wrapper = container.querySelector('.inline-flex') as HTMLElement
-
-    act(() => {
-      fireEvent.mouseEnter(trigger)
-    })
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copy')).toBeInTheDocument()
 
     act(() => {
       fireEvent.click(trigger)
       vi.advanceTimersByTime(100)
     })
     expect(copy).toHaveBeenCalledWith('tool-123')
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copied')).toBeInTheDocument()
+    expect(trigger).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copied')
 
     act(() => {
       fireEvent.mouseLeave(wrapper)
       vi.advanceTimersByTime(100)
-      fireEvent.mouseEnter(trigger)
     })
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copy')).toBeInTheDocument()
+    expect(trigger).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copy')
   })
 
   it('should stop click propagation from the outer wrapper', () => {

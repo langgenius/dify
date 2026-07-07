@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import { useDSL } from '../use-DSL'
+import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -9,7 +9,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -46,7 +46,7 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))
@@ -71,7 +71,7 @@ const createDeferred = <T>() => {
   return { promise, resolve }
 }
 
-describe('useDSL', () => {
+describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appStoreState = {
@@ -86,7 +86,7 @@ describe('useDSL', () => {
   })
 
   it('should export workflow dsl and download the yaml blob when no secret env is present', async () => {
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.exportCheck()
@@ -106,7 +106,7 @@ describe('useDSL', () => {
   })
 
   it('should forward include and workflow id arguments when exporting dsl directly', async () => {
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.handleExportDSL(true, 'workflow-1')
@@ -123,7 +123,7 @@ describe('useDSL', () => {
     const secretVars = [{ id: 'env-1', value_type: 'secret', value: 'secret-token' }]
     mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
 
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.exportCheck()
@@ -141,7 +141,7 @@ describe('useDSL', () => {
   it('should return early when app detail is unavailable', async () => {
     appStoreState = {}
 
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.exportCheck()
@@ -157,7 +157,7 @@ describe('useDSL', () => {
   it('should notify when export fails', async () => {
     mockExportAppConfig.mockRejectedValue(new Error('export failed'))
 
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.handleExportDSL()
@@ -174,7 +174,7 @@ describe('useDSL', () => {
   it('should notify when exportCheck cannot load the workflow draft', async () => {
     mockFetchWorkflowDraft.mockRejectedValue(new Error('draft fetch failed'))
 
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
 
     await act(async () => {
       await result.current.exportCheck()
@@ -193,7 +193,7 @@ describe('useDSL', () => {
     const deferred = createDeferred<{ data: string }>()
     mockExportAppConfig.mockReturnValue(deferred.promise)
 
-    const { result } = renderHook(() => useDSL())
+    const { result } = renderHook(() => useDSLByCanEdit(true))
     let firstExportPromise!: Promise<void>
 
     act(() => {

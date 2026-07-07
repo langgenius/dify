@@ -22,9 +22,8 @@ vi.mock('../use-config', () => ({
   default: (...args: unknown[]) => mockUseConfig(...args),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: {
     checked?: boolean
     disabled?: boolean
     onCheckedChange: (value: boolean) => void

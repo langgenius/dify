@@ -1,14 +1,15 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useSendMail } from '@/service/use-common'
 
@@ -21,7 +22,7 @@ export default function Form({
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { mutateAsync: submitMail, isPending } = useSendMail()
 

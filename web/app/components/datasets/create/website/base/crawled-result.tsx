@@ -10,14 +10,14 @@ import CrawledResultItem from './crawled-result-item'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview: (payload: CrawlResultItem) => void
   usedTime: number
-}
+}>
 
 const CrawledResult: FC<Props> = ({
   className = '',
@@ -53,7 +53,7 @@ const CrawledResult: FC<Props> = ({
   const handlePreview = useCallback((index: number) => {
     return () => {
       setPreviewIndex(index)
-      onPreview(list[index])
+      onPreview(list[index]!)
     }
   }, [list, onPreview])
 
@@ -65,7 +65,6 @@ const CrawledResult: FC<Props> = ({
           onChange={handleCheckedAll}
           label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
           labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
-          testId="select-all"
         />
         <div className="text-xs text-text-tertiary">
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
@@ -84,7 +83,6 @@ const CrawledResult: FC<Props> = ({
             payload={item}
             isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
             onCheckChange={handleItemCheckChange(item)}
-            testId={`item-${index}`}
           />
         ))}
       </div>

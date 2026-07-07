@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import PresetsParameter from '../presets-parameter'
+import { getSupportedPresetConfig } from '../presets-parameter-utils'
 
 describe('PresetsParameter', () => {
   beforeEach(() => {
@@ -46,5 +47,23 @@ describe('PresetsParameter', () => {
     fireEvent.click(screen.getByText('common.model.tone.Precise'))
 
     expect(onSelect).toHaveBeenCalledWith(3)
+  })
+
+  it('should render presets when at least one preset parameter is supported', () => {
+    render(<PresetsParameter onSelect={vi.fn()} supportedParameterNames={['temperature']} />)
+
+    expect(screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i })).toBeInTheDocument()
+  })
+
+  it('should not render presets when no preset parameters are supported', () => {
+    render(<PresetsParameter onSelect={vi.fn()} supportedParameterNames={['max_tokens']} />)
+
+    expect(screen.queryByRole('button', { name: /common\.modelProvider\.loadPresets/i })).not.toBeInTheDocument()
+  })
+
+  it('should return only supported preset config keys', () => {
+    expect(getSupportedPresetConfig(1, ['temperature'])).toEqual({
+      temperature: 0.8,
+    })
   })
 })

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log/agent-log-trigger'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
@@ -138,27 +138,29 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
         />
         {process_data && (
           <CodeEditor
             readOnly
+            showFileList
             title={<div>{t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
-            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
+            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
           />
         )}
         {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
+            showFileList
             title={<div>{t('common.output', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
+            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mt-2 mb-1 h-7" />}
           />
         )}
       </div>

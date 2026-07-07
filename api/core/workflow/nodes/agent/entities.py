@@ -1,12 +1,12 @@
 from enum import IntEnum, StrEnum, auto
 from typing import Any, Literal, Union
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import BuiltinNodeTypes, NodeType
 from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
 
 
 class AgentNodeData(BaseNodeData):
