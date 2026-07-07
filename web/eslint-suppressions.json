@@ -4661,22 +4661,6 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/data-source-page-new/card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/header/account-setting/data-source-page-new/configure.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4685,14 +4669,6 @@
   "app/components/header/account-setting/data-source-page-new/install-from-marketplace.tsx": {
     "tailwindcss/enforce-consistent-class-order": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/account-setting/data-source-page-new/item.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -5190,17 +5166,6 @@
     }
   },
   "app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
-    "tailwindcss/enforce-consistent-class-order": {
-      "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/plugins/plugin-auth/authorize/api-key-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -5211,14 +5176,6 @@
     },
     "tailwindcss/enforce-consistent-class-order": {
       "count": 1
-    }
-  },
-  "app/components/plugins/plugin-auth/authorize/oauth-client-settings.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/plugins/plugin-auth/authorized-in-node.tsx": {
