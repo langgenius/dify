@@ -9,6 +9,7 @@ import pytest
 
 from dify_agent.agent_stub.cli._drive import DrivePullResult
 from dify_agent.agent_stub.cli.main import main
+from dify_agent.agent_stub.client._errors import AgentStubTransferError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigFileItemsResponse,
     AgentStubConfigFileItem,
@@ -450,6 +451,7 @@ def test_cli_file_upload_prints_uploaded_tool_file_json(
                     {
                         "transfer_method": "tool_file",
                         "reference": _reference(Path(path).name),
+                        "download_url": f"https://files.example.com/{Path(path).name}",
                     }
                 )
             },
@@ -464,7 +466,29 @@ def test_cli_file_upload_prints_uploaded_tool_file_json(
     assert json.loads(captured.out) == {
         "transfer_method": "tool_file",
         "reference": _reference("report.pdf"),
+        "download_url": "https://files.example.com/report.pdf",
     }
+
+
+def test_cli_file_upload_exits_non_zero_without_partial_json_when_download_lookup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _patch_cli_module(
+        monkeypatch,
+        "_files_module",
+        upload_file_from_environment=lambda *, path: (_ for _ in ()).throw(
+            AgentStubTransferError("signed file download request failed")
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["file", "upload", "/tmp/report.pdf"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 1
+    assert captured.out == ""
+    assert "signed file download request failed" in captured.err
 
 
 def test_cli_file_download_prints_saved_path(

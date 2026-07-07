@@ -11,6 +11,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PlainLayer
 from dify_agent.agent_stub.cli.main import render_agent_stub_cli_help
+from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
     DIFY_CONFIG_LAYER_TYPE_ID,
     DifyConfigLayerConfig,
@@ -176,7 +177,11 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         ]
         if not command_sections:
             return ""
-        return "Agent file CLI help from the real shell environment:\n" + "\n\n".join(command_sections)
+        return (
+            "Agent file CLI help from the real shell environment:\n"
+            + "\n\n".join(command_sections)
+            + f"\n\n{_AGENT_FILE_UPLOAD_REPLY_HINT}"
+        )
 
     def _format_config_context_json(self) -> str:
         return self.config.model_dump_json(exclude=_CONFIG_CONTEXT_EXCLUDE, exclude_none=True)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 from io import BytesIO
 from pathlib import Path
 import stat
@@ -14,14 +16,20 @@ from dify_agent.agent_stub.cli._drive import (
     pull_drive_from_environment,
     push_drive_from_environment,
 )
-from dify_agent.agent_stub.cli._files import UploadedToolFileMapping, UploadedToolFileResource
+from dify_agent.agent_stub.cli._files import UploadedToolFileResource
 from dify_agent.agent_stub.client._errors import AgentStubTransferError, AgentStubValidationError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitRequest,
     AgentStubDriveCommitResponse,
     AgentStubDriveItem,
+    AgentStubFileMapping,
     AgentStubDriveManifestResponse,
 )
+
+
+def _reference(record_id: str) -> str:
+    payload = base64.urlsafe_b64encode(json.dumps({"record_id": record_id}, separators=(",", ":")).encode()).decode()
+    return f"dify-file-ref:{payload}"
 
 
 def test_list_drive_manifest_from_environment_returns_manifest_model(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -535,7 +543,7 @@ def test_push_drive_from_environment_commits_single_file(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.upload_tool_file_resource_from_environment",
         lambda *, path: UploadedToolFileResource(
-            mapping=UploadedToolFileMapping(reference="dify-file-ref:tool-file-1"),
+            mapping=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
             tool_file_id="tool-file-1",
         ),
     )
@@ -638,11 +646,14 @@ def test_push_drive_from_environment_kind_skill_standardizes_skill_directory(
     uploaded_paths: list[str] = []
 
     def fake_upload(*, path: str) -> UploadedToolFileResource:
-        uploaded_paths.append(Path(path).name)
-        return UploadedToolFileResource(
-            mapping=UploadedToolFileMapping(reference=f"dify-file-ref:{Path(path).name}"),
-            tool_file_id=Path(path).name,
-        )
+            uploaded_paths.append(Path(path).name)
+            return UploadedToolFileResource(
+                mapping=AgentStubFileMapping(
+                    transfer_method="tool_file",
+                    reference=_reference(Path(path).name),
+                ),
+                tool_file_id=Path(path).name,
+            )
 
     monkeypatch.setattr("dify_agent.agent_stub.cli._drive.upload_tool_file_resource_from_environment", fake_upload)
     monkeypatch.setattr(
@@ -697,7 +708,10 @@ def test_push_drive_from_environment_kind_skill_archive_excludes_transient_entri
             with ZipFile(path) as archive:
                 archive_entries.extend(sorted(archive.namelist()))
         return UploadedToolFileResource(
-            mapping=UploadedToolFileMapping(reference=f"dify-file-ref:{Path(path).name}"),
+            mapping=AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference=_reference(Path(path).name),
+            ),
             tool_file_id=Path(path).name,
         )
 
@@ -821,7 +835,10 @@ def test_push_drive_from_environment_kind_dir_keeps_user_files_that_skill_packag
     def fake_upload(*, path: str) -> UploadedToolFileResource:
         uploaded_paths.append(Path(path).relative_to(root).as_posix())
         return UploadedToolFileResource(
-            mapping=UploadedToolFileMapping(reference=f"dify-file-ref:{Path(path).name}"),
+            mapping=AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference=_reference(Path(path).name),
+            ),
             tool_file_id=Path(path).name,
         )
 

@@ -429,6 +429,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert "final_output.report" in output_description
     assert "never invent the `reference` value" in output_description
     assert "Do not call `final_output` before the upload command succeeds" in output_description
+    assert "accepted file-mapping shape and the returned `reference`" in output_description
+    assert "include the returned `download_url` in that reply" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}

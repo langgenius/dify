@@ -21,6 +21,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import EmptyRuntimeState, LayerDeps, PlainLayer
 from dify_agent.agent_stub.protocol import agent_stub_drive_base_for_ref
+from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 
@@ -128,7 +129,11 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         ]
         if not command_sections:
             return ""
-        return "Agent Stub file CLI help from the real shell environment:\n" + "\n\n".join(command_sections)
+        return (
+            "Agent Stub file CLI help from the real shell environment:\n"
+            + "\n\n".join(command_sections)
+            + f"\n\n{_AGENT_FILE_UPLOAD_REPLY_HINT}"
+        )
 
     async def _load_agent_stub_cli_help(self) -> None:
         self._agent_stub_cli_help = {}

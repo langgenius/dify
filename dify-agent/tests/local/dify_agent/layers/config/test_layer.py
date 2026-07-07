@@ -9,7 +9,11 @@ import pytest
 
 from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.config import DifyConfigLayerConfig
-from dify_agent.layers.config.layer import DifyConfigLayer, DifyConfigLayerError
+from dify_agent.layers.config.layer import (
+    DifyConfigLayer,
+    DifyConfigLayerError,
+    _AGENT_FILE_UPLOAD_REPLY_HINT,
+)
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
@@ -136,6 +140,10 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     )
     assert "$ dify-agent file upload --help" in suffix_prompt
     assert "$ dify-agent file download --help" in suffix_prompt
+    assert suffix_prompt.index("$ dify-agent file upload --help") < suffix_prompt.index(
+        "$ dify-agent file download --help"
+    )
+    assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt
 
 
 @pytest.mark.anyio

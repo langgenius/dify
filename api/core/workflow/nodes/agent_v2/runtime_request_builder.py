@@ -614,11 +614,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         broad generated schema but fails API-side output type checking.
 
         For files produced inside an Agent run, the supported persisted shape is
-        narrower than every downloadable mapping: the sandbox must upload the
-        local artifact via ``dify-agent file upload <path>``, which returns a
-        ``tool_file`` mapping. ``local_file`` and ``datasource_file`` are valid
-        for existing file references in workflow context, not for newly produced
-        Agent output files.
+        narrower than the full CLI upload stdout: the sandbox must upload the
+        local artifact via ``dify-agent file upload <path>``, then use the
+        returned ``reference`` inside the accepted ``tool_file`` mapping shape
+        for structured ``final_output``. ``local_file`` and ``datasource_file``
+        are valid for existing file references in workflow context, not for
+        newly produced Agent output files.
         """
         return {
             "title": "AgentStubFileMapping",
@@ -673,9 +674,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             if output.type == DeclaredOutputType.FILE:
                 file_output_lines.append(
                     f"- `{output.name}`: create the file in the sandbox, run `dify-agent file upload <path>`, "
-                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object. "
-                    "Do not call `final_output` before the upload command succeeds. Do not use the local path, "
-                    "filename, URL, or a synthesized/base64-encoded value as the `reference`."
+                    f"then set `final_output.{output.name}` to a `tool_file` mapping using the returned "
+                    f"`reference`. Do not call `final_output` before the upload command succeeds. Do not use "
+                    "the local path, filename, URL, or a synthesized/base64-encoded value as the `reference`."
                 )
             elif (
                 output.type == DeclaredOutputType.ARRAY
@@ -684,9 +685,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             ):
                 file_output_lines.append(
                     f"- `{output.name}`: for every produced file, run `dify-agent file upload <path>` and set "
-                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects. "
-                    "Do not call `final_output` before all upload commands succeed. Do not use local paths, filenames, "
-                    "URLs, or synthesized/base64-encoded values as `reference` values."
+                    f"`final_output.{output.name}` to an array of `tool_file` mappings using the returned "
+                    f"`reference` values. Do not call `final_output` before all upload commands succeed. Do not use "
+                    "local paths, filenames, URLs, or synthesized/base64-encoded values as `reference` values."
                 )
         if not file_output_lines:
             return None
@@ -694,8 +695,11 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "\n".join(
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
-                "Upload each sandbox-local file through the Agent Stub CLI first. Copy the JSON printed by "
-                "`dify-agent file upload <path>` verbatim into the final output; never invent the `reference` value.",
+                "Upload each sandbox-local file through the Agent Stub CLI first. For structured `final_output`, use "
+                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` value.",
+                "If you are replying to the user in natural language and want them to open or download the produced "
+                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
         )
