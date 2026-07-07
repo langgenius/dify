@@ -74,6 +74,7 @@ class AgentAppRuntimeBuildContext:
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
+    suspend_on_exit: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,6 +175,7 @@ class AgentAppRuntimeRequestBuilder:
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 deferred_tool_results=context.deferred_tool_results,
+                suspend_on_exit=context.suspend_on_exit,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )

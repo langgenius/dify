@@ -98,24 +98,6 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         return super().cancel_run(run_id, request=request)
 
 
-class _BlockingRecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.wait_calls: list[tuple[str, float | None]] = []
-        self.stream_called = False
-
-    @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
-        del run_id, after
-        self.stream_called = True
-        return iter(())
-
-    @override
-    def wait_run(self, run_id: str, *, timeout_seconds: float | None = None):
-        self.wait_calls.append((run_id, timeout_seconds))
-        return super().wait_run(run_id, timeout_seconds=timeout_seconds)
-
-
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
     def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
@@ -341,6 +323,7 @@ class _FakeSessionStore:
                 str | None,
             ]
         ] = []
+        self.cleaned: list[tuple[AgentAppSessionScope, str | None]] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
         self.loaded_scopes.append(scope)
@@ -367,6 +350,9 @@ class _FakeSessionStore:
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
         )
+
+    def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str | None = None) -> None:
+        self.cleaned.append((scope, backend_run_id))
 
 
 class _MonotonicClock:
@@ -423,7 +409,7 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
+def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_intent: str = "suspend") -> None:
     runner.run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
@@ -434,18 +420,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
-    )
-
-
-def _run_stateless(runner: AgentAppRunner) -> None:
-    runner.run_stateless(
-        dify_context=_dify_ctx(),
-        agent_id="agent-1",
-        agent_config_snapshot_id="snap-1",
-        agent_soul=_soul(),
-        conversation_id="conv-1",
-        query="finalize",
-        idempotency_key="run-req-1",
+        agent_runtime_exit_intent=agent_runtime_exit_intent,  # type: ignore[arg-type]
     )
 
 
@@ -470,6 +445,8 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
 
     _run(_runner(client, store), qm)
 
+    assert client.request is not None
+    assert client.request.on_exit.default.value == "suspend"
     # One LLM chunk + one message-end, carrying the backend's answer text.
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
@@ -490,6 +467,56 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     # A successful turn carries no ask_human pause correlation.
     assert pending_form_id is None
     assert pending_tool_call_id is None
+    assert store.cleaned == []
+
+
+def test_delete_on_exit_turn_marks_session_cleaned_without_saving_snapshot():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store, text_delta_debounce_seconds=0), qm, agent_runtime_exit_intent="delete")
+
+    assert client.request is not None
+    assert client.request.on_exit.default.value == "delete"
+    assert store.saved == []
+    assert len(store.cleaned) == 1
+    cleaned_scope, cleaned_run_id = store.cleaned[0]
+    assert cleaned_scope.conversation_id == "conv-1"
+    assert cleaned_scope.agent_config_snapshot_id == "snap-1"
+    assert cleaned_run_id == "fake-run-1"
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+
+
+def test_delete_on_exit_turn_swallows_cleanup_failure_after_success():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store, text_delta_debounce_seconds=0), qm, agent_runtime_exit_intent="delete")
+
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+
+
+def test_delete_on_exit_turn_marks_session_cleaned_when_publish_fails():
+    client = _StreamingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+    runner = _runner(client, store, text_delta_debounce_seconds=0)
+    runner._publish_terminal_answer = MagicMock(side_effect=RuntimeError("publish failed"))
+
+    with pytest.raises(RuntimeError, match="publish failed"):
+        _run(runner, qm, agent_runtime_exit_intent="delete")
+
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
 
 
 def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_duplicate_terminal_chunk():
@@ -801,31 +828,6 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
     assert store.saved[0][0].agent_config_snapshot_id is None
 
 
-def test_stateless_run_uses_bounded_wait_and_does_not_save_session_state():
-    prior = CompositorSessionSnapshot(layers=[])
-    client = _BlockingRecordingFakeAgentBackendRunClient()
-    store = _FakeSessionStore(loaded=prior)
-
-    _run_stateless(_runner(client, store))
-
-    assert client.request is not None
-    assert client.request.session_snapshot is prior
-    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
-    assert client.stream_called is False
-    assert store.saved == []
-
-
-def test_stateless_run_raises_backend_error_on_failed_bounded_wait():
-    client = _BlockingRecordingFakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
-    store = _FakeSessionStore()
-
-    with pytest.raises(AgentBackendError):
-        _run_stateless(_runner(client, store))
-
-    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
-    assert store.saved == []
-
-
 def test_failed_run_raises_agent_backend_error():
     client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
     store = _FakeSessionStore()
@@ -883,6 +885,22 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
     assert store.saved
     assert store.saved[0][4] == "form-1"
     assert store.saved[0][5] == "fake-ask-human-1"
+
+
+def test_delete_on_exit_deferred_tool_marks_session_cleaned_and_raises_error():
+    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+    store = _FakeSessionStore()
+    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
+    qm = _FakeQueueManager()
+    runner = _runner(client, store)
+    runner._pause_for_ask_human = MagicMock()
+
+    with pytest.raises(AgentBackendError, match="finalization cannot pause for human input"):
+        _run(runner, qm, agent_runtime_exit_intent="delete")
+
+    runner._pause_for_ask_human.assert_not_called()
+    assert store.saved == []
+    store.mark_cleaned.assert_called_once()
 
 
 def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):

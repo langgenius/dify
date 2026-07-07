@@ -1,14 +1,11 @@
 """Agent App generator: orchestrate Agent App chat and finalize executions.
 
-The primary mode mirrors the agent_chat generator (conversation + message +
+Agent App turns mirror the agent_chat generator (conversation + message +
 queue + streamed response over the EasyUI chat pipeline), but the backing
 config comes from the bound Agent Soul and the answer is produced by
 ``AgentAppRunner`` calling the dify-agent backend rather than an in-process
-LLM/ReAct loop.
-
-It also exposes a stateless build-finalize mode that reuses existing runtime
-context from the bound debug conversation, triggers the Agent backend side
-effect synchronously, and skips Dify-side chat/message persistence.
+LLM/ReAct loop. Build-chat finalization uses this same streamed path and only
+changes the runtime exit policy carried to the backend.
 """
 
 from __future__ import annotations
@@ -41,7 +38,9 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
+    AGENT_RUNTIME_EXIT_INTENT_ARG,
     AgentAppGenerateEntity,
+    AgentRuntimeExitIntent,
     DifyRunContext,
     InvokeFrom,
     UserFrom,
@@ -120,6 +119,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         model_conf = ModelConfigConverter.convert(app_config)
 
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        agent_runtime_exit_intent = self._resolve_agent_runtime_exit_intent(args)
 
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -149,6 +149,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
             agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
+            agent_runtime_exit_intent=agent_runtime_exit_intent,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -186,86 +187,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
-
-    def generate_stateless(
-        self,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-    ) -> Mapping[str, Any]:
-        """Run one Agent App turn without persisting Dify conversation messages."""
-        query = self._require_query(args)
-        conversation_id = args.get("conversation_id")
-        if not isinstance(conversation_id, str) or not conversation_id:
-            raise AgentAppGeneratorError("conversation_id is required")
-
-        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
-            app_model,
-            invoke_from=invoke_from,
-            draft_type=args.get("draft_type"),
-            user=user,
-        )
-        runtime_session_snapshot_id = self._runtime_session_snapshot_id(
-            invoke_from=invoke_from,
-            snapshot_id=agent_config_id,
-        )
-
-        return self._run_stateless(
-            app_model=app_model,
-            user=user,
-            invoke_from=invoke_from,
-            query=query,
-            conversation_id=conversation_id,
-            agent=agent,
-            agent_config_id=agent_config_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            runtime_session_snapshot_id=runtime_session_snapshot_id,
-        )
-
-    def _run_stateless(
-        self,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        invoke_from: InvokeFrom,
-        query: str,
-        conversation_id: str,
-        agent: Agent,
-        agent_config_id: str,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
-        agent_soul: AgentSoulConfig,
-        runtime_session_snapshot_id: str | None,
-    ) -> Mapping[str, Any]:
-        """Run the Agent backend without creating or updating Dify chat records.
-
-        Build-chat finalization is an action against the Agent backend (for
-        example, ``dify-agent config push``). It may reuse the active build-chat
-        runtime snapshot for shell/config context, but the API side must not add
-        a synthetic user/assistant turn to the debug conversation.
-        """
-
-        dify_context = DifyRunContext(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            user_id=user.id,
-            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
-            invoke_from=invoke_from,
-        )
-        self._build_runner(dify_context).run_stateless(
-            dify_context=dify_context,
-            agent_id=agent.id,
-            agent_config_snapshot_id=agent_config_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            conversation_id=conversation_id,
-            query=query,
-            idempotency_key=str(uuid.uuid4()),
-            session_scope_snapshot_id=runtime_session_snapshot_id,
-        )
-        return {"result": "success"}
 
     def resume_after_form_submission(
         self,
@@ -476,6 +397,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
                     session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
+                    agent_runtime_exit_intent=application_generate_entity.agent_runtime_exit_intent,
                 )
             except GenerateTaskStoppedError:
                 pass
@@ -491,6 +413,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         if not isinstance(query, str) or not query.strip():
             raise AgentAppGeneratorError("query is required")
         return query.replace("\x00", "")
+
+    @staticmethod
+    def _resolve_agent_runtime_exit_intent(args: Mapping[str, Any]) -> AgentRuntimeExitIntent:
+        """Resolve API-internal runtime exit policy from controller-owned args.
+
+        Only the private controller-injected "delete" value changes behavior.
+        Normal chat and resume flows default/fallback to "suspend" so public
+        payloads and invalid internal values preserve existing semantics.
+        """
+        if args.get(AGENT_RUNTIME_EXIT_INTENT_ARG) == "delete":
+            return "delete"
+        return "suspend"
 
     @staticmethod
     def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:

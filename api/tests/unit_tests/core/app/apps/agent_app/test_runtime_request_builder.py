@@ -143,6 +143,7 @@ def _ctx(
     *,
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
+    suspend_on_exit: bool = True,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -160,6 +161,7 @@ def _ctx(
         user_query=query,
         idempotency_key="msg-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
+        suspend_on_exit=suspend_on_exit,
     )
 
 
@@ -207,6 +209,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exec_ctx.config.user_from == "end-user"
         assert exec_ctx.config.invoke_from == "web-app"
         assert exec_ctx.config.agent_mode == "agent_app"
+        assert req.on_exit.default.value == "suspend"
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
@@ -241,6 +244,16 @@ class TestAgentAppRuntimeRequestBuilder:
         assert prompt_layer.config.prefix == "You are Iris."
         assert execution_context.config.agent_config_version_kind == "draft"
         assert config_layer.config.config_version.kind == "draft"
+
+    def test_build_uses_delete_on_exit_when_requested(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), suspend_on_exit=False))
+
+        assert result.request.on_exit.default.value == "delete"
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
         soul = _soul_with_model()

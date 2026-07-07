@@ -1,15 +1,10 @@
-"""Agent App runner: drive Agent backend turns for both chat and finalize flows.
+"""Agent App runner: drive Agent backend turns for chat and finalization flows.
 
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
-this runner delegates to the Agent backend and supports two execution modes.
-
-- Normal chat turns build the run request from the Agent Soul + conversation,
-  consume backend stream events, republish the assistant answer through the
-  existing EasyUI chat task pipeline, and save the conversation
-  ``session_snapshot`` on success for multi-turn continuity (S3).
-- Stateless build-finalize turns reuse any prior conversation snapshot only to
-  construct the backend request, wait synchronously for backend completion, and
-  intentionally do not persist Dify-side chat records or runtime-session state.
+this runner delegates to the Agent backend, consumes the streamed event flow,
+republishes the assistant answer through the existing EasyUI chat task
+pipeline, and then either saves or retires the conversation-owned runtime
+session depending on the turn's exit policy.
 """
 
 from __future__ import annotations
@@ -35,7 +30,6 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
 )
-from configs import dify_config
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -48,7 +42,7 @@ from core.app.apps.agent_app.session_store import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import DifyRunContext
+from core.app.entities.app_invoke_entities import AgentRuntimeExitIntent, DifyRunContext
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
@@ -512,7 +506,9 @@ class AgentAppRunner:
         model_name: str,
         queue_manager: AppQueueManager,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
+        agent_runtime_exit_intent: AgentRuntimeExitIntent = "suspend",
     ) -> None:
+        preserve_session = agent_runtime_exit_intent == "suspend"
         scope = self._build_session_scope(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -534,6 +530,7 @@ class AgentAppRunner:
             idempotency_key=message_id,
             stored=stored,
             message_id=message_id,
+            suspend_on_exit=preserve_session,
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
@@ -547,6 +544,9 @@ class AgentAppRunner:
         )
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
+            if not preserve_session:
+                self._mark_session_cleaned(scope=scope, backend_run_id=terminal.run_id)
+                raise AgentBackendError("Agent App finalization cannot pause for human input.")
             # ENG-635: the agent asked a human. End this turn with the question and
             # a conversation-owned HITL form; a form submission resumes the run.
             self._pause_for_ask_human(
@@ -568,69 +568,37 @@ class AgentAppRunner:
             raise AgentBackendError(str(error))
 
         answer = self._extract_answer(terminal.output)
-        self._publish_terminal_answer(
-            queue_manager=queue_manager,
-            model_name=model_name,
-            answer=answer,
-            query=query,
-            streamed_answer=streamed_answer,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
-        )
-        self._save_session(
-            scope=scope,
-            backend_run_id=terminal.run_id,
-            snapshot=terminal.session_snapshot,
-            runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
-        )
-
-    def run_stateless(
-        self,
-        *,
-        dify_context: DifyRunContext,
-        agent_id: str,
-        agent_config_snapshot_id: str,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
-        agent_soul: AgentSoulConfig,
-        conversation_id: str,
-        query: str,
-        idempotency_key: str,
-        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
-    ) -> None:
-        """Run the Agent backend without creating Dify chat message records.
-
-        This path is used by build-chat finalization: the API must trigger the
-        backend side effects in the existing conversation session, but it must
-        not persist a synthetic user/assistant turn, update API-side runtime
-        session rows, or set up HITL state that depends on one.
-        """
-        scope = self._build_session_scope(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
-            conversation_id=conversation_id,
-            session_scope_snapshot_id=session_scope_snapshot_id,
-        )
-        runtime = self._build_runtime(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            conversation_id=conversation_id,
-            query=query,
-            idempotency_key=idempotency_key,
-            stored=self._session_store.load_active_session(scope),
-            message_id=None,
-        )
-
-        create_response = self._agent_backend_client.create_run(runtime.request)
-        status = self._agent_backend_client.wait_run(
-            create_response.run_id,
-            timeout_seconds=dify_config.APP_MAX_EXECUTION_TIME,
-        )
-        if status.status != "succeeded":
-            error = getattr(status, "error", None) or f"Agent backend run ended with status {status.status}."
-            raise AgentBackendError(str(error))
+        if preserve_session:
+            self._publish_terminal_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                query=query,
+                streamed_answer=streamed_answer,
+                usage=_llm_usage_from_agent_backend(terminal.usage),
+            )
+            self._save_session(
+                scope=scope,
+                backend_run_id=terminal.run_id,
+                snapshot=terminal.session_snapshot,
+                runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
+            )
+        else:
+            # The backend has already accepted a terminal success with
+            # delete-on-exit semantics. Local publish/persistence errors must
+            # not keep the API-side session row active, and cleanup failures
+            # must not replace the original publish/error outcome.
+            try:
+                self._publish_terminal_answer(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    answer=answer,
+                    query=query,
+                    streamed_answer=streamed_answer,
+                    usage=_llm_usage_from_agent_backend(terminal.usage),
+                )
+            finally:
+                self._mark_session_cleaned(scope=scope, backend_run_id=terminal.run_id)
 
     def _build_session_scope(
         self,
@@ -666,6 +634,7 @@ class AgentAppRunner:
         idempotency_key: str,
         stored: StoredAgentAppSession | None,
         message_id: str | None,
+        suspend_on_exit: bool,
     ) -> AgentAppRuntimeRequest:
         session_snapshot = stored.session_snapshot if stored is not None else None
         deferred_tool_results = (
@@ -685,6 +654,7 @@ class AgentAppRunner:
                 idempotency_key=idempotency_key,
                 session_snapshot=session_snapshot,
                 deferred_tool_results=deferred_tool_results,
+                suspend_on_exit=suspend_on_exit,
             )
         )
 
@@ -944,6 +914,31 @@ class AgentAppRunner:
                 scope.app_id,
                 scope.conversation_id,
                 scope.agent_id,
+                exc_info=True,
+            )
+
+    def _mark_session_cleaned(
+        self,
+        *,
+        scope: AgentAppSessionScope,
+        backend_run_id: str,
+    ) -> None:
+        """Best-effort delete-on-exit cleanup for the API-side session row.
+
+        Once the Agent backend reaches a terminal event, cleanup persistence
+        must not replace the original publish/error outcome for that turn.
+        """
+        try:
+            self._session_store.mark_cleaned(scope=scope, backend_run_id=backend_run_id)
+        except Exception:
+            logger.warning(
+                "Failed to retire Agent App conversation session after delete-on-exit: "
+                "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                scope.tenant_id,
+                scope.app_id,
+                scope.conversation_id,
+                scope.agent_id,
+                backend_run_id,
                 exc_info=True,
             )
 
