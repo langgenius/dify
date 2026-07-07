@@ -1245,10 +1245,9 @@ class RagPipelineService:
         workflow = session.get(Workflow, pipeline.workflow_id)
         if not workflow:
             raise ValueError("Workflow not found")
-        with sessionmaker(db.engine).begin() as dataset_session:
-            dataset = pipeline.retrieve_dataset(session=dataset_session)
-            if not dataset:
-                raise ValueError("Dataset not found")
+        dataset = pipeline.retrieve_dataset(session=session)
+        if not dataset:
+            raise ValueError("Dataset not found")
 
         # check template name is exist
         template_name = args.get("name")
@@ -1272,9 +1271,8 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with sessionmaker(db.engine).begin() as export_session:
-            rag_pipeline_dsl_service = RagPipelineDslService(export_session)
-            dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
+        rag_pipeline_dsl_service = RagPipelineDslService(session)
+        dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:
             args["icon_info"] = {}
         if args.get("description") is None:
@@ -1311,11 +1309,7 @@ class RagPipelineService:
     def get_node_last_run(
         self, pipeline: Pipeline, workflow: Workflow, node_id: str
     ) -> WorkflowNodeExecutionModel | None:
-        node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            sessionmaker(db.engine)
-        )
-
-        node_exec = node_execution_service_repo.get_node_last_execution(
+        node_exec = self._node_execution_service_repo.get_node_last_execution(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             workflow_id=workflow.id,
