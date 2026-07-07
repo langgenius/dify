@@ -152,8 +152,8 @@ def _tenant_service(**overrides) -> SimpleNamespace:
         "get_tenant_members": Mock(return_value=[]),
         "remove_member_from_tenant": Mock(),
         "update_member_role": Mock(),
-        "get_tenant_by_id": lambda session, tenant_id: session.get(None, tenant_id),
-        "find_workspace_for_account": lambda session, account_id, workspace_id: session.execute(None).first(),
+        "get_tenant_by_id": lambda tenant_id, *, session: session.get(None, tenant_id),
+        "find_workspace_for_account": lambda account_id, workspace_id, *, session: session.execute(None).first(),
     }
     methods.update(overrides)
     return SimpleNamespace(**methods)
@@ -163,7 +163,7 @@ def _account_service(**overrides) -> SimpleNamespace:
     """AccountService double; ``get_account_by_id`` delegates to the injected
     session (see :func:`_tenant_service`)."""
     methods: dict = {
-        "get_account_by_id": lambda session, account_id: session.get(None, account_id),
+        "get_account_by_id": lambda account_id, *, session: session.get(None, account_id),
     }
     methods.update(overrides)
     return SimpleNamespace(**methods)

@@ -331,7 +331,7 @@ class TestAsyncWorkflowService:
         assert trigger_log.triggered_at is not None
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
-        called_trigger_data = mock_trigger_workflow_async.call_args[0][2]
+        called_trigger_data = mock_trigger_workflow_async.call_args.args[1]
         assert isinstance(called_trigger_data, TriggerData)
         assert called_trigger_data.app_id == "app-123"
 

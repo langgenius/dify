@@ -3,11 +3,12 @@
 import logging
 import time
 import uuid
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
@@ -94,6 +95,8 @@ class SummaryIndexService:
         dataset: Dataset,
         summary_content: str,
         status: SummaryStatus = SummaryStatus.GENERATING,
+        *,
+        session: Session | None = None,
     ) -> DocumentSegmentSummary:
         """
         Create or update a DocumentSegmentSummary record.
@@ -104,47 +107,110 @@ class SummaryIndexService:
             dataset: Dataset containing the segment
             summary_content: Generated summary content
             status: Summary status (default: SummaryStatus.GENERATING)
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             Created or updated DocumentSegmentSummary instance
         """
-        with session_factory.create_session() as session:
-            # Check if summary record already exists
-            existing_summary = session.scalar(
-                select(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id == segment.id,
-                    DocumentSegmentSummary.dataset_id == dataset.id,
-                )
-                .limit(1)
-            )
-
-            if existing_summary:
-                # Update existing record
-                existing_summary.summary_content = summary_content
-                existing_summary.status = status
-                existing_summary.error = None  # Clear any previous errors
-                # Re-enable if it was disabled
-                if not existing_summary.enabled:
-                    existing_summary.enabled = True
-                    existing_summary.disabled_at = None
-                    existing_summary.disabled_by = None
-                session.add(existing_summary)
-                session.flush()
-                return existing_summary
-            else:
-                # Create new record (enabled by default)
-                summary_record = DocumentSegmentSummary(
-                    dataset_id=dataset.id,
-                    document_id=segment.document_id,
-                    chunk_id=segment.id,
-                    summary_content=summary_content,
+        if session is None:
+            with session_factory.create_session() as owned_session:
+                return SummaryIndexService.create_summary_record(
+                    segment,
+                    dataset,
+                    summary_content,
                     status=status,
-                    enabled=True,  # Explicitly set enabled to True
+                    session=owned_session,
                 )
-                session.add(summary_record)
-                session.flush()
-                return summary_record
+
+        # Check if summary record already exists
+        existing_summary = session.scalar(
+            select(DocumentSegmentSummary)
+            .where(
+                DocumentSegmentSummary.chunk_id == segment.id,
+                DocumentSegmentSummary.dataset_id == dataset.id,
+            )
+            .limit(1)
+        )
+
+        if existing_summary:
+            # Update existing record
+            existing_summary.summary_content = summary_content
+            existing_summary.status = status
+            existing_summary.error = None  # Clear any previous errors
+            # Re-enable if it was disabled
+            if not existing_summary.enabled:
+                existing_summary.enabled = True
+                existing_summary.disabled_at = None
+                existing_summary.disabled_by = None
+            session.add(existing_summary)
+            session.flush()
+            return existing_summary
+        else:
+            # Create new record (enabled by default)
+            summary_record = DocumentSegmentSummary(
+                dataset_id=dataset.id,
+                document_id=segment.document_id,
+                chunk_id=segment.id,
+                summary_content=summary_content,
+                status=status,
+                enabled=True,  # Explicitly set enabled to True
+            )
+            session.add(summary_record)
+            session.flush()
+            return summary_record
+
+    @staticmethod
+    def _get_segment_summary(
+        segment_id: str,
+        dataset_id: str,
+        session: Session,
+    ) -> DocumentSegmentSummary | None:
+        return session.scalar(
+            select(DocumentSegmentSummary)
+            .where(
+                DocumentSegmentSummary.chunk_id == segment_id,
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
+            )
+            .limit(1)
+        )
+
+    @staticmethod
+    def _get_segments_summaries(
+        segment_ids: list[str],
+        dataset_id: str,
+        session: Session,
+    ) -> dict[str, DocumentSegmentSummary]:
+        if not segment_ids:
+            return {}
+
+        summary_records = session.scalars(
+            select(DocumentSegmentSummary).where(
+                DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
+            )
+        ).all()
+
+        return {summary.chunk_id: summary for summary in summary_records}
+
+    @staticmethod
+    def _get_document_summaries(
+        document_id: str,
+        dataset_id: str,
+        segment_ids: list[str] | None,
+        session: Session,
+    ) -> list[DocumentSegmentSummary]:
+        stmt = select(DocumentSegmentSummary).where(
+            DocumentSegmentSummary.document_id == document_id,
+            DocumentSegmentSummary.dataset_id == dataset_id,
+            DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
+        )
+
+        if segment_ids:
+            stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
+
+        return list(session.scalars(stmt).all())
 
     @staticmethod
     def vectorize_summary(
@@ -641,6 +707,8 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_index_setting: SummaryIndexSettingDict,
+        *,
+        session: Session | None = None,
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
@@ -650,6 +718,7 @@ class SummaryIndexService:
             segment: DocumentSegment to generate summary for
             dataset: Dataset containing the segment
             summary_index_setting: Summary index configuration
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             Created DocumentSegmentSummary instance
@@ -657,7 +726,9 @@ class SummaryIndexService:
         Raises:
             ValueError: If summary generation fails
         """
-        with session_factory.create_session() as session:
+        session_context = session_factory.create_session() if session is None else nullcontext(session)
+        with session_context as active_session:
+            session = active_session
             try:
                 # Get or refresh summary record in this session
                 summary_record_in_session = session.scalar(
@@ -1048,6 +1119,8 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_content: str,
+        *,
+        session: Session | None = None,
     ) -> DocumentSegmentSummary | None:
         """
         Update summary for a segment and re-vectorize it.
@@ -1056,6 +1129,7 @@ class SummaryIndexService:
             segment: DocumentSegment to update summary for
             dataset: Dataset containing the segment
             summary_content: New summary content
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             Updated DocumentSegmentSummary instance, or None if indexing technique is not high_quality
@@ -1072,7 +1146,9 @@ class SummaryIndexService:
         if segment.document and segment.document.doc_form == "qa_model":
             return None
 
-        with session_factory.create_session() as session:
+        session_context = session_factory.create_session() if session is None else nullcontext(session)
+        with session_context as active_session:
+            session = active_session
             try:
                 # Check if summary_content is empty (whitespace-only strings are considered empty)
                 if not summary_content or not summary_content.strip():
@@ -1171,7 +1247,11 @@ class SummaryIndexService:
                 else:
                     # Create new summary record if doesn't exist
                     summary_record = SummaryIndexService.create_summary_record(
-                        segment, dataset, summary_content, status=SummaryStatus.GENERATING
+                        segment,
+                        dataset,
+                        summary_content,
+                        status=SummaryStatus.GENERATING,
+                        session=session,
                     )
                     # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
                     # Note: summary_record was created in a different session,
@@ -1217,36 +1297,43 @@ class SummaryIndexService:
                 raise
 
     @staticmethod
-    def get_segment_summary(segment_id: str, dataset_id: str) -> DocumentSegmentSummary | None:
+    def get_segment_summary(
+        segment_id: str,
+        dataset_id: str,
+        *,
+        session: Session | None = None,
+    ) -> DocumentSegmentSummary | None:
         """
         Get summary for a single segment.
 
         Args:
             segment_id: Segment ID (chunk_id)
             dataset_id: Dataset ID
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             DocumentSegmentSummary instance if found, None otherwise
         """
-        with session_factory.create_session() as session:
-            return session.scalar(
-                select(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id == segment_id,
-                    DocumentSegmentSummary.dataset_id == dataset_id,
-                    DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-                )
-                .limit(1)
-            )
+        if session is not None:
+            return SummaryIndexService._get_segment_summary(segment_id, dataset_id, session)
+
+        with session_factory.create_session() as owned_session:
+            return SummaryIndexService._get_segment_summary(segment_id, dataset_id, owned_session)
 
     @staticmethod
-    def get_segments_summaries(segment_ids: list[str], dataset_id: str) -> dict[str, DocumentSegmentSummary]:
+    def get_segments_summaries(
+        segment_ids: list[str],
+        dataset_id: str,
+        *,
+        session: Session | None = None,
+    ) -> dict[str, DocumentSegmentSummary]:
         """
         Get summaries for multiple segments.
 
         Args:
             segment_ids: List of segment IDs (chunk_ids)
             dataset_id: Dataset ID
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             Dictionary mapping segment_id to DocumentSegmentSummary (only enabled summaries)
@@ -1254,20 +1341,19 @@ class SummaryIndexService:
         if not segment_ids:
             return {}
 
-        with session_factory.create_session() as session:
-            summary_records = session.scalars(
-                select(DocumentSegmentSummary).where(
-                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
-                    DocumentSegmentSummary.dataset_id == dataset_id,
-                    DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-                )
-            ).all()
+        if session is not None:
+            return SummaryIndexService._get_segments_summaries(segment_ids, dataset_id, session)
 
-            return {summary.chunk_id: summary for summary in summary_records}
+        with session_factory.create_session() as owned_session:
+            return SummaryIndexService._get_segments_summaries(segment_ids, dataset_id, owned_session)
 
     @staticmethod
     def get_document_summaries(
-        document_id: str, dataset_id: str, segment_ids: list[str] | None = None
+        document_id: str,
+        dataset_id: str,
+        segment_ids: list[str] | None = None,
+        *,
+        session: Session | None = None,
     ) -> list[DocumentSegmentSummary]:
         """
         Get all summary records for a document.
@@ -1276,24 +1362,25 @@ class SummaryIndexService:
             document_id: Document ID
             dataset_id: Dataset ID
             segment_ids: Optional list of segment IDs to filter by
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             List of DocumentSegmentSummary instances (only enabled summaries)
         """
-        with session_factory.create_session() as session:
-            stmt = select(DocumentSegmentSummary).where(
-                DocumentSegmentSummary.document_id == document_id,
-                DocumentSegmentSummary.dataset_id == dataset_id,
-                DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-            )
+        if session is not None:
+            return SummaryIndexService._get_document_summaries(document_id, dataset_id, segment_ids, session)
 
-            if segment_ids:
-                stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
-
-            return list(session.scalars(stmt).all())
+        with session_factory.create_session() as owned_session:
+            return SummaryIndexService._get_document_summaries(document_id, dataset_id, segment_ids, owned_session)
 
     @staticmethod
-    def get_document_summary_index_status(document_id: str, dataset_id: str, tenant_id: str) -> str | None:
+    def get_document_summary_index_status(
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        *,
+        session: Session | None = None,
+    ) -> str | None:
         """
         Get summary_index_status for a single document.
 
@@ -1301,27 +1388,36 @@ class SummaryIndexService:
             document_id: Document ID
             dataset_id: Dataset ID
             tenant_id: Tenant ID
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             "SUMMARIZING" if there are pending summaries, None otherwise
         """
+        if session is None:
+            with session_factory.create_session() as owned_session:
+                return SummaryIndexService.get_document_summary_index_status(
+                    document_id,
+                    dataset_id,
+                    tenant_id,
+                    session=owned_session,
+                )
+
         # Get all segments for this document (excluding qa_model and re_segment)
-        with session_factory.create_session() as session:
-            segment_ids = list(
-                session.scalars(
-                    select(DocumentSegment.id).where(
-                        DocumentSegment.document_id == document_id,
-                        DocumentSegment.status != "re_segment",
-                        DocumentSegment.tenant_id == tenant_id,
-                    )
-                ).all()
-            )
+        segment_ids = list(
+            session.scalars(
+                select(DocumentSegment.id).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.tenant_id == tenant_id,
+                )
+            ).all()
+        )
 
         if not segment_ids:
             return None
 
         # Get all summary records for these segments
-        summaries = SummaryIndexService.get_segments_summaries(segment_ids, dataset_id)
+        summaries = SummaryIndexService.get_segments_summaries(segment_ids, dataset_id, session=session)
         summary_status_map = {chunk_id: summary.status for chunk_id, summary in summaries.items()}
 
         # Check if there are any "not_started" or "generating" status summaries
@@ -1335,7 +1431,11 @@ class SummaryIndexService:
 
     @staticmethod
     def get_documents_summary_index_status(
-        document_ids: list[str], dataset_id: str, tenant_id: str
+        document_ids: list[str],
+        dataset_id: str,
+        tenant_id: str,
+        *,
+        session: Session | None = None,
     ) -> dict[str, str | None]:
         """
         Get summary_index_status for multiple documents.
@@ -1344,6 +1444,7 @@ class SummaryIndexService:
             document_ids: List of document IDs
             dataset_id: Dataset ID
             tenant_id: Tenant ID
+            session: Optional SQLAlchemy session. If omitted, a short-lived session is created.
 
         Returns:
             Dictionary mapping document_id to summary_index_status ("SUMMARIZING" or None)
@@ -1351,15 +1452,23 @@ class SummaryIndexService:
         if not document_ids:
             return {}
 
-        # Get all segments for these documents (excluding qa_model and re_segment)
-        with session_factory.create_session() as session:
-            segments = session.execute(
-                select(DocumentSegment.id, DocumentSegment.document_id).where(
-                    DocumentSegment.document_id.in_(document_ids),
-                    DocumentSegment.status != "re_segment",
-                    DocumentSegment.tenant_id == tenant_id,
+        if session is None:
+            with session_factory.create_session() as owned_session:
+                return SummaryIndexService.get_documents_summary_index_status(
+                    document_ids,
+                    dataset_id,
+                    tenant_id,
+                    session=owned_session,
                 )
-            ).all()
+
+        # Get all segments for these documents (excluding qa_model and re_segment)
+        segments = session.execute(
+            select(DocumentSegment.id, DocumentSegment.document_id).where(
+                DocumentSegment.document_id.in_(document_ids),
+                DocumentSegment.status != "re_segment",
+                DocumentSegment.tenant_id == tenant_id,
+            )
+        ).all()
 
         # Group segments by document_id
         document_segments_map: dict[str, list[str]] = {}
@@ -1371,7 +1480,7 @@ class SummaryIndexService:
 
         # Get all summary records for these segments
         all_segment_ids = [seg.id for seg in segments]
-        summaries = SummaryIndexService.get_segments_summaries(all_segment_ids, dataset_id)
+        summaries = SummaryIndexService.get_segments_summaries(all_segment_ids, dataset_id, session=session)
         summary_status_map = {chunk_id: summary.status for chunk_id, summary in summaries.items()}
 
         # Calculate summary_index_status for each document
@@ -1407,7 +1516,7 @@ class SummaryIndexService:
     def get_document_summary_status_detail(
         document_id: str,
         dataset_id: str,
-        session: Session | scoped_session,
+        session: Session,
     ) -> DocumentSummaryStatusDetailDict:
         """
         Get detailed summary status for a document.
@@ -1448,6 +1557,7 @@ class SummaryIndexService:
                 document_id=document_id,
                 dataset_id=dataset_id,
                 segment_ids=segment_ids,
+                session=session,
             )
 
         # Create a mapping of chunk_id to summary

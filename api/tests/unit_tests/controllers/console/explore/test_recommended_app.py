@@ -32,7 +32,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "en-US")
+        service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -51,7 +51,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "fr-FR")
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_default_language(self, app: Flask):
@@ -70,7 +70,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account(None))
 
-        service_mock.assert_called_once_with(ANY, module.languages[0])
+        service_mock.assert_called_once_with(module.languages[0], session=ANY)
         assert result == result_data
 
 
@@ -91,7 +91,7 @@ class TestLearnDifyAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "en-US")
+        service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -110,7 +110,7 @@ class TestLearnDifyAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with(ANY, "fr-FR")
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
 
@@ -131,7 +131,7 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
+        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111", session=ANY)
         assert result == result_data
 
 

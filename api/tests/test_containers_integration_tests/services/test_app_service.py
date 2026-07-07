@@ -374,8 +374,8 @@ class TestAppService:
             session=db_session_with_containers,
         )
 
-        app_service.star_app(db_session_with_containers, app=starred_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=starred_app, account_id=account.id)
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
         db_session_with_containers.commit()
 
         star_count = db_session_with_containers.scalar(
@@ -391,7 +391,7 @@ class TestAppService:
         assert starred_by_app_id[starred_app.id] is True
         assert starred_by_app_id[unstarred_app.id] is False
 
-        app_service.unstar_app(db_session_with_containers, app=starred_app, account_id=account.id)
+        app_service.unstar_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
         db_session_with_containers.commit()
 
         paginated_apps = app_service.get_paginate_apps(
@@ -448,9 +448,9 @@ class TestAppService:
             session=db_session_with_containers,
         )
 
-        app_service.star_app(db_session_with_containers, app=oldest_created_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=newest_modified_app, account_id=account.id)
-        app_service.star_app(db_session_with_containers, app=newest_created_app, account_id=account.id)
+        app_service.star_app(app=oldest_created_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_modified_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_created_app, account_id=account.id, session=db_session_with_containers)
 
         timestamp_by_app_id = {
             oldest_created_app.id: (datetime(2026, 1, 1, 10, 0, 0), datetime(2026, 1, 1, 10, 0, 0)),

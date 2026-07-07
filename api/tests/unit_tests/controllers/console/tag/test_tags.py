@@ -131,7 +131,7 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with(SessionMatcher(), "snippet", "tenant-1", None)
+        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None, session=SessionMatcher())
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 

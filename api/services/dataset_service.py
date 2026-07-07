@@ -3631,7 +3631,12 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
-                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                                SummaryIndexService.update_summary_for_segment(
+                                    segment,
+                                    dataset,
+                                    args.summary,
+                                    session=session,
+                                )
                             except Exception:
                                 logger.exception("Failed to update summary for segment %s", segment.id)
                                 # Don't fail the entire update if summary update fails
@@ -3737,7 +3742,10 @@ class SegmentService:
 
                             try:
                                 SummaryIndexService.generate_and_vectorize_summary(
-                                    segment, dataset, dataset.summary_index_setting
+                                    segment,
+                                    dataset,
+                                    dataset.summary_index_setting,
+                                    session=session,
                                 )
                                 logger.info("Auto-regenerated summary for segment %s after content change", segment.id)
                             except Exception:
@@ -3752,7 +3760,12 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
-                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                                SummaryIndexService.update_summary_for_segment(
+                                    segment,
+                                    dataset,
+                                    args.summary,
+                                    session=session,
+                                )
                                 logger.info("Updated summary for segment %s with user-provided content", segment.id)
                             except Exception:
                                 logger.exception("Failed to update summary for segment %s", segment.id)
@@ -3769,7 +3782,10 @@ class SegmentService:
 
                                 try:
                                     SummaryIndexService.generate_and_vectorize_summary(
-                                        segment, dataset, dataset.summary_index_setting
+                                        segment,
+                                        dataset,
+                                        dataset.summary_index_setting,
+                                        session=session,
                                     )
                                     logger.info(
                                         "Regenerated summary for segment %s after content change (summary unchanged)",
