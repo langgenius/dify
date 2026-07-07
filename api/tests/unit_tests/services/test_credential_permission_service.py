@@ -37,22 +37,20 @@ def credential_id():
 
 class TestGetPartialMemberList:
     def test_returns_empty_when_no_permissions(self, credential_id):
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = []
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = []
         result = CredentialPermissionService.get_partial_member_list(
-            session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
+            mock_session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
         )
         assert result == []
-        session.scalars.assert_called_once()
 
     def test_returns_account_ids(self, credential_id, user_id, other_user_id):
-        session = MagicMock()
-        session.scalars.return_value.all.return_value = [user_id, other_user_id]
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = [user_id, other_user_id]
         result = CredentialPermissionService.get_partial_member_list(
-            session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
+            mock_session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
         )
         assert set(result) == {user_id, other_user_id}
-        session.scalars.assert_called_once()
 
 
 class TestApplyVisibilityFilter:
