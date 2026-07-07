@@ -246,7 +246,7 @@ describe('PromptEditorContent', () => {
       })
     })
 
-    it('should infer file type when rendering a file-name output token', async () => {
+    it('should render file-name output tokens with the declared output type', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
 
       render(
@@ -267,7 +267,7 @@ describe('PromptEditorContent', () => {
 
       await waitFor(() => {
         expect(screen.getByText('qna_report.pdf')).toBeInTheDocument()
-        expect(screen.getByText('file')).toBeInTheDocument()
+        expect(screen.getByText('string')).toBeInTheDocument()
       })
     })
 

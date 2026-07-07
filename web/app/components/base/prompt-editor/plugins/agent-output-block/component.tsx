@@ -19,7 +19,6 @@ import {
   AGENT_OUTPUT_TYPE_OPTIONS,
   createAgentOutputConfig,
   getAgentOutputTypeOption,
-  inferAgentOutputType,
   replaceAgentOutputName,
 } from './utils'
 
@@ -45,13 +44,12 @@ function upsertOutput(
   if (!AGENT_OUTPUT_NAME_PATTERN.test(trimmedName))
     return null
 
-  const nextOutputType = inferAgentOutputType(trimmedName, outputType)
   const existingIndex = outputs.findIndex(output => output.name === oldName)
   const duplicateIndex = outputs.findIndex(output => output.name === trimmedName && output.name !== oldName)
   if (duplicateIndex >= 0)
     return null
 
-  const nextOutput = createAgentOutputConfig(trimmedName, nextOutputType)
+  const nextOutput = createAgentOutputConfig(trimmedName, outputType)
   if (existingIndex >= 0)
     return outputs.map((output, index) => index === existingIndex ? nextOutput : output)
 
@@ -134,8 +132,7 @@ const AgentOutputBlockComponent = ({
         return
 
       const currentPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
-      const nextOutputType = inferAgentOutputType(trimmedName, nextType)
-      node.setOutput(trimmedName, nextOutputType, keepEditing, nextOutputs, onChange, onEdit, false, openTypeSelectOnEdit)
+      node.setOutput(trimmedName, nextType, keepEditing, nextOutputs, onChange, onEdit, false, openTypeSelectOnEdit)
       if (selectAfterCommit)
         node.selectNext()
       nextPrompt = replaceAgentOutputName(currentPrompt, name, trimmedName)

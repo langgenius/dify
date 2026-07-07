@@ -18,14 +18,13 @@ import {
   createAgentOutputConfig,
   getAgentOutputTypeOptionValue,
   getUniqueAgentOutputName,
-  inferAgentOutputType,
   parseAgentOutputToken,
 } from './utils'
 
 function getAgentOutputBlockNodeType(name: string, outputs: NonNullable<AgentOutputBlockType['outputs']>) {
   const output = outputs.find(item => item.name === name)
 
-  return inferAgentOutputType(name, output ? getAgentOutputTypeOptionValue(output) : 'string')
+  return output ? getAgentOutputTypeOptionValue(output) : 'string'
 }
 
 const AgentOutputBlock = memo(({

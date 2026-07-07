@@ -332,9 +332,8 @@ describe('AgentOutputBlockComponent', () => {
     expect(mockSelectNext).toHaveBeenCalledTimes(1)
   })
 
-  it('automatically commits file-name outputs as file type', () => {
+  it('does not commit output names containing dots', () => {
     const onChange = vi.fn()
-    mockGetRootText.value = '[§output:qna_report.pdf:qna_report.pdf§]'
 
     render(
       <AgentOutputBlockComponent
@@ -352,68 +351,9 @@ describe('AgentOutputBlockComponent', () => {
     fireEvent.change(input, { target: { value: 'qna_report.pdf' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect(mockSetOutput).toHaveBeenCalledWith(
-      'qna_report.pdf',
-      'file',
-      false,
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'qna_report.pdf',
-          type: 'file',
-          file: {
-            extensions: [],
-            mime_types: [],
-          },
-        }),
-      ]),
-      onChange,
-      undefined,
-      false,
-      false,
-    )
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'qna_report.pdf',
-        type: 'file',
-      }),
-    ]), '[§output:qna_report.pdf:qna_report.pdf§]')
-  })
-
-  it('keeps dotted output names as the selected type when the extension is not whitelisted', () => {
-    const onChange = vi.fn()
-    mockGetRootText.value = '[§output:report.customext:report.customext§]'
-
-    render(
-      <AgentOutputBlockComponent
-        nodeKey="output-node"
-        name="output"
-        outputType="string"
-        isEditing
-        outputs={outputs}
-        onChange={onChange}
-      />,
-    )
-
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
-
-    fireEvent.change(input, { target: { value: 'report.customext' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-
-    expect(mockSetOutput).toHaveBeenCalledWith(
-      'report.customext',
-      'string',
-      false,
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'report.customext',
-          type: 'string',
-        }),
-      ]),
-      onChange,
-      undefined,
-      false,
-      false,
-    )
+    expect(mockSetOutput).not.toHaveBeenCalled()
+    expect(mockSelectNext).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('does not commit the name blur before selecting an output type', () => {
