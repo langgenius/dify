@@ -20,6 +20,7 @@ import {
   createAgentOutputConfig,
   getAgentOutputTypeOption,
   inferAgentOutputType,
+  replaceAgentOutputName,
 } from './utils'
 
 type AgentOutputBlockComponentProps = {
@@ -28,6 +29,7 @@ type AgentOutputBlockComponentProps = {
   outputType: AgentOutputTypeOptionValue
   isEditing: boolean
   selectNameOnEdit?: boolean
+  openTypeSelectOnEdit?: boolean
   outputs: DeclaredOutputConfig[]
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
   onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
@@ -62,6 +64,7 @@ const AgentOutputBlockComponent = ({
   outputType,
   isEditing,
   selectNameOnEdit = isEditing,
+  openTypeSelectOnEdit = false,
   outputs,
   onChange,
   onEdit,
@@ -71,14 +74,19 @@ const AgentOutputBlockComponent = ({
   const selected = getAgentOutputTypeOption(outputType)
   const [draftName, setDraftName] = useState(name)
   const [lastNodeName, setLastNodeName] = useState(name)
-  const [typeSelectOpen, setTypeSelectOpen] = useState(false)
+  const [typeSelectOpen, setTypeSelectOpen] = useState(openTypeSelectOnEdit)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const skipNextBlurCommitRef = useRef(false)
   const latestDraftNameRef = useRef(name)
+  const skipNameFocusRef = useRef(false)
 
   useEffect(() => {
     if (!isEditing)
       return
+    if (skipNameFocusRef.current) {
+      skipNameFocusRef.current = false
+      return
+    }
 
     const input = nameInputRef.current
     if (!input)
@@ -97,7 +105,20 @@ const AgentOutputBlockComponent = ({
     latestDraftNameRef.current = name
   }
 
-  const commitOutput = (nextName: string, nextType: AgentOutputTypeOptionValue, keepEditing = false) => {
+  const commitOutput = (
+    nextName: string,
+    nextType: AgentOutputTypeOptionValue,
+    options: {
+      keepEditing?: boolean
+      openTypeSelectOnEdit?: boolean
+      selectAfterCommit?: boolean
+    } = {},
+  ) => {
+    const {
+      keepEditing = false,
+      openTypeSelectOnEdit = false,
+      selectAfterCommit = false,
+    } = options
     const trimmedName = nextName.trim()
     const nextOutputs = upsertOutput(outputs, name, trimmedName, nextType)
     if (!nextOutputs) {
@@ -112,9 +133,12 @@ const AgentOutputBlockComponent = ({
       if (!$isAgentOutputBlockNode(node))
         return
 
+      const currentPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
       const nextOutputType = inferAgentOutputType(trimmedName, nextType)
-      node.setOutput(trimmedName, nextOutputType, keepEditing, nextOutputs, onChange, onEdit, false)
-      nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      node.setOutput(trimmedName, nextOutputType, keepEditing, nextOutputs, onChange, onEdit, false, openTypeSelectOnEdit)
+      if (selectAfterCommit)
+        node.selectNext()
+      nextPrompt = replaceAgentOutputName(currentPrompt, name, trimmedName)
       didCommit = true
     })
 
@@ -130,8 +154,14 @@ const AgentOutputBlockComponent = ({
 
   const handleTypeSelectOpenChange = (open: boolean) => {
     setTypeSelectOpen(open)
-    if (!open)
+    if (!open) {
       skipNextBlurCommitRef.current = false
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey)
+        if ($isAgentOutputBlockNode(node))
+          node.setOpenTypeSelectOnEdit(false)
+      })
+    }
   }
 
   if (!isEditing) {
@@ -174,13 +204,28 @@ const AgentOutputBlockComponent = ({
             if (event.key === 'Enter' || event.key === 'Tab') {
               event.preventDefault()
               skipNextBlurCommitRef.current = true
-              const didCommit = commitOutput(event.currentTarget.value, outputType, true)
+              const isTabCommit = event.key === 'Tab'
+              const didCommit = commitOutput(event.currentTarget.value, outputType, {
+                keepEditing: isTabCommit,
+                openTypeSelectOnEdit: isTabCommit,
+                selectAfterCommit: !isTabCommit,
+              })
               if (!didCommit) {
                 skipNextBlurCommitRef.current = false
                 return
               }
 
-              setTypeSelectOpen(true)
+              if (isTabCommit) {
+                skipNameFocusRef.current = true
+                event.currentTarget.setSelectionRange(event.currentTarget.value.length, event.currentTarget.value.length)
+                event.currentTarget.blur()
+                setTypeSelectOpen(true)
+                return
+              }
+
+              queueMicrotask(() => {
+                editor.focus()
+              })
             }
             if (event.key === 'Escape') {
               event.preventDefault()

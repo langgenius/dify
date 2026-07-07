@@ -44,9 +44,11 @@ describe('AgentOutputBlockNode', () => {
     runInEditor(() => {
       const newEditingNode = $createAgentOutputBlockNode('output', 'string', true)
       const existingEditingNode = $createAgentOutputBlockNode('summary', 'string', true, [], undefined, undefined, false)
+      const typeSelectingNode = $createAgentOutputBlockNode('summary', 'string', true, [], undefined, undefined, false, true)
 
       expect(newEditingNode.shouldSelectNameOnEdit()).toBe(true)
       expect(existingEditingNode.shouldSelectNameOnEdit()).toBe(false)
+      expect(typeSelectingNode.shouldOpenTypeSelectOnEdit()).toBe(true)
     })
   })
 
@@ -99,6 +101,11 @@ describe('AgentOutputBlockNode', () => {
       'summary',
       'final_summary',
     )).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
+    expect(replaceAgentOutputName(
+      'Generate [§output:output:output§] and §output:output:output§',
+      'output',
+      'summary',
+    )).toBe('Generate [§output:summary:summary§] and §output:summary:summary§')
   })
 
   it('should create node with helper and support type guard checks', () => {

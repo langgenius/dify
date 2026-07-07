@@ -1,17 +1,18 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getNodeByKey } from 'lexical'
 import AgentOutputBlockComponent from '../component'
 
-const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSetOutput } = vi.hoisted(() => ({
+const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSelectNext, mockSetOutput } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockGetRootText: {
     value: '[§output:summary:summary§]',
   },
+  mockSelectNext: vi.fn(),
   mockSetOutput: vi.fn(),
 }))
 
@@ -86,6 +87,7 @@ describe('AgentOutputBlockComponent', () => {
       {},
     ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked($getNodeByKey).mockReturnValue({
+      selectNext: mockSelectNext,
       setOutput: mockSetOutput,
     } as never)
   })
@@ -125,6 +127,22 @@ describe('AgentOutputBlockComponent', () => {
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe('summary'.length)
     expect(input.selectionEnd).toBe('summary'.length)
+  })
+
+  it('keeps the type select open after the edited output block is remounted', () => {
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="summary"
+        outputType="string"
+        isEditing
+        selectNameOnEdit={false}
+        openTypeSelectOnEdit
+        outputs={outputs}
+      />,
+    )
+
+    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
   })
 
   it('does not update the Lexical node while typing an output name and commits on blur', async () => {
@@ -167,6 +185,7 @@ describe('AgentOutputBlockComponent', () => {
       onChange,
       undefined,
       false,
+      false,
     )
     expect(mockSetOutput).toHaveBeenCalledTimes(1)
     expect(mockEditorFocus).not.toHaveBeenCalled()
@@ -179,9 +198,10 @@ describe('AgentOutputBlockComponent', () => {
     ]), '[§output:summary:summary§]')
   })
 
-  it('syncs the output name and opens the type select when committing with Enter', async () => {
+  it('syncs the output name and moves the editor selection after the output block when committing with Enter', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
+    mockGetRootText.value = 'Generate [§output:output:output§]'
 
     render(
       <AgentOutputBlockComponent
@@ -203,7 +223,7 @@ describe('AgentOutputBlockComponent', () => {
     expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
       'string',
-      true,
+      false,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'summary',
@@ -213,14 +233,24 @@ describe('AgentOutputBlockComponent', () => {
       onChange,
       undefined,
       false,
+      false,
     )
-    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
-    expect(mockEditorFocus).not.toHaveBeenCalled()
+    expect(mockSelectNext).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('type-select-state')).toHaveTextContent('closed')
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'summary',
+      }),
+    ]), 'Generate [§output:summary:summary§]')
+    await waitFor(() => {
+      expect(mockEditorFocus).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('syncs the output name and opens the type select when committing with Tab', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
+    mockGetRootText.value = 'Generate [§output:output:output§]'
 
     render(
       <AgentOutputBlockComponent
@@ -252,8 +282,18 @@ describe('AgentOutputBlockComponent', () => {
       onChange,
       undefined,
       false,
+      true,
     )
+    expect(mockSelectNext).not.toHaveBeenCalled()
     expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
+    expect(input).not.toHaveFocus()
+    expect((input as HTMLInputElement).selectionStart).toBe('summary'.length)
+    expect((input as HTMLInputElement).selectionEnd).toBe('summary'.length)
+    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'summary',
+      }),
+    ]), 'Generate [§output:summary:summary§]')
   })
 
   it('commits the input DOM value on Enter even before React state rerenders', () => {
@@ -278,7 +318,7 @@ describe('AgentOutputBlockComponent', () => {
     expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
       'string',
-      true,
+      false,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'summary',
@@ -287,7 +327,9 @@ describe('AgentOutputBlockComponent', () => {
       onChange,
       undefined,
       false,
+      false,
     )
+    expect(mockSelectNext).toHaveBeenCalledTimes(1)
   })
 
   it('automatically commits file-name outputs as file type', () => {
@@ -313,7 +355,7 @@ describe('AgentOutputBlockComponent', () => {
     expect(mockSetOutput).toHaveBeenCalledWith(
       'qna_report.pdf',
       'file',
-      true,
+      false,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'qna_report.pdf',
@@ -326,6 +368,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
       false,
     )
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
@@ -359,7 +402,7 @@ describe('AgentOutputBlockComponent', () => {
     expect(mockSetOutput).toHaveBeenCalledWith(
       'report.customext',
       'string',
-      true,
+      false,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'report.customext',
@@ -368,6 +411,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
       false,
     )
   })
@@ -410,6 +454,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
       false,
     )
   })

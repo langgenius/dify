@@ -85,11 +85,13 @@ export function extractAgentOutputNames(text: string) {
 }
 
 export function replaceAgentOutputName(text: string, oldName: string, nextName: string) {
-  const replaceTokenName = (match: string, name: string, mirrorName: string) => {
+  const replaceTokenName = (match: string, name: string, _mirrorName: string) => {
     if (name !== oldName)
       return match
 
-    return match.replace(`${name}:${mirrorName}`, `${nextName}:${nextName}`)
+    return match.startsWith('[')
+      ? getAgentOutputToken(nextName)
+      : `§output:${nextName}:${nextName}§`
   }
 
   return text

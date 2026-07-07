@@ -8,6 +8,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
   $getRoot,
+  $isElementNode,
   BLUR_COMMAND,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
@@ -315,6 +316,94 @@ describe('PromptEditorContent', () => {
         expect(screen.getByText('file')).toBeInTheDocument()
       })
       expect(screen.queryByText('string')).not.toBeInTheDocument()
+    })
+
+    it('should preserve committed output name selection state when refreshing output block props', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const initialOnChange = vi.fn()
+      const nextOnChange = vi.fn()
+      const nextOutputs = [{ name: 'summary', type: 'string' as const }]
+
+      const { rerender } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:output:output§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [{ name: 'output', type: 'string' }],
+            onChange: initialOnChange,
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(captures.editor).not.toBeNull()
+        expect(screen.getByText('output')).toBeInTheDocument()
+      })
+
+      act(() => {
+        captures.editor?.update(() => {
+          const visitNode = (node: Parameters<typeof $isElementNode>[0]) => {
+            if (!$isElementNode(node))
+              return
+
+            node.getChildren().forEach((child) => {
+              if (child instanceof AgentOutputBlockNode) {
+                child.setOutput('summary', 'string', true, nextOutputs, initialOnChange, undefined, false, true)
+                return
+              }
+
+              visitNode(child)
+            })
+          }
+
+          visitNode($getRoot())
+        })
+      })
+
+      rerender(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:output:output§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [...nextOutputs],
+            onChange: nextOnChange,
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        captures.editor!.getEditorState().read(() => {
+          const root = $getRoot()
+          let outputNode: AgentOutputBlockNode | null = null
+
+          const visitNode = (node: Parameters<typeof $isElementNode>[0]) => {
+            if (!$isElementNode(node))
+              return
+
+            node.getChildren().forEach((child) => {
+              if (child instanceof AgentOutputBlockNode) {
+                outputNode = child
+                return
+              }
+
+              visitNode(child)
+            })
+          }
+
+          visitNode(root)
+          expect(outputNode?.shouldSelectNameOnEdit()).toBe(false)
+          expect(outputNode?.shouldOpenTypeSelectOnEdit()).toBe(true)
+          expect(outputNode?.getOnChange()).toBe(nextOnChange)
+        })
+      })
     })
 
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {

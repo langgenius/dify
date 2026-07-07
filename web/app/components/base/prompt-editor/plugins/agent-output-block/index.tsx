@@ -120,7 +120,16 @@ const AgentOutputBlockReplacementBlock = memo(({
               || child.getOnChange() !== onChange
               || child.getOnEdit() !== onEdit
             ) {
-              child.replace($createAgentOutputBlockNode(name, outputType, child.isEditing(), outputs, onChange, onEdit))
+              child.replace($createAgentOutputBlockNode(
+                name,
+                outputType,
+                child.isEditing(),
+                outputs,
+                onChange,
+                onEdit,
+                child.shouldSelectNameOnEdit(),
+                child.shouldOpenTypeSelectOnEdit(),
+              ))
             }
             return
           }

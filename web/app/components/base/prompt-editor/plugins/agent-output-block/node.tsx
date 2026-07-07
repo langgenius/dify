@@ -15,6 +15,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
   __outputType: AgentOutputTypeOptionValue
   __isEditing: boolean
   __selectNameOnEdit: boolean
+  __openTypeSelectOnEdit: boolean
   __outputs: DeclaredOutputConfig[]
   __onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
   __onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
@@ -29,6 +30,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
       node.__outputType,
       node.__isEditing,
       node.__selectNameOnEdit,
+      node.__openTypeSelectOnEdit,
       node.__outputs,
       node.__onChange,
       node.__onEdit,
@@ -45,6 +47,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     outputType: AgentOutputTypeOptionValue,
     isEditing = false,
     selectNameOnEdit = isEditing,
+    openTypeSelectOnEdit = false,
     outputs: DeclaredOutputConfig[] = [],
     onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void,
     onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void,
@@ -56,6 +59,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__outputType = outputType
     this.__isEditing = isEditing
     this.__selectNameOnEdit = selectNameOnEdit
+    this.__openTypeSelectOnEdit = openTypeSelectOnEdit
     this.__outputs = outputs
     this.__onChange = onChange
     this.__onEdit = onEdit
@@ -79,6 +83,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
         outputType={this.getOutputType()}
         isEditing={this.isEditing()}
         selectNameOnEdit={this.shouldSelectNameOnEdit()}
+        openTypeSelectOnEdit={this.shouldOpenTypeSelectOnEdit()}
         outputs={this.getOutputs()}
         onChange={this.getOnChange()}
         onEdit={this.getOnEdit()}
@@ -115,6 +120,10 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     return this.getLatest().__selectNameOnEdit
   }
 
+  shouldOpenTypeSelectOnEdit(): boolean {
+    return this.getLatest().__openTypeSelectOnEdit
+  }
+
   getOutputs(): DeclaredOutputConfig[] {
     return this.getLatest().__outputs
   }
@@ -135,15 +144,23 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void,
     onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void,
     selectNameOnEdit = false,
+    openTypeSelectOnEdit = false,
   ): this {
     const writable = this.getWritable()
     writable.__name = name
     writable.__outputType = outputType
     writable.__isEditing = isEditing
     writable.__selectNameOnEdit = selectNameOnEdit
+    writable.__openTypeSelectOnEdit = openTypeSelectOnEdit
     writable.__outputs = outputs
     writable.__onChange = onChange
     writable.__onEdit = onEdit
+    return writable
+  }
+
+  setOpenTypeSelectOnEdit(openTypeSelectOnEdit: boolean): this {
+    const writable = this.getWritable()
+    writable.__openTypeSelectOnEdit = openTypeSelectOnEdit
     return writable
   }
 
@@ -160,8 +177,9 @@ export function $createAgentOutputBlockNode(
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void,
   onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void,
   selectNameOnEdit = isEditing,
+  openTypeSelectOnEdit = false,
 ): AgentOutputBlockNode {
-  return new AgentOutputBlockNode(name, outputType, isEditing, selectNameOnEdit, outputs, onChange, onEdit)
+  return new AgentOutputBlockNode(name, outputType, isEditing, selectNameOnEdit, openTypeSelectOnEdit, outputs, onChange, onEdit)
 }
 
 export function $isAgentOutputBlockNode(
