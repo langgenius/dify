@@ -29,7 +29,6 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
-    AgentBackendTerminalOutputDeltaInternalEvent,
     extract_runtime_layer_specs,
 )
 from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
@@ -300,6 +299,31 @@ class _AgentProcessRecorder:
             return
         self._update_thought(self._answer_thought_id, answer_delta=content_delta)
 
+    def trim_answer_suffix(self, final_answer: str) -> None:
+        if not final_answer or self._answer_thought_id is None:
+            return
+
+        row = db.session.get(MessageAgentThought, self._answer_thought_id)
+        if row is None:
+            return
+
+        answer = row.answer or ""
+        overlap = _suffix_prefix_overlap_length(answer, final_answer)
+        if overlap == 0:
+            return
+
+        row.answer = answer[:-overlap]
+        if _is_empty_answer_only_thought(row):
+            db.session.delete(row)
+            self._answer_thought_id = None
+            db.session.commit()
+            return
+
+        db.session.commit()
+        self._queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=self._answer_thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+
     def _handle_tool_call_event(self, data: dict[str, Any]) -> None:
         part = data.get("part")
         if isinstance(part, dict):
@@ -524,6 +548,18 @@ def _tool_labels(tool: str | None) -> str:
     return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
 
 
+def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
+    max_length = min(len(text), len(prefix_source))
+    for length in range(max_length, 0, -1):
+        if text.endswith(prefix_source[:length]):
+            return length
+    return 0
+
+
+def _is_empty_answer_only_thought(row: MessageAgentThought) -> bool:
+    return not any((row.thought, row.answer, row.tool, row.tool_input, row.observation))
+
+
 class AgentAppRunner:
     """Runs one Agent App conversation turn against the Agent backend."""
 
@@ -584,7 +620,7 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal, streamed_terminal_answer = self._consume_stream(
+        terminal, process_recorder = self._consume_stream(
             create_response.run_id,
             dify_context=dify_context,
             message_id=message_id,
@@ -618,6 +654,16 @@ class AgentAppRunner:
             raise AgentBackendError(str(error))
 
         answer = self._terminal_output_to_answer(terminal.output)
+        try:
+            process_recorder.trim_answer_suffix(answer)
+        except Exception:
+            db.session.rollback()
+            logger.warning(
+                "Failed to trim Agent App answer text: run_id=%s message_id=%s",
+                terminal.run_id,
+                message_id,
+                exc_info=True,
+            )
         if preserve_session:
             superseded_sessions = self._load_superseded_sessions(scope=scope)
             self._publish_terminal_answer(
@@ -625,7 +671,6 @@ class AgentAppRunner:
                 model_name=model_name,
                 answer=answer,
                 query=query,
-                streamed_answer=streamed_terminal_answer,
                 usage=_llm_usage_from_agent_backend(terminal.usage),
             )
             session_saved = self._save_session(
@@ -647,7 +692,6 @@ class AgentAppRunner:
                     model_name=model_name,
                     answer=answer,
                     query=query,
-                    streamed_answer=streamed_terminal_answer,
                     usage=_llm_usage_from_agent_backend(terminal.usage),
                 )
             finally:
@@ -818,7 +862,6 @@ class AgentAppRunner:
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
-        streamed_terminal_parts: list[str] = []
 
         def persist_answer_text(content_delta: str) -> None:
             try:
@@ -857,23 +900,11 @@ class AgentAppRunner:
                     AgentBackendInternalEventType.RUN_STARTED,
                     AgentBackendInternalEventType.STREAM_EVENT,
                     AgentBackendInternalEventType.AGENT_MESSAGE_DELTA,
-                    AgentBackendInternalEventType.TERMINAL_OUTPUT_DELTA,
                 ):
                     if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                         debounced_delta = text_delta_debouncer.push(internal_event.delta)
                         if debounced_delta:
                             persist_answer_text(debounced_delta)
-                        continue
-
-                    if isinstance(internal_event, AgentBackendTerminalOutputDeltaInternalEvent):
-                        flush_pending_agent_message_text()
-                        streamed_terminal_parts.append(internal_event.delta)
-                        publish_text_delta(
-                            queue_manager=queue_manager,
-                            model_name=model_name,
-                            delta=internal_event.delta,
-                            user_query=query,
-                        )
                         continue
 
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
@@ -897,7 +928,7 @@ class AgentAppRunner:
             if terminal is not None:
                 break
         flush_pending_agent_message_text()
-        return terminal, "".join(streamed_terminal_parts)
+        return terminal, process_recorder
 
     def _cancel_run(self, run_id: str) -> None:
         try:
@@ -919,39 +950,15 @@ class AgentAppRunner:
         model_name: str,
         answer: str,
         query: str | None,
-        streamed_answer: str,
         usage: LLMUsage | None,
     ) -> None:
         """Finish a successful turn from the backend terminal output."""
-        if not streamed_answer:
-            publish_text_answer(
-                queue_manager=queue_manager,
-                model_name=model_name,
-                answer=answer,
-                user_query=query,
-                usage=usage,
-            )
-            return
-
-        if answer.startswith(streamed_answer):
-            publish_text_delta(
-                queue_manager=queue_manager,
-                model_name=model_name,
-                delta=answer[len(streamed_answer) :],
-                user_query=query,
-            )
-        elif answer != streamed_answer:
-            logger.warning(
-                "Agent App streamed terminal output does not match terminal output; "
-                "using terminal output for message persistence."
-            )
-
-        publish_message_end(
+        publish_text_answer(
             queue_manager=queue_manager,
             model_name=model_name,
             answer=answer,
-            user_query=query,
             usage=usage,
+            user_query=query,
         )
 
     def _save_session(

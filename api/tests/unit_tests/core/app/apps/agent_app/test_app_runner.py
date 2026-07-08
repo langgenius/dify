@@ -112,14 +112,14 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            terminal_output_delta="hello ",
+            agent_message_delta="hello ",
         )
         yield PydanticAIStreamRunEvent(
             id="3-0",
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            terminal_output_delta="agent",
+            agent_message_delta="agent",
         )
         yield RunSucceededEvent(
             id="4-0",
@@ -144,14 +144,14 @@ class _StreamingRecordingFakeAgentBackendRunClient(_RecordingFakeAgentBackendRun
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            terminal_output_delta="hello ",
+            agent_message_delta="hello ",
         )
         yield PydanticAIStreamRunEvent(
             id="3-0",
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            terminal_output_delta="agent",
+            agent_message_delta="agent",
         )
         yield RunSucceededEvent(
             id="4-0",
@@ -179,7 +179,7 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            terminal_output_delta="hello ",
+            agent_message_delta="hello ",
         )
         self._queue_manager.request_stop()
         yield PydanticAIStreamRunEvent(
@@ -187,7 +187,7 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            terminal_output_delta="agent",
+            agent_message_delta="agent",
         )
 
 
@@ -316,7 +316,7 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="final answer")),
-            terminal_output_delta="final answer",
+            agent_message_delta="final answer",
         )
         yield RunSucceededEvent(
             id="6-0",
@@ -656,8 +656,8 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
-    assert agent_message_events == []
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello ", "agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
     assert end_events[0].llm_result.usage.prompt_tokens == 3
@@ -685,8 +685,7 @@ def test_successful_turn_routes_single_agent_message_delta(monkeypatch):
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert len(rows) == 1
-    assert rows[0].answer == "hello"
+    assert rows == []
 
 
 def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null():
@@ -764,8 +763,8 @@ def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
-    assert agent_message_events == []
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
     assert rows == []
 
@@ -782,7 +781,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
-    assert agent_message_events == []
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["final answer"]
     thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
     assert len(thought_events) >= 3
 
@@ -807,10 +806,11 @@ def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello "]
-    assert agent_message_events == []
+    assert chunk_events == []
+    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello "]
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert rows == []
+    assert len(rows) == 1
+    assert rows[0].answer == "hello "
     assert client.cancelled_run_ids == ["fake-run-1"]
 
 
@@ -856,6 +856,24 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
     assert rows[1].tool == ""
     assert rows[1].tool_input == ""
     assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_answer_suffix_trim_keeps_non_terminal_prefix(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.append_answer_text("intermediate final answer")
+    recorder.trim_answer_suffix("final answer")
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].answer == "intermediate "
 
 
 def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):

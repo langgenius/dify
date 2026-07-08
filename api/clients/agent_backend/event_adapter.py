@@ -7,7 +7,7 @@ remain Dify Agent ``run_succeeded`` payloads on the wire; API code turns them
 into an internal event so workflow pause/session handling stays local to API.
 Agent-message deltas are exposed as annotations on ``PydanticAIStreamRunEvent``
 so API code does not have to parse Pydantic AI stream-event internals to
-preserve streaming.
+preserve streaming. The terminal answer remains the ``run_succeeded`` output.
 """
 
 from __future__ import annotations
@@ -36,7 +36,6 @@ class AgentBackendInternalEventType(StrEnum):
     RUN_STARTED = "run_started"
     STREAM_EVENT = "stream_event"
     AGENT_MESSAGE_DELTA = "agent_message_delta"
-    TERMINAL_OUTPUT_DELTA = "terminal_output_delta"
     DEFERRED_TOOL_CALL = "deferred_tool_call"
     RUN_SUCCEEDED = "run_succeeded"
     RUN_FAILED = "run_failed"
@@ -71,15 +70,6 @@ class AgentBackendAgentMessageDeltaInternalEvent(AgentBackendInternalEventBase):
 
     type: Literal[AgentBackendInternalEventType.AGENT_MESSAGE_DELTA] = (
         AgentBackendInternalEventType.AGENT_MESSAGE_DELTA
-    )
-    delta: str
-
-
-class AgentBackendTerminalOutputDeltaInternalEvent(AgentBackendInternalEventBase):
-    """API-internal terminal output delta emitted independently from raw stream events."""
-
-    type: Literal[AgentBackendInternalEventType.TERMINAL_OUTPUT_DELTA] = (
-        AgentBackendInternalEventType.TERMINAL_OUTPUT_DELTA
     )
     delta: str
 
@@ -123,7 +113,6 @@ type AgentBackendInternalEvent = Annotated[
     AgentBackendRunStartedInternalEvent
     | AgentBackendStreamInternalEvent
     | AgentBackendAgentMessageDeltaInternalEvent
-    | AgentBackendTerminalOutputDeltaInternalEvent
     | AgentBackendDeferredToolCallInternalEvent
     | AgentBackendRunSucceededInternalEvent
     | AgentBackendRunFailedInternalEvent
@@ -152,14 +141,6 @@ class AgentBackendRunEventAdapter:
                             run_id=event.run_id,
                             source_event_id=event.id,
                             delta=event.agent_message_delta,
-                        )
-                    ]
-                if event.terminal_output_delta:
-                    return [
-                        AgentBackendTerminalOutputDeltaInternalEvent(
-                            run_id=event.run_id,
-                            source_event_id=event.id,
-                            delta=event.terminal_output_delta,
                         )
                     ]
                 data = cast(JsonValue, _EVENT_DATA_ADAPTER.dump_python(event.data, mode="json"))

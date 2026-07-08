@@ -28,7 +28,6 @@ from clients.agent_backend.event_adapter import (
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
-    AgentBackendTerminalOutputDeltaInternalEvent,
 )
 from clients.agent_backend.factory import create_agent_backend_run_client
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
@@ -85,7 +84,6 @@ __all__ = [
     "AgentBackendSessionCleanupResult",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
-    "AgentBackendTerminalOutputDeltaInternalEvent",
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",
