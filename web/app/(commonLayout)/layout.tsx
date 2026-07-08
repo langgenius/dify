@@ -1,12 +1,13 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import MainNavLayout from '@/app/components/main-nav/layout'
 import { NextRouteStateBridge } from '@/app/components/next-route-state'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
-import { AppContextProvider } from '@/context/app-context-provider'
+import { AppBootstrapEffects } from '@/context/app-bootstrap-effects'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
@@ -17,18 +18,20 @@ export default async function Layout({
   children,
   detailSidebar,
 }: {
-  children: ReactNode
-  detailSidebar: ReactNode
+  children: React.ReactNode
+  detailSidebar: React.ReactNode
 }) {
   return (
-    <>
+    <React.Fragment>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
         <NextRouteStateBridge>
-          <AppContextProvider>
+          <div className="flex h-full flex-col overflow-hidden">
+            <MaintenanceNotice />
+            <AppBootstrapEffects />
             <EventEmitterContextProvider>
               <ProviderContextProvider>
                 <ModalContextProvider>
@@ -39,10 +42,10 @@ export default async function Layout({
                 </ModalContextProvider>
               </ProviderContextProvider>
             </EventEmitterContextProvider>
-          </AppContextProvider>
+          </div>
         </NextRouteStateBridge>
       </CommonLayoutHydrationBoundary>
       <Zendesk />
-    </>
+    </React.Fragment>
   )
 }

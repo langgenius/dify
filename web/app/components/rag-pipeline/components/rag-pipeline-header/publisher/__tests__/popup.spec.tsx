@@ -137,6 +137,7 @@ vi.mock('@/app/components/base/premium-badge', () => ({
 
 vi.mock('@/config', () => ({
   IS_CLOUD_EDITION: true,
+  MARKETPLACE_API_PREFIX: '/marketplace/api',
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -155,15 +156,23 @@ vi.mock('@/context/dataset-detail', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: {
       id: mockCurrentUserId,
     },
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',

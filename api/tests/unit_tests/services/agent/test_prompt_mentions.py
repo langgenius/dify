@@ -243,9 +243,10 @@ def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
 
     assert expanded == (
         "Read START/tenders and produce qna_report (file output; create the file locally, run "
-        "`dify-agent file upload <path>`, then copy the returned AgentStubFileMapping JSON "
-        "as final_output.qna_report; do not call final_output before upload succeeds, and do not use "
-        "the local path, filename, URL, or a synthesized dify-file-ref as the reference); "
+        "`dify-agent file upload <path>`, then set final_output.qna_report to a `tool_file` mapping "
+        "using the returned `reference`; if replying to the user in natural language, use the returned "
+        "`download_url`; do not call final_output before upload succeeds, and do not use the local path, "
+        "filename, URL, or a synthesized dify-file-ref as the reference); "
         "if unsure contact EMAIL · David Hayes."
     )
 

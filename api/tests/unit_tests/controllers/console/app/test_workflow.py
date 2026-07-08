@@ -621,7 +621,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: {app_id_1}),
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: {app_id_1}),
     )
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
 
@@ -703,7 +703,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: set(app_ids)),
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: set(app_ids)),
     )
 
     first_pipeline = Mock()

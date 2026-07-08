@@ -2,9 +2,10 @@
 
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { API_PREFIX } from '@/config'
-import { useSelector } from '@/context/app-context'
+import { currentWorkspaceIdAtom } from '@/context/app-context-state'
 import useTheme from '@/hooks/use-theme'
 import {
   useAllBuiltInTools,
@@ -67,7 +68,7 @@ function createProviderMap(providers: ToolWithProvider[]) {
 
 export function useAgentPromptToolIconResolver() {
   const { theme } = useTheme()
-  const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: builtInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()

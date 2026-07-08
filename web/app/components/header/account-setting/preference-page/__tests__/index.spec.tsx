@@ -68,12 +68,18 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: mockUserProfile,
-    mutateUserProfile: mockMutateUserProfile,
-  }),
-}))
+    refreshUserProfile: mockMutateUserProfile,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale,

@@ -36,7 +36,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -124,6 +124,7 @@ Use only the current Build chat message history to identify changes that need to
 validate old config unless the message history already shows that the old config is invalid.
 
 Only update the build-draft config note when the current Build chat contains durable context that later runs need.
+Write the config note in the language used by the message history.
 Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
 skills, config env, tools, models, knowledge, or prompt settings.
 
@@ -415,6 +416,7 @@ def _create_build_chat_finalization_message(
         "draft_type": "debug_build",
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
+        AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
     }
     external_trace_id = get_external_trace_id(request)
     if external_trace_id:

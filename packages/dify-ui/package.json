@@ -101,10 +101,6 @@
       "types": "./src/radio/index.tsx",
       "import": "./src/radio/index.tsx"
     },
-    "./radio-group": {
-      "types": "./src/radio-group/index.tsx",
-      "import": "./src/radio-group/index.tsx"
-    },
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"

@@ -43,13 +43,30 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () =>
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: ['app.acl.edit'],
     langGeniusVersionInfo: {
       current_env: 'PRODUCTION',
+      current_version: '',
+      latest_version: '',
+      version: '',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
     },
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -270,7 +287,12 @@ describe('Agent access surface cards', () => {
 
     it('should save settings through the backing app id and update the agent detail cache', async () => {
       const user = userEvent.setup()
-      const agent = createAgent()
+      const agent = createAgent({
+        site: {
+          ...createAgent().site!,
+          icon_url: 'https://files.example.test/old-icon.png',
+        },
+      })
       mocks.siteMutation.mockResolvedValueOnce({
         app_id: 'app-1',
         code: 'new-site-token',
@@ -324,10 +346,63 @@ describe('Agent access surface cards', () => {
           access_token: 'new-site-token',
           chat_color_theme: '#123456',
           description: 'Updated web description.',
+          icon_url: null,
           title: 'Support Portal',
         },
       })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
+    })
+
+    it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
+      const user = userEvent.setup()
+      const agent = createAgent({
+        icon: 'agent-image-file-id',
+        icon_background: null,
+        icon_type: 'image',
+        icon_url: 'https://files.example.test/agent-icon.png',
+        site: {
+          ...createAgent().site!,
+          icon: null,
+          icon_background: null,
+          icon_type: null,
+          icon_url: null,
+        },
+      })
+      mocks.siteMutation.mockResolvedValueOnce({
+        app_id: 'app-1',
+        code: 'site-token',
+        copyright: '',
+        custom_disclaimer: '',
+        customize_domain: null,
+        customize_token_strategy: 'allow',
+        default_language: 'en-US',
+        description: 'Support Agent',
+        icon: 'agent-image-file-id',
+        icon_background: null,
+        privacy_policy: '',
+        prompt_public: false,
+        show_workflow_steps: false,
+        title: 'Support Agent',
+        use_icon_as_answer_icon: false,
+      })
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }))
+      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.settings.title' })
+      expect(within(dialog).getByAltText('app icon')).toHaveAttribute('src', 'https://files.example.test/agent-icon.png')
+
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => {
+        expect(mocks.siteMutation.mock.calls[0]?.[0].body).toEqual(expect.objectContaining({
+          icon: 'agent-image-file-id',
+          icon_background: undefined,
+          icon_type: 'image',
+        }))
+      })
     })
 
     it('should keep embedded disabled until the backing app id and web app token are available', () => {

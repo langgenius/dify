@@ -16,7 +16,7 @@ const mockTrackCreateApp = vi.fn()
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-let mockIsCurrentWorkspaceEditor = true
+const mockUserProfile = { id: 'user-1' }
 
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: () => void) => {
@@ -28,12 +28,21 @@ vi.mock('ahooks', () => ({
     }
   },
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('nuqs', () => ({
   useQueryState: () => ['Recommended', vi.fn()],
 }))
@@ -181,7 +190,6 @@ describe('Apps', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockIsCurrentWorkspaceEditor = true
     mockUseExploreAppList.mockReturnValue({
       data: defaultData,
       isLoading: false,
@@ -213,7 +221,6 @@ describe('Apps', () => {
   })
 
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
-    mockIsCurrentWorkspaceEditor = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
     render(<Apps />)
@@ -222,7 +229,6 @@ describe('Apps', () => {
   })
 
   it('does not allow template creation when app.create_and_management permission is missing', () => {
-    mockIsCurrentWorkspaceEditor = true
     mockWorkspacePermissionKeys = []
 
     render(<Apps />)
@@ -296,7 +302,37 @@ describe('Apps', () => {
       id: 'created-app-id',
       mode: AppModeEnum.CHAT,
       permission_keys: ['app.acl.view_layout'],
-    }, mockPush, { isRbacEnabled: false })
+    }, mockPush, {
+      currentUserId: 'user-1',
+      resourceMaintainer: 'user-1',
+      workspacePermissionKeys: ['app.create_and_management'],
+      isRbacEnabled: false,
+    })
+  })
+
+  it('passes creator context when template import response has no permission keys', async () => {
+    mockImportDSL.mockResolvedValueOnce({
+      app_id: 'created-without-permissions',
+      app_mode: AppModeEnum.WORKFLOW,
+    })
+
+    render(<Apps />)
+
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
+    fireEvent.click(screen.getByTestId('confirm-create'))
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith({
+        id: 'created-without-permissions',
+        mode: AppModeEnum.WORKFLOW,
+        permission_keys: undefined,
+      }, mockPush, {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      })
+    })
   })
 
   it('shows an error toast when importing the template fails', async () => {

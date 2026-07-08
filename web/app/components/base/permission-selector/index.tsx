@@ -8,11 +8,13 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line no-restricted-imports -- This legacy selector still relies on showLeftIcon/showClearIcon props from the old input.
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { PermissionLevel } from '@/models/permission'
 import MemberItem from './member-item'
 import Item from './permission-item'
@@ -45,7 +47,7 @@ const PermissionSelector = ({
   hidePartialMembers = false,
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  const userProfile = useAtomValue(userProfileAtom)
   const [open, setOpen] = useState(false)
 
   const [keywords, setKeywords] = useState('')
@@ -72,7 +74,7 @@ const PermissionSelector = ({
   }, [userProfile, value, memberList])
 
   const showMe = useMemo(() => {
-    return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
+    return (userProfile.name ?? '').includes(searchKeywords) || (userProfile.email ?? '').includes(searchKeywords)
   }, [searchKeywords, userProfile])
 
   const filteredMemberList = useMemo(() => {

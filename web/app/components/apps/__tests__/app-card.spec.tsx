@@ -75,10 +75,18 @@ const mockAppContext = vi.hoisted(() => ({
 }))
 
 // Mock app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppContext,
-  useSelector: (selector: (state: typeof mockAppContext) => unknown) => selector(mockAppContext),
-}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock provider context
 const mockOnPlanInfoChanged = vi.fn()

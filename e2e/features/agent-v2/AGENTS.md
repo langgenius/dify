@@ -28,7 +28,7 @@ Use tags in three layers:
 - `@build` — Build mode and Build draft behavior.
 - `@build-unavailable-resources` — feature-gated Build chat recovery when the user requests unavailable Skills or Tools.
 - `@files` — Files section upload, display, and fixture behavior.
-- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format, size, count, and in-progress upload recovery remain feature-gated until their product contracts are stable.
+- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format and size rejection remain feature-gated until their product contracts are stable.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-create` — Agent Roster creation and initial Configure navigation.
@@ -43,7 +43,6 @@ Use tags in three layers:
 - `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
 - `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
 - `@oauth-tool-agent` — fixed `E2E Agent With OAuth Tool` Agent dependency for OAuth2 tool credential preservation.
-- `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
 - `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
 - `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
 - `@published-web-app` — fixed or scenario-owned published Web app access dependency.
@@ -206,10 +205,6 @@ Use `the Agent Builder preseeded Agent "{agent}" includes an OAuth2 tool credent
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query.
 
-Use `the Agent Builder preseeded Agent "{agent}" includes the file tree fixture files` for file-tree display prerequisites. It verifies the Agent drive contains every file from `agentBuilderFileTreeFixtureFiles` through `/console/api/agent/{agent_id}/drive/files?prefix=files/`.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the current flat file fixture configuration` for the current Agent Edit Files section. Agent config files are still a flat `config_files` list and reject path separators, so this preflight verifies the fixture file basenames are present in the Agent Soul. Treat this as partial coverage for tree-display requirements until the product supports hierarchical config files in the visible Files section.
-
 Use `the Agent Builder preseeded Agent "{agent}" has published Web app access` to verify that a fixed Agent is published, Web app access is enabled, and the Agent detail response includes the site token and base URL needed to open the Web app.
 
 Use `the Agent Builder preseeded Agent "{agent}" is referenced by workflow "{workflow}"` to verify Workflow access prerequisites. It checks both fixed resources exist, then uses `/console/api/agent/{agent_id}/referencing-workflows`, the same Console API used by the Access Point Workflow references table, to verify the workflow references the Agent through at least one published Agent node.
@@ -230,6 +225,6 @@ Order blocked steps by the real owner of the first unresolved condition. If a sc
 
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
 
-Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format, size, count, and in-progress upload limit cases remain feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
+Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format and size rejection remain feature-gated until the product exposes stable Agent config file restrictions and user-visible error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
 
 Do not mark a scenario as complete if it only proves setup state and does not assert the user-visible behavior or persisted product contract required by the case.

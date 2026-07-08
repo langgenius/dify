@@ -22,3 +22,17 @@ export const agentComposerKnowledgeRetrievalsAtom = atom(
     })
   },
 )
+
+export const addKnowledgeRetrievalAtom = atom(null, (_get, set, retrieval: AgentKnowledgeRetrievalItem) => {
+  set(agentComposerKnowledgeRetrievalsAtom, retrievals => [...retrievals, retrieval])
+})
+
+export const updateKnowledgeRetrievalAtom = atom(null, (_get, set, retrieval: AgentKnowledgeRetrievalItem) => {
+  set(agentComposerKnowledgeRetrievalsAtom, retrievals => retrievals.map(currentRetrieval => (
+    currentRetrieval.id === retrieval.id ? retrieval : currentRetrieval
+  )))
+})
+
+export const removeKnowledgeRetrievalAtom = atom(null, (_get, set, retrievalId: string) => {
+  set(agentComposerKnowledgeRetrievalsAtom, retrievals => retrievals.filter(retrieval => retrieval.id !== retrievalId))
+})

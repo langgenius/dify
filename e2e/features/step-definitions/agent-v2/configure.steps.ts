@@ -15,6 +15,7 @@ import {
   concurrentFirstAgentPrompt,
   concurrentSecondAgentPrompt,
   createAgentSoulConfigWithModel,
+  createPublishableAgentSoulConfig,
   normalAgentPrompt,
   normalAgentSoulConfig,
   updatedAgentPrompt,
@@ -130,6 +131,16 @@ Given('a minimal Agent v2 composer draft has been synced', async function (this:
 Given('the Agent v2 composer draft uses the normal E2E prompt', async function (this: DifyWorld) {
   await saveAgentComposerDraft(getCurrentAgentId(this), normalAgentSoulConfig)
 })
+
+Given(
+  'the Agent v2 composer draft is publishable',
+  async function (this: DifyWorld) {
+    await saveAgentComposerDraft(
+      getCurrentAgentId(this),
+      createPublishableAgentSoulConfig(normalAgentSoulConfig),
+    )
+  },
+)
 
 Given('the e2e-summary-skill Skill is available to the Agent v2 test agent', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
@@ -271,10 +282,13 @@ Then('I should be on the Agent v2 configure page', async function (this: DifyWor
 
 Then('I should see the Agent v2 configure workspace', async function (this: DifyWorld) {
   const page = this.getPage()
+  const agentName = this.lastCreatedAgentName
+  if (!agentName)
+    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
-  await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
+  await expect(page.getByText(agentName, { exact: true })).toBeVisible()
 })
 
 Then(

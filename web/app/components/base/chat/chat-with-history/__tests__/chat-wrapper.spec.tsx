@@ -6,6 +6,7 @@ import type { HumanInputFormData } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
+  fetchChatList,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
   submitHumanInputForm,
@@ -42,6 +43,7 @@ vi.mock('../../utils', () => ({
 }))
 
 vi.mock('@/service/share', () => ({
+  fetchChatList: vi.fn(),
   fetchSuggestedQuestions: vi.fn(),
   getUrl: vi.fn(() => 'mock-url'),
   stopChatMessageResponding: vi.fn(),
@@ -661,6 +663,55 @@ describe('ChatWrapper', () => {
     // Call onGetSuggestedQuestions
     options.onGetSuggestedQuestions('response-id')
     expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
+  })
+
+  it('should fetch current conversation messages after new agent send completes', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] }],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isNewAgent: true,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    const options = handleSend.mock.calls[0]![2]
+    await options.onGetConversationMessages('conversation-1')
+
+    expect(fetchChatList).toHaveBeenCalledWith('conversation-1', 'webApp', 'test-app-id')
+  })
+
+  it('should not fetch current conversation messages for non-new-agent chat', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] }],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isNewAgent: false,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    const options = handleSend.mock.calls[0]![2]
+    expect(options.onGetConversationMessages).toBeUndefined()
   })
 
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {

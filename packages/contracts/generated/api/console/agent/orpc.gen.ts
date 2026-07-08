@@ -1178,11 +1178,11 @@ export const read = {
 }
 
 /**
- * Upload one Agent App sandbox file as a Dify ToolFile mapping
+ * Upload one Agent App sandbox file and return a signed download URL
  */
 export const post16 = oc
   .route({
-    description: 'Upload one Agent App sandbox file as a Dify ToolFile mapping',
+    description: 'Upload one Agent App sandbox file and return a signed download URL',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdSandboxFilesUpload',

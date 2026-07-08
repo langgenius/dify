@@ -41,6 +41,7 @@ export type ThoughtItem = {
   id: string
   tool: string // plugin or dataset. May has multi.
   thought: string
+  answer?: string
   tool_input: string
   tool_labels?: { [key: string]: TypeWithI18N }
   message_id: string
@@ -50,6 +51,16 @@ export type ThoughtItem = {
   files?: string[]
   message_files?: FileEntity[]
 }
+
+type AgentResponsePart
+  = | {
+    type: 'thought'
+    thought: ThoughtItem
+  }
+  | {
+    type: 'message'
+    content: string
+  }
 
 export type CitationItem = {
   content: string
@@ -113,6 +124,7 @@ export type IChatItem = {
   suggestedQuestions?: string[]
   log?: { role: string, text: string, files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
+  agent_response_parts?: AgentResponsePart[]
   // for LLM reasoning (chain-of-thought) in "separated" mode, keyed by LLM node id
   reasoningContent?: Record<string, string>
   reasoningFinished?: boolean

@@ -169,6 +169,10 @@ describe('AgentBuildDraftBar', () => {
     expect(document.querySelector('.text-text-accent')).toHaveClass('i-ri-add-circle-fill')
 
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }))
+    expect(onDiscard).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog', { name: 'agentV2.agentDetail.configure.clearSessionConfirm.title' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await user.click(screen.getByRole('button', { name: 'custom.apply' }))
 
     expect(onDiscard).toHaveBeenCalledTimes(1)
@@ -197,6 +201,9 @@ describe('AgentBuildDraftBar', () => {
     expect(applyButton).toBeEnabled()
 
     await user.click(discardButton)
+    expect(onDiscard).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await user.click(applyButton)
 
     expect(onDiscard).toHaveBeenCalledTimes(1)

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
@@ -17,6 +16,11 @@ const ahooksMocks = vi.hoisted(() => ({
   keyPressHandlers: [] as Array<() => void>,
 }))
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: ['app.create_and_management'] as string[],
+}))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -70,9 +74,16 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
@@ -86,7 +97,6 @@ const mockCreateApp = vi.mocked(createApp)
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
 const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseAppContext = vi.mocked(useAppContext)
 const { mockToastSuccess, mockToastError } = toastMocks
 
 const defaultPlanUsage = {
@@ -134,7 +144,9 @@ describe('CreateAppModal', () => {
     mockUseAppContext.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
-    } as unknown as ReturnType<typeof useAppContext>)
+    })
+    mockAppContextState.userProfile = { id: 'user-1' }
+    mockAppContextState.workspacePermissionKeys = ['app.create_and_management']
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
       value: {

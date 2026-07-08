@@ -240,7 +240,6 @@ When(
 
     await expect(toolsSection).toBeVisible({ timeout: 30_000 })
     await toolsSection.getByRole('button', { name: 'Add tool' }).click()
-    await this.getPage().getByRole('button', { name: /^Tool\b/ }).click()
 
     const search = getToolSelectorSearch(this)
     await expect(search).toBeVisible()

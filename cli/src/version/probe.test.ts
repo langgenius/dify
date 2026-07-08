@@ -105,7 +105,7 @@ describe('runVersionProbe', () => {
     expect(report.compat.status).toBe('compatible')
   })
 
-  it('returns unsupported when server version is out of range', async () => {
+  it('returns too_new when server version is above range', async () => {
     const report = await runVersionProbe({
       skipServer: false,
       loadActive: async () => active(),
@@ -113,7 +113,7 @@ describe('runVersionProbe', () => {
     })
 
     expect(report.server.reachable).toBe(true)
-    expect(report.compat.status).toBe('unsupported')
+    expect(report.compat.status).toBe('too_new')
   })
 
   it('returns unknown when server returns an empty version string', async () => {

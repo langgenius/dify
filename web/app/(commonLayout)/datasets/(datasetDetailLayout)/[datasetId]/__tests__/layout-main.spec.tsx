@@ -23,21 +23,28 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: false,
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
-  }),
-}))
+  }), () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: undefined,
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),

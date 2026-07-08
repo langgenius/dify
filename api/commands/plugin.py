@@ -188,13 +188,13 @@ def transform_datasource_credentials(environment: str):
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
         if environment == "online":
-            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)
-            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)
-            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)
+            notion_package_identifier = plugin_migration._fetch_latest_package_identifier(notion_plugin_id)
+            firecrawl_package_identifier = plugin_migration._fetch_latest_package_identifier(firecrawl_plugin_id)
+            jina_package_identifier = plugin_migration._fetch_latest_package_identifier(jina_plugin_id)
         else:
-            notion_plugin_unique_identifier = None
-            firecrawl_plugin_unique_identifier = None
-            jina_plugin_unique_identifier = None
+            notion_package_identifier = None
+            firecrawl_package_identifier = None
+            jina_package_identifier = None
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
 
@@ -219,9 +219,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if notion_plugin_id not in installed_plugins_ids:
-                        if notion_plugin_unique_identifier:
+                        if notion_package_identifier:
                             # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
                     auth_count = 0
                     for notion_tenant_credential in notion_tenant_credentials:
                         auth_count += 1
@@ -279,9 +279,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if firecrawl_plugin_id not in installed_plugins_ids:
-                        if firecrawl_plugin_unique_identifier:
+                        if firecrawl_package_identifier:
                             # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
 
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
@@ -343,10 +343,10 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if jina_plugin_id not in installed_plugins_ids:
-                        if jina_plugin_unique_identifier:
+                        if jina_package_identifier:
                             # install jina plugin
-                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
+                            logger.debug("Installing Jina plugin %s", jina_package_identifier)
+                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
 
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:
@@ -472,6 +472,7 @@ def backfill_plugin_auto_upgrade(
         try:
             result = PluginAutoUpgradeService.backfill_strategy_categories(
                 current_tenant_id,
+                session=db.session(),
             )
         except Exception as e:
             failed_count += 1

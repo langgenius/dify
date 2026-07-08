@@ -36,15 +36,6 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn()
-const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  // Item renders useAppContextWithSelector(state => state.userProfile)
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
-    selector({ userProfile: mockUserProfile }),
-}))
 
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),

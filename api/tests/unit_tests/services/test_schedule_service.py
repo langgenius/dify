@@ -1,7 +1,7 @@
+import json
 import unittest
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -11,7 +11,7 @@ from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from services.trigger.schedule_service import ScheduleService
 
 
@@ -503,7 +503,22 @@ def session_mock() -> MagicMock:
 
 
 def _workflow(**kwargs: Any) -> Workflow:
-    return cast(Workflow, SimpleNamespace(**kwargs))
+    graph_dict = kwargs.pop("graph_dict", {})
+    workflow = Workflow.new(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version="draft",
+        graph=json.dumps(graph_dict),
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    for key, value in kwargs.items():
+        setattr(workflow, key, value)
+    return workflow
 
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:

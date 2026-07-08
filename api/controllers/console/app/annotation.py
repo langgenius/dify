@@ -211,7 +211,7 @@ class AppAnnotationSettingDetailApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id), session=db.session())
         return dump_response(AnnotationSettingResponse, result), 200
 
 
@@ -235,7 +235,7 @@ class AppAnnotationSettingUpdateApi(Resource):
 
         setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
         result = AppAnnotationService.update_app_annotation_setting(
-            str(app_id), annotation_setting_id_str, setting_args
+            str(app_id), annotation_setting_id_str, setting_args, session=db.session()
         )
         return dump_response(AnnotationSettingResponse, result), 200
 
@@ -292,7 +292,9 @@ class AnnotationApi(Resource):
         limit = args.limit
         keyword = args.keyword
 
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(str(app_id), page, limit, keyword)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            str(app_id), page, limit, keyword, session=db.session()
+        )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
             data=annotation_models, has_more=len(annotation_list) == limit, limit=limit, total=total, page=page
@@ -321,7 +323,9 @@ class AnnotationApi(Resource):
             upsert_args["message_id"] = args.message_id
         if args.question is not None:
             upsert_args["question"] = args.question
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, str(app_id))
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(
+            upsert_args, str(app_id), session=db.session()
+        )
         return dump_response(Annotation, annotation), 201
 
     @setup_required
@@ -345,11 +349,11 @@ class AnnotationApi(Resource):
                 }, 400
 
             app_ref = _get_app_ref(str(app_id))
-            AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids)
+            AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids, session=db.session())
             return "", 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
-            AppAnnotationService.clear_all_annotations(str(app_id))
+            AppAnnotationService.clear_all_annotations(str(app_id), session=db.session())
             return "", 204
 
 
@@ -370,7 +374,7 @@ class AnnotationExportApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id))
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id), session=db.session())
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return (
             AnnotationExportList(data=annotation_models).model_dump(mode="json"),
@@ -406,7 +410,7 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["question"] = args.question
         app_ref = _get_app_ref(str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session())
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
@@ -418,7 +422,7 @@ class AnnotationUpdateDeleteApi(Resource):
     def delete(self, app_id: UUID, annotation_id: UUID):
         app_ref = _get_app_ref(str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        AppAnnotationService.delete_app_annotation(annotation_ref, db.session)
+        AppAnnotationService.delete_app_annotation(annotation_ref, db.session())
         return "", 204
 
 
@@ -477,7 +481,7 @@ class AnnotationBatchImportApi(Resource):
 
         return dump_response(
             AnnotationBatchImportResponse,
-            AppAnnotationService.batch_import_app_annotations(str(app_id), file),
+            AppAnnotationService.batch_import_app_annotations(str(app_id), file, session=db.session()),
         )
 
 
@@ -538,6 +542,7 @@ class AnnotationHitHistoryListApi(Resource):
             annotation_ref,
             page,
             limit,
+            session=db.session(),
         )
         history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
             annotation_hit_history_list, from_attributes=True

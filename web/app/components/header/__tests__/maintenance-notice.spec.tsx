@@ -4,8 +4,16 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { NOTICE_I18N } from '@/i18n-config/language'
 import MaintenanceNotice from '../maintenance-notice'
 
+const mockEnv = vi.hoisted(() => ({
+  NEXT_PUBLIC_MAINTENANCE_NOTICE: 'true',
+}))
+
 vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({
   X: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
+}))
+
+vi.mock('@/env', () => ({
+  env: mockEnv,
 }))
 
 vi.mock(
@@ -44,6 +52,7 @@ describe('MaintenanceNotice', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    mockEnv.NEXT_PUBLIC_MAINTENANCE_NOTICE = 'true'
     vi.mocked(useLanguage).mockReturnValue('en_US')
     setNoticeHref('#')
   })
@@ -69,6 +78,14 @@ describe('MaintenanceNotice', () => {
     it('should not render when hidden in localStorage', () => {
       localStorage.setItem('hide-maintenance-notice', '1')
       const { container } = render(<MaintenanceNotice />)
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('should not render when the notice env flag is disabled', () => {
+      mockEnv.NEXT_PUBLIC_MAINTENANCE_NOTICE = ''
+
+      const { container } = render(<MaintenanceNotice />)
+
       expect(container.firstChild).toBeNull()
     })
   })
