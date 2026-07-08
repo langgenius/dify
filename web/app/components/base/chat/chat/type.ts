@@ -41,6 +41,7 @@ export type ThoughtItem = {
   id: string
   tool: string // plugin or dataset. May has multi.
   thought: string
+  answer?: string
   tool_input: string
   tool_labels?: { [key: string]: TypeWithI18N }
   message_id: string

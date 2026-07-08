@@ -1938,6 +1938,96 @@ describe('useChat', () => {
       expect(lastResponse!.more?.tokens_per_second).toBeUndefined()
     })
 
+    it('should replace new agent streaming response parts with completed conversation history', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [{
+          id: 'm-new-agent-history',
+          answer: 'history top-level answer',
+          message: [{ role: 'user', text: 'hi' }],
+          agent_thoughts: [
+            {
+              id: 'history-thought',
+              thought: 'history thought',
+              answer: 'history agent answer',
+              tool: '',
+              tool_input: '',
+              observation: '',
+              position: 1,
+            },
+          ],
+          message_files: [{
+            id: 'history-file',
+            belongs_to: 'assistant',
+            type: 'image',
+            url: 'history.png',
+          }],
+          retriever_resources: [{ id: 'history-citation', content: 'history citation' }],
+          metadata: { reasoning: { history: 'history reasoning' } },
+          created_at: Date.now(),
+          answer_tokens: 10,
+          message_tokens: 5,
+          provider_response_latency: 0.5,
+          workflow_run_id: 'history-workflow-run',
+          feedback: { rating: 'like' },
+          inputs: {},
+          query: 'hi',
+        }],
+      })
+
+      const { result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isNewAgent: true },
+      ))
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'new agent history' }, {
+          onGetConversationMessages,
+        })
+      })
+
+      await act(async () => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'stream-workflow-run', task_id: 'stream-task' })
+        callbacks.onThought({ id: 'stream-thought', thought: 'stream thought' })
+        callbacks.onData(' stream answer', true, { event: 'agent_message', messageId: 'm-new-agent-history', conversationId: 'c-new-agent-history' })
+        callbacks.onReasoning({ data: { message_id: 'm-new-agent-history', node_id: 'stream', reasoning: 'stream reasoning' } })
+        callbacks.onMessageEnd({
+          id: 'm-new-agent-history',
+          metadata: { retriever_resources: [{ id: 'stream-citation', content: 'stream citation' }] },
+          files: [{ id: 'stream-file', type: 'image', url: 'stream.png' }],
+        })
+        await callbacks.onCompleted()
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.agent_response_parts).toBeUndefined()
+      expect(lastResponse!.workflow_run_id).toBe('history-workflow-run')
+      expect(lastResponse!.workflowProcess).toBeUndefined()
+      expect(lastResponse!.citation).toEqual([{ id: 'history-citation', content: 'history citation' }])
+      expect(lastResponse!.reasoningContent).toEqual({ history: 'history reasoning' })
+      expect(lastResponse!.message_files).toEqual([expect.objectContaining({ id: 'history-file' })])
+      expect(lastResponse!.allFiles).toBeUndefined()
+      expect(lastResponse!.feedback).toEqual({ rating: 'like' })
+      expect(lastResponse!.agent_thoughts).toEqual([
+        expect.objectContaining({
+          id: 'history-thought',
+          thought: 'history thought',
+          answer: 'history agent answer',
+        }),
+      ])
+    })
+
     it('should handle onCompleted using agent thought when thought matches answer', async () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {

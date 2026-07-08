@@ -3,6 +3,35 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 describe('AgentRosterResponseContent', () => {
+  it('should render historical agent thought answer as markdown instead of thought process', async () => {
+    const item = {
+      id: 'answer-history',
+      content: '',
+      isAnswer: true,
+      agent_thoughts: [
+        {
+          id: 'thought-with-answer',
+          thought: 'internal thought should not render',
+          answer: '**history answer**',
+          tool: '',
+          tool_input: '',
+          observation: '',
+          message_id: 'answer-history',
+          conversation_id: 'conversation-history',
+          position: 1,
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('history answer')
+    })
+
+    expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+  })
+
   it('should render new agent response parts in event order when thoughts and messages interleave', async () => {
     const item = {
       id: 'answer-1',

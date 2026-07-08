@@ -12,7 +12,8 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
-import type { ReasoningChunkResponse } from '@/types/workflow'
+import type { VisionFile } from '@/types/app'
+import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -33,6 +34,7 @@ import {
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -48,9 +50,35 @@ import {
 } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
+type HistoryMessageFile = Partial<FileResponse> & {
+  id?: string
+  belongs_to?: string
+}
+type HistoryConversationMessage = {
+  id: string
+  answer?: string
+  message?: { role: string, text: string, files?: FileEntity[] }[]
+  message_files?: HistoryMessageFile[]
+  agent_thoughts?: ThoughtItem[] | null
+  retriever_resources?: ChatItem['citation']
+  metadata?: {
+    reasoning?: ChatItem['reasoningContent']
+  }
+  created_at?: number
+  answer_tokens?: number
+  message_tokens?: number
+  provider_response_latency?: number
+  workflow_run_id?: string
+  feedback?: ChatItem['feedback']
+  inputs?: unknown
+  query?: string
+}
+type ConversationMessagesResponse = {
+  data: HistoryConversationMessage[]
+}
 type SendCallback = {
-  onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
-  onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
+  onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<unknown>
+  onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<unknown>
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
@@ -104,6 +132,59 @@ function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: T
     type: 'thought',
     thought,
   })
+}
+
+function getHistoryAgentThoughts(responseItem: HistoryConversationMessage) {
+  if (!Array.isArray(responseItem.agent_thoughts))
+    return []
+
+  const messageFiles: VisionFile[] = responseItem.message_files?.map(file => ({
+    id: file.id,
+    type: file.type || '',
+    transfer_method: file.transfer_method || TransferMethod.remote_url,
+    url: file.url || '',
+    upload_file_id: file.upload_file_id || '',
+    belongs_to: file.belongs_to,
+  })) || []
+
+  return addFileInfos(sortAgentSorts(responseItem.agent_thoughts), messageFiles)
+}
+
+function toHistoryFileResponse(file: HistoryMessageFile): FileResponse {
+  return {
+    related_id: file.related_id || file.id || '',
+    extension: file.extension || '',
+    filename: file.filename || '',
+    size: file.size || 0,
+    mime_type: file.mime_type || file.type || '',
+    transfer_method: file.transfer_method || TransferMethod.remote_url,
+    type: file.type || '',
+    url: file.url || '',
+    upload_file_id: file.upload_file_id || '',
+    remote_url: file.remote_url || '',
+  }
+}
+
+function getHistoryAnswerFiles(responseItem: HistoryConversationMessage) {
+  const answerFiles = responseItem.message_files?.filter(file => file.belongs_to === 'assistant') || []
+
+  return getProcessedFilesFromResponse(answerFiles.map(file => toHistoryFileResponse({
+    ...file,
+    related_id: file.related_id || file.id || '',
+    upload_file_id: file.upload_file_id || '',
+  })))
+}
+
+function isHistoryConversationMessage(value: unknown): value is HistoryConversationMessage {
+  return typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string'
+}
+
+function getConversationMessagesData(response: unknown): ConversationMessagesResponse['data'] {
+  if (typeof response !== 'object' || response === null)
+    return []
+
+  const data = (response as { data?: unknown }).data
+  return Array.isArray(data) ? data.filter(isHistoryConversationMessage) : []
 }
 
 export const useChat = (
@@ -688,7 +769,7 @@ export const useChat = (
       {},
       otherOptions,
     )
-  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer])
+  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer, options.isNewAgent])
 
   const updateCurrentQAOnTree = useCallback(({
     parentId,
@@ -892,36 +973,52 @@ export const useChat = (
           let completedWorkflowRunId = responseItem.workflow_run_id
 
           if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
-            const { data }: any = await onGetConversationMessages(
+            const conversationMessagesResponse = await onGetConversationMessages(
               conversationIdRef.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
-            const newResponseItem = data.find((item: any) => item.id === responseItem.id)
+            const data = getConversationMessagesData(conversationMessagesResponse)
+            const newResponseItem = data.find(item => item.id === responseItem.id)
             completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
             if (!newResponseItem)
               return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
 
-            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
+            const historyAgentThoughts = getHistoryAgentThoughts(newResponseItem)
+            const hasHistoryAgentThoughtAnswer = historyAgentThoughts.some(thought => thought.answer?.trim())
+            const lastHistoryAgentThought = historyAgentThoughts.at(-1)
+            const historyAnswer = newResponseItem.answer || ''
+            const isUseAgentThought = (lastHistoryAgentThought?.thought === historyAnswer) || (options.isNewAgent && hasHistoryAgentThoughtAnswer)
             const messageLog = Array.isArray(newResponseItem.message) ? newResponseItem.message : []
             const answerTokens = newResponseItem.answer_tokens ?? 0
             const messageTokens = newResponseItem.message_tokens ?? 0
             const providerResponseLatency = newResponseItem.provider_response_latency ?? 0
+            const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
             updateChatTreeNode(responseItem.id, {
-              content: isUseAgentThought ? '' : newResponseItem.answer,
+              content: isUseAgentThought ? '' : historyAnswer,
+              agent_thoughts: historyAgentThoughts,
+              agent_response_parts: undefined,
+              citation: newResponseItem.retriever_resources,
+              reasoningContent: newResponseItem.metadata?.reasoning,
+              reasoningFinished: true,
+              message_files: historyAnswerFiles,
+              allFiles: undefined,
+              workflowProcess: undefined,
+              workflow_run_id: newResponseItem.workflow_run_id ?? completedWorkflowRunId,
+              feedback: newResponseItem.feedback,
               log: [
                 ...messageLog,
                 ...(messageLog.at(-1)?.role !== 'assistant'
                   ? [
                       {
                         role: 'assistant',
-                        text: newResponseItem.answer,
-                        files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                        text: historyAnswer,
+                        files: historyAnswerFiles,
                       },
                     ]
                   : []),
               ],
               more: {
-                time: formatTime(newResponseItem.created_at, 'hh:mm A'),
+                time: formatTime(newResponseItem.created_at ?? Date.now(), 'hh:mm A'),
                 tokens: answerTokens + messageTokens,
                 latency: providerResponseLatency.toFixed(2),
                 tokens_per_second: providerResponseLatency > 0 ? (answerTokens / providerResponseLatency).toFixed(2) : undefined,
@@ -1344,6 +1441,7 @@ export const useChat = (
     formatTime,
     createAudioPlayerManager,
     formSettings,
+    options.isNewAgent,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
