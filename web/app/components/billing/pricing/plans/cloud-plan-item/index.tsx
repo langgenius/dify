@@ -1,6 +1,5 @@
 'use client'
-import type { FC } from 'react'
-import type { BasicPlan } from '../../../type'
+import type { BasicPlan, InvoiceFlow, InvoiceFlowStatus } from '../../../type'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -10,12 +9,17 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import Link from '@/next/link'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
 import { BillingPermission, hasPermission } from '@/utils/permission'
@@ -38,14 +42,30 @@ type CloudPlanItemProps = {
   plan: BasicPlan
   planRange: PlanRange
   canPay: boolean
+  invoiceFlow?: InvoiceFlow | null
 }
 
-const CloudPlanItem: FC<CloudPlanItemProps> = ({
+const INVOICE_FLOW_BUTTON_TEXT_KEY = {
+  request_processing: 'invoice.status.processing',
+  invoice_sent: 'invoice.status.awaitingPayment',
+  renewal_invoice_sent: 'invoice.status.awaitingPayment',
+  payment_confirming: 'invoice.status.confirmingPayment',
+  renewal_past_due: 'invoice.status.paymentOverdue',
+} as const satisfies Partial<Record<InvoiceFlowStatus, string>>
+
+type InvoiceFlowButtonStatus = keyof typeof INVOICE_FLOW_BUTTON_TEXT_KEY
+
+const isInvoiceFlowButtonStatus = (status: InvoiceFlowStatus): status is InvoiceFlowButtonStatus => {
+  return status in INVOICE_FLOW_BUTTON_TEXT_KEY
+}
+
+function CloudPlanItem({
   plan,
   currentPlan,
   planRange,
   canPay,
-}) => {
+  invoiceFlow,
+}: CloudPlanItemProps) {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `plans.${plan}` as const
@@ -55,8 +75,13 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
-  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
-  const { workspacePermissionKeys } = useAppContext()
+  const isInvoiceFlowLocked = !!invoiceFlow?.locked
+  const isInvoiceFlowPlan = invoiceFlow?.plan === plan
+  const invoiceFlowButtonTextKey = isInvoiceFlowPlan && invoiceFlow?.status && isInvoiceFlowButtonStatus(invoiceFlow.status)
+    ? INVOICE_FLOW_BUTTON_TEXT_KEY[invoiceFlow.status]
+    : undefined
+  const isPlanDisabled = isInvoiceFlowLocked || (isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level)
+  const { isCurrentWorkspaceManager, workspacePermissionKeys } = useAppContext()
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const canManageBillingSubscription = hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
@@ -68,20 +93,28 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
+  const canRequestInvoice = canPay && isCurrentWorkspaceManager && canManageBilling
+  const isPayByInvoiceVisible = !isFreePlan
+  const invoiceRequestUrl = `/billing/invoice-request?plan=${plan}&cycle=${isYear ? 'year' : 'month'}`
+  const isPayByInvoiceDisabled = !canRequestInvoice || isInvoiceFlowLocked
 
-  const btnText = useMemo(() => {
-    if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
-      return t('useEducationDiscount', { ns: 'education' })
-
-    if (isCurrent)
-      return t('plansCommon.currentPlan', { ns: 'billing' })
-
-    return ({
+  let btnText: string
+  if (invoiceFlowButtonTextKey) {
+    btnText = t(invoiceFlowButtonTextKey, { ns: 'billing' })
+  }
+  else if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent) {
+    btnText = t('useEducationDiscount', { ns: 'education' })
+  }
+  else if (isCurrent) {
+    btnText = t('plansCommon.currentPlan', { ns: 'billing' })
+  }
+  else {
+    btnText = ({
       [Plan.sandbox]: t('plansCommon.startForFree', { ns: 'billing' }),
       [Plan.professional]: t('plansCommon.startBuilding', { ns: 'billing' }),
       [Plan.team]: t('plansCommon.getStarted', { ns: 'billing' }),
     })[plan]
-  }, [canPay, isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
+  }
 
   const handlePayCurrentPlan = async () => {
     if (loading || isEducationDiscountLoading)
@@ -133,6 +166,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     }
   }
   const handleGetPayUrl = async () => {
+    if (isInvoiceFlowLocked)
+      return
+
     if (educationDiscountWarningText && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
@@ -192,13 +228,23 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
             </>
           )}
         </div>
-        <PlanButton
-          plan={plan}
-          isPlanDisabled={isPlanDisabled}
-          btnText={btnText}
-          handleGetPayUrl={handleGetPayUrl}
-          warningText={educationDiscountWarningText}
-        />
+        <div className="flex gap-2">
+          <PlanButton
+            plan={plan}
+            isPlanDisabled={isPlanDisabled}
+            btnText={btnText}
+            handleGetPayUrl={handleGetPayUrl}
+            warningText={educationDiscountWarningText}
+            className={isPayByInvoiceVisible ? 'min-w-0 flex-1' : undefined}
+          />
+          {isPayByInvoiceVisible && (
+            <PayByInvoiceAction
+              href={invoiceRequestUrl}
+              disabled={isPayByInvoiceDisabled}
+              tooltip={canRequestInvoice ? undefined : t('invoice.permissionDeniedTooltip', { ns: 'billing' })}
+            />
+          )}
+        </div>
       </div>
       <List plan={plan} />
       <Dialog
@@ -247,4 +293,65 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     </div>
   )
 }
-export default React.memo(CloudPlanItem)
+export default CloudPlanItem
+
+type PayByInvoiceActionProps = {
+  href: string
+  disabled: boolean
+  tooltip?: string
+}
+
+function PayByInvoiceAction({
+  href,
+  disabled,
+  tooltip,
+}: PayByInvoiceActionProps) {
+  const { t } = useTranslation()
+  const label = t('invoice.payByInvoice', { ns: 'billing' })
+  const className = 'flex min-h-12 min-w-0 flex-1 items-center gap-2 border border-components-panel-border bg-background-default py-3 pr-4 pl-5 system-xl-semibold text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
+  const disabledClassName = 'flex min-h-12 min-w-0 flex-1 cursor-not-allowed items-center gap-2 border border-transparent bg-components-button-tertiary-bg-disabled py-3 pr-4 pl-5 system-xl-semibold text-text-disabled'
+
+  if (!disabled) {
+    return (
+      <Link
+        href={href}
+        className={className}
+      >
+        <span className="min-w-0 grow truncate text-start">{label}</span>
+        <span aria-hidden="true" className="i-ri-arrow-right-line size-5 shrink-0" />
+      </Link>
+    )
+  }
+
+  const action = (
+    <span
+      aria-disabled="true"
+      className={disabledClassName}
+    >
+      <span className="min-w-0 grow truncate text-start">{label}</span>
+    </span>
+  )
+
+  if (!tooltip)
+    return action
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <button
+            type="button"
+            aria-disabled="true"
+            aria-label={tooltip}
+            className="flex min-w-0 flex-1 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            {action}
+          </button>
+        )}
+      />
+      <TooltipContent>
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}

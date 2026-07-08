@@ -1,6 +1,6 @@
 'use client'
 
-import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
+import type { InvoiceFlow, Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
@@ -19,6 +19,7 @@ export type ProviderContextState = {
     usage: UsagePlanInfo
     total: UsagePlanInfo
     reset: UsageResetInfo
+    invoiceFlow?: InvoiceFlow | null
   }
   isFetchedPlan: boolean
   isFetchedPlanInfo: boolean

@@ -115,5 +115,6 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       apiRateLimit: getQuotaResetInDays(data.api_rate_limit),
       triggerEvents: getQuotaResetInDays(data.trigger_event),
     },
+    invoiceFlow: data.billing.invoice_flow ?? null,
   }
 }

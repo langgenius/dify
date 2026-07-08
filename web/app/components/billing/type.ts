@@ -11,6 +11,27 @@ export enum Priority {
 }
 
 export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
+export type BillingInterval = 'month' | 'year'
+
+export type InvoiceFlowStatus
+  = | 'request_processing'
+    | 'invoice_sent'
+    | 'payment_confirming'
+    | 'active'
+    | 'expired'
+    | 'renewal_invoice_sent'
+    | 'renewal_past_due'
+    | 'renewal_canceled'
+
+export type InvoiceFlow = {
+  status: InvoiceFlowStatus
+  locked: boolean
+  plan?: BasicPlan | null
+  interval?: BillingInterval | null
+  hosted_invoice_url?: string | null
+  due_at?: number | null
+  recoverable_until?: number | null
+}
 
 export type PlanInfo = {
   level: number
@@ -62,6 +83,7 @@ export type CurrentPlanInfoBackend = {
     subscription: {
       plan: BasicPlan
     }
+    invoice_flow?: InvoiceFlow | null
   }
   members: {
     size: number

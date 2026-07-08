@@ -152,6 +152,33 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText('billing.plansCommon.mostPopular'))!.toBeInTheDocument()
     })
 
+    it('should show pay by invoice link for paid plans', () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      expect(screen.getByRole('link', { name: 'billing.invoice.payByInvoice' }))!
+        .toHaveAttribute('href', '/billing/invoice-request?plan=professional&cycle=year')
+    })
+
+    it('should not show pay by invoice link for sandbox plan', () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.sandbox}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      expect(screen.queryByText('billing.invoice.payByInvoice')).not.toBeInTheDocument()
+    })
+
     it('should not show "most popular" badge for non-professional plans', () => {
       render(
         <CloudPlanItem
@@ -178,6 +205,27 @@ describe('CloudPlanItem', () => {
       const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
       expect(button)!.toBeDisabled()
     })
+
+    it('should disable card checkout and pay by invoice when invoice flow is locked', () => {
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+          invoiceFlow={{
+            status: 'invoice_sent',
+            locked: true,
+            plan: Plan.professional,
+            interval: 'month',
+          }}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'billing.invoice.status.awaitingPayment' }))!.toBeDisabled()
+      expect(screen.queryByRole('link', { name: 'billing.invoice.payByInvoice' })).not.toBeInTheDocument()
+      expect(screen.getByText('billing.invoice.payByInvoice')!.closest('[aria-disabled="true"]')).not.toBeNull()
+    })
   })
 
   // Payment actions triggered from the CTA
@@ -201,6 +249,44 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText('billing.buyPermissionDeniedTip'))!.toBeInTheDocument()
       expect(mockBillingInvoices).not.toHaveBeenCalled()
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+    })
+
+    it('should disable pay by invoice when current user is not workspace manager', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.manage'],
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      expect(screen.queryByRole('link', { name: 'billing.invoice.payByInvoice' })).not.toBeInTheDocument()
+      expect(screen.getByText('billing.invoice.payByInvoice')!.closest('[aria-disabled="true"]')).not.toBeNull()
+    })
+
+    it('should disable pay by invoice when current user cannot manage billing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.view'],
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      expect(screen.queryByRole('link', { name: 'billing.invoice.payByInvoice' })).not.toBeInTheDocument()
+      expect(screen.getByText('billing.invoice.payByInvoice')!.closest('[aria-disabled="true"]')).not.toBeNull()
     })
 
     it('should open billing portal when upgrading current paid plan', async () => {

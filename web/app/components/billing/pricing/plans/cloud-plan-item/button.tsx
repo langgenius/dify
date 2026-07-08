@@ -1,6 +1,5 @@
 import type { BasicPlan } from '../../../type'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { Plan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
@@ -24,17 +23,19 @@ type ButtonProps = {
   btnText: string
   handleGetPayUrl: () => void
   warningText?: string
+  className?: string
 }
 
-const Button = ({
+function PlanButton({
   plan,
   isPlanDisabled,
   btnText,
   handleGetPayUrl,
   warningText,
-}: ButtonProps) => {
+  className,
+}: ButtonProps) {
   return (
-    <div className="relative">
+    <div className={cn('relative', className)}>
       <button
         type="button"
         disabled={isPlanDisabled}
@@ -58,4 +59,4 @@ const Button = ({
   )
 }
 
-export default React.memo(Button)
+export default PlanButton

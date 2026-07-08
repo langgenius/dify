@@ -1,4 +1,4 @@
-import type { BasicPlan, UsagePlanInfo } from '../../type'
+import type { BasicPlan, InvoiceFlow, UsagePlanInfo } from '../../type'
 import type { PlanRange } from '../plan-switcher/plan-range-switcher'
 import Divider from '@/app/components/base/divider'
 import { Plan, SelfHostedPlan } from '../../type'
@@ -10,6 +10,7 @@ type PlansProps = {
     type: Plan
     usage: UsagePlanInfo
     total: UsagePlanInfo
+    invoiceFlow?: InvoiceFlow | null
   }
   currentPlan: string
   planRange: PlanRange
@@ -34,6 +35,7 @@ const Plans = ({
                 plan={Plan.sandbox}
                 planRange={planRange}
                 canPay={canPay}
+                invoiceFlow={plan.invoiceFlow}
               />
               <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
               <CloudPlanItem
@@ -41,6 +43,7 @@ const Plans = ({
                 plan={Plan.professional}
                 planRange={planRange}
                 canPay={canPay}
+                invoiceFlow={plan.invoiceFlow}
               />
               <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
               <CloudPlanItem
@@ -48,6 +51,7 @@ const Plans = ({
                 plan={Plan.team}
                 planRange={planRange}
                 canPay={canPay}
+                invoiceFlow={plan.invoiceFlow}
               />
             </>
           )

@@ -91,4 +91,5 @@ export const defaultPlan = {
     apiRateLimit: null,
     triggerEvents: null,
   },
+  invoiceFlow: null,
 }
