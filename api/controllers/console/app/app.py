@@ -1,6 +1,6 @@
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from datetime import datetime
 from typing import Any, Literal
 
@@ -40,6 +40,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.rbac import RBACResourceWhitelistScope
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
@@ -48,7 +49,7 @@ from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
-from models import Account, App, DatasetPermissionEnum, Workflow
+from models import Account, App, DatasetPermissionEnum, TenantAccountJoin, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
@@ -77,6 +78,52 @@ _logger = logging.getLogger(__name__)
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
 APP_LIST_QUERY_ARRAY_FIELDS = ("tag_ids", "creator_ids")
+APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE = 500
+APP_RBAC_DEFAULT_ACCESS_POLICY_ID = "default"
+
+
+def _iter_tenant_member_account_id_batches(tenant_id: str, batch_size: int) -> Iterator[list[str]]:
+    """Yield workspace member account ids in bounded batches for RBAC bulk writes."""
+    offset = 0
+    while True:
+        stmt = (
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == tenant_id)
+            .order_by(TenantAccountJoin.id)
+            .offset(offset)
+            .limit(batch_size)
+        )
+
+        account_ids = list(db.session.scalars(stmt).all())
+        if not account_ids:
+            break
+
+        yield account_ids
+        offset += batch_size
+
+
+def _initialize_created_app_rbac_access(tenant_id: str, account_id: str, app_id: str) -> None:
+    """Initialize a newly created app's RBAC access for all current workspace members."""
+    if not dify_config.RBAC_ENABLED:
+        return
+
+    enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        app_id=app_id,
+        payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+    )
+
+    for account_ids in _iter_tenant_member_account_id_batches(tenant_id, APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE):
+        enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            app_id=app_id,
+            payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
+                access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
+                account_ids=account_ids,
+            ),
+        )
 
 
 class AppListBaseQuery(BaseModel):
@@ -644,6 +691,7 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
+        _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,

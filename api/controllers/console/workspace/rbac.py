@@ -628,9 +628,9 @@ class RBACAppUserAccessPolicyAssignmentApi(Resource):
             svc.RBACService.AppAccess.replace_user_access_policies(
                 tenant_id,
                 account_id,
-                str(app_id),
-                str(target_account_id),
+                app_id,
                 payload,
+                target_account_id,
             )
         )
 
