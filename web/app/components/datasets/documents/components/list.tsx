@@ -145,7 +145,7 @@ const DocumentList = ({
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
               <td className="w-12">
-                <div className="flex items-center" role="presentation" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+                <div className="flex items-center" onClick={e => e.stopPropagation()}>
                   {embeddingAvailable && (
                     <Checkbox
                       className="mr-2 shrink-0"

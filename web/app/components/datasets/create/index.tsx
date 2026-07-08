@@ -48,15 +48,15 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const router = useRouter()
   const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
-  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const canAddDocumentsToDataset = React.useMemo(() => !datasetId || getDatasetACLCapabilities(datasetDetail?.permission_keys, {
+  const canAddDocumentsToDataset = !datasetId || getDatasetACLCapabilities(datasetDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: datasetDetail?.maintainer,
     workspacePermissionKeys,
-  }).canUse, [datasetDetail?.maintainer, datasetDetail?.permission_keys, datasetId, currentUserId, workspacePermissionKeys])
+  }).canUse
   const shouldRedirectToDocuments = !!datasetId
     && !!datasetDetail
     && !isLoadingWorkspacePermissionKeys

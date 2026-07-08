@@ -106,9 +106,7 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
     <div
       data-testid="tag-area"
       data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
-      role="presentation"
       onClick={onClick}
-      onKeyDown={() => undefined}
     />
   ),
 }))

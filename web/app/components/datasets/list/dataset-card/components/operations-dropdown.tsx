@@ -31,15 +31,15 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [dataset.maintainer, dataset.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
+  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig
@@ -56,9 +56,7 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
-      role="presentation"
       onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger

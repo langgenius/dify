@@ -45,15 +45,15 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
-  const canAddDocumentsToDataset = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }).canUse, [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  }).canUse
   const shouldRedirectToDocuments = !!dataset
     && !isLoadingWorkspacePermissionKeys
     && !canAddDocumentsToDataset

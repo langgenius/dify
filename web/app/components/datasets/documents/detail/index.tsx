@@ -53,9 +53,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const embeddingAvailable = !!dataset?.embedding_available
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(dataset?.permission_keys, {
       currentUserId,

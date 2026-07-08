@@ -33,15 +33,15 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canAccessConfig = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const canAccessConfig = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }).canAccessConfig, [currentUserId, dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, workspacePermissionKeys])
+  }).canAccessConfig
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
