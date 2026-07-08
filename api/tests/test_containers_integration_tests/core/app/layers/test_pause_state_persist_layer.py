@@ -35,6 +35,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from graphon.graph_events import GraphRunPausedEvent
@@ -295,6 +296,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             session_factory=self.session.get_bind(),
             state_owner_user_id=owner_id,
             generate_entity=entity,
+            response_stream_filter=ResponseStreamFilter(),
         )
 
     def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers: Session):
