@@ -157,30 +157,28 @@ def _create_waiting_form(
             )
             workflow_run.id = workflow_run_id
             session.add(workflow_run)
-        session.add(
-            HumanInputForm(
-                id=form_id,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                workflow_run_id=workflow_run_id,
-                form_kind=form_kind,
-                node_id="node-1",
-                form_definition="{}",
-                rendered_content="content",
-                expiration_time=now + timedelta(hours=1),
-                created_at=now,
-            )
+        form = HumanInputForm(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_run_id=workflow_run_id,
+            form_kind=form_kind,
+            node_id="node-1",
+            form_definition="{}",
+            rendered_content="content",
+            expiration_time=now + timedelta(hours=1),
         )
-        session.add(
-            HumanInputFormRecipient(
-                id=recipient_id,
-                form_id=form_id,
-                delivery_id="00000000-0000-0000-0000-000000000003",
-                recipient_type="standalone_web_app",
-                recipient_payload='{"TYPE": "standalone_web_app"}',
-                access_token="form-token-1",
-            )
+        form.id = form_id
+        form.created_at = now
+        session.add(form)
+        recipient = HumanInputFormRecipient(
+            form_id=form_id,
+            delivery_id="00000000-0000-0000-0000-000000000003",
+            recipient_type="standalone_web_app",
+            recipient_payload='{"TYPE": "standalone_web_app"}',
+            access_token="form-token-1",
         )
+        recipient.id = recipient_id
+        session.add(recipient)
     return form_id, recipient_id, created_by
 
 
