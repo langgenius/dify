@@ -16,6 +16,7 @@ import {
   hasWorkflowStartNode,
   isAppAccessConfigured,
   isWorkflowLaunchInputSupported,
+  normalizeAppBaseUrl,
 } from '../app-card-utils'
 
 describe('app-card-utils', () => {
@@ -334,5 +335,49 @@ describe('app-card-utils', () => {
     ])
 
     expect(result).toEqual({ count: '42', empty: '' })
+  })
+
+  describe('normalizeAppBaseUrl', () => {
+    const originalLocation = globalThis.window?.location
+
+    beforeEach(() => {
+      Object.defineProperty(globalThis, 'window', {
+        value: {
+          location: {
+            origin: 'http://192.168.113.55:8080',
+          },
+        },
+        writable: true,
+        configurable: true,
+      })
+    })
+
+    afterEach(() => {
+      Object.defineProperty(globalThis, 'window', {
+        value: originalLocation ? { location: originalLocation } : undefined,
+        writable: true,
+        configurable: true,
+      })
+    })
+
+    it('should return the current origin when the backend URL omits the non-standard port', () => {
+      expect(normalizeAppBaseUrl('http://192.168.113.55')).toBe('http://192.168.113.55:8080')
+    })
+
+    it('should keep the URL unchanged when it already has the correct port', () => {
+      expect(normalizeAppBaseUrl('http://192.168.113.55:8080')).toBe('http://192.168.113.55:8080')
+    })
+
+    it('should keep the URL unchanged when the hostname differs', () => {
+      expect(normalizeAppBaseUrl('http://other.host')).toBe('http://other.host')
+    })
+
+    it('should keep the URL unchanged when the protocol differs', () => {
+      expect(normalizeAppBaseUrl('https://192.168.113.55')).toBe('https://192.168.113.55')
+    })
+
+    it('should return empty string for empty input', () => {
+      expect(normalizeAppBaseUrl('')).toBe('')
+    })
   })
 })

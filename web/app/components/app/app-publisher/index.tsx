@@ -21,7 +21,7 @@ import {
   buildWorkflowLaunchUrl,
   createWorkflowLaunchInitialValues,
   isWorkflowLaunchInputSupported,
-
+  normalizeAppBaseUrl,
 } from '@/app/components/app/overview/app-card-utils'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -136,8 +136,9 @@ export function AppPublisher({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
+  const normalizedAppBaseUrl = normalizeAppBaseUrl(appBaseURL)
 
-  const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
+  const appURL = getPublisherAppUrl({ appBaseUrl: normalizedAppBaseUrl, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
   const hiddenLaunchVariables: WorkflowHiddenStartVariable[] = (inputs ?? []).filter(input => input.hide === true)
   const supportedWorkflowLaunchVariables = hiddenLaunchVariables.filter(isWorkflowLaunchInputSupported)
@@ -465,7 +466,7 @@ export function AppPublisher({
           siteInfo={appDetail?.site}
           isShow={embeddingModalOpen}
           onClose={() => setEmbeddingModalOpen(false)}
-          appBaseUrl={appBaseURL}
+          appBaseUrl={normalizedAppBaseUrl}
           accessToken={accessToken}
           hiddenInputs={hiddenLaunchVariables}
         />
