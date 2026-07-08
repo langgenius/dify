@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
@@ -68,13 +68,14 @@ function formatLatencyDuration(latency: NonNullable<ChatItem['more']>['latency']
 }
 
 function useWorkingDuration(enabled?: boolean) {
-  const startedAt = useMemo(() => Date.now(), [enabled])
+  const startedAtRef = useRef<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (!enabled)
       return
 
+    startedAtRef.current = Date.now()
     const timer = window.setInterval(() => {
       setNow(Date.now())
     }, 1000)
@@ -82,8 +83,8 @@ function useWorkingDuration(enabled?: boolean) {
     return () => window.clearInterval(timer)
   }, [enabled])
 
-  const elapsedSeconds = enabled
-    ? Math.max(0, Math.floor((now - startedAt) / 1000))
+  const elapsedSeconds = enabled && startedAtRef.current !== null
+    ? Math.max(0, Math.floor((now - startedAtRef.current) / 1000))
     : 0
 
   return `${elapsedSeconds}s`
