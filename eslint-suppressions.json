@@ -2023,11 +2023,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/permission-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/permission-selector/member-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3230,14 +3225,6 @@
       "count": 2
     }
   },
-  "web/app/components/develop/secret-key/secret-key-modal.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/banner/__tests__/indicator-button.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -4134,11 +4121,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/components/rag-pipeline-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/rag-pipeline/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 9
@@ -4427,11 +4409,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow-app/hooks/use-workflow-init.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -4455,11 +4432,6 @@
   "web/app/components/workflow-app/hooks/use-workflow-template.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow-app/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow-app/store/workflow/workflow-slice.ts": {
@@ -6849,11 +6821,6 @@
     }
   },
   "web/features/tag-management/components/tag-item-editor.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/features/tag-management/components/tag-management-modal.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
     }

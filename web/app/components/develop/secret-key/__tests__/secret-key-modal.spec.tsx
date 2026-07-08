@@ -35,6 +35,22 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    currentWorkspace: mockCurrentWorkspace(),
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: vi.fn((value: number, _format: string) => `Formatted: ${value}`),
@@ -357,7 +373,7 @@ describe('SecretKeyModal', () => {
     })
 
     it('should disable create button when no workspace', async () => {
-      mockCurrentWorkspace.mockReturnValue(null)
+      mockCurrentWorkspace.mockReturnValue({ id: '', name: '' })
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
