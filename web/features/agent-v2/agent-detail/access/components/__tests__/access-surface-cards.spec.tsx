@@ -51,6 +51,31 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: ['app.acl.edit'],
+    langGeniusVersionInfo: {
+      current_env: 'PRODUCTION',
+      current_version: '',
+      latest_version: '',
+      version: '',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
