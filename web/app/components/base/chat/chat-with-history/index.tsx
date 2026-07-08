@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ChatProps } from '../chat'
 import type { InstalledApp } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -100,10 +101,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
+  renderAgentContent?: ChatProps['renderAgentContent']
 }
 const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  renderAgentContent,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -190,6 +193,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setCurrentConversationInputs,
       allInputsHidden,
       initUserVariables,
+      renderAgentContent,
     }}
     >
       <ChatWithHistory className={className} />
@@ -200,11 +204,13 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  renderAgentContent,
 }) => {
   return (
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}
       className={className}
+      renderAgentContent={renderAgentContent}
     />
   )
 }

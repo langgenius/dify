@@ -57,6 +57,7 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    renderAgentContent,
   } = useChatWithHistoryContext()
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
@@ -418,6 +419,7 @@ const ChatWrapper = () => {
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
+        renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url
             ? (
