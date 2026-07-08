@@ -46,6 +46,10 @@ export const userProfileIdAtom = atom((get) => {
   return get(userProfileAtom).id
 })
 
+export const userProfileEmailAtom = atom((get) => {
+  return get(userProfileAtom).email
+})
+
 const profileMetaAtom = atom((get) => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
 
@@ -79,6 +83,10 @@ export const workspaceRoleFlagsAtom = atom((get) => {
 
 export const isCurrentWorkspaceOwnerAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceOwner
+})
+
+export const isCurrentWorkspaceManagerAtom = atom((get) => {
+  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceManager
 })
 
 const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
@@ -126,6 +134,10 @@ export const langGeniusVersionInfoAtom = atom((get) => {
     meta,
     versionData,
   })
+})
+
+export const langGeniusCurrentVersionAtom = atom((get) => {
+  return get(langGeniusVersionInfoAtom).current_version
 })
 
 export const refreshUserProfileAtom = atom(null, (get) => {
