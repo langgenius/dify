@@ -69,7 +69,7 @@ function formatLatencyDuration(latency: NonNullable<ChatItem['more']>['latency']
 
 function useWorkingDuration(enabled?: boolean) {
   const startedAtRef = useRef<number | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
 
   useEffect(() => {
     if (!enabled)

@@ -4,7 +4,7 @@ import type {
   ChatItemInTree,
   Inputs,
 } from '../types'
-import type { InputForm } from './type'
+import type { InputForm, ThoughtItem } from './type'
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
@@ -59,6 +59,13 @@ type SendCallback = {
 
 type UseChatOptions = {
   timezone?: string
+}
+
+function mergeStreamingThought(currentThought: ThoughtItem, nextThought: ThoughtItem): ThoughtItem {
+  return {
+    ...nextThought,
+    message_files: nextThought.message_files?.length ? nextThought.message_files : currentThought.message_files,
+  }
 }
 
 export const useChat = (
@@ -388,9 +395,7 @@ export const useChat = (
           else {
             const lastThought = responseItem.agent_thoughts.at(-1)
             if (lastThought?.id === thought.id) {
-              thought.thought = lastThought.thought
-              thought.message_files = lastThought.message_files
-              responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] = thought
+              responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] = mergeStreamingThought(lastThought, thought)
             }
             else {
               responseItem.agent_thoughts.push(thought)
@@ -953,9 +958,7 @@ export const useChat = (
           const lastThought = response.agent_thoughts.at(-1)
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
-            thought.thought = lastThought.thought
-            thought.message_files = lastThought.message_files
-            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = mergeStreamingThought(lastThought, thought)
           }
           else {
             responseItem.agent_thoughts!.push(thought)

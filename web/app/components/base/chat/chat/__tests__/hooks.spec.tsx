@@ -476,7 +476,7 @@ describe('useChat', () => {
 
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.agent_thoughts).toHaveLength(2)
-      expect(lastResponse!.agent_thoughts![0]!.thought).toContain('thinking...')
+      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('thinking... detailed updated')
       expect(lastResponse!.agent_thoughts![1]!.thought).toContain('second thought')
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
@@ -1094,7 +1094,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(lastResponse!.agent_thoughts![0]!.thought).toContain('resumed')
+      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('thinking updated')
 
       expect(lastResponse!.workflowProcess?.tracing?.length).toBeGreaterThan(0)
       expect(lastResponse!.workflowProcess?.status).toBe('paused')
