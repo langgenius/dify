@@ -32,7 +32,9 @@ const ChunkDetailModal = ({
   const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
-  const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
+  const documentName = document.name ?? ''
+  const documentTitle = documentName || '--'
+  const extension = documentName.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
   const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
 
@@ -83,7 +85,7 @@ const ChunkDetailModal = ({
                 <Dot />
                 <div className="flex grow items-center space-x-1">
                   <FileIcon type={extension} size="sm" />
-                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{document.name}</span>
+                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{documentTitle}</span>
                 </div>
               </div>
               <Score value={score} />

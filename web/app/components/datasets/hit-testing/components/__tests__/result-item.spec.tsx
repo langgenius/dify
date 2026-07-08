@@ -74,6 +74,19 @@ describe('ResultItem', () => {
     expect(screen.getByTestId('result-item-footer')).toHaveTextContent('file.pdf')
   })
 
+  it('should render a visible fallback title when document name is null', () => {
+    const payload = makePayload({
+      segment: { document: { name: null } },
+    })
+
+    expect(() => {
+      render(<ResultItem payload={payload} />)
+    }).not.toThrow()
+
+    expect(screen.getByTestId('markdown')).toHaveTextContent('test content')
+    expect(screen.getByTestId('result-item-footer')).toHaveTextContent('--')
+  })
+
   it('should render keywords when no child_chunks', () => {
     const payload = makePayload({
       segment: { keywords: ['key1', 'key2'] },

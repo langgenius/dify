@@ -181,6 +181,43 @@ class TestHitTestingApi:
         assert result["records"][0]["files"] == []
         assert result["records"][0]["score"] is None
 
+    def test_hit_testing_success_with_null_document_name(self, app: Flask, dataset, dataset_id, account: Account):
+        api = HitTestingApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "query": "what is vector search",
+        }
+        records = [hit_testing_record()]
+        records[0]["segment"]["document"]["name"] = None
+
+        with (
+            app.test_request_context("/"),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
+            patch.object(
+                HitTestingApi,
+                "get_and_validate_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                HitTestingApi,
+                "hit_testing_args_check",
+            ),
+            patch.object(
+                HitTestingApi,
+                "perform_hit_testing",
+                return_value={"query": {"content": payload["query"]}, "records": records},
+            ),
+        ):
+            result = method(api, account, "tenant-1", dataset_id)
+
+        assert result["records"][0]["segment"]["document"]["name"] is None
+
     def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id, account: Account):
         api = HitTestingApi()
         method = unwrap(api.post)
