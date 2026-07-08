@@ -4,12 +4,26 @@ import useWorkspacePluginInstallPermission from '../use-workspace-plugin-install
 
 let mockWorkspacePermissionKeys: string[] = []
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: { current_version: '1.0.0' },
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: {
+      current_env: '',
+      current_version: '1.0.0',
+      latest_version: '',
+      release_date: '',
+      release_notes: '',
+      version: '',
+      can_auto_update: false,
+    },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 describe('useWorkspacePluginInstallPermission', () => {
   beforeEach(() => {

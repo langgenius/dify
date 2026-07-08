@@ -14,6 +14,10 @@ export type AppContextStateMockState = {
   currentWorkspace?: {
     id?: string
   } | null
+  isCurrentWorkspaceManager?: boolean
+  isCurrentWorkspaceOwner?: boolean
+  isCurrentWorkspaceEditor?: boolean
+  isCurrentWorkspaceDatasetOperator?: boolean
   isLoadingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
@@ -25,6 +29,7 @@ type AppContextStateAtomKind
     | 'userProfileId'
     | 'currentWorkspace'
     | 'currentWorkspaceId'
+    | 'workspaceRoleFlags'
     | 'currentWorkspaceLoading'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
@@ -98,6 +103,7 @@ export const createAppContextStateAtomMock = async (
     userProfileIdAtom: createMockAtom('userProfileId'),
     currentWorkspaceAtom: createMockAtom('currentWorkspace'),
     currentWorkspaceIdAtom: createMockAtom('currentWorkspaceId'),
+    workspaceRoleFlagsAtom: createMockAtom('workspaceRoleFlags'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
@@ -134,6 +140,15 @@ export const createAppContextStateJotaiMock = async (
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceId')
         return currentWorkspace.id
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'workspaceRoleFlags') {
+        return {
+          isCurrentWorkspaceManager: state.isCurrentWorkspaceManager ?? false,
+          isCurrentWorkspaceOwner: state.isCurrentWorkspaceOwner ?? false,
+          isCurrentWorkspaceEditor: state.isCurrentWorkspaceEditor ?? false,
+          isCurrentWorkspaceDatasetOperator: state.isCurrentWorkspaceDatasetOperator ?? false,
+        }
+      }
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
