@@ -7031,11 +7031,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/use-permission-keys.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7052,11 +7047,6 @@
     }
   },
   "web/service/access-control/use-permission-catalog.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-permission-keys.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7225,17 +7215,6 @@
   },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-common.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

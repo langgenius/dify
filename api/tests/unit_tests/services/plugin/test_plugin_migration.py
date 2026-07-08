@@ -148,5 +148,35 @@ class TestHandlePluginInstanceInstall:
             PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
 
         assert json.loads(output_file.read_text())["not_installed"] == [
-            {"tenant_id": "tenant1", "plugin_not_exist": ["langgenius/missing"]}
+            {
+                "tenant_id": "tenant1",
+                "plugin_not_exist": ["langgenius/missing"],
+            }
         ]
+        mock_installer.install_from_identifiers.assert_called_once()
+
+    def test_install_plugins_skips_unresolved_plugins(self, tmp_path) -> None:
+        extracted_plugins = tmp_path / "plugins.jsonl"
+        output_file = tmp_path / "output.json"
+        extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/missing"]}\n')
+
+        with (
+            patch(
+                f"{MIGRATION_MODULE}.PluginMigration.extract_unique_plugins",
+                return_value={
+                    "plugins": {},
+                    "plugin_not_exist": ["langgenius/missing"],
+                },
+            ),
+            patch(f"{MIGRATION_MODULE}.PluginMigration.handle_plugin_instance_install", return_value={}),
+            patch(f"{MIGRATION_MODULE}.PluginInstaller") as mock_installer_cls,
+        ):
+            mock_installer = MagicMock()
+            mock_installer.list_plugins.return_value = []
+            mock_installer_cls.return_value = mock_installer
+
+            PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
+
+        output = json.loads(output_file.read_text())
+        assert output["not_installed"] == [{"tenant_id": "tenant1", "plugin_not_exist": ["langgenius/missing"]}]
+        mock_installer.install_from_identifiers.assert_not_called()
