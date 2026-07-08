@@ -52,7 +52,7 @@ export type ThoughtItem = {
   message_files?: FileEntity[]
 }
 
-export type AgentResponsePart
+type AgentResponsePart
   = | {
     type: 'thought'
     thought: ThoughtItem
