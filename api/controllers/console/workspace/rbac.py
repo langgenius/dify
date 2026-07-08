@@ -631,8 +631,8 @@ class RBACAppUserAccessPolicyAssignmentApi(Resource):
                 tenant_id,
                 account_id,
                 app_id,
-                payload,
                 target_account_id,
+                payload,
             )
         )
 

@@ -556,6 +556,7 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
 
     with app.test_request_context("/apps", method="POST", json={}):
         with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
             app_module.console_ns.payload = {
                 "name": "Created App",
                 "description": "Summary",
@@ -584,9 +585,9 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
 def test_initialize_created_app_rbac_access_batches_workspace_members(app_module, monkeypatch):
     monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(
-        app_module,
-        "_iter_tenant_member_account_id_batches",
-        lambda tenant_id, batch_size: iter([["acct-1", "acct-2"], ["acct-3"]]),
+        app_module.TenantService,
+        "iter_member_account_id_batches",
+        lambda tenant_id, batch_size, session: iter([["acct-1", "acct-2"], ["acct-3"]]),
     )
     replace_whitelist = MagicMock()
     replace_user_access_policies = MagicMock()
@@ -610,32 +611,6 @@ def test_initialize_created_app_rbac_access_batches_workspace_members(app_module
     assert replace_user_access_policies.call_args_list[1].kwargs["payload"].account_ids == ["acct-3"]
     for call in replace_user_access_policies.call_args_list:
         assert call.kwargs["payload"].access_policy_ids == [app_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
-
-
-def test_iter_tenant_member_account_id_batches_uses_offset_limit(app_module, monkeypatch):
-    class _FakeScalarResult:
-        def __init__(self, items):
-            self.items = items
-
-        def all(self):
-            return self.items
-
-    offsets = []
-
-    def scalars(stmt):
-        offsets.append(stmt._offset_clause.value)
-        if len(offsets) == 1:
-            return _FakeScalarResult(["acct-1", "acct-2"])
-        if len(offsets) == 2:
-            return _FakeScalarResult(["acct-3"])
-        return _FakeScalarResult([])
-
-    monkeypatch.setattr(app_module.db, "session", SimpleNamespace(scalars=scalars))
-
-    batches = list(app_module._iter_tenant_member_account_id_batches("tenant-1", 2))
-
-    assert batches == [["acct-1", "acct-2"], ["acct-3"]]
-    assert offsets == [0, 2, 4]
 
 
 def test_app_list_api_attaches_permission_keys(app, app_module):

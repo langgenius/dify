@@ -468,7 +468,9 @@ def migrate_dataset_permissions_to_rbac(
                                         "account_id": operator_account_id,
                                         "dataset_id": current_dataset_id,
                                         "target_account_id": member_account_id,
-                                        "payload": replace_user_access_policies_payload.model_dump(mode="json"),
+                                        "payload": replace_user_access_policies_payload.model_dump(
+                                            mode="json", exclude_unset=True
+                                        ),
                                     },
                                 },
                             }
