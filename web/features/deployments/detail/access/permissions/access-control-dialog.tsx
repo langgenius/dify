@@ -1,6 +1,6 @@
 'use client'
 
-import type { PropsWithChildren } from 'react'
+import type { MouseEvent, PropsWithChildren } from 'react'
 import type { AccessPermissionKind, SelectableAccessSubject } from './access-policy'
 import type { AccessSubjectSelectionValue } from './access-subject-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -12,9 +12,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   accessControlSelectionFromSubjects,
@@ -82,11 +85,13 @@ function DeploymentAccessControlDialogBody({
   onSubmit: (kind: AccessPermissionKind, subjects: SelectableAccessSubject[]) => void
 }) {
   const { t } = useTranslation('deployments')
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [currentMenu, setCurrentMenu] = useState(() => permissionKeyToAppAccessMode(initialKind))
   const [specificSelection, setSpecificSelection] = useState<AccessSubjectSelectionValue>(() =>
     accessControlSelectionFromSubjects(initialSubjects),
   )
   const specificSelected = currentMenu === AppAccessMode.SPECIFIC_GROUPS_MEMBERS
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
   const selectedSubjectCount = specificSelection.groups.length + specificSelection.members.length
   const specificEmpty = specificSelected && selectedSubjectCount === 0
   const confirmDisabled = saving || (specificSelected && specificEmpty)
@@ -142,12 +147,15 @@ function DeploymentAccessControlDialogBody({
             onSelectionChange={setSpecificSelection}
           />
         </AccessControlItem>
-        <AccessControlItem type={AppAccessMode.PUBLIC}>
+        <AccessControlItem type={AppAccessMode.PUBLIC} disabled={publicAccessDisabled}>
           <div className="flex items-center gap-x-2 p-3">
             <span className="i-ri-global-line size-4 text-text-primary" aria-hidden="true" />
             <p className="system-sm-medium text-text-primary">
               {t('accessControlDialog.accessItems.anyone', { ns: 'app' })}
             </p>
+            {publicAccessDisabled && (
+              <PublicAccessDisabledTip label={t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })} />
+            )}
           </div>
         </AccessControlItem>
       </RadioGroup>
@@ -161,12 +169,14 @@ function DeploymentAccessControlDialogBody({
   )
 }
 
-function AccessControlItem({ type, children }: PropsWithChildren<{
+function AccessControlItem({ type, children, disabled }: PropsWithChildren<{
   type: AppAccessMode
+  disabled?: boolean
 }>) {
   return (
     <RadioItem<AppAccessMode>
       value={type}
+      disabled={disabled}
       render={<div />}
       className={cn(
         'cursor-pointer rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs transition-colors',
@@ -178,6 +188,33 @@ function AccessControlItem({ type, children }: PropsWithChildren<{
     >
       {children}
     </RadioItem>
+  )
+}
+
+function PublicAccessDisabledTip({ label }: { label: string }) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        aria-label={label}
+        onClick={handleClick}
+        className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      >
+        <span aria-hidden className="i-ri-question-line size-3.5 text-text-warning-secondary hover:text-text-warning-secondary" />
+      </PopoverTrigger>
+      <PopoverContent
+        placement="top"
+        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+      >
+        {label}
+      </PopoverContent>
+    </Popover>
   )
 }
 

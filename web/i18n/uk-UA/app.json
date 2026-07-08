@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Шукати групи та учасників",
   "accessControlDialog.title": "Контроль доступу до веб-додатка",
   "accessControlDialog.updateSuccess": "Оновлення успішно",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Публічний доступ вимкнено адміністратором.",
   "accessControlDialog.webAppSSONotEnabledTip": "Будь ласка, зв'яжіться з адміністратором підприємства для налаштування методу аутентифікації веб-додатку.",
   "accessItemsDescription.anyone": "Будь-хто може отримати доступ до веб-додатку",
   "accessItemsDescription.external": "Тільки перевірені зовнішні користувачі можуть отримати доступ до веб-застосунку.",

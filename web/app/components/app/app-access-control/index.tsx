@@ -12,6 +12,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { useUpdateAccessMode } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
+import { Infotip } from '../../base/infotip'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
@@ -35,6 +36,7 @@ export default function AccessControl(props: AccessControlProps) {
     && (systemFeatures.webapp_auth.allow_sso
       || systemFeatures.webapp_auth.allow_email_password_login
       || systemFeatures.webapp_auth.allow_email_code_login)
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
 
   useEffect(() => {
     setAppId(app.id)
@@ -96,10 +98,18 @@ export default function AccessControl(props: AccessControlProps) {
               {!hideTip && <WebAppSSONotEnabledTip />}
             </div>
           </AccessControlItem>
-          <AccessControlItem type={AccessMode.PUBLIC}>
+          <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
             <div className="flex items-center gap-x-2 p-3">
               <RiGlobalLine className="size-4 text-text-primary" />
               <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
+              {publicAccessDisabled && (
+                <Infotip
+                  aria-label={t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
+                  iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                >
+                  {t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
+                </Infotip>
+              )}
             </div>
           </AccessControlItem>
         </div>

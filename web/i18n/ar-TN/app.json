@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "بحث عن مجموعات وأعضاء",
   "accessControlDialog.title": "التحكم في الوصول إلى تطبيق الويب",
   "accessControlDialog.updateSuccess": "تم التحديث بنجاح",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "تم تعطيل الوصول العام من قبل مسؤول المؤسسة.",
   "accessControlDialog.webAppSSONotEnabledTip": "الرجاء الاتصال بمسؤول المؤسسة لتكوين المصادقة الخارجية لتطبيق الويب.",
   "accessItemsDescription.anyone": "يمكن لأي شخص الوصول إلى تطبيق الويب (لا يلزم تسجيل الدخول)",
   "accessItemsDescription.external": "يمكن فقط للمستخدمين الخارجيين authenticated الوصول إلى تطبيق الويب",

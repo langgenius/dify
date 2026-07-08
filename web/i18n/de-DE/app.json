@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Gruppen und Mitglieder suchen",
   "accessControlDialog.title": "Zugriffskontrolle für Webanwendungen",
   "accessControlDialog.updateSuccess": "Erfolgreich aktualisiert",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Der öffentliche Zugriff wurde von Ihrem Administrator deaktiviert.",
   "accessControlDialog.webAppSSONotEnabledTip": "Bitte kontaktieren Sie den Unternehmensadministrator, um die Authentifizierungsmethode der Webanwendung zu konfigurieren.",
   "accessItemsDescription.anyone": "Jeder kann auf die Webanwendung zugreifen.",
   "accessItemsDescription.external": "Nur authentifizierte externe Benutzer können auf die Webanwendung zugreifen.",

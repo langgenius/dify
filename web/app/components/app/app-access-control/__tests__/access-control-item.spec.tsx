@@ -42,4 +42,19 @@ describe('AccessControlItem', () => {
     const option = screen.getByText('Organization Only').parentElement as HTMLElement
     expect(option).toHaveClass('border-components-option-card-option-selected-border')
   })
+
+  it('should not update current menu when the item is disabled', () => {
+    render(
+      <AccessControlItem type={AccessMode.ORGANIZATION} disabled>
+        <span>Organization Only</span>
+      </AccessControlItem>,
+    )
+
+    const option = screen.getByText('Organization Only').parentElement as HTMLElement
+    fireEvent.click(option)
+
+    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.PUBLIC)
+    expect(option).toHaveAttribute('aria-disabled', 'true')
+    expect(option).toHaveClass('cursor-not-allowed')
+  })
 })

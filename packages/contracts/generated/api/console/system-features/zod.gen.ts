@@ -82,6 +82,7 @@ export const zWebAppAuthSsoModel = z.object({
 export const zWebAppAuthModel = z.object({
   allow_email_code_login: z.boolean().default(false),
   allow_email_password_login: z.boolean().default(false),
+  allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
   sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
@@ -133,6 +134,7 @@ export const zSystemFeatureModel = z.object({
   webapp_auth: zWebAppAuthModel.default({
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
     allow_sso: false,
     enabled: false,
     sso_config: { protocol: '' },

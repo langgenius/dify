@@ -56,6 +56,7 @@ export type PluginManagerModel = {
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
