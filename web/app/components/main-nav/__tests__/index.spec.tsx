@@ -13,7 +13,6 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/stor
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -36,11 +35,6 @@ const mockAppContextState = vi.hoisted(() => ({
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-  useSelector: vi.fn(),
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -251,8 +245,7 @@ const renderMainNav = (
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
-  const getMockAppContext = useAppContext as Mock
-  const currentAppContext = getMockAppContext() as AppContextValue
+  const currentAppContext = mockAppContextState.current ?? appContextValue
   mockAppContextState.current = currentAppContext
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
@@ -300,9 +293,7 @@ describe('MainNav', () => {
       forward: vi.fn(),
       refresh: vi.fn(),
     })
-    ;(useAppContext as Mock).mockReturnValue(appContextValue)
     mockAppContextState.current = appContextValue
-    ;(useAppContextSelector as Mock).mockImplementation((selector: (state: AppContextValue) => unknown) => selector((useAppContext as Mock)() as AppContextValue))
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -411,13 +402,13 @@ describe('MainNav', () => {
   })
 
   it('renders the desktop environment tag from the old header contract', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       langGeniusVersionInfo: {
         ...appContextValue.langGeniusVersionInfo,
         current_env: 'TESTING',
       },
-    })
+    }
 
     renderMainNav()
 
@@ -453,7 +444,7 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -464,7 +455,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
-    })
+    }
 
     renderMainNav()
 
@@ -479,7 +470,7 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible without route permission keys', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -490,7 +481,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: ['app_library.access', 'tool.manage'],
-    })
+    }
 
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
 
@@ -742,7 +733,7 @@ describe('MainNav', () => {
   })
 
   it('limits invite members by member management permission', async () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -751,7 +742,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(key => key !== 'workspace.member.manage'),
-    })
+    }
 
     renderMainNav()
 
@@ -762,7 +753,7 @@ describe('MainNav', () => {
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -773,7 +764,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
-    })
+    }
 
     renderMainNav()
 

@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
@@ -17,7 +18,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Link from '@/next/link'
@@ -232,7 +233,7 @@ export function WorkspaceCard() {
   const workspaces = workspacesData?.workspaces
   const currentWorkspaceInList = workspaces?.find(workspace => workspace.current)
   const { enableBilling } = useProviderContext()
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
   const [open, setOpen] = useState(false)
