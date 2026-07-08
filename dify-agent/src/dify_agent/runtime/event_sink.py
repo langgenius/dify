@@ -89,11 +89,18 @@ async def emit_run_started(sink: RunEventSink, *, run_id: str) -> str:
     )
 
 
-async def emit_pydantic_ai_event(sink: RunEventSink, *, run_id: str, data: AgentStreamEvent) -> str:
+async def emit_pydantic_ai_event(
+    sink: RunEventSink, *, run_id: str, data: AgentStreamEvent, agent_message_delta: str | None = None
+) -> str:
     """Emit one typed Pydantic AI stream event."""
     return await emit_run_event(
         sink,
-        event=PydanticAIStreamRunEvent(run_id=run_id, data=data, created_at=utc_now()),
+        event=PydanticAIStreamRunEvent(
+            run_id=run_id,
+            data=data,
+            agent_message_delta=agent_message_delta,
+            created_at=utc_now(),
+        ),
     )
 
 

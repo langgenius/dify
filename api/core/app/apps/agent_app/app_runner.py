@@ -21,6 +21,7 @@ from dify_agent.protocol import DeferredToolResultsPayload
 from pydantic import JsonValue
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
@@ -44,7 +45,12 @@ from core.app.apps.agent_app.session_store import (
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentRuntimeExitIntent, DifyRunContext
-from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueAgentThoughtEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+)
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -131,6 +137,25 @@ def publish_text_delta(
     queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
 
 
+def publish_agent_message_delta(
+    *,
+    queue_manager: AppQueueManager,
+    model_name: str,
+    delta: str,
+    user_query: str | None = None,
+) -> None:
+    """Publish one agent-process text delta through the EasyUI chat pipeline."""
+    if not delta:
+        return
+    prompt_messages = _prompt_messages_from_query(user_query)
+    chunk = LLMResultChunk(
+        model=model_name,
+        prompt_messages=prompt_messages,
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=delta)),
+    )
+    queue_manager.publish(QueueAgentMessageEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
+
+
 def publish_message_end(
     *,
     queue_manager: AppQueueManager,
@@ -155,7 +180,7 @@ def publish_message_end(
 
 
 class _TextDeltaDebouncer:
-    """Batch assistant text deltas on stream-event boundaries for final SSE output."""
+    """Batch independent model text deltas before agent-message SSE output."""
 
     def __init__(self, *, debounce_seconds: float) -> None:
         self._debounce_seconds = debounce_seconds
@@ -188,11 +213,12 @@ class _TextDeltaDebouncer:
 
 
 class _AgentProcessRecorder:
-    """Persist Agent v2 thinking/tool process events through the legacy thought model.
+    """Persist Agent v2 process streams through the legacy thought model.
 
-    Thinking rows expose snapshot updates for one contiguous thinking segment. A
-    tool event closes the currently open thinking segment so later thinking starts
-    a fresh row instead of replaying text that was already streamed before the tool.
+    Thinking and answer rows expose snapshot updates for contiguous model-text
+    segments. Tool events close currently open text segments so later model text
+    starts a fresh row instead of replaying content that was already streamed
+    before the tool.
     """
 
     def __init__(
@@ -207,6 +233,7 @@ class _AgentProcessRecorder:
         self._queue_manager = queue_manager
         self._next_position = 1
         self._thinking_by_index: dict[int, str] = {}
+        self._answer_thought_id: str | None = None
         self._tool_by_index: dict[int, str] = {}
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
@@ -262,6 +289,16 @@ class _AgentProcessRecorder:
         if part_kind in {"tool-return", "builtin-tool-return"}:
             self._record_tool_return_part(part)
 
+    def append_answer_text(self, content_delta: str) -> None:
+        if not content_delta:
+            return
+
+        self._thinking_by_index.clear()
+        if self._answer_thought_id is None:
+            self._answer_thought_id = self._create_thought(answer=content_delta)
+            return
+        self._update_thought(self._answer_thought_id, answer_delta=content_delta)
+
     def _handle_tool_call_event(self, data: dict[str, Any]) -> None:
         part = data.get("part")
         if isinstance(part, dict):
@@ -282,6 +319,7 @@ class _AgentProcessRecorder:
             )
 
     def _append_thinking(self, index: int, content_delta: str) -> None:
+        self._answer_thought_id = None
         thought_id = self._thinking_by_index.get(index)
         if thought_id is None:
             thought_id = self._create_thought(thought=content_delta)
@@ -373,9 +411,15 @@ class _AgentProcessRecorder:
 
     def _close_thinking_segments(self) -> None:
         self._thinking_by_index.clear()
+        self._answer_thought_id = None
 
     def _create_thought(
-        self, *, thought: str | None = None, tool: str | None = None, tool_input: str | None = None
+        self,
+        *,
+        thought: str | None = None,
+        answer: str | None = None,
+        tool: str | None = None,
+        tool_input: str | None = None,
     ) -> str:
         row = MessageAgentThought(
             message_id=self._message_id,
@@ -392,7 +436,7 @@ class _AgentProcessRecorder:
             message_unit_price=Decimal(0),
             message_price_unit=Decimal("0.001"),
             message_files="",
-            answer="",
+            answer=answer or "",
             answer_token=0,
             answer_unit_price=Decimal(0),
             answer_price_unit=Decimal("0.001"),
@@ -422,6 +466,7 @@ class _AgentProcessRecorder:
         tool_input: str | None = None,
         tool_input_delta: str | None = None,
         observation: str | None = None,
+        answer_delta: str | None = None,
     ) -> None:
         row = db.session.get(MessageAgentThought, thought_id)
         if row is None:
@@ -438,6 +483,8 @@ class _AgentProcessRecorder:
             row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
         if observation is not None:
             row.observation = observation
+        if answer_delta:
+            row.answer = f"{row.answer or ''}{answer_delta}"
 
         db.session.commit()
         self._queue_manager.publish(
@@ -536,7 +583,7 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal, streamed_answer = self._consume_stream(
+        terminal = self._consume_stream(
             create_response.run_id,
             dify_context=dify_context,
             message_id=message_id,
@@ -569,7 +616,7 @@ class AgentAppRunner:
             error = getattr(terminal, "error", None) or "Agent backend run did not complete successfully."
             raise AgentBackendError(str(error))
 
-        answer = self._extract_answer(terminal.output)
+        answer = self._terminal_output_to_answer(terminal.output)
         if preserve_session:
             superseded_sessions = self._load_superseded_sessions(scope=scope)
             self._publish_terminal_answer(
@@ -577,7 +624,6 @@ class AgentAppRunner:
                 model_name=model_name,
                 answer=answer,
                 query=query,
-                streamed_answer=streamed_answer,
                 usage=_llm_usage_from_agent_backend(terminal.usage),
             )
             session_saved = self._save_session(
@@ -599,7 +645,6 @@ class AgentAppRunner:
                     model_name=model_name,
                     answer=answer,
                     query=query,
-                    streamed_answer=streamed_answer,
                     usage=_llm_usage_from_agent_backend(terminal.usage),
                 )
             finally:
@@ -762,46 +807,61 @@ class AgentAppRunner:
         model_name: str,
         query: str | None,
     ):
-        """Consume backend events while preserving raw recorder granularity.
-
-        Process events are recorded immediately for observability. Only the
-        final assistant text deltas sent through the EasyUI queue are debounced,
-        with flushes happening on later stream events or terminal boundaries.
-        """
+        """Consume backend events while preserving raw recorder granularity."""
         terminal = None
-        streamed_answer_parts: list[str] = []
-        text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         process_recorder = _AgentProcessRecorder(
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
         )
+        text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
 
-        def flush_pending_text() -> None:
+        def persist_answer_text(content_delta: str) -> None:
+            try:
+                process_recorder.append_answer_text(content_delta)
+            except Exception:
+                db.session.rollback()
+                logger.warning(
+                    "Failed to persist Agent App answer text: run_id=%s message_id=%s",
+                    run_id,
+                    message_id,
+                    exc_info=True,
+                )
+            publish_agent_message_delta(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                delta=content_delta,
+                user_query=query,
+            )
+
+        def flush_pending_answer_text() -> None:
             pending_text = text_delta_debouncer.flush()
             if pending_text:
-                publish_text_delta(
-                    queue_manager=queue_manager,
-                    model_name=model_name,
-                    delta=pending_text,
-                    user_query=query,
-                )
+                persist_answer_text(pending_text)
 
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
-                flush_pending_text()
+                flush_pending_answer_text()
                 self._cancel_run(run_id)
                 raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
                 if queue_manager.is_stopped():
-                    flush_pending_text()
+                    flush_pending_answer_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
                 if internal_event.type in (
                     AgentBackendInternalEventType.RUN_STARTED,
                     AgentBackendInternalEventType.STREAM_EVENT,
+                    AgentBackendInternalEventType.AGENT_MESSAGE_DELTA,
                 ):
+                    if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                        debounced_delta = text_delta_debouncer.push(internal_event.delta)
+                        if debounced_delta:
+                            persist_answer_text(debounced_delta)
+                        continue
+
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                        flush_pending_answer_text()
                         try:
                             process_recorder.handle_stream_event(internal_event)
                         except Exception:
@@ -813,26 +873,15 @@ class AgentAppRunner:
                                 internal_event.event_kind,
                                 exc_info=True,
                             )
-                        text_delta = self._extract_stream_text_delta(internal_event)
-                        if text_delta:
-                            streamed_answer_parts.append(text_delta)
-                            debounced_delta = text_delta_debouncer.push(text_delta)
-                            if debounced_delta:
-                                publish_text_delta(
-                                    queue_manager=queue_manager,
-                                    model_name=model_name,
-                                    delta=debounced_delta,
-                                    user_query=query,
-                                )
                         continue
                     continue
-                flush_pending_text()
+                flush_pending_answer_text()
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
-        flush_pending_text()
-        return terminal, "".join(streamed_answer_parts)
+        flush_pending_answer_text()
+        return terminal
 
     def _cancel_run(self, run_id: str) -> None:
         try:
@@ -854,37 +903,10 @@ class AgentAppRunner:
         model_name: str,
         answer: str,
         query: str | None,
-        streamed_answer: str,
         usage: LLMUsage | None,
     ) -> None:
-        """Finish a successful streamed turn without duplicating the final text."""
-        if not answer and streamed_answer:
-            answer = streamed_answer
-
-        if not streamed_answer:
-            publish_text_answer(
-                queue_manager=queue_manager,
-                model_name=model_name,
-                answer=answer,
-                user_query=query,
-                usage=usage,
-            )
-            return
-
-        if answer.startswith(streamed_answer):
-            publish_text_delta(
-                queue_manager=queue_manager,
-                model_name=model_name,
-                delta=answer[len(streamed_answer) :],
-                user_query=query,
-            )
-        elif answer != streamed_answer:
-            logger.warning(
-                "Agent App streamed answer does not match terminal output; "
-                "using terminal output for message persistence."
-            )
-
-        publish_message_end(
+        """Finish a successful turn from the backend terminal output."""
+        publish_text_answer(
             queue_manager=queue_manager,
             model_name=model_name,
             answer=answer,
@@ -1006,7 +1028,7 @@ class AgentAppRunner:
             )
 
     @staticmethod
-    def _extract_answer(output: JsonValue) -> str:
+    def _terminal_output_to_answer(output: JsonValue) -> str:
         """Normalize the backend's terminal output to assistant text.
 
         Free-text Agent Apps return a plain string; if a structured output is
@@ -1023,28 +1045,5 @@ class AgentAppRunner:
                 return text
             return json.dumps(output, ensure_ascii=False)
         return json.dumps(output, ensure_ascii=False)
-
-    @staticmethod
-    def _extract_stream_text_delta(event: AgentBackendStreamInternalEvent) -> str | None:
-        data = event.data
-        if not isinstance(data, dict):
-            return None
-
-        if data.get("event_kind") == "part_delta":
-            delta = data.get("delta")
-            if isinstance(delta, dict) and delta.get("part_delta_kind") == "text":
-                content_delta = delta.get("content_delta")
-                if isinstance(content_delta, str):
-                    return content_delta
-
-        if data.get("event_kind") == "part_start":
-            part = data.get("part")
-            if isinstance(part, dict) and part.get("part_kind") == "text":
-                content = part.get("content")
-                if isinstance(content, str):
-                    return content
-
-        return None
-
 
 __all__ = ["AgentAppRunner", "publish_message_end", "publish_text_answer", "publish_text_delta"]

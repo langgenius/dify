@@ -18,6 +18,7 @@ from clients.agent_backend.errors import (
     AgentBackendValidationError,
 )
 from clients.agent_backend.event_adapter import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
@@ -61,6 +62,7 @@ __all__ = [
     "DIFY_PLUGIN_TOOLS_LAYER_ID",
     "WORKFLOW_NODE_JOB_PROMPT_LAYER_ID",
     "WORKFLOW_USER_PROMPT_LAYER_ID",
+    "AgentBackendAgentMessageDeltaInternalEvent",
     "AgentBackendAgentAppRunInput",
     "AgentBackendDeferredToolCallInternalEvent",
     "AgentBackendError",
