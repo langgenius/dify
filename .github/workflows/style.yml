@@ -2,6 +2,10 @@ name: Style check
 
 on:
   workflow_call:
+    inputs:
+      base-rev:
+        required: true
+        type: string
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -33,6 +37,7 @@ jobs:
             scripts/check_no_new_getattr.py
             scripts/ast_grep_rules/no_new_getattr.yml
             .github/workflows/style.yml
+            .github/workflows/main-ci.yml
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -54,17 +59,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      - name: Fetch merge target ref for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-
-      - name: Bind merge target branch for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
-
       - name: Run No New Getattr Guard
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main
+        run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'

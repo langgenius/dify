@@ -53,6 +53,10 @@ jobs:
           filters: |
             api:
               - 'api/**'
+              - 'scripts/check_no_new_getattr.py'
+              - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/api-tests.yml'
               - 'docker/.env.example'
               - 'docker/envs/middleware.env.example'
@@ -380,6 +384,8 @@ jobs:
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
+    with:
+      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
   vdb-tests-run:
     name: Run VDB Tests
