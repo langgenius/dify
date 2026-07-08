@@ -10,6 +10,7 @@ import {
 import {
   agentBuildDraftExists,
   applyAgentBuildDraft,
+  getAgentBuildDraft,
   saveAgentBuildDraft,
 } from '../../agent-v2/support/agent-build-draft'
 import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
@@ -33,9 +34,21 @@ import {
 } from './configure-helpers'
 
 const BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS = 180_000
+const BUILD_NOTE_FILE_NAME = 'build_note.md'
+const BUILD_NOTE_MARKER = 'E2E_BUILD_DRAFT_PASS'
+const BUILD_NOTE_GENERATED_BADGE = 'Generated'
 
 const getBuildDraftBar = (page: Page) =>
   page.getByRole('group', { name: 'Build draft' })
+
+const getBuildNoteFileButton = (page: Page) =>
+  page.getByRole('region', { name: 'Files' })
+    .getByRole('button')
+    .filter({ hasText: BUILD_NOTE_FILE_NAME })
+    .filter({ hasText: BUILD_NOTE_GENERATED_BADGE })
+
+const getConfigNote = (value: Awaited<ReturnType<typeof getAgentBuildDraft>>) =>
+  value.agent_soul?.config_note ?? ''
 
 Given(
   'an Agent v2 Build draft adds the supported E2E files, skills, and env',
@@ -274,6 +287,20 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
   await expect(page.getByText('Shape this setup through the chat on the right, then Apply.')).toBeVisible()
 })
 
+Then(
+  'the Agent v2 Build draft should include the generated build note',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => getConfigNote(await getAgentBuildDraft(getCurrentAgentId(this))),
+      { timeout: 30_000 },
+    ).toContain(BUILD_NOTE_MARKER)
+  },
+)
+
+Then('I should see the generated Agent v2 build note in Configure', async function (this: DifyWorld) {
+  await expect(getBuildNoteFileButton(this.getPage())).toBeVisible()
+})
+
 Then('Agent v2 Build chat should be blocked until a model is configured', async function (this: DifyWorld) {
   await expectAgentModelRequiredFeedback(this.getPage())
 })
@@ -328,6 +355,16 @@ Then(
       },
       { timeout: 30_000 },
     ).toBe(false)
+  },
+)
+
+Then(
+  'the normal Agent v2 draft should not include the generated build note',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.config_note ?? '',
+      { timeout: 30_000 },
+    ).not.toContain(BUILD_NOTE_MARKER)
   },
 )
 
