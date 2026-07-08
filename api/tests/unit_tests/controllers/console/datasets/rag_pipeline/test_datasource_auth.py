@@ -1,6 +1,6 @@
 import inspect
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -508,6 +508,7 @@ class TestDatasourceAuthDeleteApi:
             auth_id="cred-1",
             provider="notion",
             plugin_id="langgenius/notion_datasource",
+            session=ANY,
         )
 
     def test_delete_missing_credential_id(self, app: Flask):

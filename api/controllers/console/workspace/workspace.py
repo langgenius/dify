@@ -223,7 +223,7 @@ class TenantListApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account):
         tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
             (tenant, membership)
-            for tenant, membership in TenantService.get_workspaces_for_account(db.session, current_user.id)
+            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=db.session())
             if tenant.status == TenantStatus.NORMAL
         ]
         tenants = [tenant for tenant, _ in tenant_rows]
@@ -306,16 +306,19 @@ class TenantApi(Resource):
             raise ValueError("No current tenant")
 
         if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user, session=db.session)
+            tenants = TenantService.get_join_tenants(current_user, session=db.session())
             # if there is any tenant, switch to the first one
             if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session)
+                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session())
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
                 raise Unauthorized("workspace is archived")
 
-        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), HTTPStatus.OK
+        return (
+            dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=db.session())),
+            HTTPStatus.OK,
+        )
 
 
 @console_ns.route("/workspaces/switch")
@@ -332,7 +335,7 @@ class SwitchWorkspaceApi(Resource):
 
         # Check whether the tenant_id belongs to the current account.
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session())
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
@@ -341,7 +344,7 @@ class SwitchWorkspaceApi(Resource):
             raise ValueError("Tenant not found")
 
         return SwitchWorkspaceResponse(
-            result="success", new_tenant=WorkspaceService.get_tenant_info(new_tenant)
+            result="success", new_tenant=WorkspaceService.get_tenant_info(new_tenant, session=db.session())
         ).model_dump(mode="json")
 
 
@@ -372,7 +375,7 @@ class CustomConfigWorkspaceApi(Resource):
         db.session.commit()
 
         return WorkspaceTenantResultResponse(
-            result="success", tenant=WorkspaceService.get_tenant_info(tenant)
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
         ).model_dump(mode="json")
 
 
@@ -438,7 +441,7 @@ class WorkspaceInfoApi(Resource):
         db.session.commit()
 
         return WorkspaceTenantResultResponse(
-            result="success", tenant=WorkspaceService.get_tenant_info(tenant)
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
         ).model_dump(mode="json")
 
 
