@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
@@ -11,6 +12,9 @@ import {
 } from './access-point-helpers'
 
 const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
+
+const getWebAppMessageInput = (webAppPage: Page) =>
+  webAppPage.getByPlaceholder(/^Talk to /).last()
 
 Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
   const webAppCard = getWebAppCard(this)
@@ -71,7 +75,7 @@ When('I send an E2E message in the Agent v2 Web app', async function (this: Dify
   if (!webAppPage)
     throw new Error('No Agent v2 Web app page was opened.')
 
-  const messageInput = webAppPage.getByRole('textbox').last()
+  const messageInput = getWebAppMessageInput(webAppPage)
   await expect(messageInput).toBeEditable({ timeout: 30_000 })
   await messageInput.fill('Please reply with the test success marker.')
   await messageInput.press('Enter')
@@ -84,7 +88,7 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
     throw new Error('No Agent v2 Web app page was opened.')
 
   await expect(webAppPage).toHaveURL(webAppURL)
-  await expect(webAppPage.getByRole('textbox').last()).toBeEditable({ timeout: 30_000 })
+  await expect(getWebAppMessageInput(webAppPage)).toBeEditable({ timeout: 30_000 })
   await webAppPage.close()
   this.agentBuilder.accessPoint.webAppPage = undefined
   this.agentBuilder.accessPoint.webAppURL = undefined

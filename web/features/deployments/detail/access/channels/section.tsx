@@ -12,7 +12,11 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../shared/components/empty-state'
 import { CopyPill, EndpointRow } from '../../../shared/components/endpoint'
 import { Section } from '../../../shared/components/section'
-import { accessSettingsQueryAtom } from '../state'
+import {
+  accessSettingsAtom,
+  accessSettingsIsErrorAtom,
+  accessSettingsIsLoadingAtom,
+} from '../state'
 import { getUrlOrigin } from './url'
 
 const ACCESS_CHANNEL_SKELETON_SECTIONS = [
@@ -115,12 +119,12 @@ function ChannelRow({ info, children }: {
 export function AccessChannelsSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const accessSettingsQuery = useAtomValue(accessSettingsQueryAtom)
-  const accessChannels = accessSettingsQuery.data?.accessChannels
-  const webAppEndpoints: AccessEndpoint[] | undefined = accessSettingsQuery.data?.webAppEndpoints
-  const cliEndpoint: AccessEndpoint | undefined = accessSettingsQuery.data?.cliEndpoint
-  const isLoading = accessSettingsQuery.isLoading
-  const isError = accessSettingsQuery.isError
+  const accessSettings = useAtomValue(accessSettingsAtom)
+  const isLoading = useAtomValue(accessSettingsIsLoadingAtom)
+  const isError = useAtomValue(accessSettingsIsErrorAtom)
+  const accessChannels = accessSettings?.accessChannels
+  const webAppEndpoints: AccessEndpoint[] | undefined = accessSettings?.webAppEndpoints
+  const cliEndpoint: AccessEndpoint | undefined = accessSettings?.cliEndpoint
   const runEnabled = accessChannels?.webAppEnabled ?? false
   const webappRows = webAppEndpoints?.flatMap((endpoint) => {
     const endpointUrl = endpoint.endpointUrl

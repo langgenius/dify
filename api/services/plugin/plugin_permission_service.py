@@ -1,7 +1,7 @@
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from models.account import TenantPluginPermission
+from models.account import TenantPluginDebugPermission, TenantPluginInstallPermission, TenantPluginPermission
 
 
 class PluginPermissionService:
@@ -15,8 +15,8 @@ class PluginPermissionService:
     @staticmethod
     def change_permission(
         tenant_id: str,
-        install_permission: TenantPluginPermission.InstallPermission,
-        debug_permission: TenantPluginPermission.DebugPermission,
+        install_permission: TenantPluginInstallPermission,
+        debug_permission: TenantPluginDebugPermission,
     ):
         with session_factory.create_session() as session, session.begin():
             permission = session.scalar(

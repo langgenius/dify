@@ -182,7 +182,7 @@ export function AgentFileTree({
         label={label}
         labelledBy={labelledBy}
         slotClassNames={{
-          viewport: 'max-h-[inherit] overscroll-contain',
+          viewport: 'max-h-[inherit]',
           content: 'w-full max-w-full min-w-0!',
           scrollbar: 'hidden',
         }}

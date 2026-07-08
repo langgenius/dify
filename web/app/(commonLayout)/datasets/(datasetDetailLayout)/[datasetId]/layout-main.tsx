@@ -2,14 +2,19 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import {
+  currentWorkspaceLoadingAtom,
+  datasetRbacEnabledAtom,
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
@@ -58,23 +63,20 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const {
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
-    userProfile,
-    workspacePermissionKeys,
-  } = useAppContext()
-  const isRbacEnabled = systemFeatures.rbac_enabled
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetRes?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
   const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath

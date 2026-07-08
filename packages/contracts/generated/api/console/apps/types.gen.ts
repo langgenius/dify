@@ -873,8 +873,7 @@ export type WorkflowAgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1372,7 +1371,7 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
@@ -1807,11 +1806,6 @@ export type SandboxFileEntryResponse = {
   type: 'dir' | 'file' | 'other' | 'symlink'
 }
 
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
-}
-
 export type WorkflowCommentBasic = {
   content: string
   created_at?: number | null
@@ -2186,7 +2180,7 @@ export type ModelConfigPartial = {
 
 export type LlmMode = 'chat' | 'completion'
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
@@ -2368,6 +2362,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -2627,6 +2622,16 @@ export type WorkflowFileUploadPreviewConfigPayload = {
   mode?: string | null
 }
 
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
   [key: string]: unknown
@@ -2873,6 +2878,15 @@ export type FileListInputConfig = {
   type?: 'file-list'
 }
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentModerationProviderConfig = {
   api_based_extension_id?: string | null
   inputs_config?: AgentModerationIoConfig | null
@@ -2941,10 +2955,6 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentModerationIoConfig = {
   enabled?: boolean

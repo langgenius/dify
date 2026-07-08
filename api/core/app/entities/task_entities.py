@@ -122,7 +122,7 @@ class MessageStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE
     id: str
     answer: str
-    from_variable_selector: list[str] | None = None
+    from_variable_selector: list[str] = Field(default_factory=list)
 
 
 class MessageAudioStreamResponse(StreamResponse):
@@ -151,7 +151,7 @@ class MessageEndStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: Mapping[str, object] = Field(default_factory=dict)
-    files: Sequence[Mapping[str, Any]] | None = None
+    files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
 
 
 class MessageFileStreamResponse(StreamResponse):

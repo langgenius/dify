@@ -458,6 +458,16 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       byAgentId: {
+        get: {
+          queryOptions: {
+            retry: (failureCount, error) => {
+              if (error instanceof Response && error.status === 404)
+                return false
+
+              return failureCount < 3
+            },
+          },
+        },
         copy: {
           post: {
             mutationOptions: {

@@ -317,21 +317,39 @@ class PluginModelRuntime(ModelRuntime):
         stream: bool,
         request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
-        del request_metadata
+        app_id = request_metadata.get("app_id") if request_metadata else None
+        if not isinstance(app_id, str):
+            app_id = None
         plugin_id, provider_name = self._split_provider(provider)
-        result = self.client.invoke_llm(
-            tenant_id=self.tenant_id,
-            user_id=self.user_id,
-            plugin_id=plugin_id,
-            provider=provider_name,
-            model=model,
-            credentials=credentials,
-            model_parameters=model_parameters,
-            prompt_messages=list(prompt_messages),
-            tools=tools,
-            stop=list(stop) if stop else None,
-            stream=stream,
-        )
+        if app_id is None:
+            result = self.client.invoke_llm(
+                tenant_id=self.tenant_id,
+                user_id=self.user_id,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                model=model,
+                credentials=credentials,
+                model_parameters=model_parameters,
+                prompt_messages=list(prompt_messages),
+                tools=tools,
+                stop=list(stop) if stop else None,
+                stream=stream,
+            )
+        else:
+            result = self.client.invoke_llm(
+                tenant_id=self.tenant_id,
+                user_id=self.user_id,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                model=model,
+                credentials=credentials,
+                model_parameters=model_parameters,
+                prompt_messages=list(prompt_messages),
+                tools=tools,
+                stop=list(stop) if stop else None,
+                stream=stream,
+                app_id=app_id,
+            )
         if stream:
             return result
 

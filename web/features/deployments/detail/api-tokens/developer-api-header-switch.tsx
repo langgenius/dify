@@ -7,7 +7,11 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
-import { developerApiSettingsQueryAtom } from './state'
+import {
+  developerApiSettingsAtom,
+  developerApiSettingsIsErrorAtom,
+  developerApiSettingsIsLoadingAtom,
+} from './state'
 
 function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
   checked: boolean
@@ -43,11 +47,13 @@ function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
 
 export function DeveloperApiHeaderSwitch() {
   const { t } = useTranslation('deployments')
-  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const developerApiSettings = useAtomValue(developerApiSettingsAtom)
+  const isLoading = useAtomValue(developerApiSettingsIsLoadingAtom)
+  const isError = useAtomValue(developerApiSettingsIsErrorAtom)
+  const accessChannels = developerApiSettings?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
-  if (developerApiSettingsQuery.isLoading)
+  if (isLoading)
     return <SwitchSkeleton />
 
   return (
@@ -58,7 +64,7 @@ export function DeveloperApiHeaderSwitch() {
       <DeveloperApiSwitch
         checked={apiEnabled}
         accessChannels={accessChannels}
-        disabled={developerApiSettingsQuery.isError}
+        disabled={isError}
       />
     </div>
   )

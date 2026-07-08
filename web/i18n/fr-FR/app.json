@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "Aucune autorisation pour accéder à cette ressource",
   "noUserInputNode": "Nœud d'entrée utilisateur manquant",
   "notPublishedYet": "L'application n'est pas encore publiée",
-  "openInExplore": "Ouvrir dans Explorer",
+  "openInExplore": "Ouvrir la Web App de la barre latérale",
   "publishApp.notSet": "Non défini",
   "publishApp.notSetDesc": "Actuellement, personne ne peut accéder à l'application web. Veuillez définir les autorisations.",
   "publishApp.title": "Qui peut accéder à l'application web",

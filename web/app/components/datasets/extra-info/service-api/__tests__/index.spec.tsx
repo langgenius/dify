@@ -15,6 +15,14 @@ vi.mock('@/context/app-context', () => ({
     selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -23,6 +31,12 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
   useSearchParams: () => new URLSearchParams(),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock next/link
 vi.mock('@/next/link', () => ({

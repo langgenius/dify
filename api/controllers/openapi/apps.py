@@ -129,7 +129,7 @@ def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescrib
     return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
 
 
-@openapi_ns.route("/apps/<string:app_id>/describe")
+@openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(AppReadResource):
     @auth_router.guard(
         scope=Scope.APPS_READ,

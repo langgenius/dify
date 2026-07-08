@@ -698,7 +698,7 @@ export const zDatasourceNodeRunPayload = z.object({
  * DatasourcePluginResponse
  */
 export const zDatasourcePluginResponse = z.object({
-  credentials: z.array(zDatasourceCredentialInfoResponse),
+  credentials: z.array(zDatasourceCredentialInfoResponse).optional(),
   datasource_type: z.string().nullish(),
   node_id: z.string().nullish(),
   plugin_id: z.string().nullish(),
@@ -3063,8 +3063,10 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 /**
  * Streaming response with node execution events.
  */
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
-  = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
 

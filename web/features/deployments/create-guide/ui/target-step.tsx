@@ -3,8 +3,7 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -17,8 +16,13 @@ import {
   stepAtom,
 } from '@/features/deployments/create-guide/state/primitives'
 import {
-  deployableEnvironmentsQueryAtom,
-  deploymentOptionsQueryAtom,
+  deployableEnvironmentsIsErrorAtom,
+  deployableEnvironmentsIsFetchingAtom,
+  deployableEnvironmentsIsLoadingAtom,
+  deploymentOptionsDataAtom,
+  deploymentOptionsIsErrorAtom,
+  deploymentOptionsIsFetchingAtom,
+  deploymentOptionsIsLoadingAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state/queries'
 import {
@@ -73,11 +77,12 @@ export function TargetStepContent() {
 
 function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
-  const environmentsQuery = useAtomValue(deployableEnvironmentsQueryAtom)
+  const environmentsIsError = useAtomValue(deployableEnvironmentsIsErrorAtom)
+  const environmentsIsFetching = useAtomValue(deployableEnvironmentsIsFetchingAtom)
+  const environmentsIsLoading = useAtomValue(deployableEnvironmentsIsLoadingAtom)
   const environments = useAtomValue(deployableEnvironmentsAtom)
   const effectiveSelectedEnvironmentId = useAtomValue(effectiveSelectedEnvironmentIdAtom)
-  const isEnvironmentError = environmentsQuery.isError
-  const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
+  const isEnvironmentLoading = environmentsIsLoading || (environmentsIsFetching && environments.length === 0)
   const selectEnvironment = useSetAtom(selectedEnvironmentIdAtom)
   const hasEnvironmentOptions = environments.length > 0
 
@@ -103,7 +108,7 @@ function TargetEnvironmentSection() {
           ? <TargetEnvironmentSkeleton />
           : (
               <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                {isEnvironmentError
+                {environmentsIsError
                   ? t('createGuide.target.loadEnvironmentsFailed')
                   : t('createGuide.target.noEnvironmentOptions')}
               </div>
@@ -119,9 +124,10 @@ function EnvironmentOptionRow({ environment }: {
   const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
-    <RadioRoot<string>
+    <RadioItem<string>
       value={environment.id}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
@@ -138,17 +144,20 @@ function EnvironmentOptionRow({ environment }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 
 function TargetBindingSection() {
   const { t } = useTranslation('deployments')
-  const deploymentOptionsQuery = useAtomValue(deploymentOptionsQueryAtom)
+  const deploymentOptions = useAtomValue(deploymentOptionsDataAtom)
+  const deploymentOptionsIsError = useAtomValue(deploymentOptionsIsErrorAtom)
+  const deploymentOptionsIsFetching = useAtomValue(deploymentOptionsIsFetchingAtom)
+  const deploymentOptionsIsLoading = useAtomValue(deploymentOptionsIsLoadingAtom)
   const bindingSlots = useAtomValue(deploymentTargetBindingSlotsAtom)
   const bindingSelections = useAtomValue(deploymentTargetBindingSelectionsAtom)
-  const isBindingError = deploymentOptionsQuery.isError
-  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+  const isBindingError = deploymentOptionsIsError
+  const isBindingLoading = deploymentOptionsIsLoading || (deploymentOptionsIsFetching && !deploymentOptions)
   const selectBinding = useSetAtom(selectBindingAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const shouldRender = !(isBindingError && unsupportedDslNodes.length > 0)
@@ -196,10 +205,13 @@ function TargetEnvVarSection() {
   const { t } = useTranslation('deployments')
   const setEnvVar = useSetAtom(setEnvVarAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
-  const deploymentOptionsQuery = useAtomValue(deploymentOptionsQueryAtom)
+  const deploymentOptions = useAtomValue(deploymentOptionsDataAtom)
+  const deploymentOptionsIsError = useAtomValue(deploymentOptionsIsErrorAtom)
+  const deploymentOptionsIsFetching = useAtomValue(deploymentOptionsIsFetchingAtom)
+  const deploymentOptionsIsLoading = useAtomValue(deploymentOptionsIsLoadingAtom)
   const envVarSlots = useAtomValue(deploymentTargetEnvVarSlotsAtom)
-  const isBindingError = deploymentOptionsQuery.isError
-  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+  const isBindingError = deploymentOptionsIsError
+  const isBindingLoading = deploymentOptionsIsLoading || (deploymentOptionsIsFetching && !deploymentOptions)
 
   if (isBindingLoading || isBindingError)
     return null

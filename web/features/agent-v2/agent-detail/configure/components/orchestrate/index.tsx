@@ -41,6 +41,7 @@ type AgentOrchestratePanelProps = {
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  workflowReferencesEnabled?: boolean
   isBuildDraftActive?: boolean
   buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
@@ -68,6 +69,7 @@ export function AgentOrchestratePanel({
   className,
   readOnly = false,
   selectedVersionSnapshot,
+  workflowReferencesEnabled,
   isBuildDraftActive = false,
   buildDraftChangedKeys = [],
   showHeader = true,
@@ -92,6 +94,7 @@ export function AgentOrchestratePanel({
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
+          workflowReferencesEnabled={workflowReferencesEnabled}
           onPublish={onPublish}
           onExitVersions={onExitVersions}
           onOpenVersions={onOpenVersions}
