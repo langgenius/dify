@@ -38,7 +38,14 @@ from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
-from pydantic_ai.messages import AgentStreamEvent, FinalResultEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.messages import (
+    AgentStreamEvent,
+    FinalResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+)
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 

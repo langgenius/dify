@@ -1342,6 +1342,7 @@ export const zPaginatedConversationVariableResponse = z.object({
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),

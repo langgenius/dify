@@ -69,9 +69,7 @@ class AgentBackendStreamInternalEvent(AgentBackendInternalEventBase):
 class AgentBackendAgentMessageDeltaInternalEvent(AgentBackendInternalEventBase):
     """API-internal agent-message delta emitted independently from raw stream events."""
 
-    type: Literal[AgentBackendInternalEventType.AGENT_MESSAGE_DELTA] = (
-        AgentBackendInternalEventType.AGENT_MESSAGE_DELTA
-    )
+    type: Literal[AgentBackendInternalEventType.AGENT_MESSAGE_DELTA] = AgentBackendInternalEventType.AGENT_MESSAGE_DELTA
     delta: str
 
 
