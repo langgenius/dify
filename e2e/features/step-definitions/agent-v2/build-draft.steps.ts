@@ -50,6 +50,17 @@ const getBuildNoteFileButton = (page: Page) =>
 const getConfigNote = (value: Awaited<ReturnType<typeof getAgentBuildDraft>>) =>
   value.agent_soul?.config_note ?? ''
 
+const getLastBuildChatAnswerText = async (page: Page) => {
+  const answer = page.getByTestId('chat-answer-container').last()
+  if (await answer.count() === 0)
+    return ''
+
+  return (await answer.textContent())?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+const formatBuildChatAnswerText = (text: string) =>
+  text.length > 500 ? `${text.slice(0, 500)}...` : text
+
 Given(
   'an Agent v2 Build draft adds the supported E2E files, skills, and env',
   async function (this: DifyWorld) {
@@ -133,7 +144,6 @@ Given(
 
 When(
   'I generate an Agent v2 Build draft from the fixed instruction',
-  { timeout: 180_000 },
   async function (this: DifyWorld) {
     const page = this.getPage()
     const agentId = getCurrentAgentId(this)
@@ -153,9 +163,13 @@ When(
 
     await page.getByRole('button', { name: 'Start build' }).click()
     expect((await checkoutResponsePromise).ok()).toBe(true)
-    expect((await chatResponsePromise).ok()).toBe(true)
-    await expect(getBuildDraftBar(page)).toBeVisible({ timeout: 120_000 })
-    await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
+    const chatResponse = await chatResponsePromise
+    expect(chatResponse.ok()).toBe(true)
+    expect(await chatResponse.finished()).toBeNull()
+
+    await expect(page.getByRole('button', { name: 'Stop responding' })).not.toBeVisible()
+    await expect(getBuildDraftBar(page)).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled()
     await expect(page.getByRole('button', { exact: true, name: 'Discard' })).toBeEnabled()
   },
 )
@@ -290,10 +304,18 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
 Then(
   'the Agent v2 Build draft should include the generated build note',
   async function (this: DifyWorld) {
-    await expect.poll(
-      async () => getConfigNote(await getAgentBuildDraft(getCurrentAgentId(this))),
-      { timeout: 30_000 },
-    ).toContain(BUILD_NOTE_MARKER)
+    try {
+      await expect.poll(
+        async () => getConfigNote(await getAgentBuildDraft(getCurrentAgentId(this))),
+      ).toContain(BUILD_NOTE_MARKER)
+    }
+    catch (error) {
+      const lastAnswerText = await getLastBuildChatAnswerText(this.getPage())
+      throw new Error(
+        `Agent v2 Build draft note did not include ${BUILD_NOTE_MARKER}. Last Build chat answer: ${formatBuildChatAnswerText(lastAnswerText) || '<empty>'}`,
+        { cause: error },
+      )
+    }
   },
 )
 
