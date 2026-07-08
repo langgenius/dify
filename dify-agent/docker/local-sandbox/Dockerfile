@@ -12,8 +12,7 @@ FROM python:3.12-slim-bookworm AS base
 ARG NODE_VERSION=22.22.1
 ARG PNPM_VERSION=11.9.0
 ARG UV_VERSION=0.8.9
-ARG DIFY_AGENT_TOOL_SPEC=.[grpc]
-ARG SHELL_SESSION_MANAGER_TOOL_SPEC=shell-session-manager==2.4.0
+ARG DIFY_AGENT_TOOL_SPEC=.[grpc,shellctl-server]
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -25,6 +24,7 @@ ENV PATH="${UV_TOOL_BIN_DIR}:${PATH}"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        bash \
         ca-certificates \
         curl \
         file \
@@ -62,7 +62,6 @@ WORKDIR /opt/dify-agent
 FROM base AS tools
 
 ARG DIFY_AGENT_TOOL_SPEC
-ARG SHELL_SESSION_MANAGER_TOOL_SPEC
 
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
@@ -71,8 +70,6 @@ RUN uv export --frozen --no-dev --all-extras --no-emit-project --no-hashes \
         > /tmp/dify-agent-constraints.txt \
     && uv tool install --force --python /usr/local/bin/python --no-python-downloads \
         --constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${DIFY_AGENT_TOOL_SPEC}" \
-    && uv tool install --force --python /usr/local/bin/python --no-python-downloads \
-        --constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${SHELL_SESSION_MANAGER_TOOL_SPEC}" \
     && rm -f /tmp/dify-agent-constraints.txt
 
 

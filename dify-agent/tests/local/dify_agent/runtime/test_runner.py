@@ -64,7 +64,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
 class StaticToolsTestLayer(ToolsLayer):
