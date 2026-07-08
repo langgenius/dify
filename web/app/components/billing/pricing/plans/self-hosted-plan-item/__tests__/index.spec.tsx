@@ -7,6 +7,8 @@ import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '
 import { SelfHostedPlan } from '../../../../type'
 import SelfHostedPlanItem from '../index'
 
+let mockAppCtx: Record<string, unknown> = {}
+
 vi.mock('../list', () => ({
   default: ({ plan }: { plan: string }) => (
     <div data-testid={`list-${plan}`}>
@@ -20,6 +22,16 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('../../../assets', () => ({
   Community: () => <div>Community Icon</div>,
   Premium: () => <div>Premium Icon</div>,
@@ -32,6 +44,11 @@ const mockUseAppContext = useAppContext as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
+
+const mockAppContext = (state: Record<string, unknown>) => {
+  mockAppCtx = state
+  mockUseAppContext.mockReturnValue(state)
+}
 
 const renderWithToastHost = (ui: React.ReactNode) => {
   return render(
@@ -59,7 +76,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({
+  mockAppContext({
     isCurrentWorkspaceManager: false,
     workspacePermissionKeys: ['billing.manage'],
   })
@@ -94,7 +111,7 @@ describe('SelfHostedPlanItem', () => {
 
   describe('CTA interactions', () => {
     it('should show toast when billing manage permission is missing', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
       })
