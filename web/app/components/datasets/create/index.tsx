@@ -8,18 +8,20 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
   datasetWorkspaceAccessAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import StepOne from './step-one'
@@ -47,8 +49,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
   const { isLoadingWorkspacePermissionKeys } = useAtomValue(datasetWorkspaceAccessAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const datasetACLCapabilities = useDatasetACLCapabilities(datasetDetail)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetDetail?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: datasetDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [datasetDetail?.maintainer, datasetDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
   const canAddDocumentsToDataset = !datasetId || datasetACLCapabilities.canUse
   const shouldRedirectToDocuments = !!datasetId
     && !!datasetDetail

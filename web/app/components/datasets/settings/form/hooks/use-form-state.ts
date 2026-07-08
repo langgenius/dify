@@ -5,17 +5,22 @@ import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useMembers } from '@/service/use-common'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -29,7 +34,13 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const datasetACLCapabilities = useDatasetACLCapabilities(currentDataset)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: currentDataset?.maintainer,
+    workspacePermissionKeys,
+  }), [currentDataset?.maintainer, currentDataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
   const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state

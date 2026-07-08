@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
-import type { getDatasetACLCapabilities } from '@/utils/permission'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
   datasetRbacEnabledAtom,
   datasetWorkspaceAccessAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -66,10 +67,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     isLoadingWorkspacePermissionKeys,
   } = useAtomValue(datasetWorkspaceAccessAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
-  const datasetACLCapabilities = useDatasetACLCapabilities(datasetRes, { isRbacEnabled })
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: datasetRes?.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
   const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath

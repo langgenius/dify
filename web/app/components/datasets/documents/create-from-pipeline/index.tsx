@@ -10,9 +10,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
   datasetWorkspaceAccessAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -21,6 +22,7 @@ import { useRouter } from '@/next/navigation'
 import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
 import {
@@ -44,8 +46,15 @@ const CreateFormPipeline = () => {
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
   const { isLoadingWorkspacePermissionKeys } = useAtomValue(datasetWorkspaceAccessAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
-  const canAddDocumentsToDataset = useDatasetACLCapabilities(dataset).canUse
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }), [dataset?.maintainer, dataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  const canAddDocumentsToDataset = datasetACLCapabilities.canUse
   const shouldRedirectToDocuments = !!dataset
     && !isLoadingWorkspacePermissionKeys
     && !canAddDocumentsToDataset

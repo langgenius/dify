@@ -4,13 +4,18 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
+import {
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
@@ -60,7 +65,13 @@ const DocumentList = ({
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
-  const datasetACLCapabilities = useDatasetACLCapabilities(datasetConfig)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: datasetConfig?.maintainer,
+    workspacePermissionKeys,
+  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, userProfile?.id, workspacePermissionKeys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa

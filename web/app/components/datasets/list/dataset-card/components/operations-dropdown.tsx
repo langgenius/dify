@@ -7,10 +7,12 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
   datasetRbacEnabledAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
@@ -30,7 +32,14 @@ const OperationsDropdown = ({
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const datasetACLCapabilities = useDatasetACLCapabilities(dataset, { isRbacEnabled })
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: dataset.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [dataset.maintainer, dataset.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig

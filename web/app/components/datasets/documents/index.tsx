@@ -1,8 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { useAtomValue } from 'jotai'
+import * as React from 'react'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
+import {
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
@@ -10,6 +15,7 @@ import { useRouter } from '@/next/navigation'
 import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DocumentsHeader from './components/documents-header'
 import EmptyElement from './components/empty-element'
@@ -31,7 +37,13 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
-  const datasetACLCapabilities = useDatasetACLCapabilities(dataset)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }), [dataset?.maintainer, dataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
 
   // Use custom hook for page state management
   const {

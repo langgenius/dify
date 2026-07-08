@@ -6,13 +6,14 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
   datasetWorkspaceAccessAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
-import { hasOnlyDatasetPreviewPermission } from '@/utils/permission'
+import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission } from '@/utils/permission'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -37,6 +38,8 @@ const DatasetCard = ({
   const { t } = useTranslation()
   const { push } = useRouter()
   const { canManageDatasetTags } = useAtomValue(datasetWorkspaceAccessAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -56,7 +59,11 @@ const DatasetCard = ({
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
   const isPreviewOnly = hasOnlyDatasetPreviewPermission(dataset.permission_keys)
-  const datasetACLCapabilities = useDatasetACLCapabilities(dataset)
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: dataset.maintainer,
+    workspacePermissionKeys,
+  }), [dataset.maintainer, dataset.permission_keys, userProfile?.id, workspacePermissionKeys])
   const canBindOrUnbindTags = !isPreviewOnly && (canManageDatasetTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {

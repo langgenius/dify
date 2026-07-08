@@ -20,6 +20,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +28,10 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
+import {
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
@@ -35,6 +39,7 @@ import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
 import QueryInput from './components/query-input'
@@ -62,7 +67,14 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const canRunRetrievalRecall = useDatasetACLCapabilities(currentDataset).canRetrievalRecall
+  const userProfile = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: currentDataset?.maintainer,
+    workspacePermissionKeys,
+  }), [currentDataset?.maintainer, currentDataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  const canRunRetrievalRecall = datasetACLCapabilities.canRetrievalRecall
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
 
   const total = recordsRes?.total || 0
