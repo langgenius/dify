@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { waitForConsoleHome } from '../support/console'
+import { waitForConsoleHome } from '../support/home'
 import { apiURL, defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {

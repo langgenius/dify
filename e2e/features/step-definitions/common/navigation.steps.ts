@@ -2,7 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { waitForAppsConsole } from '../../../support/apps'
-import { waitForConsoleHome } from '../../../support/console'
+import { waitForConsoleHome } from '../../../support/home'
 
 When('I open the default console entry', async function (this: DifyWorld) {
   await this.getPage().goto('/')
