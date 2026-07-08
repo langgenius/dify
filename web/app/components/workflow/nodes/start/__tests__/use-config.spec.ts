@@ -242,4 +242,37 @@ describe('start/use-config', () => {
       message: 'varKeyError.keyAlreadyExists',
     }))
   })
+
+  it('should allow adding a unique variable when existing imported variables have missing labels', () => {
+    currentInputs = createPayload({
+      variables: [
+        createInputVar({
+          label: undefined,
+          variable: 'first_input',
+        } as never),
+        createInputVar({
+          label: undefined,
+          variable: 'second_input',
+        } as never),
+      ],
+    })
+    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+
+    let added = false
+    act(() => {
+      added = result.current.handleAddVariable(createInputVar({
+        label: 'Locale',
+        variable: 'locale',
+        required: false,
+      }))
+    })
+
+    expect(added).toBe(true)
+    expect(toastSpy).not.toHaveBeenCalled()
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      variables: expect.arrayContaining([
+        expect.objectContaining({ variable: 'locale', label: 'Locale' }),
+      ]),
+    }))
+  })
 })
