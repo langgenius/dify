@@ -137,21 +137,6 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   if (!canRunRetrievalRecall)
     return <Loading type="app" />
 
-  let rightPanelContent = renderEmptyState()
-  if (isRetrievalLoading) {
-    rightPanelContent = (
-      <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-        <CardSkelton />
-      </div>
-    )
-  }
-  else if (hitResult?.records.length) {
-    rightPanelContent = renderHitResults(hitResult.records)
-  }
-  else if (externalHitResult?.records.length) {
-    rightPanelContent = renderHitResults(externalHitResult.records)
-  }
-
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
@@ -212,7 +197,23 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         onClose={hideRightPanel}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
-          {rightPanelContent}
+          {isRetrievalLoading
+            ? (
+                <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+                  <CardSkelton />
+                </div>
+              )
+            : (
+                (() => {
+                  if (!hitResult?.records.length && !externalHitResult?.records.length)
+                    return renderEmptyState()
+
+                  if (hitResult?.records.length)
+                    return renderHitResults(hitResult.records)
+
+                  return renderHitResults(externalHitResult?.records || [])
+                })()
+              )}
         </div>
       </FloatRightContainer>
       <Drawer
