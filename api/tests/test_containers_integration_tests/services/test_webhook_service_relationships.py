@@ -350,9 +350,10 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         quota_charge.commit.assert_called_once()
         mock_trigger.assert_called_once()
         trigger_args = mock_trigger.call_args.args
-        assert trigger_args[1] is end_user
-        assert trigger_args[2].workflow_id == workflow.id
-        assert trigger_args[2].root_node_id == webhook_trigger.node_id
+        assert trigger_args[0] is end_user
+        assert trigger_args[1].workflow_id == workflow.id
+        assert trigger_args[1].root_node_id == webhook_trigger.node_id
+        assert mock_trigger.call_args.kwargs["session"] is not None
 
     def test_trigger_workflow_execution_marks_tenant_rate_limited_when_quota_exceeded(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask

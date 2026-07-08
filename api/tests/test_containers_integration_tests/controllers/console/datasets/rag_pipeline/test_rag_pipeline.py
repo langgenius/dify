@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from inspect import unwrap
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -90,54 +90,50 @@ class TestPipelineTemplateDetailApi:
             "graph": {"nodes": nodes, "edges": edges, "viewport": viewport},
         }
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = template
-
         with (
             app.test_request_context("/?type=built-in"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=template,
+            ) as get_detail_mock,
         ):
             response, status = method(api, MagicMock(), "tpl-1")
 
         assert status == 200
         assert response == {**template, "created_by": None}
+        get_detail_mock.assert_called_once_with("tpl-1", type="built-in", session=ANY)
 
     def test_get_returns_404_when_template_not_found(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = None
-
         with (
             app.test_request_context("/?type=built-in"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=None,
+            ) as get_detail_mock,
         ):
             with pytest.raises(NotFound):
                 method(api, MagicMock(), "non-existent-id")
+
+        get_detail_mock.assert_called_once_with("non-existent-id", type="built-in", session=ANY)
 
     def test_get_returns_404_for_customized_type_not_found(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = None
-
         with (
             app.test_request_context("/?type=customized"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=None,
+            ) as get_detail_mock,
         ):
             with pytest.raises(NotFound):
                 method(api, MagicMock(), "non-existent-id")
+
+        get_detail_mock.assert_called_once_with("non-existent-id", type="customized", session=ANY)
 
 
 class TestCustomizedPipelineTemplateApi:
@@ -186,7 +182,7 @@ class TestCustomizedPipelineTemplateApi:
         ):
             response, status = method(api, tenant_id, "tpl-1")
 
-        delete_mock.assert_called_once_with("tpl-1", tenant_id)
+        delete_mock.assert_called_once_with("tpl-1", tenant_id, session=ANY)
         assert status == 204
         assert response == ""
 

@@ -65,7 +65,7 @@ async function executeRun(
   const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? ''
   if (mode === '')
-    throw new Error(`app ${opts.appId}: mode missing from /describe`)
+    throw new Error(`app ${opts.appId}: mode missing from app metadata`)
 
   if (mode === RUN_MODES.Workflow && opts.message !== undefined && opts.message !== '') {
     throw new BaseError({

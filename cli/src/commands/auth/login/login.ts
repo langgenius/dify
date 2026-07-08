@@ -31,6 +31,10 @@ export type LoginOptions = {
   readonly browserEnv?: BrowserEnv
   readonly browserOpener?: BrowserOpener
   readonly clock?: Clock
+  // Version guard for the freshly-authenticated host; wired to enforceDifyVersion
+  // at the command boundary. Runs before the session is persisted so we never
+  // save credentials for a server too old for this difyctl. Defaults to a no-op.
+  readonly verifyServer?: (host: string) => Promise<void>
 }
 
 export async function runLogin(opts: LoginOptions): Promise<Registry> {
@@ -69,6 +73,9 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
   finally {
     spinner.stop()
   }
+
+  // Refuse to persist a session to a server too old for this difyctl.
+  await (opts.verifyServer ?? (async () => {}))(host)
 
   const storeBundle = opts.store ?? await detectTokenStore()
   const display = bareHost(host)

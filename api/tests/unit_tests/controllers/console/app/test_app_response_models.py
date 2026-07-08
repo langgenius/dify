@@ -6,7 +6,7 @@ from datetime import datetime
 from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from flask import Flask
@@ -500,7 +500,8 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     )
     session = MagicMock()
     session.execute.return_value.scalars.return_value.all.return_value = [workflow]
-    scoped_session = SimpleNamespace(execute=MagicMock(side_effect=AssertionError("db.session should not be used")))
+    scoped_session = MagicMock()
+    scoped_session.execute.side_effect = AssertionError("db.session should not be used")
 
     monkeypatch.setattr(
         app_module,
@@ -515,7 +516,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     monkeypatch.setattr(
         app_module.enterprise_rbac_service.RBACService.MyPermissions,
         "get",
-        lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+        lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
             app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
                 overrides=[
                     app_module.enterprise_rbac_service.ResourcePermissionKeys(
@@ -563,12 +564,12 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
             monkeypatch.setattr(
                 app_module,
                 "AppService",
-                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user: app_obj),
+                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user, session: app_obj),
             )
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppPermissions,
                 "batch_get",
-                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+                lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
             resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
@@ -611,7 +612,7 @@ def test_app_list_api_attaches_permission_keys(app, app_module):
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
-                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
                     app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
                         default_permission_keys=["app.preview", "app.acl.view_layout"],
                         overrides=[
@@ -655,7 +656,7 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
-                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
                     workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
                         permission_keys=["app.create_and_management"]
                     )
@@ -698,7 +699,7 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
-                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
                     app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
                         overrides=[
                             app_module.enterprise_rbac_service.ResourcePermissionKeys(
@@ -754,7 +755,7 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.MyPermissions,
                 "get",
-                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(),
+                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(),
             )
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
@@ -820,7 +821,7 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):
 
             resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
 
-    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1")
+    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=ANY)
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 
@@ -861,7 +862,7 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
                 "get_system_features",
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
-            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=object()))
+            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=object(), session=lambda: MagicMock()))
             monkeypatch.setattr(
                 app_module,
                 "Session",
@@ -870,7 +871,7 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppPermissions,
                 "batch_get",
-                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+                lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
 
             resp, status = method(
