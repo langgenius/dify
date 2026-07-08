@@ -75,6 +75,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     # default values
     assert config.EDITION == "SELF_HOSTED"
     assert config.API_COMPRESSION_ENABLED is False
+    assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
     assert config.TEMPLATE_TRANSFORM_MAX_LENGTH == 400_000
 
