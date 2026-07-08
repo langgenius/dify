@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Actualizat",
   "agentDetail.configure.chatFeatures.description": "Modelează experiența de chat a utilizatorului final pe webapp-ul tău și pe suprafețele de chat.",
   "agentDetail.configure.chatFeatures.title": "Funcții de chat",
+  "agentDetail.configure.clearSessionConfirm.description": "Această acțiune va goli sesiunea curentă și va renunța la modificările neaplicate ale configurării Agent.",
+  "agentDetail.configure.clearSessionConfirm.title": "Golești sesiunea și renunți la modificări?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition nu oferă izolare strictă a sistemului de fișiere între utilizatorii finali sau între rulări. Nu expune același agent CE către mai mulți utilizatori finali independenți atunci când este necesară izolarea datelor sau conformitatea strictă.",
   "agentDetail.configure.files.add": "Adaugă fișier",
   "agentDetail.configure.files.buildNote.generated": "Generat",

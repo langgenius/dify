@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "已更新",
   "agentDetail.configure.chatFeatures.description": "配置 Web app 和聊天界面的终端用户聊天体验。",
   "agentDetail.configure.chatFeatures.title": "Chat 功能",
+  "agentDetail.configure.clearSessionConfirm.description": "这将清空当前会话，并丢弃尚未应用的 Agent 配置更改。",
+  "agentDetail.configure.clearSessionConfirm.title": "清空会话并放弃改动？",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition 不在最终用户之间或不同运行之间提供严格的文件系统隔离。如果需要数据隔离或严格合规，请勿将同一个 CE Agent 暴露给多个相互独立的最终用户。",
   "agentDetail.configure.files.add": "添加文件",
   "agentDetail.configure.files.buildNote.generated": "已生成",

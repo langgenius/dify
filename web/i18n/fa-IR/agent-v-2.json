@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "به‌روزرسانی شد",
   "agentDetail.configure.chatFeatures.description": "تجربه چت کاربر نهایی را در Web app و سطوح چت خود شکل دهید.",
   "agentDetail.configure.chatFeatures.title": "ویژگی‌های چت",
+  "agentDetail.configure.clearSessionConfirm.description": "این کار نشست فعلی را پاک می‌کند و تغییرات پیکربندی Agent را که هنوز اعمال نشده‌اند کنار می‌گذارد.",
+  "agentDetail.configure.clearSessionConfirm.title": "نشست پاک شود و تغییرات کنار گذاشته شوند؟",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition جداسازی سخت‌گیرانهٔ سیستم فایل را بین کاربران نهایی یا اجراها فراهم نمی‌کند. در جایی که جداسازی داده یا رعایت الزامات سخت‌گیرانه لازم است، همان عامل CE را در اختیار چند کاربر نهایی مستقل قرار ندهید.",
   "agentDetail.configure.files.add": "افزودن فایل",
   "agentDetail.configure.files.buildNote.generated": "تولید شده",

@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "อัปเดตแล้ว",
   "agentDetail.configure.chatFeatures.description": "กำหนดประสบการณ์การแชทของผู้ใช้ปลายทางบน Web app และหน้าจอแชท",
   "agentDetail.configure.chatFeatures.title": "ฟีเจอร์แชท",
+  "agentDetail.configure.clearSessionConfirm.description": "การดำเนินการนี้จะล้างเซสชันปัจจุบันและทิ้งการเปลี่ยนแปลงการกำหนดค่าของ Agent ที่ยังไม่ได้ใช้",
+  "agentDetail.configure.clearSessionConfirm.title": "ล้างเซสชันและทิ้งการเปลี่ยนแปลงหรือไม่?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition ไม่มีการแยกระบบไฟล์อย่างเข้มงวดระหว่างผู้ใช้ปลายทางหรือระหว่างการรัน อย่าเปิดเผยเอเจนต์ CE ตัวเดียวกันให้กับผู้ใช้ปลายทางอิสระหลายรายเมื่อจำเป็นต้องมีการแยกข้อมูลหรือการปฏิบัติตามข้อกำหนดอย่างเข้มงวด",
   "agentDetail.configure.files.add": "เพิ่มไฟล์",
   "agentDetail.configure.files.buildNote.generated": "สร้างแล้ว",

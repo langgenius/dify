@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Đã cập nhật",
   "agentDetail.configure.chatFeatures.description": "Định hình trải nghiệm trò chuyện cho người dùng cuối trên Web app và các bề mặt trò chuyện.",
   "agentDetail.configure.chatFeatures.title": "Tính năng trò chuyện",
+  "agentDetail.configure.clearSessionConfirm.description": "Thao tác này sẽ xóa phiên hiện tại và hủy các thay đổi cấu hình Agent chưa được áp dụng.",
+  "agentDetail.configure.clearSessionConfirm.title": "Xóa phiên và hủy thay đổi?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition không cung cấp cách ly hệ thống tệp cứng giữa người dùng cuối hoặc giữa các lần chạy. Không cung cấp cùng một tác nhân CE cho nhiều người dùng cuối độc lập khi cần cách ly dữ liệu hoặc tuân thủ nghiêm ngặt.",
   "agentDetail.configure.files.add": "Thêm tệp",
   "agentDetail.configure.files.buildNote.generated": "Đã tạo",

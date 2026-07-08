@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Zaktualizowano",
   "agentDetail.configure.chatFeatures.description": "Ukształtuj doświadczenie czatu użytkownika końcowego w aplikacji webowej i powierzchniach czatu.",
   "agentDetail.configure.chatFeatures.title": "Funkcje czatu",
+  "agentDetail.configure.clearSessionConfirm.description": "Spowoduje to wyczyszczenie bieżącej sesji i odrzucenie niezastosowanych zmian konfiguracji Agent.",
+  "agentDetail.configure.clearSessionConfirm.title": "Wyczyścić sesję i odrzucić zmiany?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition nie zapewnia twardej izolacji systemu plików między użytkownikami końcowymi ani uruchomieniami. Nie udostępniaj tego samego agenta CE wielu niezależnym użytkownikom końcowym, gdy wymagana jest izolacja danych lub ścisła zgodność.",
   "agentDetail.configure.files.add": "Dodaj plik",
   "agentDetail.configure.files.buildNote.generated": "Wygenerowano",

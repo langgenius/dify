@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Atualizado",
   "agentDetail.configure.chatFeatures.description": "Modele a experiência de chat do usuário final no seu webapp e superfícies de chat.",
   "agentDetail.configure.chatFeatures.title": "Recursos de chat",
+  "agentDetail.configure.clearSessionConfirm.description": "Isso limpará a sessão atual e descartará as alterações de configuração do Agent que ainda não foram aplicadas.",
+  "agentDetail.configure.clearSessionConfirm.title": "Limpar a sessão e descartar alterações?",
   "agentDetail.configure.communityEditionIsolationTip": "A Community Edition não fornece isolamento rígido do sistema de arquivos entre usuários finais ou execuções. Não exponha o mesmo agente CE a vários usuários finais independentes quando isolamento de dados ou conformidade rigorosa forem necessários.",
   "agentDetail.configure.files.add": "Adicionar arquivo",
   "agentDetail.configure.files.buildNote.generated": "Gerado",

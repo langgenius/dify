@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Оновлено",
   "agentDetail.configure.chatFeatures.description": "Налаштуйте чат-досвід кінцевого користувача у вашому веб-застосунку та чат-поверхнях.",
   "agentDetail.configure.chatFeatures.title": "Функції чату",
+  "agentDetail.configure.clearSessionConfirm.description": "Ця дія очистить поточний сеанс і відхилить незастосовані зміни конфігурації Agent.",
+  "agentDetail.configure.clearSessionConfirm.title": "Очистити сеанс і відхилити зміни?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition не забезпечує жорсткої ізоляції файлової системи між кінцевими користувачами або запусками. Не надавайте один і той самий CE-агент кільком незалежним кінцевим користувачам, якщо потрібна ізоляція даних або сувора відповідність вимогам.",
   "agentDetail.configure.files.add": "Додати файл",
   "agentDetail.configure.files.buildNote.generated": "Згенеровано",

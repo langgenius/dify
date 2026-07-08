@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "업데이트됨",
   "agentDetail.configure.chatFeatures.description": "Web app 및 채팅 화면에서의 최종 사용자 채팅 경험을 구성합니다.",
   "agentDetail.configure.chatFeatures.title": "채팅 기능",
+  "agentDetail.configure.clearSessionConfirm.description": "현재 세션이 지워지고 아직 적용되지 않은 Agent 구성 변경 사항이 폐기됩니다.",
+  "agentDetail.configure.clearSessionConfirm.title": "세션을 지우고 변경 사항을 폐기할까요?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition은 최종 사용자 간 또는 실행 간에 강력한 파일 시스템 격리를 제공하지 않습니다. 데이터 격리나 엄격한 규정 준수가 필요한 경우 동일한 CE 에이전트를 여러 독립 최종 사용자에게 노출하지 마세요.",
   "agentDetail.configure.files.add": "파일 추가",
   "agentDetail.configure.files.buildNote.generated": "생성됨",

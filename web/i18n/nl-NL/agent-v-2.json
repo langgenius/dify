@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "Bijgewerkt",
   "agentDetail.configure.chatFeatures.description": "Geef vorm aan de chatervaring voor eindgebruikers in je webapp en chatoppervlakken.",
   "agentDetail.configure.chatFeatures.title": "Chatfuncties",
+  "agentDetail.configure.clearSessionConfirm.description": "Dit wist de huidige sessie en negeert nog niet toegepaste configuratiewijzigingen van de Agent.",
+  "agentDetail.configure.clearSessionConfirm.title": "Sessie wissen en wijzigingen negeren?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition biedt geen harde bestandssysteemisolatie tussen eindgebruikers of runs. Stel dezelfde CE-agent niet beschikbaar aan meerdere onafhankelijke eindgebruikers wanneer gegevensisolatie of strikte compliance vereist is.",
   "agentDetail.configure.files.add": "Bestand toevoegen",
   "agentDetail.configure.files.buildNote.generated": "Gegenereerd",

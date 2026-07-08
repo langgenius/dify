@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "अपडेट किया गया",
   "agentDetail.configure.chatFeatures.description": "अपने Web app और चैट सतहों पर अंतिम-उपयोगकर्ता चैट अनुभव को आकार दें।",
   "agentDetail.configure.chatFeatures.title": "चैट सुविधाएँ",
+  "agentDetail.configure.clearSessionConfirm.description": "यह मौजूदा सेशन साफ़ कर देगा और Agent कॉन्फ़िगरेशन के वे बदलाव छोड़ देगा जो अभी लागू नहीं हुए हैं।",
+  "agentDetail.configure.clearSessionConfirm.title": "सेशन साफ़ करके बदलाव छोड़ें?",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition अंतिम उपयोगकर्ताओं या रन के बीच सख्त फ़ाइल सिस्टम आइसोलेशन प्रदान नहीं करता है। जहाँ डेटा आइसोलेशन या कड़े अनुपालन की आवश्यकता हो, वहाँ एक ही CE एजेंट को कई स्वतंत्र अंतिम उपयोगकर्ताओं के लिए उजागर न करें।",
   "agentDetail.configure.files.add": "फ़ाइल जोड़ें",
   "agentDetail.configure.files.buildNote.generated": "जनरेट किया गया",

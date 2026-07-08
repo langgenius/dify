@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "تم التحديث",
   "agentDetail.configure.chatFeatures.description": "شكّل تجربة الدردشة للمستخدم النهائي على Web app وأسطح الدردشة.",
   "agentDetail.configure.chatFeatures.title": "ميزات الدردشة",
+  "agentDetail.configure.clearSessionConfirm.description": "سيؤدي هذا إلى مسح الجلسة الحالية والتخلي عن تغييرات إعدادات Agent التي لم يتم تطبيقها بعد.",
+  "agentDetail.configure.clearSessionConfirm.title": "مسح الجلسة والتخلي عن التغييرات؟",
   "agentDetail.configure.communityEditionIsolationTip": "لا توفر Community Edition عزلاً صارماً لنظام الملفات بين المستخدمين النهائيين أو بين عمليات التشغيل. لا تعرض وكيل CE نفسه لعدة مستخدمين نهائيين مستقلين عندما يكون عزل البيانات أو الامتثال الصارم مطلوباً.",
   "agentDetail.configure.files.add": "إضافة ملف",
   "agentDetail.configure.files.buildNote.generated": "تم إنشاؤه",

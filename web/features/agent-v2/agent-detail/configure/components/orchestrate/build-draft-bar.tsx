@@ -6,6 +6,7 @@ import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsib
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentBuildGridTexture } from '../build-grid-texture'
+import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
 import { AgentBuildDraftChangesPanel } from './build-draft-changes-panel'
 
 type AgentBuildDraftBarProps = {
@@ -88,15 +89,19 @@ export function AgentBuildDraftBar({
             <span aria-hidden className="i-ri-arrow-right-s-line size-4 shrink-0" />
           </button>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={discardDisabled}
-          className="relative z-1 h-8 shrink-0 rounded-lg px-3"
-          onClick={onDiscard}
+        <AgentConfigureClearSessionConfirmDialog
+          confirmDisabled={isDiscarding}
+          onConfirm={onDiscard}
         >
-          {t('agentDetail.configure.buildDraft.discard')}
-        </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={discardDisabled}
+            className="relative z-1 h-8 shrink-0 rounded-lg px-3"
+          >
+            {t('agentDetail.configure.buildDraft.discard')}
+          </Button>
+        </AgentConfigureClearSessionConfirmDialog>
         <Button
           type="button"
           variant="primary"

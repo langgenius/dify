@@ -79,6 +79,8 @@
   "agentDetail.configure.buildDraft.updated": "更新済み",
   "agentDetail.configure.chatFeatures.description": "Web app やチャット画面でのエンドユーザー向けチャット体験を設定します。",
   "agentDetail.configure.chatFeatures.title": "チャット機能",
+  "agentDetail.configure.clearSessionConfirm.description": "現在のセッションをクリアし、まだ適用されていない Agent の設定変更を破棄します。",
+  "agentDetail.configure.clearSessionConfirm.title": "セッションをクリアして変更を破棄しますか？",
   "agentDetail.configure.communityEditionIsolationTip": "Community Edition では、エンドユーザー間または実行間で厳密なファイルシステム分離は提供されません。データ分離や厳格なコンプライアンスが必要な場合は、同じ CE エージェントを複数の独立したエンドユーザーに公開しないでください。",
   "agentDetail.configure.files.add": "ファイルを追加",
   "agentDetail.configure.files.buildNote.generated": "生成済み",
