@@ -264,7 +264,7 @@ def workflow_repo_fixture(monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture
 def trace_task_message(monkeypatch: pytest.MonkeyPatch, mock_db):
     message_data = make_message_data()
-    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda msg_id: message_data)
+    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda msg_id, session: message_data)
     configure_db_scalar(mock_db, message_file=FakeMessageFile(), workflow_app_log=SimpleNamespace(id="log-id"))
     return message_data
 
