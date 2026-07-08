@@ -45,6 +45,8 @@ export const useStepByStepTourTarget = (target?: string) => {
 
     const observer = new MutationObserver(scheduleSyncTarget)
     observer.observe(document.body, {
+      attributeFilter: ['data-step-by-step-tour-target'],
+      attributes: true,
       childList: true,
       subtree: true,
     })

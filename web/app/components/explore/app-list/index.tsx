@@ -267,6 +267,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
+      activeGuideIndexes: undefined,
       minimized: true,
     })
   }, [setStepByStepTourAccountState, stepByStepTourAccountState])
@@ -280,6 +281,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
+      activeGuideIndexes: undefined,
       minimized: false,
     })
     stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
@@ -304,6 +306,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
+      activeGuideIndexes: undefined,
       minimized: false,
     })
     stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {

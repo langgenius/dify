@@ -888,6 +888,7 @@ describe('AppList', () => {
       mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
+        activeGuideIndexes: [0, 1],
         minimized: true,
       })
 
@@ -931,6 +932,7 @@ describe('AppList', () => {
         expect(state?.activeTaskId).toBeUndefined()
         expect(state?.activeGuideIndex).toBeUndefined()
         expect(state?.activeGuideGroup).toBeUndefined()
+        expect(state?.activeGuideIndexes).toBeUndefined()
         expect(state?.completedTaskIds).toEqual(['home'])
         expect(state?.minimized).toBe(false)
       })
@@ -945,6 +947,7 @@ describe('AppList', () => {
       mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
+        activeGuideIndexes: [0, 1],
         minimized: true,
       });
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
@@ -962,6 +965,7 @@ describe('AppList', () => {
         const state = mockStepByStepTour.observedState
         expect(state?.activeTaskId).toBeUndefined()
         expect(state?.activeGuideIndex).toBeUndefined()
+        expect(state?.activeGuideIndexes).toBeUndefined()
         expect(state?.completedTaskIds).toEqual(['home'])
       })
       expect(mockHandleImportDSL).toHaveBeenCalledWith(
@@ -1016,6 +1020,7 @@ describe('AppList', () => {
       mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
+        activeGuideIndexes: [0, 1],
         minimized: true,
       })
 
@@ -1038,6 +1043,7 @@ describe('AppList', () => {
         const state = mockStepByStepTour.observedState
         expect(state?.activeTaskId).toBeUndefined()
         expect(state?.activeGuideIndex).toBeUndefined()
+        expect(state?.activeGuideIndexes).toBeUndefined()
         expect(state?.completedTaskIds).toEqual([])
       })
       expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()

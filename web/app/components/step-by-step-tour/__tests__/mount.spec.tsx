@@ -1190,6 +1190,63 @@ describe('StepByStepTourMount', () => {
     }
   })
 
+  it('renders the coachmark when the target attribute is added to an existing element', async () => {
+    const animationFrameCallbacks: FrameRequestCallback[] = []
+    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrameCallbacks.push(callback)
+      return animationFrameCallbacks.length
+    })
+    const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    setStepByStepTourTestState({
+      activeTaskId: 'home',
+      activeGuideIndex: 1,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const target = document.createElement('button')
+    target.type = 'button'
+    target.textContent = 'Create from sample app'
+    target.getBoundingClientRect = () => ({
+      bottom: 280,
+      height: 40,
+      left: 980,
+      right: 1300,
+      top: 240,
+      width: 320,
+      x: 980,
+      y: 240,
+      toJSON: () => ({}),
+    })
+    document.body.appendChild(target)
+    const flushAnimationFrames = () => {
+      act(() => {
+        animationFrameCallbacks.splice(0).forEach(callback => callback(0))
+      })
+    }
+
+    try {
+      renderStepByStepTourMount()
+      flushAnimationFrames()
+      expect(screen.queryByText('Click here to make it yours')).not.toBeInTheDocument()
+
+      target.dataset.stepByStepTourTarget = STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate
+      await act(async () => {
+        await Promise.resolve()
+      })
+      flushAnimationFrames()
+
+      expect(await screen.findByText('Click here to make it yours')).toBeInTheDocument()
+    }
+    finally {
+      requestAnimationFrameSpy.mockRestore()
+      cancelAnimationFrameSpy.mockRestore()
+      target.remove()
+    }
+  })
+
   it('measures the coachmark size without observing the coachmark element', async () => {
     const resizeObservers: Array<{
       observedElements: Element[]
