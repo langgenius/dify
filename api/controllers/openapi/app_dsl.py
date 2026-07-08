@@ -30,7 +30,7 @@ class AppDslImportApi(Resource):
     a new app.
 
     Returns 202 when the DSL version requires an explicit confirmation step
-    (major version mismatch).  Callers must then POST to the confirm endpoint.
+    (major version mismatch).  Callers must then POST to the imports :confirm method.
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
@@ -79,7 +79,7 @@ class AppDslImportApi(Resource):
                 return result, 200
 
 
-@openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>/confirm")
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports/<string:import_id>:confirm")
 class AppDslImportConfirmApi(Resource):
     """Confirm a pending DSL import identified by ``import_id``.
 
@@ -119,7 +119,7 @@ class AppDslImportConfirmApi(Resource):
         return result, 200
 
 
-@openapi_ns.route("/apps/<string:app_id>/export")
+@openapi_ns.route("/apps/<string:app_id>/dsl")
 class AppDslExportApi(Resource):
     """Export an app's current draft configuration as a DSL YAML string.
 
@@ -153,7 +153,7 @@ class AppDslExportApi(Resource):
         return AppDslExportResponse(data=data), 200
 
 
-@openapi_ns.route("/apps/<string:app_id>/check-dependencies")
+@openapi_ns.route("/apps/<string:app_id>/dependencies:check")
 class AppDslCheckDependenciesApi(Resource):
     """Check for leaked plugin dependencies after a DSL import.
 

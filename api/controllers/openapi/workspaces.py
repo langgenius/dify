@@ -113,7 +113,7 @@ class WorkspaceByIdApi(Resource):
         return _workspace_detail(tenant, membership)
 
 
-@openapi_ns.route("/workspaces/<string:workspace_id>/switch")
+@openapi_ns.route("/workspaces/<string:workspace_id>:switch")
 class WorkspaceSwitchApi(Resource):
     """Server-side switch — equivalent to the console's POST /workspaces/switch.
 
@@ -212,11 +212,12 @@ class WorkspaceMembersApi(Resource):
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>")
 class WorkspaceMemberApi(Resource):
-    """Remove a member.
+    """Remove a member (DELETE) or change a member's role (PATCH).
 
     Self-removal and owner-removal are explicitly rejected by the service
     layer (CannotOperateSelfError, NoPermissionError) — both surface as
-    400 per the spec, with the service's message preserved.
+    400 per the spec, with the service's message preserved. Owner can never be
+    assigned via PATCH (closed enum); admin cannot demote the standing owner.
     """
 
     @auth_router.guard_workspace(
@@ -243,15 +244,6 @@ class WorkspaceMemberApi(Resource):
 
         return MemberActionResponse()
 
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>/role")
-class WorkspaceMemberRoleApi(Resource):
-    """Change a member's role.
-
-    Owner cannot be assigned here (closed enum). Admin cannot demote the
-    standing owner (service NoPermissionError → 400, per spec).
-    """
-
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
@@ -259,7 +251,7 @@ class WorkspaceMemberRoleApi(Resource):
     )
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
-    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
+    def patch(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
         member = AccountService.get_account_by_id(db.session, member_id)
