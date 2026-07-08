@@ -55,6 +55,19 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   ...overrides,
 })
 
+const loadLogClientError = async () => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  const module = await import('./client') as unknown as {
+    logClientError?: (error: unknown) => void
+  }
+
+  if (typeof module.logClientError !== 'function')
+    throw new Error('logClientError export is missing')
+
+  return module.logClientError
+}
+
 type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
 type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
 type AgentPublishMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']>>[0]
@@ -225,6 +238,37 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: client error logging should not surface expected request cancellation.
+describe('logClientError', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should ignore abort errors from cancelled requests', async () => {
+    const logClientError = await loadLogClientError()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const abortError = new DOMException('signal is aborted without reason', 'AbortError')
+
+    logClientError(abortError)
+
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('should keep logging unexpected errors', async () => {
+    const logClientError = await loadLogClientError()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = new Error('Unexpected failure')
+
+    logClientError(error)
+
+    expect(consoleError).toHaveBeenCalledWith(error)
   })
 })
 
