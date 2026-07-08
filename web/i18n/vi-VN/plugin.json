@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Chi tiết",
   "detailPanel.operation.info": "Thông tin plugin",
   "detailPanel.operation.install": "Cài đặt",
+  "detailPanel.operation.moreActions": "Thao tác khác",
   "detailPanel.operation.remove": "Triệt",
   "detailPanel.operation.update": "Cập nhật",
   "detailPanel.operation.updateTooltip": "Cập nhật để truy cập các mô hình mới nhất.",

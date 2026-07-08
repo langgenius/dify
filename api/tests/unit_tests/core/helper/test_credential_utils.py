@@ -114,10 +114,11 @@ def test_is_credential_exists_by_type(
     scalar_result: str | None,
     expected: bool,
 ) -> None:
-    mocker.patch("extensions.ext_database.db", new=SimpleNamespace(engine=object()))
-    session_cls = mocker.patch("sqlalchemy.orm.Session")
-    session = session_cls.return_value.__enter__.return_value
+    session = mocker.MagicMock()
     session.scalar.return_value = scalar_result
+    session_context = mocker.MagicMock()
+    session_context.__enter__.return_value = session
+    mocker.patch("core.db.session_factory.create_session", return_value=session_context)
 
     result = is_credential_exists("cred-1", credential_type)
 
@@ -128,11 +129,33 @@ def test_is_credential_exists_by_type(
 def test_is_credential_exists_returns_false_for_unknown_type(
     mocker: MockerFixture,
 ) -> None:
-    mocker.patch("extensions.ext_database.db", new=SimpleNamespace(engine=object()))
-    session_cls = mocker.patch("sqlalchemy.orm.Session")
-    session = session_cls.return_value.__enter__.return_value
+    session = mocker.MagicMock()
+    session_context = mocker.MagicMock()
+    session_context.__enter__.return_value = session
+    mocker.patch("core.db.session_factory.create_session", return_value=session_context)
 
     result = is_credential_exists("cred-1", cast(PluginCredentialType, "unknown"))
 
     assert result is False
     session.scalar.assert_not_called()
+
+
+def test_is_credential_exists_uses_configured_session_factory_without_flask_app_context(
+    mocker: MockerFixture,
+) -> None:
+    class RaisingDB:
+        @property
+        def engine(self):
+            raise RuntimeError("Working outside of application context.")
+
+    session = mocker.MagicMock()
+    session.scalar.return_value = "model-credential"
+    session_context = mocker.MagicMock()
+    session_context.__enter__.return_value = session
+    create_session = mocker.patch("core.db.session_factory.create_session", return_value=session_context)
+    mocker.patch("extensions.ext_database.db", new=RaisingDB())
+
+    result = is_credential_exists("cred-1", PluginCredentialType.MODEL)
+
+    assert result is True
+    create_session.assert_called_once_with()

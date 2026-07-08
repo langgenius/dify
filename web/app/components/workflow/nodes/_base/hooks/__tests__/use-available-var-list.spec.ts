@@ -12,8 +12,8 @@ const mockFlowType = vi.hoisted(() => ({
   value: undefined as FlowType | undefined,
 }))
 
-vi.mock('@/app/components/snippets/store', () => ({
-  useSnippetDetailStore: (selector: (state: { fields: unknown[] }) => unknown) => selector({ fields: [] }),
+vi.mock('@/app/components/snippets/draft-store', () => ({
+  useSnippetDraftStore: (selector: (state: { inputFields: unknown[] }) => unknown) => selector({ inputFields: [] }),
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({

@@ -69,6 +69,7 @@ export const CHART_TYPE_CONFIG: Record<ChartType, ChartConfig> = {
   },
   workflowCosts: {
     colorType: 'blue',
+    showTokens: true,
   },
 }
 
@@ -86,7 +87,7 @@ const getMarkLineSeedData = (statisticsLength: number) => {
 const getTooltipContent = (chartType: ChartType, yField: string, params: TooltipParams) => {
   const row = params.data ?? { date: params.name }
   const value = valueFormatter(row[yField] ?? 0)
-  if (!CHART_TYPE_CONFIG[chartType].showTokens)
+  if (!CHART_TYPE_CONFIG[chartType].showTokens || row.total_price === undefined)
     return `<div style='color:#6B7280;font-size:12px'>${params.name}</div><div style='font-size:14px;color:#1F2A37'>${value}</div>`
 
   return `<div style='color:#6B7280;font-size:12px'>${params.name}</div>
@@ -106,6 +107,13 @@ export const getChartValueField = (statistics: ChartRow[], valueKey?: string) =>
   return Object.keys(statistics[0] ?? {}).find(name => name.includes('count')) ?? 'count'
 }
 
+export const hasNonZeroChartData = (statistics: ChartRow[], yField: string) => {
+  return statistics.some((row) => {
+    const value = Number.parseFloat(String(row[yField] ?? 0))
+    return Number.isFinite(value) && value !== 0
+  })
+}
+
 export const getSummaryValue = ({
   chartType,
   statistics,
@@ -123,7 +131,7 @@ export const getSummaryValue = ({
   const divisor = values.length || 1
   const sumData = isAvg ? (sumValues(values) / divisor) : sumValues(values)
 
-  if (chartType === 'costs') {
+  if (chartType === 'costs' || chartType === 'workflowCosts') {
     const formattedCost = sumData < 1000
       ? sumData
       : `${formatNumber(Math.round(sumData / 1000))}k`
@@ -163,7 +171,7 @@ export const buildChartOptions = ({
       dimensions: ['date', yField],
       source: statistics,
     },
-    grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
+    grid: { top: 16, right: 0, bottom: 10, left: 0, containLabel: true },
     tooltip: {
       trigger: 'item',
       position: 'top',

@@ -1,9 +1,11 @@
 from typing import Any, Literal
 from uuid import UUID
 
-from flask import abort, make_response, request
+from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -26,11 +28,14 @@ from fields.annotation_fields import (
     AnnotationExportList,
     AnnotationHitHistory,
     AnnotationHitHistoryList,
+    AnnotationJobStatusDetailResponse,
+    AnnotationJobStatusResponse,
     AnnotationList,
 )
 from fields.base import ResponseModel
-from libs.helper import uuid_value
-from libs.login import login_required
+from libs.helper import dump_response, uuid_value
+from libs.login import current_account_with_tenant, login_required
+from models.model import App
 from services.annotation_service import (
     AppAnnotationService,
     EnableAnnotationArgs,
@@ -38,6 +43,17 @@ from services.annotation_service import (
     UpdateAnnotationSettingArgs,
     UpsertAnnotationArgs,
 )
+from services.app_ref_service import AppRef, AppRefService
+
+
+def _get_app_ref(app_id: str) -> AppRef:
+    _, current_tenant_id = current_account_with_tenant()
+    app = db.session.scalar(
+        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+    )
+    if app is None:
+        raise NotFound("App not found")
+    return AppRefService.create_app_ref(app)
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -99,23 +115,23 @@ class AnnotationFilePayload(BaseModel):
         return uuid_value(value)
 
 
-class AnnotationJobStatusResponse(ResponseModel):
-    job_id: str | None = None
-    job_status: str | None = None
-    error_msg: str | None = None
-    record_count: int | None = None
-
-
-class AnnotationEmbeddingModelResponse(ResponseModel):
+class AnnotationSettingEmbeddingModelResponse(ResponseModel):
     embedding_provider_name: str | None = None
     embedding_model_name: str | None = None
 
 
 class AnnotationSettingResponse(ResponseModel):
-    id: str | None = None
     enabled: bool
+    id: str | None = None
     score_threshold: float | None = None
-    embedding_model: AnnotationEmbeddingModelResponse | None = None
+    embedding_model: AnnotationSettingEmbeddingModelResponse | None = None
+
+
+class AnnotationBatchImportResponse(ResponseModel):
+    job_id: str | None = None
+    job_status: str | None = None
+    record_count: int | None = None
+    error_msg: str | None = None
 
 
 register_schema_models(
@@ -142,7 +158,10 @@ register_response_schema_models(
     AnnotationHitHistory,
     AnnotationHitHistoryList,
     AnnotationJobStatusResponse,
+    AnnotationJobStatusDetailResponse,
+    AnnotationSettingEmbeddingModelResponse,
     AnnotationSettingResponse,
+    AnnotationBatchImportResponse,
 )
 
 
@@ -172,7 +191,7 @@ class AnnotationReplyActionApi(Resource):
                 result = AppAnnotationService.enable_app_annotation(enable_args, str(app_id))
             case "disable":
                 result = AppAnnotationService.disable_app_annotation(str(app_id))
-        return result, 200
+        return dump_response(AnnotationJobStatusResponse, result), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-setting")
@@ -192,8 +211,8 @@ class AppAnnotationSettingDetailApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
-        return result, 200
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id), session=db.session())
+        return dump_response(AnnotationSettingResponse, result), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
@@ -216,9 +235,9 @@ class AppAnnotationSettingUpdateApi(Resource):
 
         setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
         result = AppAnnotationService.update_app_annotation_setting(
-            str(app_id), annotation_setting_id_str, setting_args
+            str(app_id), annotation_setting_id_str, setting_args, session=db.session()
         )
-        return result, 200
+        return dump_response(AnnotationSettingResponse, result), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
@@ -227,9 +246,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @console_ns.doc(description="Get status of annotation reply action job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
     @console_ns.response(
-        200,
-        "Job status retrieved successfully",
-        console_ns.models[AnnotationJobStatusResponse.__name__],
+        200, "Job status retrieved successfully", console_ns.models[AnnotationJobStatusDetailResponse.__name__]
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -251,7 +268,9 @@ class AnnotationReplyActionStatusApi(Resource):
             app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
-        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
+        return AnnotationJobStatusDetailResponse(
+            job_id=job_id_str, job_status=job_status, error_msg=error_msg
+        ).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations")
@@ -273,16 +292,13 @@ class AnnotationApi(Resource):
         limit = args.limit
         keyword = args.keyword
 
-        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(str(app_id), page, limit, keyword)
-        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
-        response = AnnotationList(
-            data=annotation_models,
-            has_more=len(annotation_list) == limit,
-            limit=limit,
-            total=total,
-            page=page,
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
+            str(app_id), page, limit, keyword, session=db.session()
         )
-        return response.model_dump(mode="json"), 200
+        annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
+        return AnnotationList(
+            data=annotation_models, has_more=len(annotation_list) == limit, limit=limit, total=total, page=page
+        ).model_dump(mode="json"), 200
 
     @console_ns.doc("create_annotation")
     @console_ns.doc(description="Create a new annotation for an app")
@@ -307,8 +323,10 @@ class AnnotationApi(Resource):
             upsert_args["message_id"] = args.message_id
         if args.question is not None:
             upsert_args["question"] = args.question
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, str(app_id))
-        return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(
+            upsert_args, str(app_id), session=db.session()
+        )
+        return dump_response(Annotation, annotation), 201
 
     @setup_required
     @login_required
@@ -330,11 +348,12 @@ class AnnotationApi(Resource):
                     "message": "annotation_ids are required if the parameter is provided.",
                 }, 400
 
-            AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
+            app_ref = _get_app_ref(str(app_id))
+            AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids, session=db.session())
             return "", 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
-            AppAnnotationService.clear_all_annotations(str(app_id))
+            AppAnnotationService.clear_all_annotations(str(app_id), session=db.session())
             return "", 204
 
 
@@ -355,16 +374,16 @@ class AnnotationExportApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id))
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id), session=db.session())
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
-        response_data = AnnotationExportList(data=annotation_models).model_dump(mode="json")
-
-        # Create response with secure headers for CSV export
-        response = make_response(response_data, 200)
-        response.headers["Content-Type"] = "application/json; charset=utf-8"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-
-        return response
+        return (
+            AnnotationExportList(data=annotation_models).model_dump(mode="json"),
+            200,
+            {
+                "Content-Type": "application/json; charset=utf-8",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
@@ -389,9 +408,9 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(
-            update_args, str(app_id), str(annotation_id), db.session
-        )
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session())
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
@@ -401,7 +420,9 @@ class AnnotationUpdateDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
-        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id), db.session)
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(annotation_ref, db.session())
         return "", 204
 
 
@@ -411,9 +432,7 @@ class AnnotationBatchImportApi(Resource):
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
-        200,
-        "Batch import started successfully",
-        console_ns.models[AnnotationJobStatusResponse.__name__],
+        200, "Batch import started successfully", console_ns.models[AnnotationBatchImportResponse.__name__]
     )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "No file uploaded or too many files")
@@ -460,7 +479,10 @@ class AnnotationBatchImportApi(Resource):
         if file_size == 0:
             raise ValueError("The uploaded file is empty")
 
-        return AppAnnotationService.batch_import_app_annotations(str(app_id), file)
+        return dump_response(
+            AnnotationBatchImportResponse,
+            AppAnnotationService.batch_import_app_annotations(str(app_id), file, session=db.session()),
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
@@ -469,9 +491,7 @@ class AnnotationBatchImportStatusApi(Resource):
     @console_ns.doc(description="Get status of batch import job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
     @console_ns.response(
-        200,
-        "Job status retrieved successfully",
-        console_ns.models[AnnotationJobStatusResponse.__name__],
+        200, "Job status retrieved successfully", console_ns.models[AnnotationJobStatusDetailResponse.__name__]
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -491,7 +511,9 @@ class AnnotationBatchImportStatusApi(Resource):
             indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
             error_msg = redis_client.get(indexing_error_msg_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return AnnotationJobStatusDetailResponse(
+            job_id=str(job_id), job_status=job_status, error_msg=error_msg
+        ).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
@@ -514,17 +536,17 @@ class AnnotationHitHistoryListApi(Resource):
     def get(self, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
-            str(app_id), str(annotation_id), page, limit
+            annotation_ref,
+            page,
+            limit,
+            session=db.session(),
         )
         history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
             annotation_hit_history_list, from_attributes=True
         )
-        response = AnnotationHitHistoryList(
-            data=history_models,
-            has_more=len(annotation_hit_history_list) == limit,
-            limit=limit,
-            total=total,
-            page=page,
-        )
-        return response.model_dump(mode="json")
+        return AnnotationHitHistoryList(
+            data=history_models, has_more=len(annotation_hit_history_list) == limit, limit=limit, total=total, page=page
+        ).model_dump(mode="json")

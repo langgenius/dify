@@ -181,6 +181,28 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 
+  it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
+    const error = {
+      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token U')),
+      bodyUsed: false,
+    }
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    mockSyncWorkflowDraft.mockRejectedValue(error)
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeUndefined()
+    })
+
+    expect(error.json).toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
   it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderUseNodesSyncDraft()
 
@@ -268,6 +290,71 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should keep pending inline Agent v2 nodes in draft without incomplete bindings', async () => {
+    reactFlowState = {
+      ...reactFlowState,
+      edges: [
+        { id: 'edge-1', source: 'n1', target: 'pending-agent', data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent } },
+        { id: 'temp-edge', source: 'temp-node', target: 'pending-agent', data: {} },
+      ],
+    }
+    mockGetNodes.mockReturnValue([
+      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
+      {
+        id: 'pending-agent',
+        position: { x: 1, y: 1 },
+        data: {
+          type: BlockEnum.Agent,
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          version: '2',
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          _isTempNode: true,
+          _openInlineAgentPanel: true,
+          selected: true,
+        },
+      },
+      { id: 'temp-node', position: { x: 2, y: 2 }, data: { type: BlockEnum.Answer, _isTempNode: true } },
+    ])
+
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({
+        graph: expect.objectContaining({
+          nodes: [
+            { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
+            {
+              id: 'pending-agent',
+              position: { x: 1, y: 1 },
+              data: {
+                type: BlockEnum.Agent,
+                title: 'Agent',
+                desc: '',
+                agent_node_kind: 'dify_agent',
+                version: '2',
+                agent_binding: {
+                  binding_type: 'inline_agent',
+                },
+                selected: true,
+              },
+            },
+          ],
+          edges: [
+            { id: 'edge-1', source: 'n1', target: 'pending-agent', data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent } },
+          ],
+        }),
+      }),
+    }))
   })
 
   it('should post workflow draft with keepalive when the page closes', () => {

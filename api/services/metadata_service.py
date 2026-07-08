@@ -23,11 +23,12 @@ logger = logging.getLogger(__name__)
 class MetadataService:
     @staticmethod
     def create_metadata(
-        session: Session,
         dataset_id: str,
         metadata_args: MetadataArgs,
         current_user: Account | None = None,  # TODO: the service_api is not migrated yet
         current_tenant_id: str | None = None,
+        *,
+        session: Session,
     ) -> DatasetMetadata:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
@@ -60,12 +61,13 @@ class MetadataService:
 
     @staticmethod
     def update_metadata_name(
-        session: Session,
         dataset_id: str,
         metadata_id: str,
         name: str,
         current_user: Account | None = None,
         current_tenant_id: str | None = None,  # TODO: the service_api is not migrated yet
+        *,
+        session: Session,
     ) -> DatasetMetadata | None:
         # check if metadata name is too long
         if len(name) > 255:
@@ -107,7 +109,7 @@ class MetadataService:
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -126,7 +128,7 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def delete_metadata(session: Session, dataset_id: str, metadata_id: str):
+    def delete_metadata(dataset_id: str, metadata_id: str, *, session: Session):
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
@@ -145,7 +147,7 @@ class MetadataService:
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -172,14 +174,14 @@ class MetadataService:
         ]
 
     @staticmethod
-    def enable_built_in_field(session: Session, dataset: Dataset):
+    def enable_built_in_field(dataset: Dataset, *, session: Session):
         if dataset.built_in_field_enabled:
             return
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
             session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             if documents:
                 for document in documents:
                     if not document.doc_metadata:
@@ -201,14 +203,14 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def disable_built_in_field(session: Session, dataset: Dataset):
+    def disable_built_in_field(dataset: Dataset, *, session: Session):
         if not dataset.built_in_field_enabled:
             return
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
             session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             document_ids = []
             if documents:
                 for document in documents:
@@ -233,11 +235,12 @@ class MetadataService:
 
     @staticmethod
     def update_documents_metadata(
-        session: Session,
         dataset: Dataset,
         metadata_args: MetadataOperationData,
         current_user: Account | None = None,  # TODO: the service_api is not migrated yet
         current_tenant_id: str | None = None,
+        *,
+        session: Session,
     ):
         current_user, current_tenant_id = resolve_account_fallback(
             current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id
@@ -246,7 +249,7 @@ class MetadataService:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(dataset.id, operation.document_id)
+                document = DocumentService.get_document(dataset.id, operation.document_id, session=session)
                 if document is None:
                     raise ValueError("Document not found.")
                 if operation.partial_update:
@@ -316,7 +319,7 @@ class MetadataService:
             redis_client.set(lock_key, 1, ex=3600)
 
     @staticmethod
-    def get_dataset_metadatas(session: Session, dataset: Dataset):
+    def get_dataset_metadatas(dataset: Dataset, *, session: Session):
         return {
             "doc_metadata": [
                 {

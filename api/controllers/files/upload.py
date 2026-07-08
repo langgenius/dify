@@ -28,6 +28,7 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
+    conversation_id: str | None = Field(default=None, description="Conversation identifier")
 
 
 register_schema_models(files_ns, PluginUploadQuery)
@@ -92,6 +93,7 @@ class PluginUploadFileApi(Resource):
             mimetype=mimetype,
             tenant_id=tenant_id,
             user_id=user.id,
+            conversation_id=args.conversation_id,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
@@ -105,7 +107,7 @@ class PluginUploadFileApi(Resource):
                 file_binary=file.stream.read(),
                 mimetype=mimetype,
                 filename=filename,
-                conversation_id=None,
+                conversation_id=args.conversation_id,
             )
 
             extension = guess_extension(tool_file.mimetype) or ".bin"

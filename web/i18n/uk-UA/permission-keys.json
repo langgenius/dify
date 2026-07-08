@@ -50,5 +50,5 @@
   "snippets.management": "Керування фрагментами",
   "tool.manage": "Керування інструментами",
   "workspace.member.manage": "Керування учасниками",
-  "workspace.role.manage": "Керування дозволами ролей та правилами доступу до ресурсів"
+  "workspace.role.manage": "Керування ролями та наборами дозволів"
 }

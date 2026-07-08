@@ -1,23 +1,63 @@
+import type { AgentConfigApiContext } from '../../config-context'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useAgentComposerConfigSnapshot } from '@/features/agent-v2/agent-composer/store'
-import { AgentDriveApiContextProvider } from '../../drive-context'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentSkills } from '../index'
 
+type ConfigSkillInspectQueryOptionsInput = {
+  input: {
+    params: {
+      name: string
+    }
+  }
+}
+
+type ConfigSkillFileQueryOptionsInput = {
+  input: {
+    query: {
+      path: string
+    }
+  }
+}
+
+type ConfigSkillDownloadQueryOptionsInput = {
+  input: {
+    params: {
+      name: string
+    }
+  }
+}
+
 const mocks = vi.hoisted(() => ({
-  driveSkillsQueryOptions: vi.fn(),
-  driveSkillInspectQueryOptions: vi.fn(),
-  driveFilesQueryOptions: vi.fn(),
-  driveFileDownloadQueryOptions: vi.fn(),
-  driveFilePreviewQueryOptions: vi.fn(),
-  deleteSkillMutationOptions: vi.fn(),
-  uploadSkillMutationOptions: vi.fn(),
+  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
+  uploadSkillMutationFn: vi.fn(async (_input: unknown) => ({
+    config_version: { id: 'draft-1', kind: 'draft', writable: true },
+    skill: {
+      id: 'Invoice Helper',
+      name: 'Invoice Helper',
+      file_id: 'tool-file-2',
+      description: 'Summarizes invoices.',
+      hash: 'sha256:skill-2',
+      mime_type: 'application/zip',
+      size: 128,
+    },
+  })),
+  skillDownloadQueryOptions: vi.fn((_options: ConfigSkillDownloadQueryOptionsInput) => ({})),
+  inspectQueryOptions: vi.fn((_options: ConfigSkillInspectQueryOptionsInput) => ({})),
+  previewQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
+  downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
+  downloadBlob: vi.fn(),
+  downloadUrl: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -27,48 +67,48 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+  downloadUrl: mocks.downloadUrl,
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
-        drive: {
+        config: {
           skills: {
-            get: {
-              queryOptions: mocks.driveSkillsQueryOptions,
+            upload: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+              },
             },
-            bySkillPath: {
-              inspect: {
+            byName: {
+              delete: {
+                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+              },
+              download: {
                 get: {
-                  queryOptions: mocks.driveSkillInspectQueryOptions,
+                  queryOptions: mocks.skillDownloadQueryOptions,
                 },
               },
-            },
-          },
-          files: {
-            get: {
-              queryOptions: mocks.driveFilesQueryOptions,
-            },
-            download: {
-              get: {
-                queryOptions: mocks.driveFileDownloadQueryOptions,
+              inspect: {
+                get: {
+                  queryOptions: mocks.inspectQueryOptions,
+                },
               },
-            },
-            preview: {
-              get: {
-                queryOptions: mocks.driveFilePreviewQueryOptions,
+              files: {
+                preview: {
+                  get: {
+                    queryOptions: mocks.previewQueryOptions,
+                  },
+                },
+                download: {
+                  get: {
+                    queryOptions: mocks.downloadQueryOptions,
+                  },
+                },
               },
-            },
-          },
-        },
-        skills: {
-          bySlug: {
-            delete: {
-              mutationOptions: mocks.deleteSkillMutationOptions,
-            },
-          },
-          upload: {
-            post: {
-              mutationOptions: mocks.uploadSkillMutationOptions,
             },
           },
         },
@@ -77,44 +117,39 @@ vi.mock('@/service/client', () => ({
     apps: {
       byAppId: {
         agent: {
-          drive: {
+          config: {
             skills: {
-              get: {
-                queryOptions: mocks.driveSkillsQueryOptions,
+              upload: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                },
               },
-              bySkillPath: {
-                inspect: {
+              byName: {
+                delete: {
+                  mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                },
+                download: {
                   get: {
-                    queryOptions: mocks.driveSkillInspectQueryOptions,
+                    queryOptions: mocks.skillDownloadQueryOptions,
                   },
                 },
-              },
-            },
-            files: {
-              get: {
-                queryOptions: mocks.driveFilesQueryOptions,
-              },
-              download: {
-                get: {
-                  queryOptions: mocks.driveFileDownloadQueryOptions,
+                inspect: {
+                  get: {
+                    queryOptions: mocks.inspectQueryOptions,
+                  },
                 },
-              },
-              preview: {
-                get: {
-                  queryOptions: mocks.driveFilePreviewQueryOptions,
+                files: {
+                  preview: {
+                    get: {
+                      queryOptions: mocks.previewQueryOptions,
+                    },
+                  },
+                  download: {
+                    get: {
+                      queryOptions: mocks.downloadQueryOptions,
+                    },
+                  },
                 },
-              },
-            },
-          },
-          skills: {
-            bySlug: {
-              delete: {
-                mutationOptions: mocks.deleteSkillMutationOptions,
-              },
-            },
-            upload: {
-              post: {
-                mutationOptions: mocks.uploadSkillMutationOptions,
               },
             },
           },
@@ -124,74 +159,9 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const agentSkillsDraft = {
-  ...defaultAgentSoulConfigFormState,
-} satisfies typeof defaultAgentSoulConfigFormState
-
-function renderAgentSkills() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
-        <AgentComposerProvider initialDraft={agentSkillsDraft}>
-          <AgentSkills />
-        </AgentComposerProvider>
-      </AgentDriveApiContextProvider>
-    </QueryClientProvider>,
-  )
-}
-
-function renderWorkflowAgentSkills() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentDriveApiContextProvider value={{ agentId: 'agent-1', workflow: { appId: 'app-1', nodeId: 'node-1' } }}>
-        <AgentComposerProvider initialDraft={agentSkillsDraft}>
-          <AgentSkills />
-        </AgentComposerProvider>
-      </AgentDriveApiContextProvider>
-    </QueryClientProvider>,
-  )
-}
-
-function renderReadonlyAgentSkills() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
-        <AgentComposerProvider initialDraft={agentSkillsDraft}>
-          <AgentOrchestrateReadOnlyContext value>
-            <AgentSkills />
-          </AgentOrchestrateReadOnlyContext>
-        </AgentComposerProvider>
-      </AgentDriveApiContextProvider>
-    </QueryClientProvider>,
-  )
-}
-
 function ConfigSnapshotProbe() {
-  const configSnapshot = useAgentComposerConfigSnapshot({})
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
   return (
     <pre data-testid="config-snapshot-probe">
@@ -200,615 +170,429 @@ function ConfigSnapshotProbe() {
   )
 }
 
+function renderAgentSkills({
+  initialDraft = {
+    ...defaultAgentSoulConfigFormState,
+    skills: [
+      {
+        id: 'Tender Analyzer',
+        name: 'Tender Analyzer',
+        description: 'Extracts tender requirements.',
+        fileId: 'tool-file-1',
+      },
+    ],
+  },
+  apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
+  readOnly = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  apiContext?: AgentConfigApiContext
+  readOnly?: boolean
+} = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AgentConfigApiContextProvider value={apiContext}>
+        <AgentComposerProvider initialDraft={initialDraft}>
+          <AgentOrchestrateReadOnlyContext value={readOnly}>
+            <AgentSkills />
+            <ConfigSnapshotProbe />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentComposerProvider>
+      </AgentConfigApiContextProvider>
+    </QueryClientProvider>,
+  )
+}
+
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const skillItems = [
-      {
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
-        skill_md_key: 'tender-analyzer/SKILL.md',
-      },
-      {
-        description: '',
-        name: 'Meeting Brief',
-        path: 'meeting-brief',
-        skill_md_key: 'meeting-brief/SKILL.md',
-      },
-    ]
-    mocks.driveSkillsQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skills', input],
-      initialData: { items: skillItems },
+    mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['inspect-skill', input],
       queryFn: async () => ({
-        items: skillItems,
-      }),
-    }))
-    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skill-inspect', input],
-      queryFn: async () => ({
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
+        id: input.params.name,
+        name: input.params.name,
+        description: 'Inspect skill',
+        source: 'config_skill_zip',
         files: [
           {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/SKILL.md',
-            name: 'SKILL.md',
             path: 'SKILL.md',
+            name: 'SKILL.md',
             type: 'file',
+            previewable: true,
+            downloadable: true,
           },
           {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/references/guide.md',
-            name: 'guide.md',
             path: 'references/guide.md',
+            name: 'guide.md',
             type: 'file',
-          },
-          {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/scripts/extract.py',
-            name: 'extract.py',
-            path: 'scripts/extract.py',
-            type: 'file',
-          },
-          {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-            name: '.DIFY-SKILL-FULL.zip',
-            path: '.DIFY-SKILL-FULL.zip',
-            type: 'file',
+            previewable: true,
+            downloadable: true,
           },
         ],
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
         skill_md: {
-          binary: false,
-          key: 'tender-analyzer/SKILL.md',
-          text: 'Skill markdown content',
+          path: 'SKILL.md',
+          size: 16,
           truncated: false,
+          binary: false,
+          text: '# Skill\n',
         },
-        skill_md_key: 'tender-analyzer/SKILL.md',
-        source: 'drive',
         warnings: [],
       }),
     }))
-    mocks.driveFilesQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-files', input],
+    mocks.previewQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['preview-skill-file', input],
       queryFn: async () => ({
-        items: [
-          {
-            file_kind: 'file',
-            key: 'tender-analyzer/SKILL.md',
-          },
-          {
-            file_kind: 'file',
-            key: 'tender-analyzer/scripts/extract.py',
-          },
-        ],
+        path: input.query.path,
+        binary: false,
+        truncated: false,
+        text: `Preview for ${input.query.path}`,
       }),
     }))
-    mocks.driveFilePreviewQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-file-preview', input],
+    mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['download-skill-file', input],
       queryFn: async () => ({
-        text: `Preview content for ${input.query.key}`,
+        url: `https://example.com/${input.query.path}`,
       }),
     }))
-    mocks.driveFileDownloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-file-download', input],
+    mocks.skillDownloadQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['download-skill', input],
       queryFn: async () => ({
-        url: `https://example.com/${input.query.key}`,
+        url: `https://example.com/${input.params.name}.skill`,
       }),
     }))
-    mocks.uploadSkillMutationOptions.mockReturnValue({
-      mutationFn: vi.fn(),
-      mutationKey: ['upload-skill'],
+  })
+
+  it('should delete a configured skill by config name', async () => {
+    const { container } = renderAgentSkills()
+
+    const removeButton = container.querySelector('[data-agent-skill-remove-button]')
+    expect(removeButton).not.toBeNull()
+
+    fireEvent.click(removeButton!)
+
+    await waitFor(() => {
+      expect(mocks.deleteSkillMutationFn).toHaveBeenCalled()
+      expect(mocks.deleteSkillMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+          name: 'Tender Analyzer',
+        },
+        query: {
+          draft_type: 'draft',
+          version_id: undefined,
+        },
+      })
     })
-    mocks.deleteSkillMutationOptions.mockReturnValue({
-      mutationFn: vi.fn(),
-      mutationKey: ['delete-skill'],
+
+    expect(screen.queryByText('Tender Analyzer')).not.toBeInTheDocument()
+  })
+
+  it('should upload a skill through the config endpoint and add it to the draft UI', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(input, file)
+    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
+      expect(mocks.uploadSkillMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          draft_type: 'draft',
+          version_id: undefined,
+        },
+        body: {
+          file,
+        },
+      })
+    })
+
+    expect(screen.getByText('Invoice Helper')).toBeInTheDocument()
+    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    expect(snapshot.config_skills).toEqual([
+      expect.objectContaining({
+        name: 'Invoice Helper',
+        file_id: 'tool-file-2',
+        file_kind: 'tool_file',
+        hash: 'sha256:skill-2',
+        mime_type: 'application/zip',
+        size: 128,
+      }),
+    ])
+    expect(toast.success).toHaveBeenCalled()
+  })
+
+  it('should not show the frontend fallback error when skill upload fails', async () => {
+    const user = userEvent.setup()
+    mocks.uploadSkillMutationFn.mockRejectedValueOnce(new Error('Backend upload error'))
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(input, file)
+    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
+    })
+
+    expect(toast.error).not.toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.failed')
+  })
+
+  it('should use workflow config skill endpoints with node_id for uploads and skill member queries', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      apiContext: {
+        agentId: 'agent-1',
+        draftType: 'draft',
+        versionId: 'draft-1',
+        workflow: {
+          appId: 'app-1',
+          nodeId: 'node-1',
+        },
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(input, file)
+    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          draft_type: 'draft',
+          node_id: 'node-1',
+          version_id: 'draft-1',
+        },
+        body: {
+          file,
+        },
+      })
+    })
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+
+    await waitFor(() => {
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            app_id: 'app-1',
+            name: 'Tender Analyzer',
+          },
+          query: {
+            draft_type: 'draft',
+            node_id: 'node-1',
+            version_id: 'draft-1',
+          },
+        }),
+      }))
     })
   })
 
-  it('should fetch drive files and open the skill detail dialog when the skill row is clicked', async () => {
+  it('should download a whole skill package from the row action', async () => {
+    const user = userEvent.setup()
     renderAgentSkills()
 
-    fireEvent.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*Tender Analyzer/,
     }))
 
-    const dialog = screen.getByRole('dialog')
-
-    expect(dialog).toBeInTheDocument()
     await waitFor(() => {
-      expect(mocks.driveSkillInspectQueryOptions).toHaveBeenCalledWith({
-        input: {
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
           params: {
             agent_id: 'agent-1',
-            skill_path: 'tender-analyzer',
-          },
-        },
-      })
-    })
-    expect(mocks.driveFilesQueryOptions).not.toHaveBeenCalled()
-    expect(within(dialog).getByText('Tender Analyzer')).toBeInTheDocument()
-    expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
-    expect(await within(dialog).findByText('references')).toBeInTheDocument()
-    expect(within(dialog).getByText('guide.md')).toBeInTheDocument()
-    expect(within(dialog).getByText('scripts')).toBeInTheDocument()
-    expect(within(dialog).getByText('extract.py')).toBeInTheDocument()
-    expect(within(dialog).queryByText('.DIFY-SKILL-FULL.zip')).not.toBeInTheDocument()
-  })
-
-  it('should keep the detail dialog open after selecting a skill', async () => {
-    renderAgentSkills()
-
-    fireEvent.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
-    }))
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
-
-  it('should preview selected package file content in the skill detail dialog', async () => {
-    const user = userEvent.setup()
-    renderAgentSkills()
-
-    await user.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
-    }))
-
-    const dialog = screen.getByRole('dialog')
-    await user.click(await within(dialog).findByText('guide.md'))
-
-    expect(await within(dialog).findByText('Preview content for tender-analyzer/references/guide.md')).toBeInTheDocument()
-    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-        query: {
-          key: 'tender-analyzer/references/guide.md',
-        },
-      },
-    })
-  })
-
-  it('should not request preview for package files without a drive entry', async () => {
-    const user = userEvent.setup()
-    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skill-inspect', input],
-      queryFn: async () => ({
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
-        files: [
-          {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/SKILL.md',
-            name: 'SKILL.md',
-            path: 'SKILL.md',
-            type: 'file',
-          },
-          {
-            available_in_drive: false,
-            drive_key: null,
-            name: 'animation-rows.md',
-            path: 'references/animation-rows.md',
-            type: 'file',
-          },
-        ],
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
-        skill_md: {
-          binary: false,
-          key: 'tender-analyzer/SKILL.md',
-          text: 'Skill markdown content',
-          truncated: false,
-        },
-        skill_md_key: 'tender-analyzer/SKILL.md',
-        source: 'drive',
-        warnings: [],
-      }),
-    }))
-
-    renderAgentSkills()
-
-    await user.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
-    }))
-
-    const dialog = screen.getByRole('dialog')
-    await user.click(await within(dialog).findByText('animation-rows.md'))
-
-    expect(mocks.driveFilePreviewQueryOptions).not.toHaveBeenCalledWith({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-        query: {
-          key: 'tender-analyzer/references/animation-rows.md',
-        },
-      },
-    })
-    expect(within(dialog).getByText('agentV2.agentDetail.configure.files.preview.empty')).toBeInTheDocument()
-  })
-
-  it('should deduplicate package files by path in the skill detail dialog', async () => {
-    const user = userEvent.setup()
-    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skill-inspect', input],
-      queryFn: async () => ({
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
-        files: [
-          {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/SKILL.md',
-            name: 'SKILL.md',
-            path: 'SKILL.md',
-            type: 'file',
-          },
-          {
-            available_in_drive: false,
-            drive_key: null,
-            name: 'SKILL.md',
-            path: 'tender-analyzer/SKILL.md',
-            type: 'file',
-          },
-          {
-            available_in_drive: true,
-            drive_key: 'tender-analyzer/scripts/extract.py',
-            name: 'extract.py',
-            path: 'scripts/extract.py',
-            type: 'file',
-          },
-        ],
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
-        skill_md: {
-          binary: false,
-          key: 'tender-analyzer/SKILL.md',
-          text: 'Skill markdown content',
-          truncated: false,
-        },
-        skill_md_key: 'tender-analyzer/SKILL.md',
-        source: 'drive',
-        warnings: [],
-      }),
-    }))
-
-    renderAgentSkills()
-
-    await user.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
-    }))
-
-    const dialog = screen.getByRole('dialog')
-
-    expect(await within(dialog).findByText('SKILL.md')).toBeInTheDocument()
-    expect(within(dialog).getAllByText('SKILL.md')).toHaveLength(1)
-    expect(within(dialog).getByText('agentV2.agentDetail.configure.skills.detail.fileCount:{"count":2}')).toBeInTheDocument()
-  })
-
-  it('should use workflow node drive routes for skill list and preview in inline workflow mode', async () => {
-    renderWorkflowAgentSkills()
-
-    expect(mocks.driveSkillsQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
-        },
-        query: {
-          node_id: 'node-1',
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByRole('button', {
-      name: 'Tender Analyzer',
-    }))
-
-    await waitFor(() => {
-      expect(mocks.driveSkillInspectQueryOptions).toHaveBeenCalledWith({
-        input: {
-          params: {
-            app_id: 'app-1',
-            skill_path: 'tender-analyzer',
+            name: 'Tender Analyzer',
           },
           query: {
-            node_id: 'node-1',
+            draft_type: 'draft',
+            version_id: undefined,
           },
-        },
-      })
+        }),
+      }))
     })
-    fireEvent.click(await screen.findByText('guide.md'))
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/Tender Analyzer.skill',
+      fileName: 'Tender Analyzer',
+    })
+  })
+
+  it('should download a whole workflow skill package with node_id', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      apiContext: {
+        agentId: 'agent-1',
+        draftType: 'draft',
+        versionId: 'draft-1',
+        workflow: {
+          appId: 'app-1',
+          nodeId: 'node-1',
+        },
+      },
+    })
+
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*Tender Analyzer/,
+    }))
 
     await waitFor(() => {
-      expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
-        input: {
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
           params: {
             app_id: 'app-1',
+            name: 'Tender Analyzer',
           },
           query: {
+            draft_type: 'draft',
             node_id: 'node-1',
-            key: 'tender-analyzer/references/guide.md',
+            version_id: 'draft-1',
           },
-        },
-      })
+        }),
+      }))
     })
   })
 
-  it('should delete the skill without opening the detail dialog when the remove action is clicked', () => {
-    renderAgentSkills()
-
-    fireEvent.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
-    }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('should route Agent App skill delete through agent and slug identifiers', async () => {
-    const deleteSkill = vi.fn().mockResolvedValue({ result: 'success', removed_keys: ['tender-analyzer/SKILL.md'] })
-    mocks.deleteSkillMutationOptions.mockReturnValue({
-      mutationFn: deleteSkill,
-      mutationKey: ['delete-skill'],
-    })
-    renderAgentSkills()
-
-    fireEvent.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
-    }))
-
-    await waitFor(() => {
-      expect(deleteSkill.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
-          slug: 'tender-analyzer',
-        },
-      })
-    })
-  })
-
-  it('should route workflow skill delete through app and node identifiers', async () => {
-    const deleteSkill = vi.fn().mockResolvedValue({ result: 'success', removed_keys: ['tender-analyzer/SKILL.md'] })
-    mocks.deleteSkillMutationOptions.mockReturnValue({
-      mutationFn: deleteSkill,
-      mutationKey: ['delete-skill'],
-    })
-    renderWorkflowAgentSkills()
-
-    fireEvent.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
-    }))
-
-    await waitFor(() => {
-      expect(deleteSkill.mock.calls[0]?.[0]).toEqual({
-        params: {
-          app_id: 'app-1',
-          slug: 'tender-analyzer',
-        },
-        query: {
-          node_id: 'node-1',
-        },
-      })
-    })
-  })
-
-  it('should hide add and remove actions when readonly', () => {
-    renderReadonlyAgentSkills()
-
-    expect(screen.getByRole('button', { name: 'Tender Analyzer' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
-    })).not.toBeInTheDocument()
-  })
-
-  it('should upload a skill through the drive-backed endpoint', async () => {
+  it('should inspect skills by config name and preview package members by member path', async () => {
     const user = userEvent.setup()
-    const driveSkills = [
-      {
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
-        skill_md_key: 'tender-analyzer/SKILL.md',
-      },
-      {
-        description: '',
-        name: 'Meeting Brief',
-        path: 'meeting-brief',
-        skill_md_key: 'meeting-brief/SKILL.md',
-      },
-    ]
-    mocks.driveSkillsQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skills', input],
-      initialData: { items: [...driveSkills] },
-      queryFn: async () => ({ items: [...driveSkills] }),
-    }))
-    const uploadSkill = vi.fn().mockImplementation(async () => {
-      driveSkills.push({
-        archive_key: 'invoice-helper/.DIFY-SKILL-FULL.zip',
-        description: '',
-        name: 'Invoice Helper',
-        path: 'invoice-helper',
-        skill_md_key: 'invoice-helper/SKILL.md',
-      })
-      return {
-        manifest: {
-          files: ['SKILL.md', 'scripts/run.py'],
-          name: 'Invoice Helper',
-        },
-        skill: {
-          manifest_files: ['SKILL.md', 'scripts/run.py'],
-          name: 'Invoice Helper',
-          path: 'invoice-helper',
-          skill_md_key: 'invoice-helper/SKILL.md',
-          archive_key: 'invoice-helper/.DIFY-SKILL-FULL.zip',
-        },
-      }
-    })
-    mocks.uploadSkillMutationOptions.mockReturnValue({
-      mutationFn: uploadSkill,
-      mutationKey: ['upload-skill'],
-    })
-
     renderAgentSkills()
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
-    await user.upload(fileInput, file)
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
 
     await waitFor(() => {
-      expect(uploadSkill.mock.calls[0]?.[0]).toEqual({
-        body: {
-          file,
-        },
-        params: {
-          agent_id: 'agent-1',
-        },
-      })
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'Tender Analyzer',
+          },
+        }),
+      }))
     })
-    expect(await screen.findByRole('button', { name: 'Invoice Helper' })).toBeInTheDocument()
-    expect(vi.mocked(toast.success)).toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.success')
+
+    await user.click(screen.getByText('references').closest('button')!)
+    await user.click(screen.getByText('guide.md').closest('button')!)
+
+    await waitFor(() => {
+      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'Tender Analyzer',
+          },
+          query: expect.objectContaining({
+            path: 'references/guide.md',
+          }),
+        }),
+      }))
+    })
   })
 
-  it('should refresh the rendered skill list after delete succeeds', async () => {
-    const driveSkills = [
-      {
-        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        description: 'Extracts tender requirements and scoring criteria.',
-        name: 'Tender Analyzer',
-        path: 'tender-analyzer',
-        skill_md_key: 'tender-analyzer/SKILL.md',
-      },
-      {
-        description: '',
-        name: 'Meeting Brief',
-        path: 'meeting-brief',
-        skill_md_key: 'meeting-brief/SKILL.md',
-      },
-    ]
-    mocks.driveSkillsQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['agent-drive-skills', input],
-      initialData: { items: [...driveSkills] },
-      queryFn: async () => ({ items: [...driveSkills] }),
-    }))
-    const deleteSkill = vi.fn().mockImplementation(async () => {
-      driveSkills.splice(0, 1)
-      return { result: 'success', removed_keys: ['tender-analyzer/SKILL.md'] }
-    })
-    mocks.deleteSkillMutationOptions.mockReturnValue({
-      mutationFn: deleteSkill,
-      mutationKey: ['delete-skill'],
-    })
-
+  it('should wrap long preview lines instead of forcing a horizontal code block', async () => {
+    const user = userEvent.setup()
     renderAgentSkills()
 
-    fireEvent.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+
+    const skillMdCode = await screen.findByText('# Skill')
+    expect(skillMdCode.tagName).toBe('CODE')
+    expect(skillMdCode).toHaveClass('[overflow-wrap:anywhere]')
+    expect(skillMdCode).toHaveClass('break-words')
+    expect(skillMdCode).toHaveClass('whitespace-pre-wrap')
+    expect(skillMdCode).not.toHaveClass('whitespace-pre')
+    expect(skillMdCode).not.toHaveClass('min-w-max')
+  })
+
+  it('should download skill package members from the detail file tree', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('references'))
+    await user.click(screen.getByText('guide.md').closest('button')!)
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*guide\.md/,
     }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Tender Analyzer' })).not.toBeInTheDocument()
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'Tender Analyzer',
+          },
+          query: expect.objectContaining({
+            path: 'references/guide.md',
+          }),
+        }),
+      }))
     })
-    expect(screen.getByRole('button', { name: 'Meeting Brief' })).toBeInTheDocument()
-  })
-
-  it('should route workflow skill uploads through app and node identifiers', async () => {
-    const user = userEvent.setup()
-    const uploadSkill = vi.fn().mockResolvedValue({
-      manifest: {
-        files: ['SKILL.md'],
-        name: 'Invoice Helper',
-      },
-      skill: {
-        name: 'Invoice Helper',
-        path: 'invoice-helper',
-        skill_md_key: 'invoice-helper/SKILL.md',
-      },
-    })
-    mocks.uploadSkillMutationOptions.mockReturnValue({
-      mutationFn: uploadSkill,
-      mutationKey: ['upload-skill'],
-    })
-
-    renderWorkflowAgentSkills()
-
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
-    await user.upload(fileInput, file)
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
-
-    await waitFor(() => {
-      expect(uploadSkill.mock.calls[0]?.[0]).toEqual({
-        params: {
-          app_id: 'app-1',
-        },
-        query: {
-          node_id: 'node-1',
-        },
-        body: {
-          file,
-        },
-      })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/references/guide.md',
+      fileName: 'guide.md',
     })
   })
 
-  it('should not persist skills_files when the draft is serialized', async () => {
+  it('should download inspected SKILL.md content as markdown', async () => {
     const user = userEvent.setup()
-    const uploadSkill = vi.fn().mockResolvedValue({
-      manifest: {
-        files: ['SKILL.md', 'scripts/run.py'],
-        name: 'Invoice Helper',
-      },
-      skill: {
-        archive_key: 'invoice-helper/.DIFY-SKILL-FULL.zip',
-        name: 'Invoice Helper',
-        path: 'invoice-helper',
-        skill_md_key: 'invoice-helper/SKILL.md',
-      },
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByRole('button', {
+      name: /common\.operation\.download.*SKILL\.md/,
+    }))
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'SKILL.md',
     })
-    mocks.uploadSkillMutationOptions.mockReturnValue({
-      mutationFn: uploadSkill,
-      mutationKey: ['upload-skill'],
-    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('# Skill\n')
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({
+        query: expect.objectContaining({
+          path: 'SKILL.md',
+        }),
+      }),
+    }))
+  })
 
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
+  it('should disable add and remove actions when the section is read only', () => {
+    const { container } = renderAgentSkills({ readOnly: true })
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
-          <AgentComposerProvider initialDraft={agentSkillsDraft}>
-            <AgentSkills />
-            <ConfigSnapshotProbe />
-          </AgentComposerProvider>
-        </AgentDriveApiContextProvider>
-      </QueryClientProvider>,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
-    await user.upload(fileInput, file)
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
-
-    await waitFor(() => {
-      const serializedConfig = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
-      expect(serializedConfig).not.toHaveProperty('skills_files')
-    })
+    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i })).not.toBeInTheDocument()
+    expect(container.querySelector('[data-agent-skill-remove-button]')).toBeNull()
   })
 })

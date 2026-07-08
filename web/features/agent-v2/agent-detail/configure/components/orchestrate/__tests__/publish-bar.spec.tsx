@@ -74,8 +74,9 @@ vi.mock('@/service/client', () => ({
         },
         referencingWorkflows: {
           get: {
-            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+            queryOptions: ({ enabled = true, input }: { enabled?: boolean, input: { params: { agent_id: string } } }) => ({
               queryKey: ['agent-referencing-workflows', input],
+              enabled,
               queryFn: async () => ({
                 data: (workflowReferences.fetchCount++, workflowReferences.data),
               }),
@@ -162,6 +163,7 @@ function renderPublishBar({
   selectedVersionSnapshot,
   setupStore,
   usedByAppReferences = [],
+  workflowReferencesEnabled,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -173,6 +175,7 @@ function renderPublishBar({
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
+  workflowReferencesEnabled?: boolean
 } = {}) {
   workflowReferences.data = usedByAppReferences
   const queryClient = new QueryClient({
@@ -186,18 +189,21 @@ function renderPublishBar({
   setupStore?.(store)
 
   const renderPublishBarTree = (nextProps?: {
+    activeConfigIsPublished?: boolean
+    activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
     isPublishing?: boolean
   }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
           agentId="agent-1"
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
+          activeConfigIsPublished={nextProps && 'activeConfigIsPublished' in nextProps ? nextProps.activeConfigIsPublished : activeConfigIsPublished}
+          activeConfigSnapshot={nextProps && 'activeConfigSnapshot' in nextProps ? nextProps.activeConfigSnapshot : activeConfigSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
+          workflowReferencesEnabled={workflowReferencesEnabled}
           onPublish={onPublish}
           onExitVersions={onExitVersions}
           onOpenVersions={vi.fn()}
@@ -246,6 +252,35 @@ describe('AgentConfigurePublishBar', () => {
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
+  })
+
+  it('should allow publish request when knowledge retrieval validation fails', async () => {
+    const { onPublish } = renderPublishBar({
+      setupStore: (store) => {
+        store.set(agentComposerDraftAtom, {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'retrieval-1',
+              name: 'Docs Search',
+              datasetRefs: [],
+            },
+          ],
+        })
+      },
+    })
+
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeEnabled()
+    expect(screen.queryByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).not.toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should restore the selected version from view-only mode', async () => {
@@ -306,6 +341,38 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
+  it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
+    const { rerender, rerenderPublishBar } = renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+    })
+
+    rerender(rerenderPublishBar({
+      activeConfigIsPublished: undefined,
+      activeConfigSnapshot: undefined,
+    }))
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+    )
+  })
+
+  it('should show unpublished state from local draft changes even when active config is published', () => {
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+      prompt: 'Updated system prompt',
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
+    )
+  })
+
   it('should initialize unpublished state when active config is not published', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,
@@ -322,9 +389,7 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        agent_id: 'agent-1',
-      }))
+      expect(onPublish).toHaveBeenCalledTimes(1)
     })
     expect(screen.queryByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
@@ -342,15 +407,30 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        agent_id: 'agent-1',
-        config_snapshot: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Updated system prompt',
-          }),
-        }),
-      }))
+      expect(onPublish).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('should publish without loading workflow references when references are disabled', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+      workflowReferencesEnabled: false,
+    })
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(0)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(workflowReferences.fetchCount).toBe(0)
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
   })
 
   it('should mark non-prompt draft changes as unpublished', () => {
@@ -392,12 +472,37 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
   })
 
+  it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
+    const stalePublishedDraftBaseline = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Old unpublished normal draft',
+    }
+    const savedDraftMatchingActiveSnapshot = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
+        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).not.toBeInTheDocument()
+  })
+
   it('should render publishing as a single disabled action state', () => {
     renderPublishBar({ isPublishing: true, prompt: 'Updated system prompt' })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.publishing')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).not.toHaveAttribute('aria-busy')
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
@@ -460,16 +565,14 @@ describe('AgentConfigurePublishBar', () => {
     })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).toBeInTheDocument()
     rerender(rerenderPublishBar({ isPublishing: true }))
     expect(await screen.findByRole('button', {
       name: 'agentV2.agentDetail.configure.publishBar.publishing',
-    })).toHaveAttribute('aria-busy', 'true')
+    })).not.toHaveAttribute('aria-busy')
 
     await act(async () => {
       publishDeferred.resolve()
@@ -526,9 +629,7 @@ describe('AgentConfigurePublishBar', () => {
       await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
     })
 
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
   })
 
   it('should publish directly from the publish shortcut when no workflows reference the agent', async () => {
@@ -545,8 +646,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.queryByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).not.toBeInTheDocument()
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
   })
 })

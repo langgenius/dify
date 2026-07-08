@@ -487,9 +487,15 @@ class App(Base):
 
         agent = db.session.scalar(
             select(Agent).where(
-                Agent.app_id == self.id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.tenant_id == self.tenant_id,
+                sa.or_(
+                    sa.and_(
+                        Agent.app_id == self.id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source == AgentSource.AGENT_APP,
+                    ),
+                    Agent.backing_app_id == self.id,
+                ),
                 Agent.status == AgentStatus.ACTIVE,
             )
         )

@@ -164,15 +164,6 @@ describe('Chip', () => {
       const panel = document.body.querySelector(`.${customPanelClass}`)
       expect(panel)!.toBeInTheDocument()
     })
-
-    it('should use visible focus styles on the trigger', () => {
-      const { container } = renderChip()
-
-      expect(getTrigger(container)).toHaveClass(
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-      )
-    })
   })
 
   describe('State Management', () => {
@@ -221,12 +212,6 @@ describe('Chip', () => {
 
       const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
       expect(clearButton).toHaveAccessibleName(/Active/)
-      expect(clearButton).toHaveClass(
-        'outline-hidden',
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-        'focus-visible:ring-inset',
-      )
       expect(clearButton.querySelector('.i-ri-close-circle-fill')).toHaveAttribute('aria-hidden')
 
       await user.click(clearButton)

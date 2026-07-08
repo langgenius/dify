@@ -3,92 +3,174 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import types
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Literal, cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
-from dify_agent.agent_stub.server.shell_agent_stub_env import (
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlProvider
+from dify_agent.agent_stub.shell_env import (
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
-    AGENT_STUB_API_BASE_URL_ENV_VAR,
 )
+
+if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
+    graphon_module = types.ModuleType("graphon")
+    model_runtime_module = types.ModuleType("graphon.model_runtime")
+    entities_module = types.ModuleType("graphon.model_runtime.entities")
+    llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
+    message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
+
+    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
+    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+
+    for name in (
+        "AssistantPromptMessage",
+        "AudioPromptMessageContent",
+        "DocumentPromptMessageContent",
+        "ImagePromptMessageContent",
+        "PromptMessage",
+        "PromptMessageContentUnionTypes",
+        "PromptMessageTool",
+        "SystemPromptMessage",
+        "TextPromptMessageContent",
+        "ToolPromptMessage",
+        "UserPromptMessage",
+        "VideoPromptMessageContent",
+    ):
+        setattr(message_entities_module, name, type(name, (), {}))
+
+    sys.modules["graphon"] = graphon_module
+    sys.modules["graphon.model_runtime"] = model_runtime_module
+    sys.modules["graphon.model_runtime.entities"] = entities_module
+    sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
+    sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
+
+    graphon_module.model_runtime = model_runtime_module
+    model_runtime_module.entities = entities_module
+    entities_module.llm_entities = llm_entities_module
+    entities_module.message_entities = message_entities_module
+
+if "jsonschema" not in sys.modules:
+    jsonschema_module = types.ModuleType("jsonschema")
+    jsonschema_exceptions_module = types.ModuleType("jsonschema.exceptions")
+    jsonschema_protocols_module = types.ModuleType("jsonschema.protocols")
+    jsonschema_validators_module = types.ModuleType("jsonschema.validators")
+
+    class _SchemaError(Exception):
+        pass
+
+    class _ValidationError(Exception):
+        path: tuple[object, ...] = ()
+
+    class _Validator:
+        @staticmethod
+        def check_schema(schema):
+            return None
+
+        def __init__(self, schema):
+            self.schema = schema
+
+        def iter_errors(self, value):
+            return iter(())
+
+    def _validator_for(schema):
+        return _Validator
+
+    jsonschema_module.SchemaError = _SchemaError
+    jsonschema_exceptions_module.ValidationError = _ValidationError
+    jsonschema_protocols_module.Validator = _Validator
+    jsonschema_validators_module.validator_for = _validator_for
+
+    sys.modules["jsonschema"] = jsonschema_module
+    sys.modules["jsonschema.exceptions"] = jsonschema_exceptions_module
+    sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
+    sys.modules["jsonschema.validators"] = jsonschema_validators_module
+
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 from dify_agent.protocol import (
     CreateRunRequest,
     RunComposition,
     RunLayerSpec,
-    SandboxLocator,
     SandboxListRequest,
+    SandboxLocator,
     SandboxReadRequest,
     SandboxUploadRequest,
     build_sandbox_locator_from_run_request,
 )
-from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
 from dify_agent.server.sandbox_files import (
+    _LIST_SCRIPT,
     SandboxFileError,
     SandboxFileService,
     _OUTPUT_BEGIN,
     _OUTPUT_END,
+    _READ_SCRIPT,
+    _UPLOAD_SCRIPT,
+    _decode_sandbox_payload,
+    _shell_result_details,
 )
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName
+
+
+@dataclass(slots=True)
+class _Job:
+    job_id: str
+    status: str = "exited"
+    done: bool = True
+    exit_code: int | None = 0
+    output: str = ""
+    offset: int = 0
+    truncated: bool = False
+    output_path: str | None = "/tmp/sandbox-job.out"
 
 
 @dataclass(slots=True)
 class RunCall:
     script: str
     cwd: str | None
-    env: Mapping[str, str] | None
+    env: dict[str, str] | None
     timeout: float
 
 
 class FakeShellctlClient:
-    def __init__(
-        self,
-        *,
-        run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], JobResult],
-    ) -> None:
+    def __init__(self, *, run_handler: Callable[[str, str | None, dict[str, str] | None, float], _Job]) -> None:
         self.run_handler = run_handler
         self.run_calls: list[RunCall] = []
         self.delete_calls: list[str] = []
 
     async def run(
-        self,
-        script: str,
-        *,
-        cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
-        timeout: float = 10.0,
-    ) -> JobResult:
+        self, script: str, *, cwd: str | None = None, env: dict[str, str] | None = None, timeout: float = 10.0
+    ) -> _Job:
         self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
         return self.run_handler(script, cwd, env, timeout)
 
-    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected wait() call for {job_id} offset={offset} timeout={timeout}")
 
-    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected input() call for {job_id} text={text!r}")
 
-    async def terminate(self, job_id: str, grace_seconds: float = 2.0):
+    async def tail(self, job_id: str) -> _Job:
+        raise AssertionError(f"Unexpected tail() call for {job_id}")
+
+    async def terminate(self, job_id: str, grace_seconds: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected terminate() call for {job_id} grace={grace_seconds}")
 
-    async def delete(
-        self,
-        job_id: str,
-        *,
-        force: bool = False,
-        grace_seconds: float | None = None,
-    ) -> DeleteJobResponse:
+    async def delete(self, job_id: str, *, force: bool = False, grace_seconds: float | None = None) -> None:
         del force, grace_seconds
         self.delete_calls.append(job_id)
-        return DeleteJobResponse(job_id=job_id)
+        return None
 
     async def close(self) -> None:
         return None
@@ -100,34 +182,51 @@ def _wrap(payload: dict[str, object], *, pty_wrap: int = 0, noise: bool = False)
         blob = "\n".join(blob[index : index + pty_wrap] for index in range(0, len(blob), pty_wrap))
     framed = f"{_OUTPUT_BEGIN}{blob}{_OUTPUT_END}\n"
     if noise:
-        framed = f"user@host:~/workspace/abc12ff$ python3 - ...\r\n{framed}user@host:~/workspace/abc12ff$ \r\n"
+        framed = f"user@host$ python3 - ...\r\n{framed}user@host$ \r\n"
     return framed
 
 
-def _job_result(*, output: dict[str, object] | str, job_id: str = "sandbox-job") -> JobResult:
-    return JobResult(
+def _complete_result(
+    *,
+    output: str,
+    exit_code: int | None = 0,
+    output_complete: bool = True,
+    incomplete_reason: Literal["output_limit", "timeout"] | None = None,
+    job_id: str = "sandbox-job",
+) -> CompleteRemoteCommandResult:
+    return CompleteRemoteCommandResult(
         job_id=job_id,
-        status=JobStatusName.EXITED,
-        done=True,
-        exit_code=0,
-        output=_wrap(output) if isinstance(output, dict) else output,
-        offset=0,
-        truncated=False,
-        output_path="/tmp/sandbox-job.out",
-    )
-
-
-def _failed_job_result(*, output: str, exit_code: int, job_id: str = "sandbox-job") -> JobResult:
-    return JobResult(
-        job_id=job_id,
-        status=JobStatusName.EXITED,
+        status="exited",
         done=True,
         exit_code=exit_code,
         output=output,
-        offset=0,
-        truncated=False,
+        output_complete=output_complete,
+        incomplete_reason=incomplete_reason,
+        offset=len(output),
         output_path="/tmp/sandbox-job.out",
     )
+
+
+def _run_embedded_script(
+    script_source: str,
+    *,
+    args: list[str],
+    cwd: Path,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, object]:
+    merged_env = dict(os.environ)
+    if env is not None:
+        merged_env.update(env)
+    completed = subprocess.run(
+        [sys.executable, "-", *args],
+        input=script_source,
+        text=True,
+        capture_output=True,
+        cwd=cwd,
+        env=merged_env,
+        check=False,
+    )
+    return _decode_sandbox_payload(_complete_result(output=completed.stdout, exit_code=completed.returncode))
 
 
 def _execution_context() -> DifyExecutionContextLayerConfig:
@@ -153,16 +252,14 @@ def _locator() -> SandboxLocator:
                     name="shell",
                     type="dify.shell",
                     deps={"execution_context": "execution_context"},
-                    config=DifyShellLayerConfig(),
+                    config=DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
                 ),
             ]
         ),
         session_snapshot=CompositorSessionSnapshot(
             layers=[
                 LayerSessionSnapshot(
-                    name="execution_context",
-                    lifecycle_state=LifecycleState.SUSPENDED,
-                    runtime_state={},
+                    name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
                 ),
                 LayerSessionSnapshot(
                     name="shell",
@@ -176,7 +273,7 @@ def _locator() -> SandboxLocator:
 
 
 def _service(
-    run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], JobResult],
+    run_handler: Callable[[str, str | None, dict[str, str] | None, float], _Job],
 ) -> tuple[SandboxFileService, FakeShellctlClient]:
     client = FakeShellctlClient(run_handler=run_handler)
     execution_context_provider = LayerProvider.from_factory(
@@ -191,8 +288,11 @@ def _service(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shellctl_entrypoint="http://shellctl",
-            shellctl_client_factory=lambda _entrypoint: client,
+            shell_provider=ShellctlProvider(
+                entrypoint="http://shellctl",
+                token="",
+                client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
+            ),
             agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
                 f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -202,250 +302,286 @@ def _service(
     return SandboxFileService(layer_providers=(execution_context_provider, shell_provider)), client
 
 
+def _sandbox_python_run_call(client: FakeShellctlClient) -> RunCall:
+    for run_call in reversed(client.run_calls):
+        if run_call.script.startswith("python3 - "):
+            return run_call
+    raise AssertionError("sandbox python script was not executed")
+
+
+def _sandbox_list_entries(payload: dict[str, object]) -> list[object]:
+    entries = payload.get("entries")
+    assert isinstance(entries, list)
+    return entries
+
+
 def test_list_files_runs_fixed_script_and_parses_response() -> None:
     service, client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "path": ".",
-                "entries": [{"name": "notes.txt", "type": "file", "size": 5, "mtime": 1}],
-                "truncated": False,
-            }
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {
+                    "path": ".",
+                    "entries": [{"name": "notes.txt", "type": "file", "size": 5, "mtime": 1}],
+                    "truncated": False,
+                }
+            ),
         )
     )
 
     result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path=".")))
 
     assert result.entries[0].name == "notes.txt"
-    assert client.run_calls[0].cwd == "~/workspace/abc12ff"
-    assert client.run_calls[0].env is None
-    assert "python3 - . 1000 <<'PY'" in client.run_calls[0].script
-    assert client.delete_calls == ["sandbox-job"]
+    script_call = _sandbox_python_run_call(client)
+    assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
+    assert script_call.env == {"HOME": "/home/agent-1"}
+    assert "python3 - . 1000 <<'PY'" in script_call.script
+    assert client.delete_calls[-1] == "sandbox-job"
 
 
-@pytest.mark.parametrize("bad_path", ["/etc/passwd", "~/secret-dir", "bad\x00path"])
-def test_list_files_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
+def test_list_files_allows_parent_relative_paths() -> None:
     service, client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={"path": ".", "entries": [], "truncated": False},
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": "../shared", "entries": [], "truncated": False}),
         )
     )
 
-    with pytest.raises(SandboxFileError) as exc_info:
+    result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path="../shared")))
+
+    assert result.path == "../shared"
+    assert "python3 - ../shared 1000 <<'PY'" in _sandbox_python_run_call(client).script
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_command"),
+    [
+        ("~", "python3 - '~' 1000 <<'PY'"),
+        ("~/shared", "python3 - '~/shared' 1000 <<'PY'"),
+    ],
+)
+def test_list_files_allows_home_relative_paths(path: str, expected_command: str) -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": path, "entries": [], "truncated": False}),
+        )
+    )
+
+    result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path=path)))
+
+    assert result.path == path
+    assert expected_command in _sandbox_python_run_call(client).script
+
+
+def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
+    workspace_dir = tmp_path / "workspace"
+    cwd = workspace_dir / "run"
+    shared_dir = workspace_dir / "shared"
+    cwd.mkdir(parents=True)
+    shared_dir.mkdir()
+    notes_path = shared_dir / "notes.txt"
+    notes_path.write_text("hello", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_dify_agent = bin_dir / "dify-agent"
+    fake_dify_agent.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import json",
+                "import sys",
+                'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
+                '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_dify_agent.chmod(0o755)
+
+    list_payload = _run_embedded_script(_LIST_SCRIPT, args=["../shared", "1000"], cwd=cwd)
+    read_payload = _run_embedded_script(_READ_SCRIPT, args=["../shared/notes.txt", "8"], cwd=cwd)
+    upload_payload = _run_embedded_script(
+        _UPLOAD_SCRIPT,
+        args=["../shared/notes.txt"],
+        cwd=cwd,
+        env={"PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', os.defpath)}"},
+    )
+
+    assert list_payload["path"] == "../shared"
+    assert any(
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
+    )
+    assert read_payload == {
+        "path": "../shared/notes.txt",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "hello",
+    }
+    assert upload_payload == {
+        "path": "../shared/notes.txt",
+        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+    }
+
+
+def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
+    cwd = tmp_path / "workspace" / "run"
+    cwd.mkdir(parents=True)
+    home_dir = tmp_path / "home" / "agent-1"
+    shared_dir = home_dir / "shared"
+    shared_dir.mkdir(parents=True)
+    notes_path = shared_dir / "notes.txt"
+    notes_path.write_text("hello", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_dify_agent = bin_dir / "dify-agent"
+    fake_dify_agent.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import json",
+                "import sys",
+                'if sys.argv[1:] != ["file", "upload", "~/shared/notes.txt"]:',
+                '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_dify_agent.chmod(0o755)
+
+    script_env = {"HOME": str(home_dir), "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', os.defpath)}"}
+    list_payload = _run_embedded_script(_LIST_SCRIPT, args=["~/shared", "1000"], cwd=cwd, env=script_env)
+    read_payload = _run_embedded_script(_READ_SCRIPT, args=["~/shared/notes.txt", "8"], cwd=cwd, env=script_env)
+    upload_payload = _run_embedded_script(_UPLOAD_SCRIPT, args=["~/shared/notes.txt"], cwd=cwd, env=script_env)
+
+    assert list_payload["path"] == "~/shared"
+    assert any(
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
+    )
+    assert read_payload == {
+        "path": "~/shared/notes.txt",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "hello",
+    }
+    assert upload_payload == {
+        "path": "~/shared/notes.txt",
+        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+    }
+
+
+@pytest.mark.parametrize("bad_path", ["/etc/passwd", "~other/secret-dir", "bad\x00path"])
+def test_list_files_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
+    service, client = _service(lambda script, cwd, env, timeout: _Job(job_id="sandbox-job", output="unused"))
+
+    with pytest.raises(SandboxFileError, match="path"):
         asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path=bad_path)))
 
-    assert exc_info.value.code == "invalid_sandbox_path"
     assert client.run_calls == []
 
 
-def test_decode_tolerates_pty_wrapped_base64_and_shell_noise() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(
+def test_decode_payload_reports_incomplete_capture_when_frame_is_missing() -> None:
+    with pytest.raises(SandboxFileError, match="incomplete before framed payload was captured"):
+        _decode_sandbox_payload(
+            _complete_result(output="partial", output_complete=False, incomplete_reason="output_limit")
+        )
+
+
+def test_decode_payload_reports_incomplete_capture_when_frame_is_corrupt() -> None:
+    broken = f"{_OUTPUT_BEGIN}%%%%{_OUTPUT_END}"
+    with pytest.raises(SandboxFileError, match="incomplete while decoding framed payload"):
+        _decode_sandbox_payload(_complete_result(output=broken, output_complete=False, incomplete_reason="timeout"))
+
+
+def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
             output=_wrap(
                 {
-                    "path": "note.txt",
-                    "size": 40,
-                    "truncated": False,
-                    "binary": False,
-                    "text": "hello from sandbox\n" * 4,
+                    "path": "report.txt",
+                    "file": {"transfer_method": "tool_file", "reference": "file-ref"},
                 },
-                pty_wrap=12,
                 noise=True,
-            )
+            ),
         )
     )
-
-    result = asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="note.txt")))
-
-    assert result.text == "hello from sandbox\n" * 4
-
-
-def test_read_file_maps_script_error_codes() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={"error": "sandbox_path_not_found", "message": "path not found in sandbox"}
-        )
-    )
-
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="missing.txt")))
-
-    assert exc_info.value.code == "sandbox_path_not_found"
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.parametrize("bad_path", ["", "/etc/passwd", "~/secret.txt", "bad\x00path"])
-def test_read_file_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
-    service, client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "path": "should-not-run",
-                "size": 1,
-                "truncated": False,
-                "binary": False,
-                "text": "x",
-            }
-        )
-    )
-
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path=bad_path)))
-
-    assert exc_info.value.code == "invalid_sandbox_path"
-    assert client.run_calls == []
-
-
-def test_read_file_returns_binary_payload_without_text() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "path": "blob.bin",
-                "size": 64,
-                "truncated": False,
-                "binary": True,
-                "text": None,
-            }
-        )
-    )
-
-    result = asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="blob.bin")))
-
-    assert result.binary is True
-    assert result.text is None
-    assert result.truncated is False
-
-
-def test_read_file_preserves_truncated_flag_for_large_text() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "path": "large.txt",
-                "size": 1024,
-                "truncated": True,
-                "binary": False,
-                "text": "partial preview",
-            }
-        )
-    )
-
-    result = asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="large.txt")))
-
-    assert result.binary is False
-    assert result.text == "partial preview"
-    assert result.truncated is True
-
-
-def test_upload_file_injects_agent_stub_env_and_returns_mapping() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert cwd == "~/workspace/abc12ff"
-        assert timeout == 30.0
-        assert env == {
-            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
-            AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
-            AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive",
-        }
-        assert 'dify-agent", "file", "upload"' in script
-        return _job_result(
-            output={
-                "path": "report.txt",
-                "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
-            },
-            job_id="upload-job",
-        )
-
-    service, client = _service(run_handler)
 
     result = asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path="report.txt")))
 
-    assert result.file.reference == "dify-file-ref:file-1"
-    assert client.delete_calls == ["upload-job"]
+    assert result.file.transfer_method == "tool_file"
+    assert result.file.reference == "file-ref"
+    script_call = _sandbox_python_run_call(client)
+    assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
+    assert script_call.env == {
+        "HOME": "/home/agent-1",
+        AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+        AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
+        AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
+    }
 
 
-def test_upload_file_maps_agent_stub_upload_failed_payload() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "error": "agent_stub_upload_failed",
-                "message": "upload returned invalid JSON",
-            },
-            job_id="upload-failed-job",
-        )
+def test_shell_result_details_include_output_metadata_and_tail() -> None:
+    details = _shell_result_details(
+        _complete_result(output="hello", output_complete=False, incomplete_reason="output_limit")
     )
-
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path="report.txt")))
-
-    assert exc_info.value.code == "agent_stub_upload_failed"
-    assert exc_info.value.status_code == 502
+    assert "output_complete=False" in details
+    assert "incomplete_reason=output_limit" in details
+    assert "output_path=/tmp/sandbox-job.out" in details
+    assert details.endswith("hello")
 
 
-def test_read_file_maps_non_zero_command_exit_to_sandbox_command_failed() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _failed_job_result(
-            output="python traceback or stderr tail",
-            exit_code=17,
-        )
-    )
-
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="note.txt")))
-
-    assert exc_info.value.code == "sandbox_command_failed"
-    assert exc_info.value.status_code == 502
-
-
-def test_upload_file_maps_missing_framed_payload_to_sandbox_command_failed() -> None:
-    service, _client = _service(
-        lambda script, cwd, env, timeout: _job_result(output="plain output without sentinel framing")
-    )
-
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path="report.txt")))
-
-    assert exc_info.value.code == "sandbox_command_failed"
-    assert exc_info.value.status_code == 502
-
-
-@pytest.mark.parametrize("bad_path", ["", "/etc/passwd", "~/secret.txt", "bad\x00path"])
-def test_upload_file_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
+def test_read_file_uses_complete_mode_and_parses_response() -> None:
     service, client = _service(
-        lambda script, cwd, env, timeout: _job_result(
-            output={
-                "path": "should-not-run",
-                "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
-            }
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": "notes.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}),
         )
     )
 
-    with pytest.raises(SandboxFileError) as exc_info:
-        asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path=bad_path)))
+    result = asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="notes.txt", max_bytes=8)))
 
-    assert exc_info.value.code == "invalid_sandbox_path"
-    assert client.run_calls == []
-
-
-def _client(service: SandboxFileService | None) -> TestClient:
-    app = FastAPI()
-    app.include_router(create_sandbox_files_router(lambda: service))
-    return TestClient(app)
+    assert result.text == "hello"
+    assert "python3 - notes.txt 8 <<'PY'" in _sandbox_python_run_call(client).script
 
 
-def test_router_list_ok() -> None:
-    service, _client_instance = _service(
-        lambda script, cwd, env, timeout: _job_result(output={"path": ".", "entries": [], "truncated": False})
+@pytest.mark.parametrize(
+    ("sandbox_request", "expected_command"),
+    [
+        (SandboxReadRequest(locator=_locator(), path="../notes.txt", max_bytes=8), "python3 - ../notes.txt 8 <<'PY'"),
+        (SandboxUploadRequest(locator=_locator(), path="../report.txt"), "python3 - ../report.txt <<'PY'"),
+        (SandboxReadRequest(locator=_locator(), path="~/notes.txt", max_bytes=8), "python3 - '~/notes.txt' 8 <<'PY'"),
+        (SandboxUploadRequest(locator=_locator(), path="~/report.txt"), "python3 - '~/report.txt' <<'PY'"),
+    ],
+)
+def test_read_and_upload_allow_relative_paths(
+    sandbox_request: SandboxReadRequest | SandboxUploadRequest, expected_command: str
+) -> None:
+    expected_path = sandbox_request.path
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {"path": expected_path, "size": 5, "truncated": False, "binary": False, "text": "hello"}
+                if isinstance(sandbox_request, SandboxReadRequest)
+                else {"path": expected_path, "file": {"transfer_method": "tool_file", "reference": "file-ref"}}
+            ),
+        )
     )
 
-    response = _client(service).post(
-        "/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."}
-    )
+    if isinstance(sandbox_request, SandboxReadRequest):
+        result = asyncio.run(service.read_file(sandbox_request))
+        assert result.path == expected_path
+    else:
+        result = asyncio.run(service.upload_file(sandbox_request))
+        assert result.path == expected_path
 
-    assert response.status_code == 200
-    assert response.json()["path"] == "."
-
-
-def test_router_returns_503_when_service_unconfigured() -> None:
-    response = _client(None).post(
-        "/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."}
-    )
-
-    assert response.status_code == 503
-    assert response.json()["detail"]["code"] == "sandbox_backend_unavailable"
+    assert expected_command in _sandbox_python_run_call(client).script

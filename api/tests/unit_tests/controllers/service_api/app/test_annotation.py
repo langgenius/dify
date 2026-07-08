@@ -15,7 +15,7 @@ Note: API endpoint tests for annotation controllers are complex due to:
 import uuid
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask
@@ -188,7 +188,7 @@ class TestAnnotationReplyActionApi:
 
         api = AnnotationReplyActionApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context(
             "/apps/annotation-reply/enable",
@@ -206,7 +206,7 @@ class TestAnnotationReplyActionApi:
 
         api = AnnotationReplyActionApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context(
             "/apps/annotation-reply/disable",
@@ -264,7 +264,7 @@ class TestAnnotationListApi:
 
         assert response["page"] == 1
         assert response["limit"] == 20
-        get_mock.assert_called_once_with("app", 1, 20, "")
+        get_mock.assert_called_once_with("app", 1, 20, "", session=ANY)
 
     def test_get_accepts_valid_numeric_strings(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         annotation = SimpleNamespace(id="a1", question="q", content="a", created_at=0)
@@ -281,7 +281,7 @@ class TestAnnotationListApi:
         assert response["total"] == 1
         assert response["page"] == 2
         assert response["limit"] == 5
-        get_mock.assert_called_once_with("app", 2, 5, "refund")
+        get_mock.assert_called_once_with("app", 2, 5, "refund", session=ANY)
 
     @pytest.mark.parametrize("query_string", ["page=abc&limit=5", "page=1&limit=abc", "page=&limit=5", "limit=0"])
     def test_get_rejects_invalid_explicit_pagination_value(
@@ -333,7 +333,7 @@ class TestAnnotationUpdateDeleteApi:
         api = AnnotationUpdateDeleteApi()
         put_handler = unwrap(api.put)
         delete_handler = unwrap(api.delete)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context("/apps/annotations/1", method="PUT", json={"question": "q", "answer": "a"}):
             response = put_handler(api, app_model=app_model, annotation_id="1")

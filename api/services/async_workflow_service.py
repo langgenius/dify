@@ -51,7 +51,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def trigger_workflow_async(
-        cls, session: Session, user: Account | EndUser, trigger_data: TriggerData
+        cls, user: Account | EndUser, trigger_data: TriggerData, *, session: Session
     ) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
@@ -187,7 +187,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def reinvoke_trigger(
-        cls, session: Session, user: Account | EndUser, workflow_trigger_log_id: str
+        cls, user: Account | EndUser, workflow_trigger_log_id: str, *, session: Session
     ) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK
@@ -231,7 +231,7 @@ class AsyncWorkflowService:
         session.commit()
 
         # Re-trigger workflow (this will create a new trigger log)
-        return cls.trigger_workflow_async(session, user, trigger_data)
+        return cls.trigger_workflow_async(user, trigger_data, session=session)
 
     @classmethod
     def get_trigger_log(
@@ -309,7 +309,8 @@ class AsyncWorkflowService:
         workflow_service: WorkflowService,
         app_model: App,
         workflow_id: str | None = None,
-        session: Session | None = None,
+        *,
+        session: Session,
     ) -> Workflow:
         """
         Get workflow for the app
@@ -317,9 +318,7 @@ class AsyncWorkflowService:
         Args:
             app_model: App model instance
             workflow_id: Optional specific workflow ID
-            session: Reuse this SQLAlchemy session for the lookup when provided,
-                so the caller's explicit session bears the connection cost
-                instead of Flask's request-scoped ``db.session``.
+            session: SQLAlchemy session used for the workflow lookup.
 
         Returns:
             Workflow instance

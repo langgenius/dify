@@ -567,7 +567,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -1414,7 +1414,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1573,7 +1573,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -3196,7 +3196,9 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse

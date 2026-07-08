@@ -9,13 +9,19 @@ import { debounce, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { StudioListHeader } from '@/app/components/apps/studio-list-header'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
+  deploymentsListErrorAtom,
+  deploymentsListFetchNextPageAtom,
   deploymentsListHasFilterAtom,
-  deploymentsListQueryAtom,
+  deploymentsListHasNextPageAtom,
+  deploymentsListIsFetchingAtom,
+  deploymentsListIsFetchingNextPageAtom,
+  deploymentsListIsLoadingAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
+  deploymentsListShowErrorStateAtom,
   deploymentsListShowSkeletonAtom,
   envFilterQueryState,
   keywordsQueryState,
@@ -34,10 +40,9 @@ function DeploymentsListState({ children }: {
 
 function DeploymentsListEmpty() {
   const { t } = useTranslation('deployments')
-  const hasAtomFilter = useAtomValue(deploymentsListHasFilterAtom)
-  const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
-  const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const hasFilter = hasAtomFilter || Boolean(keywords.trim()) || Boolean(envFilter)
+  const hasFilter = useAtomValue(deploymentsListHasFilterAtom)
+  const [_keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
+  const [_envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
 
   function clearFilters() {
     void setKeywords(null)
@@ -157,16 +162,25 @@ function DeploymentsListControls() {
 
 export function DeploymentsListShell() {
   const { t } = useTranslation('deployments')
-  const deploymentsListQuery = useAtomValue(deploymentsListQueryAtom)
+  const deploymentsListError = useAtomValue(deploymentsListErrorAtom)
+  const deploymentsListFetchNextPage = useAtomValue(deploymentsListFetchNextPageAtom)
+  const deploymentsListHasNextPage = useAtomValue(deploymentsListHasNextPageAtom)
+  const deploymentsListIsFetching = useAtomValue(deploymentsListIsFetchingAtom)
+  const deploymentsListIsFetchingNextPage = useAtomValue(deploymentsListIsFetchingNextPageAtom)
+  const deploymentsListIsLoading = useAtomValue(deploymentsListIsLoadingAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
+  const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
-  const {
-    isError,
-    isFetchingNextPage,
-  } = deploymentsListQuery
 
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(deploymentsListQuery)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: deploymentsListError,
+    fetchNextPage: deploymentsListFetchNextPage,
+    hasNextPage: deploymentsListHasNextPage,
+    isFetching: deploymentsListIsFetching,
+    isFetchingNextPage: deploymentsListIsFetchingNextPage,
+    isLoading: deploymentsListIsLoading,
+  })
 
   return (
     <div ref={rootRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
@@ -178,9 +192,9 @@ export function DeploymentsListShell() {
       >
         {showSkeleton
           ? <DeploymentsListSkeleton />
-          : isError
+          : showErrorState
             ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-            : appInstanceSummaries.length === 0
+            : showEmptyState
               ? <DeploymentsListEmpty />
               : appInstanceSummaries.map(summary => (
                   <InstanceCard
@@ -188,7 +202,7 @@ export function DeploymentsListShell() {
                     summary={summary}
                   />
                 ))}
-        {isFetchingNextPage && <DeploymentsListSkeleton />}
+        {deploymentsListIsFetchingNextPage && <DeploymentsListSkeleton />}
         <div ref={sentinelRef} aria-hidden="true" className="col-span-full h-px" />
       </div>
     </div>

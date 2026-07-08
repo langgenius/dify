@@ -20,6 +20,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
+import { normalizeAppPagination } from '@/service/use-apps'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -35,7 +36,7 @@ const descriptionClassName = `
 export default function AccountPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: appList } = useQuery(consoleQuery.apps.list.queryOptions({
+  const { data: appList } = useQuery(consoleQuery.apps.get.queryOptions({
     input: {
       query: {
         page: 1,
@@ -43,6 +44,7 @@ export default function AccountPage() {
         name: '',
       },
     },
+    select: normalizeAppPagination,
   }))
   const apps = appList?.data || []
   const queryClient = useQueryClient()

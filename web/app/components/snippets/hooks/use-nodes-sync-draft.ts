@@ -8,8 +8,9 @@ import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-w
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/client'
+// eslint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
-import { useSnippetDetailStore } from '../store'
+import { useSnippetDraftStore } from '../draft-store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
 
 const isSyncConflictError = (error: unknown): error is { bodyUsed: boolean, json: () => Promise<{ code?: string }> } => {
@@ -51,7 +52,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
 
   const getInputFieldsSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
     return {
-      input_fields: inputFields ?? useSnippetDetailStore.getState().fields,
+      input_fields: inputFields ?? useSnippetDraftStore.getState().inputFields,
     }
   }, [])
 
@@ -112,8 +113,8 @@ export const useNodesSyncDraft = (snippetId: string) => {
     } = workflowStore.getState()
 
     try {
-      const response = await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId },
+      const response = await consoleClient.snippets.bySnippetId.workflows.draft.post({
+        params: { snippet_id: snippetId },
         body: {
           ...payload,
           hash: syncWorkflowDraftHash || undefined,

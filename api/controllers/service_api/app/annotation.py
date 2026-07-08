@@ -21,6 +21,7 @@ from services.annotation_service import (
     InsertAnnotationArgs,
     UpdateAnnotationArgs,
 )
+from services.app_ref_service import AppRefService
 
 
 class AnnotationCreatePayload(BaseModel):
@@ -200,7 +201,7 @@ class AnnotationListApi(Resource):
         query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_model.id, query.page, query.limit, query.keyword
+            app_model.id, query.page, query.limit, query.keyword, session=db.session()
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response = AnnotationList(
@@ -242,7 +243,9 @@ class AnnotationListApi(Resource):
         """Create a new annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id)
+        annotation = AppAnnotationService.insert_app_annotation_directly(
+            insert_args, app_model.id, session=db.session()
+        )
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json"), HTTPStatus.CREATED
 
@@ -282,9 +285,9 @@ class AnnotationUpdateDeleteApi(Resource):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(
-            update_args, app_model.id, str(annotation_id), db.session
-        )
+        app_ref = AppRefService.create_app_ref(app_model)
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session())
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -313,5 +316,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id), db.session)
+        app_ref = AppRefService.create_app_ref(app_model)
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(annotation_ref, db.session())
         return "", 204

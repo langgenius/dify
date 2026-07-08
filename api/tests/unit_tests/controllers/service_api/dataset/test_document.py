@@ -269,7 +269,7 @@ class TestDocumentService:
         mock_doc.indexing_status = "completed"
         mock_get.return_value = mock_doc
 
-        result = DocumentService.get_document(dataset_id="dataset_id", document_id="doc_id")
+        result = DocumentService.get_document(dataset_id="dataset_id", document_id="doc_id", session=Mock())
         assert result is not None
         assert result.name == "Test Document"
         assert result.indexing_status == "completed"
@@ -278,8 +278,9 @@ class TestDocumentService:
     def test_delete_document_called(self, mock_delete):
         """Test delete_document is called with document."""
         mock_doc = Mock()
-        DocumentService.delete_document(document=mock_doc)
-        mock_delete.assert_called_once_with(document=mock_doc)
+        session = Mock()
+        DocumentService.delete_document(document=mock_doc, session=session)
+        mock_delete.assert_called_once_with(document=mock_doc, session=session)
 
 
 class TestDocumentIndexingStatus:
@@ -454,24 +455,24 @@ class TestDocumentDisplayStatusLogic:
 class TestDocumentServiceBatchMethods:
     """Test DocumentService batch operations."""
 
-    @patch("services.dataset_service.db.session.scalars")
-    def test_get_documents_by_ids(self, mock_scalars):
+    def test_get_documents_by_ids(self):
         """Test batch retrieval of documents by IDs."""
         dataset_id = str(uuid.uuid4())
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         mock_result = Mock()
         mock_result.all.return_value = [Mock(id=doc_ids[0]), Mock(id=doc_ids[1])]
-        mock_scalars.return_value = mock_result
+        session = Mock()
+        session.scalars.return_value = mock_result
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids)
+        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
 
         assert len(documents) == 2
-        mock_scalars.assert_called_once()
+        session.scalars.assert_called_once()
 
     def test_get_documents_by_ids_empty(self):
         """Test batch retrieval with empty list returns empty."""
-        assert DocumentService.get_documents_by_ids("ds_id", []) == []
+        assert DocumentService.get_documents_by_ids("ds_id", [], Mock()) == []
 
 
 class TestDocumentServiceFileOperations:
@@ -487,7 +488,7 @@ class TestDocumentServiceFileOperations:
         mock_get_file.return_value = mock_file
         mock_signed_url.return_value = "https://example.com/download"
 
-        url = DocumentService.get_document_download_url(mock_doc)
+        url = DocumentService.get_document_download_url(mock_doc, Mock())
 
         assert url == "https://example.com/download"
         mock_signed_url.assert_called_with(upload_file_id="file_id", as_attachment=True)
@@ -516,7 +517,7 @@ class TestDocumentServiceSaveValidation:
         # Skip actual logic by mocking dependent calls or raising error to stop early
         with pytest.raises(TestStopError):
             # We just want to check check_doc_form is called early
-            DocumentService.save_document_with_dataset_id(dataset, config, Mock())
+            DocumentService.save_document_with_dataset_id(dataset, config, Mock(), session=Mock())
 
         # This will fail if we raise exception before check_doc_form,
         # but check_doc_form is the first thing called.
@@ -782,7 +783,7 @@ class TestDocumentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_doc_svc.delete_document.assert_called_once_with(mock_document)
+        mock_doc_svc.delete_document.assert_called_once_with(mock_document, mock_db.session())
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
@@ -850,9 +851,10 @@ class TestDocumentApiDelete:
 class TestDocumentListApi:
     """Test suite for DocumentListApi endpoint."""
 
+    @patch("controllers.service_api.dataset.document.paginate_query")
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
-    def test_list_documents_success(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+    def test_list_documents_success(self, mock_db, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset):
         """Test successful document list retrieval."""
         # Arrange
         mock_db.session.scalar.return_value = mock_dataset
@@ -867,7 +869,7 @@ class TestDocumentListApi:
             make_serializable_document(id="doc-2", name="Document 2"),
         ]
         mock_pagination.total = 2
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
 

@@ -14,9 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.errors.error import QuotaExceededError
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
@@ -53,6 +51,12 @@ class CreditPoolService:
     @staticmethod
     def _use_billing_quota() -> bool:
         return bool(dify_config.BILLING_ENABLED)
+
+    @staticmethod
+    def _require_session(session: Session | None) -> Session:
+        if session is None:
+            raise ValueError("session is required when billing quota is disabled")
+        return session
 
     @staticmethod
     def _get_tenant_lock_key(tenant_id: str) -> str:
@@ -94,7 +98,7 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str) -> TenantCreditPool:
+    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
         """create default credit pool for new tenant"""
         credit_pool = TenantCreditPool(
             tenant_id=tenant_id,
@@ -102,13 +106,17 @@ class CreditPoolService:
             quota_used=0,
             pool_type=ProviderQuotaType.TRIAL,
         )
-        db.session.add(credit_pool)
-        db.session.commit()
+        session.add(credit_pool)
+        session.commit()
         return credit_pool
 
     @classmethod
     def get_pool(
-        cls, tenant_id: str, pool_type: str | ProviderQuotaType = "trial"
+        cls,
+        tenant_id: str,
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        session: Session | None = None,
     ) -> TenantCreditPool | CreditPoolBalance | None:
         """get tenant credit pool"""
         normalized_pool_type = cls._normalize_pool_type(pool_type)
@@ -127,25 +135,27 @@ class CreditPoolService:
                 quota_used=balance["usage"],
             )
 
-        with session_factory.get_session_maker().begin() as session:
-            return session.scalar(
-                select(TenantCreditPool)
-                .where(
-                    TenantCreditPool.tenant_id == tenant_id,
-                    TenantCreditPool.pool_type == normalized_pool_type,
-                )
-                .limit(1)
+        session = cls._require_session(session)
+        return session.scalar(
+            select(TenantCreditPool)
+            .where(
+                TenantCreditPool.tenant_id == tenant_id,
+                TenantCreditPool.pool_type == normalized_pool_type,
             )
+            .limit(1)
+        )
 
     @classmethod
     def check_credits_available(
         cls,
         tenant_id: str,
         credits_required: int,
-        pool_type: str = "trial",
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        session: Session | None = None,
     ) -> bool:
         """check if credits are available without deducting"""
-        pool = cls.get_pool(tenant_id, pool_type)
+        pool = cls.get_pool(tenant_id, pool_type, session=session)
         if not pool:
             return False
         return pool.has_sufficient_credits(credits_required)
@@ -155,7 +165,9 @@ class CreditPoolService:
         cls,
         tenant_id: str,
         credits_required: int,
-        pool_type: str = "trial",
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        session: Session | None = None,
     ) -> int:
         """Deduct exactly the requested credits or raise without mutating the pool."""
         if credits_required <= 0:
@@ -205,20 +217,22 @@ class CreditPoolService:
                 raise
             return credits_required
 
+        session = cls._require_session(session)
+
         def deduct() -> int:
-            with session_factory.get_session_maker().begin() as session:
-                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
-                if not pool:
-                    raise QuotaExceededError("Credit pool not found")
+            pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
+            if not pool:
+                raise QuotaExceededError("Credit pool not found")
 
-                remaining_credits = pool.remaining_credits
-                if remaining_credits <= 0:
-                    raise QuotaExceededError("No credits remaining")
-                if remaining_credits < credits_required:
-                    raise QuotaExceededError("Insufficient credits remaining")
+            remaining_credits = pool.remaining_credits
+            if remaining_credits <= 0:
+                raise QuotaExceededError("No credits remaining")
+            if remaining_credits < credits_required:
+                raise QuotaExceededError("Insufficient credits remaining")
 
-                pool.quota_used += credits_required
-                return credits_required
+            pool.quota_used += credits_required
+            session.commit()
+            return credits_required
 
         try:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
@@ -233,7 +247,9 @@ class CreditPoolService:
         cls,
         tenant_id: str,
         credits_required: int,
-        pool_type: str = "trial",
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        session: Session | None = None,
     ) -> int:
         """Deduct up to the available balance and return the actual deducted credits."""
         if credits_required <= 0:
@@ -253,19 +269,21 @@ class CreditPoolService:
             )
             return result["deducted"]
 
+        session = cls._require_session(session)
+
         def deduct() -> int:
-            with session_factory.get_session_maker().begin() as session:
-                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
-                if not pool:
-                    logger.warning("Credit pool not found, tenant_id=%s, pool_type=%s", tenant_id, normalized_pool_type)
-                    return 0
+            pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
+            if not pool:
+                logger.warning("Credit pool not found, tenant_id=%s, pool_type=%s", tenant_id, normalized_pool_type)
+                return 0
 
-                deducted_credits = min(credits_required, pool.remaining_credits)
-                if deducted_credits <= 0:
-                    return 0
+            deducted_credits = min(credits_required, pool.remaining_credits)
+            if deducted_credits <= 0:
+                return 0
 
-                pool.quota_used += deducted_credits
-                return deducted_credits
+            pool.quota_used += deducted_credits
+            session.commit()
+            return deducted_credits
 
         try:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)

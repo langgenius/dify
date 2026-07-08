@@ -27,17 +27,12 @@ type BlockSelectorMockProps = {
 const {
   mockHandlePaneContextmenuCancel,
   mockWorkflowStoreSetState,
-  mockSetOpenInlineAgentPanelNodeId,
   mockGenerateNewNode,
   mockGetNodeCustomTypeByNodeDataType,
   mockGetNodesWithSameDefaultDataType,
-  mockCreateInlineAgentBinding,
-  mockHandleSyncWorkflowDraft,
-  mockSaveStateToHistory,
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
-  mockSetOpenInlineAgentPanelNodeId: vi.fn(),
   mockGenerateNewNode: vi.fn(({ type, data }: { type: string, data: Record<string, unknown> }) => ({
     newNode: {
       id: 'generated-node',
@@ -66,9 +61,6 @@ const {
 
     return nodes.filter(node => node.data.type === dataType)
   }),
-  mockCreateInlineAgentBinding: vi.fn(),
-  mockHandleSyncWorkflowDraft: vi.fn(),
-  mockSaveStateToHistory: vi.fn(),
 }))
 
 let latestBlockSelectorProps: BlockSelectorMockProps | null = null
@@ -120,41 +112,8 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  useStore: (selector: (state: { mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number } }) => unknown) =>
-    selector({
-      mousePosition: {
-        pageX: 120,
-        pageY: 240,
-        elementX: 12,
-        elementY: 24,
-      },
-    }),
   useWorkflowStore: () => ({
-    getState: () => ({
-      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
-    }),
     setState: mockWorkflowStoreSetState,
-  }),
-}))
-
-vi.mock('../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-history', () => ({
-  WorkflowHistoryEvent: {
-    NodeAdd: 'NodeAdd',
-  },
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-}))
-
-vi.mock('../../nodes/agent-v2/hooks', () => ({
-  useCreateInlineAgentBinding: () => ({
-    createInlineAgentBinding: mockCreateInlineAgentBinding,
   }),
 }))
 
@@ -178,17 +137,6 @@ describe('AddBlock', () => {
     mockNodesReadOnly = false
     mockIsChatMode = false
     mockFlowType = FlowType.appFlow
-    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: { onSuccess?: (binding: {
-      binding_type: 'inline_agent'
-      agent_id: string
-      current_snapshot_id: string
-    }) => void }) => {
-      options?.onSuccess?.({
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'snapshot-1',
-      })
-    })
   })
 
   // Rendering and selector configuration.
@@ -358,7 +306,7 @@ describe('AddBlock', () => {
       })
     })
 
-    it('should commit start-from-scratch Agent v2 immediately and create the inline binding', async () => {
+    it('should keep start-from-scratch Agent v2 as a candidate node before placement', async () => {
       mockNodesMetaDataMap[BlockEnum.AgentV2] = {
         defaultValue: {
           title: 'Agent',
@@ -383,14 +331,22 @@ describe('AddBlock', () => {
       })
 
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        candidateNode: undefined,
+        candidateNode: expect.objectContaining({
+          id: 'generated-node',
+          type: 'agent-v2-custom',
+          data: {
+            title: 'Agent',
+            desc: '',
+            agent_binding: {
+              binding_type: 'inline_agent',
+            },
+            agent_node_kind: 'dify_agent',
+            type: BlockEnum.Agent,
+            version: '2',
+            _isCandidate: true,
+          },
+        }),
       })
-      expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('generated-node', expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
-      expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('generated-node')
-      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
-      expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeAdd', { nodeId: 'generated-node' })
     })
   })
 })

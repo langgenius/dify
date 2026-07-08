@@ -11,7 +11,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -445,16 +450,18 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     def get(self, tenant_id: str, user: Account, provider: str):
         # Optional list of credential IDs to include even if visibility would hide them
         # (used when a workflow/agent node still references another member's only_me credential).
-        include_credential_ids = request.args.getlist("include_credential_ids") or [
-            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
-        ]
+        query = query_params_from_request(
+            BuiltinCredentialListQuery,
+            list_fields=("include_credential_ids",),
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
+                session=db.session(),
                 user=user,
-                include_credential_ids=include_credential_ids or None,
+                include_credential_ids=query.include_credential_ids or None,
             )
         )
 
@@ -1049,16 +1056,18 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, user: Account, provider: str):
-        include_credential_ids = request.args.getlist("include_credential_ids") or [
-            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
-        ]
+        query = query_params_from_request(
+            BuiltinCredentialListQuery,
+            list_fields=("include_credential_ids",),
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
+                session=db.session(),
                 user=user,
-                include_credential_ids=include_credential_ids or None,
+                include_credential_ids=query.include_credential_ids or None,
             )
         )
 

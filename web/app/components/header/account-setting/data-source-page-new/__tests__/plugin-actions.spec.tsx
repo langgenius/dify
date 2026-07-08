@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import DataSourcePluginActions from '../plugin-actions'
 
@@ -20,15 +21,6 @@ vi.mock('@/app/components/plugins/readme-panel/store', () => ({
   useReadmePanelStore: (selector: (value: { openReadmePanel: typeof mockOpenReadmePanel }) => unknown) => selector({
     openReadmePanel: mockOpenReadmePanel,
   }),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () => ({
-  __esModule: true,
-  default: ({ onViewReadme }: { onViewReadme?: () => void }) => (
-    <button type="button" onClick={onViewReadme}>
-      plugin.detailPanel.operation.viewReadme
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
@@ -150,7 +142,10 @@ describe('DataSourcePluginActions', () => {
   it('opens the plugin README from the actions menu', () => {
     const detail = createPluginDetail()
 
-    render(<DataSourcePluginActions detail={detail} />)
+    renderWithSystemFeatures(<DataSourcePluginActions detail={detail} />, {
+      systemFeatures: { enable_marketplace: true },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
 
     expect(mockOpenReadmePanel).toHaveBeenCalledWith(expect.objectContaining({

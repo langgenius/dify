@@ -61,6 +61,24 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
@@ -104,6 +122,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

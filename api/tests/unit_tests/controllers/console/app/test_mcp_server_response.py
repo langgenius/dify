@@ -130,3 +130,50 @@ class TestAppMCPServerController:
 
         assert response == {"id": "server-1"}
         assert status_code == 201
+
+    def test_put_binds_server_lookup_to_app_ref(self):
+        api = AppMCPServerController()
+        method = unwrap(api.put)
+        payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        server = SimpleNamespace(
+            id="server-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            name="Old",
+            description="Old",
+            parameters="{}",
+            status="active",
+        )
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+            patch("controllers.console.app.mcp_server.db.session.scalar", return_value=server) as scalar,
+            patch("controllers.console.app.mcp_server.db.session.get") as get_mock,
+            patch("controllers.console.app.mcp_server.db.session.commit") as commit,
+            patch(
+                "controllers.console.app.mcp_server.AppMCPServerResponse.model_validate",
+                return_value=_ValidatedResponse({"id": "server-1"}),
+            ),
+        ):
+            response = method(
+                api,
+                app_model=SimpleNamespace(
+                    id="app-1", tenant_id="tenant-1", name="Demo App", description="App description"
+                ),
+            )
+
+        stmt = scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "app_mcp_servers.id" in statement
+        assert "app_mcp_servers.tenant_id" in statement
+        assert "app_mcp_servers.app_id" in statement
+        assert payload["id"] in compiled.params.values()
+        assert "tenant-1" in compiled.params.values()
+        assert "app-1" in compiled.params.values()
+        get_mock.assert_not_called()
+        commit.assert_called_once()
+        assert response == {"id": "server-1"}

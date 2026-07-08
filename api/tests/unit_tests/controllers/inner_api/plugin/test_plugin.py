@@ -272,6 +272,7 @@ class TestPluginUploadFileRequestApi:
         mock_payload = MagicMock()
         mock_payload.filename = "test.pdf"
         mock_payload.mimetype = "application/pdf"
+        mock_payload.conversation_id = "conversation-id"
 
         # Act
         raw_post = _extract_raw_post(PluginUploadFileRequestApi)
@@ -279,7 +280,11 @@ class TestPluginUploadFileRequestApi:
 
         # Assert
         mock_get_url.assert_called_once_with(
-            filename="test.pdf", mimetype="application/pdf", tenant_id="tenant-id", user_id="user-id"
+            filename="test.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            conversation_id="conversation-id",
         )
         assert result["data"]["url"] == "https://storage.example.com/signed-upload-url"
 

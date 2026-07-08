@@ -1,5 +1,4 @@
 import logging
-import re
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
@@ -10,7 +9,6 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
@@ -19,6 +17,7 @@ from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
     query_params_from_model,
+    query_params_from_request,
     register_enum_models,
     register_response_schema_models,
     register_schema_models,
@@ -75,10 +74,9 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
-_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
-_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
+APP_LIST_QUERY_ARRAY_FIELDS = ("tag_ids", "creator_ids")
 
 
 class AppListBaseQuery(BaseModel):
@@ -137,34 +135,6 @@ class AppListQuery(AppListBaseQuery):
 
 class StarredAppListQuery(AppListBaseQuery):
     pass
-
-
-def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
-    normalized: dict[str, str | list[str]] = {}
-    indexed_tag_ids: list[tuple[int, str]] = []
-    indexed_creator_ids: list[tuple[int, str]] = []
-
-    for key in query_args:
-        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        value = query_args.get(key)
-        if value is not None:
-            normalized[key] = value
-
-    if indexed_tag_ids:
-        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
-    if indexed_creator_ids:
-        normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
-
-    return normalized
 
 
 class CreateAppPayload(BaseModel):
@@ -230,11 +200,8 @@ class AppTracePayload(BaseModel):
 
 
 class AppTraceResponse(ResponseModel):
-    enabled: bool
+    enabled: bool = False
     tracing_provider: str | None = None
-
-
-type JSONValue = Any
 
 
 class Tag(ResponseModel):
@@ -257,7 +224,7 @@ class WorkflowPartial(ResponseModel):
 
 
 class ModelConfigPartial(ResponseModel):
-    model: JSONValue | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
     pre_prompt: str | None = None
     created_by: str | None = None
     created_at: int | None = None
@@ -272,54 +239,52 @@ class ModelConfigPartial(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = Field(
+    suggested_questions: Any | None = Field(
         default=None, validation_alias=AliasChoices("suggested_questions_list", "suggested_questions")
     )
-    suggested_questions_after_answer: JSONValue | None = Field(
+    suggested_questions_after_answer: Any | None = Field(
         default=None,
         validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
     )
-    speech_to_text: JSONValue | None = Field(
+    speech_to_text: Any | None = Field(
         default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
     )
-    text_to_speech: JSONValue | None = Field(
+    text_to_speech: Any | None = Field(
         default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
     )
-    retriever_resource: JSONValue | None = Field(
+    retriever_resource: Any | None = Field(
         default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
     )
-    annotation_reply: JSONValue | None = Field(
+    annotation_reply: Any | None = Field(
         default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
     )
-    more_like_this: JSONValue | None = Field(
+    more_like_this: Any | None = Field(
         default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
     )
-    sensitive_word_avoidance: JSONValue | None = Field(
+    sensitive_word_avoidance: Any | None = Field(
         default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
     )
-    external_data_tools: JSONValue | None = Field(
+    external_data_tools: Any | None = Field(
         default=None, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
     )
-    model: JSONValue | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
-    user_input_form: JSONValue | None = Field(
+    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    user_input_form: Any | None = Field(
         default=None, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
     )
     dataset_query_variable: str | None = None
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
+    agent_mode: Any | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
     prompt_type: str | None = None
-    chat_prompt_config: JSONValue | None = Field(
+    chat_prompt_config: Any | None = Field(
         default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
     )
-    completion_prompt_config: JSONValue | None = Field(
+    completion_prompt_config: Any | None = Field(
         default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
     )
-    dataset_configs: JSONValue | None = Field(
+    dataset_configs: Any | None = Field(
         default=None, validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs")
     )
-    file_upload: JSONValue | None = Field(
-        default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload")
-    )
+    file_upload: Any | None = Field(default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload"))
     created_by: str | None = None
     created_at: int | None = None
     updated_by: str | None = None
@@ -331,7 +296,7 @@ class ModelConfig(ResponseModel):
         return to_timestamp(value)
 
 
-class Site(ResponseModel):
+class AppDetailSiteResponse(ResponseModel):
     access_token: str | None = Field(default=None, validation_alias="code")
     code: str | None = None
     title: str | None = None
@@ -440,7 +405,7 @@ class AppDetail(ResponseModel):
         alias="model_config",
     )
     workflow: WorkflowPartial | None = None
-    tracing: JSONValue | None = None
+    tracing: Any | None = None
     use_icon_as_answer_icon: bool | None = None
     created_by: str | None = None
     created_at: int | None = None
@@ -462,7 +427,7 @@ class AppDetailWithSite(AppDetail):
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
-    site: Site | None = None
+    site: AppDetailSiteResponse | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
@@ -484,6 +449,16 @@ class AppPagination(ResponseModel):
 
 class AppExportResponse(ResponseModel):
     data: str
+
+
+class AppImportResponse(ResponseModel):
+    id: str
+    status: ImportStatus
+    app_id: str | None = None
+    app_mode: str | None = None
+    current_dsl_version: str
+    imported_dsl_version: str = ""
+    error: str = ""
 
 
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
@@ -528,7 +503,9 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
-register_response_schema_models(console_ns, AppTraceResponse, RedirectUrlResponse, SimpleResultResponse)
+register_response_schema_models(
+    console_ns, RedirectUrlResponse, SimpleResultResponse, AppImportResponse, AppTraceResponse
+)
 
 register_schema_models(
     console_ns,
@@ -547,7 +524,7 @@ register_schema_models(
     WorkflowPartial,
     ModelConfigPartial,
     ModelConfig,
-    Site,
+    AppDetailSiteResponse,
     DeletedTool,
     AppDetail,
     AppExportResponse,
@@ -592,7 +569,7 @@ class AppListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
         """Get app list"""
-        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -607,6 +584,7 @@ class AppListApi(Resource):
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user_id,
+            session=db.session(),
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
@@ -618,10 +596,10 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, session)
         if not app_pagination:
-            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
-            return empty.model_dump(mode="json"), 200
+            response = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            return response.model_dump(mode="json"), 200
 
         app_ids = [str(app.id) for app in app_pagination.items]
         permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
@@ -666,11 +644,12 @@ class AppListApi(Resource):
         )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, params, current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user, session=db.session())
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session(),
         )
         app_detail = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
@@ -692,7 +671,7 @@ class StarredAppListApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
-        args = StarredAppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        args = query_params_from_request(StarredAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = StarredAppListParams(
             page=args.page,
             limit=args.limit,
@@ -704,15 +683,13 @@ class StarredAppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
-        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, db.session)
+        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
 
         _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
-
-        pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
-        return pagination_model.model_dump(mode="json"), 200
+        return AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/star")
@@ -730,8 +707,8 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, current_user_id: str, app_model: App):
-        AppService.star_app(session, app=app_model, account_id=current_user_id)
-        return dump_response(SimpleResultResponse, {"result": "success"})
+        AppService.star_app(app=app_model, account_id=current_user_id, session=session)
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.doc("unstar_app")
     @console_ns.doc(description="Remove the current account's star from an application")
@@ -746,8 +723,8 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def delete(self, session: Session, current_user_id: str, app_model: App):
-        AppService.unstar_app(session, app=app_model, account_id=current_user_id)
-        return dump_response(SimpleResultResponse, {"result": "success"})
+        AppService.unstar_app(app=app_model, account_id=current_user_id, session=session)
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>")
@@ -778,6 +755,7 @@ class AppApi(Resource):
             str(current_tenant_id),
             current_user.id,
             app_id=str(app_model.id),
+            session=db.session(),
         )
         permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
 
@@ -814,9 +792,8 @@ class AppApi(Resource):
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
             "max_active_requests": args.max_active_requests or 0,
         }
-        app_model = app_service.update_app(app_model, args_dict)
-        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        app_model = app_service.update_app(app_model, args_dict, session=db.session())
+        return dump_response(AppDetailWithSite, app_model)
 
     @console_ns.doc("delete_app")
     @console_ns.doc(description="Delete application")
@@ -832,7 +809,7 @@ class AppApi(Resource):
     def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
-        app_service.delete_app(app_model)
+        app_service.delete_app(app_model, session=db.session())
 
         return "", 204
 
@@ -844,6 +821,7 @@ class AppCopyApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID to copy"})
     @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
     @console_ns.response(201, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(202, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -860,7 +838,7 @@ class AppCopyApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
-            yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
+            yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
             result = import_service.import_app(
                 account=current_user,
                 import_mode=ImportMode.YAML_CONTENT,
@@ -873,10 +851,10 @@ class AppCopyApi(Resource):
             )
             if result.status == ImportStatus.FAILED:
                 session.rollback()
-                return result.model_dump(mode="json"), 400
+                return dump_response(AppImportResponse, result), 400
             if result.status == ImportStatus.PENDING:
                 session.rollback()
-                return result.model_dump(mode="json"), 202
+                return dump_response(AppImportResponse, result), 202
             session.commit()
 
             # Inherit web app permission from original app
@@ -902,6 +880,7 @@ class AppCopyApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session(),
         )
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
@@ -927,14 +906,15 @@ class AppExportApi(Resource):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
-        payload = AppExportResponse(
+        response = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
+                session=db.session(),
                 include_secret=args.include_secret,
                 workflow_id=args.workflow_id,
             )
         )
-        return payload.model_dump(mode="json")
+        return response.model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
@@ -954,13 +934,13 @@ class AppPublishToCreatorsPlatformApi(Resource):
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"error": "Creators Platform features are not enabled"}, 403
 
-        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_content = AppDslService.export_dsl(app_model=app_model, session=db.session(), include_secret=False)
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
         redirect_url = get_redirect_url(current_user_id, claim_code)
 
-        return {"redirect_url": redirect_url}
+        return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
@@ -980,9 +960,8 @@ class AppNameApi(Resource):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args.name)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        app_model = app_service.update_app_name(app_model, args.name, session=db.session())
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/icon")
@@ -1008,9 +987,9 @@ class AppIconApi(Resource):
             args.icon or "",
             args.icon_background or "",
             args.icon_type,
+            session=db.session(),
         )
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site-enable")
@@ -1031,9 +1010,8 @@ class AppSiteStatus(Resource):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args.enable_site)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        app_model = app_service.update_app_site_status(app_model, args.enable_site, session=db.session())
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/api-enable")
@@ -1054,9 +1032,8 @@ class AppApiStatus(Resource):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args.enable_api)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        app_model = app_service.update_app_api_status(app_model, args.enable_api, session=db.session())
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace")
@@ -1079,7 +1056,7 @@ class AppTraceApi(Resource):
         """Get app trace"""
         app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
-        return app_trace_config
+        return dump_response(AppTraceResponse, app_trace_config)
 
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
@@ -1107,4 +1084,4 @@ class AppTraceApi(Resource):
             tracing_provider=args.tracing_provider,
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

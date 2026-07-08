@@ -3,7 +3,7 @@ import json
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -63,6 +63,18 @@ def dataset_model_property_defaults():
         for name, value in properties.items():
             property_mock = stack.enter_context(patch.object(Dataset, name, new_callable=PropertyMock))
             property_mock.return_value = value
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=enterprise_rbac_service.MyPermissionsResponse(),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetPermissions.batch_get",
+                return_value={},
+            )
+        )
         yield
 
 
@@ -245,7 +257,7 @@ class TestDatasetList:
             ):
                 resp, status = method(api, "tenant-1", current_user)
 
-        get_permissions.assert_called_once_with("tenant-1", current_user.id)
+        get_permissions.assert_called_once_with("tenant-1", current_user.id, session=ANY)
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
@@ -593,7 +605,7 @@ class TestDatasetListApiPost:
                 return_value=dataset,
             ),
         ):
-            _, status = method(api, "tenant-1", user)
+            _, status = method(api, MagicMock(), "tenant-1", user)
 
         assert status == 201
 
@@ -610,7 +622,7 @@ class TestDatasetListApiPost:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, "tenant-1", user)
+                method(api, MagicMock(), "tenant-1", user)
 
     def test_post_duplicate_name(self, app: Flask):
         api = DatasetListApi()
@@ -630,7 +642,7 @@ class TestDatasetListApiPost:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, "tenant-1", user)
+                method(api, MagicMock(), "tenant-1", user)
 
     def test_post_invalid_payload_missing_name(self, app: Flask):
         api = DatasetListApi()
@@ -638,7 +650,7 @@ class TestDatasetListApiPost:
 
         with app.test_request_context("/datasets", json={}), patch.object(type(console_ns), "payload", {}):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", make_account())
+                method(api, MagicMock(), "tenant-1", make_account())
 
     def test_post_invalid_indexing_technique(self, app: Flask):
         api = DatasetListApi()
@@ -651,7 +663,7 @@ class TestDatasetListApiPost:
 
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid indexing technique"):
-                method(api, "tenant-1", make_account())
+                method(api, MagicMock(), "tenant-1", make_account())
 
     def test_post_invalid_provider(self, app: Flask):
         api = DatasetListApi()
@@ -664,7 +676,7 @@ class TestDatasetListApiPost:
 
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid provider"):
-                method(api, "tenant-1", make_account())
+                method(api, MagicMock(), "tenant-1", make_account())
 
 
 class TestDatasetApiGet:
@@ -742,7 +754,7 @@ class TestDatasetApiGet:
 
             data, status = method(api, tenant_id, user, dataset_id)
 
-        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id)
+        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id, session=ANY)
         assert status == 200
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
@@ -931,7 +943,7 @@ class TestDatasetApiPatch:
                 return_value=[],
             ),
         ):
-            result, status = method(api, tenant_id, user, dataset_id)
+            result, status = method(api, MagicMock(), tenant_id, user, dataset_id)
 
         assert status == 200
         assert result["partial_member_list"] == []
@@ -949,7 +961,7 @@ class TestDatasetApiPatch:
             ),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, "tenant-1", make_account(), "missing")
+                method(api, MagicMock(), "tenant-1", make_account(), "missing")
 
     def test_patch_permission_denied(self, app: Flask):
         api = DatasetApi()
@@ -975,7 +987,7 @@ class TestDatasetApiPatch:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, "tenant", make_account(), dataset_id)
+                method(api, MagicMock(), "tenant", make_account(), dataset_id)
 
     def test_patch_partial_members_update(self, app: Flask):
         api = DatasetApi()
@@ -1019,7 +1031,7 @@ class TestDatasetApiPatch:
                 return_value=["u1", "u2"],
             ),
         ):
-            result, _ = method(api, "tenant", make_account(), dataset_id)
+            result, _ = method(api, MagicMock(), "tenant", make_account(), dataset_id)
 
         assert result["partial_member_list"] == ["u1", "u2"]
 
@@ -1064,7 +1076,7 @@ class TestDatasetApiPatch:
                 return_value=[],
             ),
         ):
-            result, _ = method(api, "tenant", make_account(), dataset_id)
+            result, _ = method(api, MagicMock(), "tenant", make_account(), dataset_id)
 
         assert result["partial_member_list"] == []
 

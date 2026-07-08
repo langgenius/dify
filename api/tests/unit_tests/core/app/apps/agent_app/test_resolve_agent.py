@@ -13,7 +13,8 @@ from typing import Any
 import pytest
 
 from core.app.apps.agent_app import app_generator as gen_mod
-from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError
+from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 
 _SOUL_DICT = {
     "model": {
@@ -77,21 +78,72 @@ class TestResolveAgentById:
 
 class TestResolveAgent:
     def test_success_chains_to_resolve_by_id(self, monkeypatch: pytest.MonkeyPatch):
-        bound_agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="snap-1")
+        bound_agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="snap-1", active_config_is_published=True)
         inner_agent = SimpleNamespace(id="agent-1")
         snapshot = _snapshot()
         # scalar order: bound agent (in _resolve_agent), then agent + snapshot (in _resolve_agent_by_id)
         _patch_session(monkeypatch, [bound_agent, inner_agent, snapshot])
         app_model = SimpleNamespace(id="app-1", tenant_id="t1")
 
-        agent, snap, soul = AgentAppGenerator()._resolve_agent(app_model)  # type: ignore[arg-type]
+        agent, config_id, config_version_kind, soul = AgentAppGenerator()._resolve_agent(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=SimpleNamespace(id="user-1"),
+        )  # type: ignore[arg-type]
 
-        assert agent is inner_agent
-        assert snap is snapshot
+        assert agent is bound_agent
+        assert config_id == snapshot.id
+        assert config_version_kind == "snapshot"
         assert soul.model is not None
+
+    def test_unpublished_draft_still_resolves_active_snapshot(self, monkeypatch: pytest.MonkeyPatch):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            active_config_snapshot_id="snap-1",
+            active_config_is_published=False,
+        )
+        inner_agent = SimpleNamespace(id="agent-1")
+        snapshot = _snapshot()
+        _patch_session(monkeypatch, [bound_agent, inner_agent, snapshot])
+        app_model = SimpleNamespace(id="app-1", tenant_id="t1")
+
+        agent, config_id, config_version_kind, soul = AgentAppGenerator()._resolve_agent(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=SimpleNamespace(id="user-1"),
+        )  # type: ignore[arg-type]
+
+        assert agent is bound_agent
+        assert config_id == snapshot.id
+        assert config_version_kind == "snapshot"
+        assert soul.prompt.system_prompt == "You are Iris."
+
+    def test_agent_without_active_snapshot_raises_before_model_resolution(self, monkeypatch: pytest.MonkeyPatch):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            active_config_snapshot_id=None,
+            active_config_is_published=False,
+        )
+        _patch_session(monkeypatch, [bound_agent])
+        app_model = SimpleNamespace(id="app-1", tenant_id="t1")
+
+        with pytest.raises(AgentAppNotPublishedError, match="not been published"):
+            AgentAppGenerator()._resolve_agent(
+                app_model,
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+            )  # type: ignore[arg-type]
 
     def test_unbound_app_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [None])
         app_model = SimpleNamespace(id="app-1", tenant_id="t1")
         with pytest.raises(AgentAppGeneratorError, match="has no bound Agent"):
-            AgentAppGenerator()._resolve_agent(app_model)  # type: ignore[arg-type]
+            AgentAppGenerator()._resolve_agent(
+                app_model,
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+            )  # type: ignore[arg-type]

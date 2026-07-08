@@ -9,9 +9,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
-import { EnvVarBindingsPanel } from '../../components/env-var-bindings'
+import { EnvVarBindingsPanel } from '../../shared/components/env-var-bindings'
 import { isAvailableDeploymentTarget } from '../../shared/domain/runtime-status'
-import { canAttemptDeployAtom, canSubmitDeployAtom, closeDeployDrawerAtom, deployBindingSlotsAtom, deployEnvVarSlotsAtom, deployEnvVarValuesAtom, deployFormAppInstanceIdAtom, deployHasBindingOptionsErrorAtom, deployHasSelectedEnvironmentAtom, deployIsBindingOptionsLoadingAtom, deployReadyFormConfigAtom, deployReadyFormLocalAtoms, deployReleaseSubmissionAtom, deploySelectedBindingsAtom, deployShowValidationErrorsAtom, deployTargetReleaseIdAtom, isDeployReleaseSubmittingAtom, releaseDeploymentViewQueryAtom, selectDeployBindingAtom, setDeployEnvVarAtom, showDeployValidationErrorsAtom } from '../state'
+import { canAttemptDeployAtom, canSubmitDeployAtom, closeDeployDrawerAtom, deployBindingSlotsAtom, deployEnvVarSlotsAtom, deployEnvVarValuesAtom, deployFormAppInstanceIdAtom, deployHasBindingOptionsErrorAtom, deployHasSelectedEnvironmentAtom, deployIsBindingOptionsLoadingAtom, deployReadyFormConfigAtom, deployReadyFormLocalAtoms, deployReleaseSubmissionAtom, deploySelectedBindingsAtom, deployShowValidationErrorsAtom, deployTargetReleaseIdAtom, isDeployReleaseSubmittingAtom, releaseDeploymentViewAtom, releaseDeploymentViewIsErrorAtom, releaseDeploymentViewIsLoadingAtom, selectDeployBindingAtom, setDeployEnvVarAtom, showDeployValidationErrorsAtom } from '../state'
 import {
   currentReleaseIdForEnvironment,
   selectableDeployReleases,
@@ -203,13 +203,15 @@ function DeployFormContent({
   presetReleaseId,
 }: DeployFormProps) {
   const { t } = useTranslation('deployments')
-  const releaseDeploymentViewQuery = useAtomValue(releaseDeploymentViewQueryAtom)
+  const deploymentView = useAtomValue(releaseDeploymentViewAtom)
+  const isLoading = useAtomValue(releaseDeploymentViewIsLoadingAtom)
+  const isError = useAtomValue(releaseDeploymentViewIsErrorAtom)
 
-  if (releaseDeploymentViewQuery.isLoading) {
+  if (isLoading) {
     return <DeployFormSkeleton />
   }
 
-  if (releaseDeploymentViewQuery.isError) {
+  if (isError) {
     return (
       <div className="p-4 system-sm-regular text-text-destructive">
         {t('common.loadFailed')}
@@ -217,7 +219,6 @@ function DeployFormContent({
     )
   }
 
-  const deploymentView = releaseDeploymentViewQuery.data
   if (!deploymentView) {
     return (
       <div className="p-4 system-sm-regular text-text-destructive">

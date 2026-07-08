@@ -6,9 +6,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -59,9 +58,8 @@ class SnippetService:
             session_maker = None
         if session is not None:
             session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        elif session_maker is None:
-            session_maker = session_factory.get_session_maker()
-        assert session_maker is not None
+        if session_maker is None:
+            raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -192,7 +190,7 @@ class SnippetService:
         self,
         *,
         tenant_id: str,
-        session: scoped_session,
+        session: Session,
         page: int = 1,
         limit: int = 20,
         keyword: str | None = None,
@@ -679,6 +677,46 @@ class SnippetService:
             workflows = workflows[:-1]
 
         return workflows, has_more
+
+    def update_workflow(
+        self,
+        *,
+        session: Session,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+        account: Account,
+        data: dict[str, Any],
+    ) -> Workflow | None:
+        """
+        Update a published snippet workflow version's display metadata.
+
+        :param session: Database session
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Workflow ID
+        :param account: Account making the change
+        :param data: Dictionary containing fields to update
+        :return: Updated workflow or None if not found
+        """
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_id,
+            Workflow.tenant_id == snippet.tenant_id,
+            Workflow.app_id == snippet.id,
+            self._snippet_kind_filter(),
+            Workflow.version != Workflow.VERSION_DRAFT,
+        )
+        workflow = session.scalar(stmt)
+        if not workflow:
+            return None
+
+        allowed_fields = {"marked_name", "marked_comment"}
+        for field, value in data.items():
+            if field in allowed_fields:
+                setattr(workflow, field, value)
+
+        workflow.updated_by = account.id
+        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        session.add(workflow)
+        return workflow
 
     # --- Default Block Configs ---
 

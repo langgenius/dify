@@ -48,6 +48,7 @@ class TestChatAppGenerator:
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):
             generator.generate(
+                session=MagicMock(),
                 app_model=SimpleNamespace(),
                 user=SimpleNamespace(),
                 args={"inputs": {}},
@@ -59,6 +60,7 @@ class TestChatAppGenerator:
         generator = ChatAppGenerator()
         with pytest.raises(ValueError):
             generator.generate(
+                session=MagicMock(),
                 app_model=SimpleNamespace(),
                 user=SimpleNamespace(),
                 args={"query": 1, "inputs": {}},
@@ -105,7 +107,7 @@ class TestChatAppGenerator:
             patch("core.app.apps.chat.app_generator.threading.Thread") as mock_thread,
         ):
             mock_thread.return_value.start.return_value = None
-            result = generator.generate(app_model, user, args, InvokeFrom.DEBUGGER, streaming=False)
+            result = generator.generate(MagicMock(), app_model, user, args, InvokeFrom.DEBUGGER, streaming=False)
 
         assert result == {"ok": True}
         assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
@@ -119,6 +121,7 @@ class TestChatAppGenerator:
                 ),
             ):
                 generator.generate(
+                    session=MagicMock(),
                     app_model=SimpleNamespace(tenant_id="t1", id="a1", mode=AppMode.CHAT.value),
                     user=SimpleNamespace(id="u1", session_id="s1"),
                     args={"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}},
@@ -139,6 +142,7 @@ class TestChatAppGenerator:
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
+                session=MagicMock(),
                 application_generate_entity=entity,
                 queue_manager=queue_manager,
                 conversation_id="c1",
@@ -155,6 +159,7 @@ class TestChatAppGenerator:
         ):
             generator._generate_worker(
                 flask_app=Mock(app_context=Mock(return_value=Mock(__enter__=Mock(), __exit__=Mock()))),
+                session=MagicMock(),
                 application_generate_entity=entity,
                 queue_manager=queue_manager,
                 conversation_id="c1",
@@ -183,7 +188,9 @@ class TestChatAppRunner:
 
         with patched_create_session(return_value=None):
             with pytest.raises(ValueError):
-                runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+                runner.run(
+                    MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+                )
 
     def test_run_moderation_error_direct_output(self):
         runner = ChatAppRunner()
@@ -214,7 +221,9 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
-            runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(
+                MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+            )
 
         mock_direct.assert_called_once()
 
@@ -251,7 +260,7 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
             queue_manager = DummyQueueManager()
-            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(MagicMock(), app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
 
         assert any(isinstance(item[0], QueueAnnotationReplyEvent) for item in queue_manager.published)
         mock_direct.assert_called_once()
@@ -286,7 +295,9 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
         ):
-            runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(
+                MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+            )
 
     def test_run_closes_scoped_session_before_stream_consumption(self):
         runner = ChatAppRunner()
@@ -339,7 +350,7 @@ class TestChatAppRunner:
             patch("core.app.apps.chat.app_runner.db.session.close", side_effect=lambda: events.append("close")),
         ):
             model_instance.invoke_llm.side_effect = invoke_llm
-            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(MagicMock(), app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
 
         assert events == ["close", "invoke", "first-chunk"]
         mock_handle.assert_called_once_with(

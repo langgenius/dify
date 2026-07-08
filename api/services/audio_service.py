@@ -5,7 +5,8 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import Response, stream_with_context
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
@@ -13,6 +14,7 @@ from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
+from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -29,6 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 class AudioService:
+    @staticmethod
+    def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
+        stmt = select(Message).where(Message.id == message_ref.message_id, Message.app_id == message_ref.app_id)
+        if message_ref.end_user_id is not None:
+            stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
+        if message_ref.account_id is not None:
+            stmt = stmt.where(Message.from_account_id == message_ref.account_id)
+        return session.scalar(stmt.limit(1))
+
     @classmethod
     def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None):
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
@@ -78,11 +89,11 @@ class AudioService:
         cls,
         app_model: App,
         *,
-        session: Session | scoped_session,
+        session: Session,
         text: str | None = None,
         voice: str | None = None,
         end_user: str | None = None,
-        message_id: str | None = None,
+        message_ref: MessageRef | None = None,
         is_draft: bool = False,
     ):
         def invoke_tts(text_content: str, app_model: App, voice: str | None = None, is_draft: bool = False):
@@ -129,12 +140,12 @@ class AudioService:
             except Exception as e:
                 raise e
 
-        if message_id:
+        if message_ref:
             try:
-                uuid.UUID(message_id)
+                uuid.UUID(message_ref.message_id)
             except ValueError:
                 return None
-            message = session.get(Message, message_id)
+            message = cls._get_message_by_ref(session, message_ref)
             if message is None:
                 return None
             if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:

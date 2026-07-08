@@ -20,8 +20,10 @@ import {
   atomWithQuery,
   queryClientAtom,
 } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { encodeDslContent, isWorkflowDsl } from '../../shared/domain/dsl'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
@@ -245,7 +247,7 @@ export const createReleaseSourceAppSearchTextAtom = atom('')
 export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const searchText = get(createReleaseSourceAppSearchTextAtom)
 
-  return consoleQuery.apps.list.infiniteOptions({
+  return consoleQuery.apps.get.infiniteOptions({
     input: pageParam => ({
       query: {
         page: Number(pageParam),
@@ -257,12 +259,28 @@ export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
     placeholderData: keepPreviousData,
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
+    }),
     enabled: Boolean(
       get(createReleaseDialogOpenAtom)
       && effectiveCreateReleaseSourceMode(get) === 'sourceApp'
       && isDeploymentDslImportEnabled,
     ),
   })
+})
+
+const createReleaseSourceAppsDataAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.data)
+export const createReleaseSourceAppsErrorAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.error)
+export const createReleaseSourceAppsFetchNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.fetchNextPage)
+export const createReleaseSourceAppsHasNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.hasNextPage)
+export const createReleaseSourceAppsIsFetchingAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isFetching)
+export const createReleaseSourceAppsIsFetchingNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isFetchingNextPage)
+export const createReleaseSourceAppsIsLoadingAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isLoading)
+
+export const createReleaseSourceAppsAtom = atom((get) => {
+  return get(createReleaseSourceAppsDataAtom)?.pages.flatMap(page => page.data) ?? []
 })
 
 export const createReleaseDslContentAtom = atom((get) => {
@@ -361,7 +379,7 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const canCheck = canCheckReleaseContent(get)
 
   return consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-    input: appInstanceId
+    input: canCheck && appInstanceId
       ? releaseSourceMode === 'dsl'
         ? {
             body: {
@@ -424,14 +442,20 @@ const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   set(createReleaseDslFileReadVersionAtom, get(createReleaseDslFileReadVersionAtom) + 1)
 })
 
+const resetCreateReleaseSourceAppSearchAtom = atom(null, (_get, set) => {
+  set(createReleaseSourceAppSearchTextAtom, '')
+})
+
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(resetCreateReleaseDslFileAtom)
+  set(resetCreateReleaseSourceAppSearchAtom)
   set(createReleaseDialogOpenAtom, true)
 })
 
 export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(createReleaseDialogOpenAtom, false)
   set(resetCreateReleaseDslFileAtom)
+  set(resetCreateReleaseSourceAppSearchAtom)
 })
 
 export const requestCloseCreateReleaseDialogAtom = atom(null, (get, set) => {

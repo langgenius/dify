@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import time
 from typing import ClassVar
@@ -8,7 +7,8 @@ from typing import ClassVar
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.client import ShellctlClient
+
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -227,24 +227,32 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(shell_layer, DifyShellLayer)
         assert execution_context_layer.daemon_url == "http://plugin-daemon"
         assert execution_context_layer.daemon_api_key == "daemon-secret"
+        assert shell_layer.agent_stub_token_factory is not None
+        token = shell_layer.agent_stub_token_factory(_execution_context(), session_id="abc12ff")
+        decoded = settings.create_agent_stub_token_codec().decode_token(token)
+        assert decoded.execution_context == _execution_context()
+        assert decoded.session_id == "abc12ff"
         knowledge_provider = next(provider for provider in layer_providers if provider.type_id == "dify.knowledge_base")
         knowledge_layer = knowledge_provider.create_layer(
             DifyKnowledgeBaseLayerConfig.model_validate(
                 {
-                    "dataset_ids": ["dataset-1"],
-                    "retrieval": {"mode": "multiple", "top_k": 2},
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 2},
+                        }
+                    ],
                 }
             )
         )
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        assert shell_layer.shellctl_entrypoint == "http://shellctl"
+        assert isinstance(shell_layer.shell_provider, ShellctlProvider)
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
-        shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
-        assert isinstance(shellctl_client, ShellctlClient)
-        assert shellctl_client.token == "shell-secret"
-        asyncio.run(shellctl_client.close())
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False

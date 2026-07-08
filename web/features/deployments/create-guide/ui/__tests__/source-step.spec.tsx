@@ -5,20 +5,19 @@ import { SourceStepContent } from '../source-step'
 const mocks = vi.hoisted(() => {
   const sourceAppsQuery = {
     data: { pages: [{ data: [] }] },
+    error: null,
+    fetchNextPage: vi.fn(),
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
     isLoading: false,
     isPlaceholderData: false,
-    fetchNextPage: vi.fn(),
   }
 
   return {
     sourceAppsQuery,
     useInfiniteScroll: vi.fn(() => ({
-      rootEl: null,
       rootRef: vi.fn(),
-      sentinelEl: null,
       sentinelRef: vi.fn(),
     })),
   }
@@ -28,29 +27,59 @@ vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
   useInfiniteScroll: mocks.useInfiniteScroll,
 }))
 
-vi.mock('@/features/deployments/create-guide/state', async () => {
+vi.mock('@/features/deployments/create-guide/state/primitives', async () => {
   const { atom } = await import('jotai')
   const methodAtom = atom<'bindApp' | 'importDsl'>('bindApp')
+
+  return {
+    dslFileAtom: atom<File | undefined>(undefined),
+    effectiveMethodAtom: atom(get => get(methodAtom)),
+    methodAtom,
+    sourceSearchTextAtom: atom(''),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/source', async () => {
+  const { atom } = await import('jotai')
+
+  return {
+    dslReadErrorAtom: atom(false),
+    dslUnsupportedModeAtom: atom(false),
+    effectiveSelectedAppAtom: atom(undefined),
+    isReadingDslAtom: atom(false),
+    sourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap(page => page.data)),
+    sourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
+    sourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
+    sourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
+    sourceAppsIsFetchingAtom: atom(() => mocks.sourceAppsQuery.isFetching),
+    sourceAppsIsFetchingNextPageAtom: atom(() => mocks.sourceAppsQuery.isFetchingNextPage),
+    sourceAppsIsLoadingAtom: atom(() => mocks.sourceAppsQuery.isLoading),
+    sourceAppsIsPlaceholderDataAtom: atom(() => mocks.sourceAppsQuery.isPlaceholderData),
+    sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/workflow', async () => {
+  const { atom } = await import('jotai')
+  const { methodAtom } = await import('@/features/deployments/create-guide/state/primitives')
   const emptyActionAtom = atom(null, () => undefined)
 
   return {
     continueFromSourceAtom: emptyActionAtom,
-    dslFileAtom: atom<File | undefined>(undefined),
-    dslReadErrorAtom: atom(false),
-    dslUnsupportedModeAtom: atom(false),
-    effectiveMethodAtom: atom(get => get(methodAtom)),
-    effectiveSelectedAppAtom: atom(undefined),
-    isReadingDslAtom: atom(false),
-    methodAtom,
     selectDslFileAtom: emptyActionAtom,
     selectMethodAtom: atom(null, (_get, set, value: 'bindApp' | 'importDsl') => {
       set(methodAtom, value)
     }),
     selectSourceAppAtom: emptyActionAtom,
     setSourceSearchTextAtom: emptyActionAtom,
-    sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
     sourceCanGoNextAtom: atom(false),
-    sourceSearchTextAtom: atom(''),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/queries', async () => {
+  const { atom } = await import('jotai')
+
+  return {
     unsupportedDslNodesAtom: atom([]),
   }
 })
@@ -60,12 +89,13 @@ describe('SourceStepContent', () => {
     vi.clearAllMocks()
     Object.assign(mocks.sourceAppsQuery, {
       data: { pages: [{ data: [] }] },
+      error: null,
+      fetchNextPage: vi.fn(),
       hasNextPage: false,
       isFetching: false,
       isFetchingNextPage: false,
       isLoading: false,
       isPlaceholderData: false,
-      fetchNextPage: vi.fn(),
     })
   })
 
@@ -94,7 +124,13 @@ describe('SourceStepContent', () => {
     render(<SourceStepContent />)
 
     expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
-      mocks.sourceAppsQuery,
+      expect.objectContaining({
+        fetchNextPage: expect.any(Function),
+        hasNextPage: expect.any(Boolean),
+        isFetching: false,
+        isFetchingNextPage: false,
+        isLoading: false,
+      }),
       expect.objectContaining({
         rootMargin: '0px 0px 160px 0px',
         threshold: 0.1,

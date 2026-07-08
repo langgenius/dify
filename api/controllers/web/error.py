@@ -7,6 +7,12 @@ class AppUnavailableError(BaseHTTPException):
     code = 400
 
 
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the web app."
+    code = 400
+
+
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Please check if your Completion app mode matches the right API route."

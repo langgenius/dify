@@ -24,6 +24,7 @@ import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -65,6 +66,7 @@ export function AgentSelectorContent({
         },
       },
     }),
+    staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
   const actionOptions: AgentSelectorActionOption[] = onStartFromScratch
@@ -278,7 +280,7 @@ function AgentSelectorActionItem({
   return (
     <ComboboxItem
       value={option}
-      render={isStartFromScratch ? undefined : <Link href="/roster" />}
+      render={isStartFromScratch ? undefined : <Link href="/roster" target="_blank" rel="noopener noreferrer" />}
       className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
     >
       <ComboboxItemText className="flex items-center gap-2 px-0 system-sm-regular text-text-secondary">
@@ -308,7 +310,7 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common'])
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
@@ -331,6 +333,12 @@ export function AgentBlockItem({
             <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
               {block.metaData.title}
             </span>
+            <Badge
+              size="xs"
+              variant="dimm"
+              text={t('menus.status', { ns: 'common' })}
+              className="ml-2 shrink-0"
+            />
             <span aria-hidden className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary" />
           </button>
         )}
@@ -341,7 +349,7 @@ export function AgentBlockItem({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <PopoverTitle className="sr-only">
-          {t('roster.nodeSelector.dialogLabel')}
+          {t('roster.nodeSelector.dialogLabel', { ns: 'agentV2' })}
         </PopoverTitle>
         <AgentSelectorContent
           open={open}

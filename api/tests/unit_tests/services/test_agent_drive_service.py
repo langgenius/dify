@@ -7,6 +7,8 @@ exercised against the project's in-memory SQLite engine with seeded ToolFiles.
 from __future__ import annotations
 
 import datetime
+import io
+import zipfile
 from collections.abc import Generator
 from unittest.mock import patch
 
@@ -103,6 +105,14 @@ def _seed_tool_file(*, user_id: str = USER, name: str = "f.txt") -> str:
         return tool_file.id
 
 
+def _zip_bytes(members: dict[str, bytes]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
+    return buffer.getvalue()
+
+
 def _commit(key: str, tool_file_id: str, *, owned: bool = True):
     return AgentDriveService().commit(
         tenant_id=TENANT,
@@ -115,6 +125,7 @@ def _commit(key: str, tool_file_id: str, *, owned: bool = True):
                 value_owned_by_drive=owned,
             )
         ],
+        session=session_factory.create_session(),
     )
 
 
@@ -122,15 +133,25 @@ def test_commit_then_manifest_lists_the_entry():
     tf = _seed_tool_file()
     _commit("data/report.txt", tf)
 
-    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
     assert [i["key"] for i in items] == ["data/report.txt"]
     assert items[0]["file_kind"] == "tool_file"
     assert items[0]["file_id"] == tf
     assert items[0]["mime_type"] == "text/plain"
 
     # prefix filter
-    assert AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, prefix="data/") != []
-    assert AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, prefix="other/") == []
+    assert (
+        AgentDriveService().manifest(
+            tenant_id=TENANT, agent_id=AGENT, prefix="data/", session=session_factory.create_session()
+        )
+        != []
+    )
+    assert (
+        AgentDriveService().manifest(
+            tenant_id=TENANT, agent_id=AGENT, prefix="other/", session=session_factory.create_session()
+        )
+        == []
+    )
 
 
 def test_commit_skill_row_persists_metadata_and_lists_catalog() -> None:
@@ -147,6 +168,7 @@ def test_commit_skill_row_persists_metadata_and_lists_catalog() -> None:
                 skill_metadata=DriveSkillMetadata(name="Tender Analyzer", description="Parses RFPs."),
             )
         ],
+        session=session_factory.create_session(),
     )
 
     with session_factory.create_session() as session:
@@ -155,7 +177,7 @@ def test_commit_skill_row_persists_metadata_and_lists_catalog() -> None:
         assert row.is_skill is True
         assert row.skill_metadata == '{"description":"Parses RFPs.","name":"Tender Analyzer"}'
 
-    skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT)
+    skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
     assert len(skills) == 1
     assert skills[0]["path"] == "tender-analyzer"
     assert skills[0]["skill_md_key"] == "tender-analyzer/SKILL.md"
@@ -181,6 +203,7 @@ def test_commit_rejects_skill_row_without_skill_metadata() -> None:
                     is_skill=True,
                 )
             ],
+            session=session_factory.create_session(),
         )
 
     assert exc_info.value.code == "invalid_skill_metadata"
@@ -210,7 +233,7 @@ def test_list_skills_raises_controlled_error_for_invalid_stored_metadata(raw_met
         session.commit()
 
     with pytest.raises(AgentDriveError) as exc_info:
-        AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT)
+        AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
 
     assert exc_info.value.code == "invalid_skill_metadata"
 
@@ -229,6 +252,7 @@ def test_commit_rejects_non_skill_row_with_skill_metadata() -> None:
                     skill_metadata=DriveSkillMetadata(name="Bad", description=""),
                 )
             ],
+            session=session_factory.create_session(),
         )
 
 
@@ -247,6 +271,7 @@ def test_commit_rejects_non_canonical_skill_key() -> None:
                     skill_metadata=DriveSkillMetadata(name="Tender Analyzer", description=""),
                 )
             ],
+            session=session_factory.create_session(),
         )
 
 
@@ -272,6 +297,7 @@ def test_commit_rejects_agent_from_another_tenant():
                     value_owned_by_drive=True,
                 )
             ],
+            session=session_factory.create_session(),
         )
     assert exc_info.value.status_code == 404
     assert exc_info.value.code == "agent_not_found"
@@ -301,24 +327,27 @@ def test_batch_failure_does_not_delete_old_storage_before_commit():
     _commit("doc.txt", tf1, owned=True)
 
     with patch("services.agent_drive_service.storage") as storage_mock:
-        with pytest.raises(AgentDriveError):
-            AgentDriveService().commit(
-                tenant_id=TENANT,
-                user_id=USER,
-                agent_id=AGENT,
-                items=[
-                    DriveCommitItem(
-                        key="doc.txt",
-                        file_ref={"kind": "tool_file", "id": tf2},
-                        value_owned_by_drive=True,
-                    ),
-                    DriveCommitItem(
-                        key="bad.txt",
-                        file_ref={"kind": "tool_file", "id": "44444444-4444-4444-4444-444444444444"},
-                        value_owned_by_drive=True,
-                    ),
-                ],
-            )
+        with session_factory.create_session() as session:
+            with pytest.raises(AgentDriveError):
+                AgentDriveService().commit(
+                    tenant_id=TENANT,
+                    user_id=USER,
+                    agent_id=AGENT,
+                    items=[
+                        DriveCommitItem(
+                            key="doc.txt",
+                            file_ref={"kind": "tool_file", "id": tf2},
+                            value_owned_by_drive=True,
+                        ),
+                        DriveCommitItem(
+                            key="bad.txt",
+                            file_ref={"kind": "tool_file", "id": "44444444-4444-4444-4444-444444444444"},
+                            value_owned_by_drive=True,
+                        ),
+                    ],
+                    session=session,
+                )
+            session.rollback()
         storage_mock.delete.assert_not_called()
 
     with session_factory.create_session() as session:
@@ -379,6 +408,7 @@ def test_recommit_same_skill_value_updates_metadata_without_cleaning_backing_fil
                 skill_metadata=DriveSkillMetadata(name="Tender Analyzer", description="v1"),
             )
         ],
+        session=session_factory.create_session(),
     )
 
     with patch("services.agent_drive_service.storage") as storage_mock:
@@ -395,6 +425,7 @@ def test_recommit_same_skill_value_updates_metadata_without_cleaning_backing_fil
                     skill_metadata=DriveSkillMetadata(name="Tender Analyzer v2", description="v2"),
                 )
             ],
+            session=session_factory.create_session(),
         )
         storage_mock.delete.assert_not_called()
 
@@ -439,6 +470,7 @@ def _commit_upload(key: str, upload_file_id: str, *, owned: bool = True):
                 value_owned_by_drive=owned,
             )
         ],
+        session=session_factory.create_session(),
     )
 
 
@@ -446,7 +478,7 @@ def test_commit_upload_file_source_and_manifest():
     uf = _seed_upload_file()
     _commit_upload("docs/u.txt", uf)
 
-    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
     assert items[0]["file_kind"] == "upload_file"
     assert items[0]["file_id"] == uf
     assert items[0]["mime_type"] == "text/plain"
@@ -482,7 +514,9 @@ def test_manifest_includes_internal_download_url():
         patch("core.app.workflow.file_runtime.DifyWorkflowFileRuntime") as runtime_cls,
     ):
         runtime_cls.return_value.resolve_file_url.return_value = "http://internal/files/x?sign=1"
-        items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
+        items = AgentDriveService().manifest(
+            tenant_id=TENANT, agent_id=AGENT, include_download_url=True, session=session_factory.create_session()
+        )
 
     assert items[0]["download_url"] == "http://internal/files/x?sign=1"
     # drive-owned resolution: internal URL (for_external=False)
@@ -497,7 +531,9 @@ def test_manifest_download_url_none_when_unresolvable():
         "services.agent_drive_service.file_factory.build_from_mapping",
         side_effect=ValueError("not found"),
     ):
-        items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
+        items = AgentDriveService().manifest(
+            tenant_id=TENANT, agent_id=AGENT, include_download_url=True, session=session_factory.create_session()
+        )
     assert items[0]["download_url"] is None
 
 
@@ -514,6 +550,7 @@ def test_delete_by_key_cleans_drive_owned_value():
             user_id=USER,
             agent_id=AGENT,
             items=[DriveCommitItem(key="files/doomed.txt", file_ref=None)],
+            session=session_factory.create_session(),
         )
         storage_mock.delete.assert_called_once()
 
@@ -550,6 +587,7 @@ def test_commit_null_batch_removes_multiple_skill_keys():
                 DriveCommitItem(key="tender-analyzer/SKILL.md", file_ref=None),
                 DriveCommitItem(key="tender-analyzer/.DIFY-SKILL-FULL.zip", file_ref=None),
             ],
+            session=session_factory.create_session(),
         )
 
     assert sorted(item["key"] for item in removed) == [
@@ -571,6 +609,7 @@ def test_commit_null_is_idempotent_for_missing_keys():
         user_id=USER,
         agent_id=AGENT,
         items=[DriveCommitItem(key="files/never-there.txt", file_ref=None)],
+        session=session_factory.create_session(),
     )
     assert removed == [{"key": "files/never-there.txt", "removed": True, "noop": True}]
 
@@ -585,6 +624,7 @@ def test_commit_null_keeps_shared_value_records():
             user_id=USER,
             agent_id=AGENT,
             items=[DriveCommitItem(key="files/shared.txt", file_ref=None)],
+            session=session_factory.create_session(),
         )
         storage_mock.delete.assert_not_called()
 
@@ -629,7 +669,9 @@ def test_preview_returns_text_with_truncation_flags():
 
     with patch("services.agent_drive_service.storage") as storage_mock:
         storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\nUse responsibly.\n"])
-        result = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/SKILL.md")
+        result = AgentDriveService().preview(
+            tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/SKILL.md", session=session_factory.create_session()
+        )
 
     assert result == {
         "key": "pdf-toolkit/SKILL.md",
@@ -646,13 +688,17 @@ def test_preview_marks_binary_and_oversized_content():
 
     with patch("services.agent_drive_service.storage") as storage_mock:
         storage_mock.load_stream.return_value = iter([b"\x00\x01\x02"])
-        binary = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+        binary = AgentDriveService().preview(
+            tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin", session=session_factory.create_session()
+        )
     assert binary["binary"] is True
     assert binary["text"] is None
 
     with patch("services.agent_drive_service.storage") as storage_mock:
         storage_mock.load_stream.return_value = iter([b"x" * (AgentDriveService.PREVIEW_MAX_BYTES + 10)])
-        oversized = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+        oversized = AgentDriveService().preview(
+            tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin", session=session_factory.create_session()
+        )
     assert oversized["truncated"] is True
     assert oversized["binary"] is False
     assert len(oversized["text"]) == AgentDriveService.PREVIEW_MAX_BYTES
@@ -660,7 +706,9 @@ def test_preview_marks_binary_and_oversized_content():
 
 def test_preview_unknown_key_is_404():
     with pytest.raises(AgentDriveError) as exc_info:
-        AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="ghost/SKILL.md")
+        AgentDriveService().preview(
+            tenant_id=TENANT, agent_id=AGENT, key="ghost/SKILL.md", session=session_factory.create_session()
+        )
     assert exc_info.value.code == "drive_key_not_found"
     assert exc_info.value.status_code == 404
 
@@ -668,7 +716,10 @@ def test_preview_unknown_key_is_404():
 def test_preview_rejects_cross_tenant_agent():
     with pytest.raises(AgentDriveError) as exc_info:
         AgentDriveService().preview(
-            tenant_id="99999999-9999-9999-9999-999999999999", agent_id=AGENT, key="pdf-toolkit/SKILL.md"
+            tenant_id="99999999-9999-9999-9999-999999999999",
+            agent_id=AGENT,
+            key="pdf-toolkit/SKILL.md",
+            session=session_factory.create_session(),
         )
     assert exc_info.value.code == "agent_not_found"
 
@@ -678,7 +729,12 @@ def test_download_url_signs_external_audience():
     _commit("pdf-toolkit/.DIFY-SKILL-FULL.zip", tf)
 
     with patch.object(AgentDriveService, "_resolve_download_url", return_value="https://signed.example/x") as resolver:
-        url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/.DIFY-SKILL-FULL.zip")
+        url = AgentDriveService().download_url(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            session=session_factory.create_session(),
+        )
 
     assert url == "https://signed.example/x"
     # console downloads are for browsers: external signing, never the internal URL
@@ -692,7 +748,9 @@ def test_upload_file_download_url_uses_attachment_filename():
 
     with patch("core.app.workflow.file_runtime.DifyWorkflowFileRuntime") as runtime_cls:
         runtime_cls.return_value.resolve_upload_file_url.return_value = "https://files.example/report.pdf"
-        url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="files/report.pdf")
+        url = AgentDriveService().download_url(
+            tenant_id=TENANT, agent_id=AGENT, key="files/report.pdf", session=session_factory.create_session()
+        )
 
     assert url == "https://files.example/report.pdf"
     assert runtime_cls.return_value.resolve_upload_file_url.call_args.kwargs["for_external"] is True
@@ -702,7 +760,7 @@ def test_upload_file_download_url_uses_attachment_filename():
 def test_manifest_items_carry_created_at_for_inspector():
     tf = _seed_tool_file()
     _commit("files/x.txt", tf)
-    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
     assert items[0]["created_at"] is None or isinstance(items[0]["created_at"], int)
 
 
@@ -734,13 +792,14 @@ def _commit_skill(*, manifest_files: list[str] | None = None) -> None:
                 value_owned_by_drive=True,
             ),
         ],
+        session=session_factory.create_session(),
     )
 
 
 def test_list_skills_uses_canonical_skill_rows():
     _commit_skill(manifest_files=["SKILL.md", "scripts/run.py"])
 
-    skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT)
+    skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT, session=session_factory.create_session())
 
     created_at = skills[0].pop("created_at")
     assert skills == [
@@ -763,13 +822,16 @@ def test_inspect_skill_returns_manifest_files_and_file_tree():
 
     with patch("services.agent_drive_service.storage") as storage_mock:
         storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\n"])
-        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+        result = AgentDriveService().inspect_skill(
+            tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit", session=session_factory.create_session()
+        )
 
     assert result["source"] == "skill_md"
     assert result["warnings"] == []
     assert [file["path"] for file in result["files"]] == ["SKILL.md", "references/guide.md", "scripts/run.py"]
     assert result["files"][0]["available_in_drive"] is True
-    assert result["files"][1]["available_in_drive"] is False
+    assert result["files"][1]["available_in_drive"] is True
+    assert result["files"][1]["drive_key"] == "pdf-toolkit/references/guide.md"
     assert result["file_tree"][0]["name"] == "references"
     assert result["file_tree"][1]["name"] == "scripts"
     assert result["file_tree"][2]["name"] == "SKILL.md"
@@ -781,10 +843,56 @@ def test_inspect_skill_falls_back_to_drive_keys_when_manifest_missing():
 
     with patch("services.agent_drive_service.storage") as storage_mock:
         storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\n"])
-        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+        result = AgentDriveService().inspect_skill(
+            tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit", session=session_factory.create_session()
+        )
 
     assert result["warnings"] == ["manifest_files_unavailable"]
     assert [file["path"] for file in result["files"]] == ["SKILL.md"]
+
+
+def test_preview_skill_archive_member_from_manifest_without_drive_row():
+    _commit_skill(manifest_files=["SKILL.md", "references/guide.md"])
+    archive = _zip_bytes({"SKILL.md": b"# PDF Toolkit\n", "references/guide.md": b"Guide content\n"})
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([archive])
+        result = AgentDriveService().preview(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            key="pdf-toolkit/references/guide.md",
+            session=session_factory.create_session(),
+        )
+
+    assert result == {
+        "key": "pdf-toolkit/references/guide.md",
+        "size": len(b"Guide content\n"),
+        "truncated": False,
+        "binary": False,
+        "text": "Guide content\n",
+    }
+
+
+def test_download_url_signs_skill_archive_member_from_manifest_without_drive_row():
+    _commit_skill(manifest_files=["SKILL.md", "references/guide.md"])
+
+    with patch.object(
+        AgentDriveService,
+        "sign_archive_member_url",
+        return_value="https://signed.example/member",
+    ) as sign:
+        url = AgentDriveService().download_url(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            key="pdf-toolkit/references/guide.md",
+            session=session_factory.create_session(),
+        )
+
+    assert url == "https://signed.example/member"
+    kwargs = sign.call_args.kwargs
+    assert kwargs["key"] == "pdf-toolkit/references/guide.md"
+    assert kwargs["member_path"] == "references/guide.md"
+    assert kwargs["for_external"] is True
 
 
 def test_skill_metadata_rejects_non_canonical_rows():
@@ -803,5 +911,6 @@ def test_skill_metadata_rejects_non_canonical_rows():
                     skill_metadata=DriveSkillMetadata(name="Bad"),
                 )
             ],
+            session=session_factory.create_session(),
         )
     assert exc_info.value.code == "invalid_skill_key"

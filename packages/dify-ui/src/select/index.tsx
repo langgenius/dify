@@ -16,7 +16,17 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Select = BaseSelect.Root
+export type SelectRootProps<
+  Value,
+  Multiple extends boolean | undefined = false,
+> = BaseSelect.Root.Props<Value, Multiple>
+
+export function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectRootProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseSelect.Root {...props} />
+}
+
 export const SelectValue = BaseSelect.Value
 export const SelectGroup = BaseSelect.Group
 
@@ -24,7 +34,7 @@ const selectTriggerVariants = cva(
   [
     'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',

@@ -1,6 +1,6 @@
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
-import type { ModelSelectorValue } from './types'
+import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useCallback, useMemo, useState } from 'react'
@@ -33,8 +33,11 @@ type ModelSelectorProps = {
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
+  onOpenMarketplace?: () => void
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 function ModelSelector({
   defaultModel,
@@ -49,8 +52,11 @@ function ModelSelector({
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
   onConfigureEmptyState,
+  onOpenMarketplace,
   providerSettingsSource,
   showModelMeta,
+  modelPredicate,
+  modelSuggestionPredicate,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -153,6 +159,7 @@ function ModelSelector({
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
           showModelMeta={showModelMeta}
+          isModelCompatible={currentProvider && currentModel ? modelPredicate?.(currentProvider, currentModel) : undefined}
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -167,7 +174,10 @@ function ModelSelector({
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
           providerSettingsSource={providerSettingsSource}
+          modelPredicate={modelPredicate}
+          modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
+          onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

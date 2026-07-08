@@ -4,7 +4,7 @@ import type { AgentAppCopyPayload, AgentAppPartial } from '@dify/contracts/api/c
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -167,34 +167,29 @@ export function DuplicateAgentDialog({
                   <FieldRoot
                     name="role"
                     className="relative min-w-0 flex-1"
-                    validate={(value) => {
-                      if (typeof value === 'string' && value.length > 0 && !value.trim())
-                        return t('roster.createForm.roleRequired')
-
-                      return null
-                    }}
                   >
                     <FieldLabel>
                       {t('roster.createForm.roleLabel')}
+                      <span className="ml-1 system-xs-regular text-text-tertiary">
+                        {tCommon('label.optional')}
+                      </span>
                     </FieldLabel>
                     <FieldControl
                       autoComplete="off"
                       maxLength={255}
                       onValueChange={setRole}
                       placeholder={t('roster.createForm.rolePlaceholder')}
-                      required
                       value={role}
                     />
-                    <div className="absolute top-full left-0 mt-1">
-                      <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
-                      <FieldError match="customError" />
-                    </div>
                   </FieldRoot>
                 </div>
               </div>
               <FieldRoot name="description">
                 <FieldLabel>
                   {t('roster.createForm.descriptionLabel')}
+                  <span className="ml-1 system-xs-regular text-text-tertiary">
+                    {tCommon('label.optional')}
+                  </span>
                 </FieldLabel>
                 <Textarea
                   autoComplete="off"
