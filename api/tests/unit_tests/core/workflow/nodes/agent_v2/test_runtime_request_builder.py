@@ -730,7 +730,11 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "top_k": 6,
                                 "score_threshold": 0.4,
                                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                                "weights": {
+                                    "weight_type": "weighted_score",
+                                    "vector_setting": {"vector_weight": 0.7},
+                                    "keyword_setting": {"keyword_weight": 0.3},
+                                },
                             },
                             "metadata_filtering": {
                                 "mode": "manual",
@@ -797,7 +801,10 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                 "reranking_mode": "reranking_model",
                 "reranking_enable": True,
                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                "weights": {
+                    "vector_setting": {"vector_weight": 0.7},
+                    "keyword_setting": {"keyword_weight": 0.3},
+                },
                 "model": None,
             },
             "metadata_filtering": {
