@@ -59,12 +59,37 @@ function getToolProcesses(thought: ThoughtItem, responding?: boolean): ToolProce
     }))
 }
 
-function formatLatencyDuration(latency: NonNullable<ChatItem['more']>['latency']) {
+function formatDuration(seconds: number, t: ReturnType<typeof useTranslation<'agentV2'>>['t']) {
+  const safeSeconds = Math.max(0, seconds)
+  if (safeSeconds < 60)
+    return t('agentDetail.configure.answer.duration.second', { count: Number(safeSeconds.toFixed(2)) })
+
+  const minutes = Math.floor(safeSeconds / 60)
+  const remainingSeconds = Math.floor(safeSeconds % 60)
+
+  return [
+    t('agentDetail.configure.answer.duration.minute', { count: minutes }),
+    t('agentDetail.configure.answer.duration.second', { count: remainingSeconds }),
+  ].join(' ')
+}
+
+function formatLatencyDuration(latency: NonNullable<ChatItem['more']>['latency'], t: ReturnType<typeof useTranslation<'agentV2'>>['t']) {
   const numericLatency = Number(latency)
   if (!Number.isNaN(numericLatency))
-    return `${Number(numericLatency.toFixed(2))}s`
+    return formatDuration(numericLatency, t)
 
-  return `${latency}s`
+  return String(latency)
+}
+
+function getCompletedTitle(latency: NonNullable<ChatItem['more']>['latency'] | undefined, t: ReturnType<typeof useTranslation<'agentV2'>>['t']) {
+  const numericLatency = Number(latency)
+  if (latency != null && !Number.isNaN(numericLatency) && numericLatency > 0) {
+    return t('agentDetail.configure.answer.workedFor', {
+      duration: formatLatencyDuration(latency, t),
+    })
+  }
+
+  return t('agentDetail.configure.answer.workFinished')
 }
 
 function useWorkingDuration(enabled?: boolean) {
@@ -87,7 +112,7 @@ function useWorkingDuration(enabled?: boolean) {
     ? Math.max(0, Math.floor((now - startedAtRef.current) / 1000))
     : 0
 
-  return `${elapsedSeconds}s`
+  return elapsedSeconds
 }
 
 function ProcessShell({
@@ -262,8 +287,8 @@ function AgentThoughtsProcessGroup({
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const workingDuration = useWorkingDuration(responding)
-  const workedDuration = item.more?.latency == null ? '0s' : formatLatencyDuration(item.more.latency)
+  const workingDuration = formatDuration(useWorkingDuration(responding), t)
+  const completedTitle = getCompletedTitle(item.more?.latency, t)
 
   if (responding) {
     return (
@@ -290,7 +315,7 @@ function AgentThoughtsProcessGroup({
         onClick={() => setOpen(value => !value)}
       >
         <span className="system-md-regular text-text-tertiary">
-          {t('agentDetail.configure.answer.workedFor', { duration: workedDuration })}
+          {completedTitle}
         </span>
         {open
           ? <span className="i-ri-arrow-down-s-line size-4 text-text-tertiary" aria-hidden />
