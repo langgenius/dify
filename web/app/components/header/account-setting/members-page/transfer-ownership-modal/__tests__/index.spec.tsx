@@ -11,8 +11,19 @@ import TransferOwnershipModal from '../index'
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {} as Partial<AppContextValue>,
+}))
 
 vi.mock('@/context/app-context')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -40,10 +51,12 @@ describe('TransferOwnershipModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
-    } as unknown as AppContextValue)
+    } as unknown as AppContextValue
+    mockAppContextState.current = appContextValue
+    vi.mocked(useAppContext).mockReturnValue(appContextValue)
 
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: [] },
