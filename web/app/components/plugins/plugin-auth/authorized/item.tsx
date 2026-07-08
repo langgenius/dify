@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import {
   RiInformationLine,
 } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import {
   memo,
   useMemo,
@@ -15,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/app-context-state'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
@@ -58,14 +59,14 @@ const Item = ({
   const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
   // only_me credential, returned only because the current node still references it.
   // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
   // that don't yet emit the flag.
   const isSelected = showSelectedIcon && selectedCredentialId === credential.id
   const isConfiguredByOther
-    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+    = !!credential.created_by && !!currentUserId && credential.created_by !== currentUserId
   const isBorrowed
     = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
   const showSwitchAwayHint = isBorrowed
