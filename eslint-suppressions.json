@@ -1183,7 +1183,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 17
+      "count": 12
     }
   },
   "web/app/components/base/chat/chat/log/index.tsx": {

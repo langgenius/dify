@@ -74,6 +74,7 @@ class AgentAppRuntimeBuildContext:
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
+    suspend_on_exit: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +164,7 @@ class AgentAppRuntimeRequestBuilder:
                 # no frontend-internal {{#…#}} marker ever reaches the model.
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
+                agent_config_version_kind=context.agent_config_version_kind,
                 user_prompt=context.user_query,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
@@ -173,6 +175,7 @@ class AgentAppRuntimeRequestBuilder:
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 deferred_tool_results=context.deferred_tool_results,
+                suspend_on_exit=context.suspend_on_exit,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )

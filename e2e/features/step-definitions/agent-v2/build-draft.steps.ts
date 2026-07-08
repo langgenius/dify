@@ -175,7 +175,20 @@ const expectPageResponseOK = async (response: Response, action: string) => {
 }
 
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
-  await this.getPage().getByRole('button', { exact: true, name: 'Discard' }).click()
+  const page = this.getPage()
+  const agentId = getCurrentAgentId(this)
+
+  await page.getByRole('button', { exact: true, name: 'Discard' }).click()
+  const confirmDialog = page.getByRole('alertdialog', { name: 'Clear session and discard changes?' })
+  await expect(confirmDialog).toBeVisible()
+
+  const discardResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'DELETE'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft`)
+  ))
+
+  await confirmDialog.getByRole('button', { name: 'Confirm' }).click()
+  await expectPageResponseOK(await discardResponsePromise, 'Discard Agent v2 Build draft')
 })
 
 When(

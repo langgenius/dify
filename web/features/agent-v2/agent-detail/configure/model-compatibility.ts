@@ -67,8 +67,8 @@ const agentSuggestedModelPatterns: RegExp[] = [
   /^(?:claude[ .-])?opus[ .-]4\.7$/i,
   /^(?:claude[ .-])?sonnet[ .-]4\.6$/i,
 
-  // gemini
-  /^gemini 3\.1 pro preview$/i,
+  // The Gemini model plugin quality is not strong enough yet, so do not recommend it for now.
+  // /^gemini 3\.1 pro preview$/i,
 
   // x
   /^grok[ .-]4\.3$/i,

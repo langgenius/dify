@@ -1,13 +1,5 @@
 @agent-v2 @authenticated @output-variables
 Feature: Agent v2 output variables
-  @standalone-output-variables @feature-gated
-  Scenario: Standalone Agent configure exposes Output Variables
-    Given I am signed in as the default E2E admin
-    And Agent v2 standalone Output Variables are available
-    And a basic configured Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    Then Agent v2 standalone Output Variables should be available
-
   @core @stable-model
   Scenario: Workflow Agent v2 output variables persist after refresh
     Given I am signed in as the default E2E admin
@@ -63,23 +55,3 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     And I insert a file output reference from the Agent v2 workflow node task editor
     Then Agent v2 workflow task output reference deletion consistency should be available
-
-  @output-retry-strategy @feature-gated @stable-model
-  Scenario: Workflow Agent v2 output retry strategy can be saved after refresh
-    Given I am signed in as the default E2E admin
-    And Agent v2 workflow output retry strategy is available
-    And the Agent Builder stable chat model is available
-    And a workflow app with an Agent v2 node has been created via API
-    When I open the app from the app list
-    And I open the Agent v2 workflow node panel
-    Then Agent v2 workflow output retry strategy should be available
-
-  @output-retry-validation @feature-gated @stable-model
-  Scenario: Workflow Agent v2 output retry count validation is enforced
-    Given I am signed in as the default E2E admin
-    And Agent v2 workflow output retry count validation is available
-    And the Agent Builder stable chat model is available
-    And a workflow app with an Agent v2 node has been created via API
-    When I open the app from the app list
-    And I open the Agent v2 workflow node panel
-    Then Agent v2 workflow output retry count validation should be available

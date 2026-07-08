@@ -14626,6 +14626,7 @@ Legacy Chat App model config used only for follow-up question generation.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
