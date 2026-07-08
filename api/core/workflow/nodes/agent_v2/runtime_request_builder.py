@@ -803,17 +803,20 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
         # The dify-agent runtime payload only consumes the nested vector/keyword
         # settings; ``weight_type`` is an API-side authoring detail and must not
         # leak into the inner request shape.
-        weights = cast(
-            dict[str, Any],
-            {
-                key: value
-                for key, value in {
-                    "vector_setting": retrieval.weights.vector_setting,
-                    "keyword_setting": retrieval.weights.keyword_setting,
-                }.items()
-                if value is not None
-            },
-        ) or None
+        weights = (
+            cast(
+                dict[str, Any],
+                {
+                    key: value
+                    for key, value in {
+                        "vector_setting": retrieval.weights.vector_setting,
+                        "keyword_setting": retrieval.weights.keyword_setting,
+                    }.items()
+                    if value is not None
+                },
+            )
+            or None
+        )
 
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
