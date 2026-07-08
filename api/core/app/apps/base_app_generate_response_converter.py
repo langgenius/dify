@@ -5,6 +5,7 @@ from typing import Any, Union, cast
 
 from pydantic import JsonValue
 
+from clients.agent_backend.errors import AgentBackendError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -127,6 +128,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
             },
             ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
             InvokeError: {"code": "completion_request_error", "status": 400},
+            AgentBackendError: {"code": "completion_request_error", "status": 400},
         }
 
         # Determine the response based on the type of exception
