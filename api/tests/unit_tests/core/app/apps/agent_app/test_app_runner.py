@@ -664,7 +664,8 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert end_events[0].llm_result.usage.completion_tokens == 5
     assert end_events[0].llm_result.usage.total_tokens == 8
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert rows == []
+    assert len(rows) == 1
+    assert rows[0].answer == ""
     assert store.saved
 
 
@@ -685,7 +686,8 @@ def test_successful_turn_routes_single_agent_message_delta(monkeypatch):
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert rows == []
+    assert len(rows) == 1
+    assert rows[0].answer == ""
 
 
 def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null():
@@ -766,7 +768,8 @@ def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert rows == []
+    assert len(rows) == 1
+    assert rows[0].answer == ""
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
@@ -791,7 +794,8 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
-    assert len(rows) == 2
+    assert rows[2].answer == ""
+    assert len(rows) == 3
 
 
 def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):

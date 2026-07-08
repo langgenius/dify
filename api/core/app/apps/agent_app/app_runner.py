@@ -313,12 +313,6 @@ class _AgentProcessRecorder:
             return
 
         row.answer = answer[:-overlap]
-        if _is_empty_answer_only_thought(row):
-            db.session.delete(row)
-            self._answer_thought_id = None
-            db.session.commit()
-            return
-
         db.session.commit()
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=self._answer_thought_id), PublishFrom.APPLICATION_MANAGER
@@ -556,10 +550,6 @@ def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
         if text.endswith(prefix_source[:length]):
             return length
     return 0
-
-
-def _is_empty_answer_only_thought(row: MessageAgentThought) -> bool:
-    return not any((row.thought, row.answer, row.tool, row.tool_input, row.observation))
 
 
 class AgentAppRunner:
