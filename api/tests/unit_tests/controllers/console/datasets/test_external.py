@@ -1,7 +1,6 @@
 import inspect
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock, patch
 from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
@@ -10,7 +9,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.console import console_ns
-from controllers.console.datasets import external as external_module
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.external import (
     BedrockRetrievalApi,

@@ -1091,7 +1091,9 @@ class DocumentDownloadApi(DocumentResource):
     def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID) -> dict[str, Any]:
         # Reuse the shared permission/tenant checks implemented in DocumentResource.
         document = self.get_document(str(dataset_id), str(document_id), current_user, current_tenant_id)
-        return UrlResponse(url=DocumentService.get_document_download_url(document, db.session())).model_dump(mode="json")
+        return UrlResponse(url=DocumentService.get_document_download_url(document, db.session())).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
