@@ -101,11 +101,13 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
 type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
+  isNewAgent?: boolean
   renderAgentContent?: ChatProps['renderAgentContent']
 }
 const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  isNewAgent = false,
   renderAgentContent,
 }) => {
   const media = useBreakpoints()
@@ -193,6 +195,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setCurrentConversationInputs,
       allInputsHidden,
       initUserVariables,
+      isNewAgent,
       renderAgentContent,
     }}
     >
@@ -204,12 +207,14 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
+  isNewAgent,
   renderAgentContent,
 }) => {
   return (
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}
       className={className}
+      isNewAgent={isNewAgent}
       renderAgentContent={renderAgentContent}
     />
   )

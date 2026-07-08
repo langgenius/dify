@@ -58,6 +58,7 @@ type SendCallback = {
 }
 
 type UseChatOptions = {
+  isNewAgent?: boolean
   timezone?: string
 }
 
@@ -288,7 +289,15 @@ export const useChat = (
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          responseItem.content = responseItem.content + message
+          const shouldAppendToAnswer = options.isNewAgent || !responseItem.agent_thoughts?.length
+          if (shouldAppendToAnswer) {
+            responseItem.content = responseItem.content + message
+          }
+          else {
+            const lastThought = responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1]
+            if (lastThought)
+              lastThought.thought = lastThought.thought + message
+          }
           if (messageId)
             responseItem.id = messageId
         })
@@ -758,6 +767,7 @@ export const useChat = (
       })
     }
 
+    let isAgentMode = false
     let hasSetResponseId = false
     let hasSettled = false
     const settleSend = (hasError?: boolean) => {
@@ -777,7 +787,15 @@ export const useChat = (
         workflowEventsAbortControllerRef.current = abortController
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
+        const shouldAppendToAnswer = options.isNewAgent || !isAgentMode
+        if (shouldAppendToAnswer) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
 
         if (messageId && !hasSetResponseId) {
           questionItem.id = `question-${messageId}`
@@ -928,6 +946,7 @@ export const useChat = (
         })
       },
       onThought(thought) {
+        isAgentMode = true
         const response = responseItem as any
         if (thought.message_id && !hasSetResponseId)
           response.id = thought.message_id

@@ -57,6 +57,7 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    isNewAgent,
     renderAgentContent,
   } = useChatWithHistoryContext()
 
@@ -99,7 +100,7 @@ const ChatWrapper = () => {
     clearChatList,
     setClearChatList,
     undefined,
-    { timezone },
+    { isNewAgent, timezone },
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {

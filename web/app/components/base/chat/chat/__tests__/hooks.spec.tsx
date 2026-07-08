@@ -1977,7 +1977,7 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.status).toBe('succeeded')
     })
 
-    it('should append message chunks to answer content after agent thoughts', () => {
+    it('should append message chunks to agent thought by default after agent thoughts', () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
@@ -1995,6 +1995,38 @@ describe('useChat', () => {
         callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
 
         // onData comes from message/agent_message events and should render as answer content.
+        callbacks.onData(' appended', false, { messageId: 'm-thought' })
+      })
+
+      const lastResponse = result.current.chatList[result.current.chatList.length - 1]
+      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.agent_thoughts).toHaveLength(1)
+      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought appended')
+    })
+
+    it('should append message chunks to answer content for new agent after agent thoughts', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isNewAgent: true },
+      ))
+      act(() => {
+        result.current.handleSend('url', { query: 'agent onThought' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
         callbacks.onData(' appended', false, { messageId: 'm-thought' })
       })
 

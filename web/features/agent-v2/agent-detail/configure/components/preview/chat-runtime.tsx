@@ -640,6 +640,7 @@ function AgentPreviewChatSession({
     clearChatList,
     onClearChatListChange,
     conversationId ?? undefined,
+    { isNewAgent: true },
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {

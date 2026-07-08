@@ -350,6 +350,7 @@ describe('AgentPreviewChat', () => {
       false,
       expect.any(Function),
       'debug-conversation-1',
+      { isNewAgent: true },
     )
   })
 

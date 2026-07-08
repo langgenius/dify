@@ -8,7 +8,7 @@ import AuthenticatedLayout from '../../components/authenticated-layout'
 function Agent() {
   return (
     <AuthenticatedLayout>
-      <ChatWithHistoryWrap renderAgentContent={AgentRosterResponseContent} />
+      <ChatWithHistoryWrap isNewAgent renderAgentContent={AgentRosterResponseContent} />
     </AuthenticatedLayout>
   )
 }
