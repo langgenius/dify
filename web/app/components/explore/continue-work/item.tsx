@@ -4,11 +4,12 @@ import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -24,8 +25,8 @@ const ContinueWorkItem = ({
 }: ContinueWorkItemProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = (app.updated_at || app.created_at) * 1000

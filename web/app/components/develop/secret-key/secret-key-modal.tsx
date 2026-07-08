@@ -12,6 +12,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useAtomValue } from 'jotai'
 import {
   useState,
 } from 'react'
@@ -19,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom } from '@/context/app-context-state'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
   createApikey as createAppApikey,
@@ -49,7 +50,7 @@ const SecretKeyModal = ({
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -81,7 +82,7 @@ const SecretKeyModal = ({
   }
 
   const onCreate = async () => {
-    if (!currentWorkspace || !canManage)
+    if (!currentWorkspace.id || !canManage)
       return
 
     const params = appId
@@ -129,7 +130,14 @@ const SecretKeyModal = ({
           </DialogTitle>
 
           <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-            <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
+            <button
+              type="button"
+              aria-label={t('operation.close', { ns: 'common' })}
+              className="flex size-6 cursor-pointer items-center justify-center text-text-tertiary"
+              onClick={handleClose}
+            >
+              <span className="i-heroicons-x-mark-20-solid size-6" aria-hidden="true" />
+            </button>
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
           {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -168,7 +176,7 @@ const SecretKeyModal = ({
             )
           }
           <div className="flex">
-            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !canManage}>
+            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace.id || !canManage}>
               <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
             </Button>
