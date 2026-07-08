@@ -691,7 +691,8 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
-        _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
+        if dify_config.RBAC_ENABLED:
+            _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
