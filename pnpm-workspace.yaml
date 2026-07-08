@@ -45,7 +45,7 @@ overrides:
   solid-js: 1.9.13
   string-width: ~8.2.1
   tar@<=7.5.15: ^7.5.16
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.3
   vitest: 4.1.9
   ws@>=8.0.0 <8.20.1: ^8.21.0
   yaml@>=2.0.0 <2.8.3: 2.9.0
@@ -248,9 +248,9 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.1
   vinext: 0.1.8
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.3
   vite-plugin-inspect: 12.0.0-beta.3
-  vite-plus: 0.2.1
+  vite-plus: 0.2.3
   vitest: 4.1.9
   vitest-browser-react: 2.2.0
   vitest-canvas-mock: 1.1.4
