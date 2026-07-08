@@ -98,8 +98,10 @@ def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] |
         url = _string_value(file_mapping, "url") or _string_value(file_mapping, "remote_url")
         if url is None:
             return None
-        locator = {"transfer_method": transfer_method, "url": url}
+        return {"transfer_method": "remote_url", "url": url}
     elif transfer_method in _REFERENCE_FILE_TRANSFER_METHODS:
+        if transfer_method is None:
+            return None
         reference = _canonical_file_reference(
             _string_value(file_mapping, "reference")
             or _string_value(file_mapping, "upload_file_id")
@@ -108,11 +110,9 @@ def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] |
         )
         if reference is None:
             return None
-        locator = {"transfer_method": transfer_method, "reference": reference}
+        return {"transfer_method": transfer_method, "reference": reference}
     else:
         return None
-
-    return locator
 
 
 def _canonical_file_reference(reference: str | None) -> str | None:
@@ -161,7 +161,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
@@ -262,7 +262,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         out of scope here — the message is persisted and can be re-fetched.
         """
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
         )
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,

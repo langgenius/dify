@@ -114,12 +114,12 @@ def _markdown_backtick_fence(text: str) -> str:
 _BUILD_DRAFT_AGENT_SOUL_PROMPT = """You are running in build mode.
 
 Objective:
-- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.
+- Improve this agent's working environment, configuration, tools, files, notes,
+  and context so it can handle the intended task well.
 
-Rules:
-- Do not complete the intended user task now.
-- Do not answer as if this were a normal user-facing run.
-- Make setup and configuration changes only when they help later runs complete the intended task.
+Guidance:
+- Treat the intended task as context for setup work, validation, and configuration decisions.
+- Perform concrete investigative or setup steps when they help improve or verify the agent configuration.
 - Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration."""
 
 
@@ -129,7 +129,10 @@ def _wrap_build_draft_agent_soul_prompt(prompt: str | None) -> str:
     if not prompt_body:
         return _BUILD_DRAFT_AGENT_SOUL_PROMPT + "\n\nIntended task for later normal runs:\nNo task prompt was provided."
     fence = _markdown_backtick_fence(prompt_body)
-    return _BUILD_DRAFT_AGENT_SOUL_PROMPT + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
+    return (
+        _BUILD_DRAFT_AGENT_SOUL_PROMPT
+        + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
+    )
 
 
 def _agent_soul_prompt_for_layer(

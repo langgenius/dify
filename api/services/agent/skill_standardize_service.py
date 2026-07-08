@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from core.tools.tool_file_manager import ToolFileManager
 from services.agent.skill_package_service import SkillPackageService
 from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
@@ -59,6 +61,7 @@ class SkillStandardizeService:
         tenant_id: str,
         user_id: str,
         agent_id: str,
+        session: Session,
     ) -> dict[str, Any]:
         """Create two ToolFiles, commit two drive-owned keys, and return skill metadata.
 
@@ -113,6 +116,7 @@ class SkillStandardizeService:
                     value_owned_by_drive=True,
                 ),
             ],
+            session=session,
         )
         self.last_committed_items = committed_items
 

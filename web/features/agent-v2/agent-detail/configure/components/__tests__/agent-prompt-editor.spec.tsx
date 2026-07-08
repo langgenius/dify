@@ -151,11 +151,19 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => 'https://docs.example.com',
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (value: { currentWorkspace: { id: string } }) => string) => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     currentWorkspace: { id: 'workspace-123' },
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),

@@ -30,6 +30,9 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoist
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: undefined as AppContextValue | undefined,
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -39,6 +42,16 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
   useSelector: vi.fn(),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -240,6 +253,7 @@ const renderMainNav = (
   const queryClient = createTestQueryClient()
   const getMockAppContext = useAppContext as Mock
   const currentAppContext = getMockAppContext() as AppContextValue
+  mockAppContextState.current = currentAppContext
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   const resolvedSystemFeatures = {
@@ -287,6 +301,7 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     ;(useAppContext as Mock).mockReturnValue(appContextValue)
+    mockAppContextState.current = appContextValue
     ;(useAppContextSelector as Mock).mockImplementation((selector: (state: AppContextValue) => unknown) => selector((useAppContext as Mock)() as AppContextValue))
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,

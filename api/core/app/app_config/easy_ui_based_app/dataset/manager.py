@@ -257,7 +257,7 @@ class DatasetConfigManager:
     @classmethod
     def is_dataset_exists(cls, tenant_id: str, dataset_id: str) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id, db.session)
+        dataset = DatasetService.get_dataset(dataset_id, db.session())
 
         if not dataset:
             return False

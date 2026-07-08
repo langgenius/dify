@@ -696,7 +696,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
                 "Upload each sandbox-local file through the Agent Stub CLI first. For structured `final_output`, use "
-                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` value.",
+                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
+                "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
                 "file, include the returned `download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",
@@ -797,6 +798,26 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
 
 
 def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+    weights = None
+    if retrieval.weights is not None:
+        # The dify-agent runtime payload only consumes the nested vector/keyword
+        # settings; ``weight_type`` is an API-side authoring detail and must not
+        # leak into the inner request shape.
+        weights = (
+            cast(
+                dict[str, Any],
+                {
+                    key: value
+                    for key, value in {
+                        "vector_setting": retrieval.weights.vector_setting,
+                        "keyword_setting": retrieval.weights.keyword_setting,
+                    }.items()
+                    if value is not None
+                },
+            )
+            or None
+        )
+
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
         top_k=retrieval.top_k,
@@ -809,9 +830,7 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
         )
         if retrieval.reranking_model is not None
         else None,
-        weights=cast(dict[str, Any], retrieval.weights.model_dump(mode="json", exclude_none=True))
-        if retrieval.weights is not None
-        else None,
+        weights=weights,
         model=_knowledge_model_config(retrieval.model),
     )
 

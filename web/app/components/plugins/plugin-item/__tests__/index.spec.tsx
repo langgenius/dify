@@ -55,13 +55,36 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
 }))
 
 const mockLangGeniusVersionInfo = vi.fn(() => ({
+  current_env: '',
   current_version: '1.0.0',
+  latest_version: '',
+  release_date: '',
+  release_notes: '',
+  version: '',
+  can_auto_update: false,
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+
+const createLangGeniusVersionInfo = (currentVersion: string) => ({
+  current_env: '',
+  current_version: currentVersion,
+  latest_version: '',
+  release_date: '',
+  release_notes: '',
+  version: '',
+  can_auto_update: false,
+})
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('../action', () => ({
   default: ({ onDelete, pluginName }: { onDelete: () => void, pluginName: string }) => (
@@ -162,7 +185,7 @@ describe('PluginItem', () => {
     mockTheme.mockReturnValue('light')
     mockCurrentPluginID.mockReturnValue(undefined)
     mockEnableMarketplace.mockReturnValue(true)
-    mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
+    mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
     mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
   })
 
@@ -359,7 +382,7 @@ describe('PluginItem', () => {
   describe('Version Compatibility', () => {
     it('should show warning icon when Dify version is not compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '0.3.0' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('0.3.0'))
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -376,7 +399,7 @@ describe('PluginItem', () => {
 
     it('should not show warning when Dify version is compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -393,7 +416,7 @@ describe('PluginItem', () => {
 
     it('should handle missing current_version gracefully', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(''))
       const plugin = createPluginDetail()
 
       // Act

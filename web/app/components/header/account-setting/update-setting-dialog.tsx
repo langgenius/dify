@@ -7,12 +7,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useMutationPluginAutoUpgradeSettings, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import UpdateSettingDialogForm from './update-setting-dialog-form'
 
@@ -26,7 +27,7 @@ const UpdateSettingDialog = ({
   disabled = false,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone || 'UTC'
   const {
     data: autoUpgradeSetting,

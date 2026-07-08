@@ -928,6 +928,7 @@ class AgentRosterService:
                 max_active_requests=source_app.max_active_requests,
             ),
             account,
+            session=self._session,
         )
 
         target_app.enable_site = source_app.enable_site

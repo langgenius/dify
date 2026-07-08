@@ -734,7 +734,8 @@ class TestDatasetApiPatch:
         assert response["name"] == "Updated Dataset"
         assert response["partial_member_list"] == ["user-1"]
         mock_dataset_svc.update_dataset.assert_called_once()
-        session, _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
+        _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
+        session = mock_dataset_svc.update_dataset.call_args.kwargs["session"]
         assert isinstance(session, (Session, scoped_session))
         assert update_data["name"] == "Updated Dataset"
         assert update_data["permission"] == "partial_members"
@@ -1013,7 +1014,7 @@ class TestDatasetTagsApiGet:
 
         assert status == 200
         assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
-        mock_tag_svc.get_tags.assert_called_once_with(SessionMatcher(), "knowledge", "tenant-1")
+        mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1", session=SessionMatcher())
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_list_tags_from_db(

@@ -65,7 +65,7 @@ class CreateRagPipelineDatasetApi(Resource):
             yaml_content=payload.yaml_content,
         )
         try:
-            rag_pipeline_dsl_service = RagPipelineDslService(db.session)
+            rag_pipeline_dsl_service = RagPipelineDslService(db.session())
             import_info = rag_pipeline_dsl_service.create_rag_pipeline_dataset(
                 tenant_id=current_tenant_id,
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
@@ -75,7 +75,7 @@ class CreateRagPipelineDatasetApi(Resource):
                     current_tenant_id,
                     import_info["dataset_id"],
                     rag_pipeline_dataset_create_entity.partial_member_list,
-                    db.session,
+                    db.session(),
                 )
             db.session.commit()
         except services.errors.dataset.DatasetNameDuplicateError:
@@ -110,6 +110,6 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
                 permission=DatasetPermissionEnum.ONLY_ME,
                 partial_member_list=None,
             ),
-            session=db.session,
+            session=db.session(),
         )
         return dump_response(DatasetDetailResponse, dataset), 201

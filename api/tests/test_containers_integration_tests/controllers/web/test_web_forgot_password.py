@@ -57,7 +57,7 @@ class TestForgotPasswordSendEmailApi:
             response = ForgotPasswordSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_get_account.assert_called_once_with(ANY, "User@Example.com")
+        mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
         mock_send_mail.assert_called_once_with(account=mock_account, email="user@example.com", language="zh-Hans")
         mock_extract_ip.assert_called_once()
         mock_rate_limit.assert_called_once_with("127.0.0.1")
@@ -177,7 +177,7 @@ class TestForgotPasswordResetApi:
             response = ForgotPasswordResetApi().post()
 
         assert response == {"result": "success"}
-        mock_get_account.assert_called_once_with(ANY, "User@Example.com")
+        mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
         mock_update_account.assert_called_once()
         mock_revoke_token.assert_called_once_with("token-123")
 

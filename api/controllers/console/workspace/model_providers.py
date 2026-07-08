@@ -353,7 +353,7 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(db.session, current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,

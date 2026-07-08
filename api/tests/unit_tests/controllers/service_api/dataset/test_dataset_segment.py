@@ -1193,7 +1193,7 @@ class TestDatasetSegmentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset, mock_db.session)
+        mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset, mock_db.session())
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")

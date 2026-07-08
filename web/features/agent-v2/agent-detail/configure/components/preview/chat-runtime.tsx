@@ -25,6 +25,7 @@ import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -35,7 +36,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -594,7 +595,7 @@ function AgentPreviewChatSession({
 }) {
   const { t } = useTranslation('agentV2')
   const queryClient = useQueryClient()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
   const config = useMemo(() => buildChatConfig({
@@ -639,6 +640,7 @@ function AgentPreviewChatSession({
     clearChatList,
     onClearChatListChange,
     conversationId ?? undefined,
+    { isNewAgent: true },
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -812,6 +814,7 @@ function AgentPreviewChatSession({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      renderAgentContent={AgentRosterResponseContent}
       noSpacing
     />
   )

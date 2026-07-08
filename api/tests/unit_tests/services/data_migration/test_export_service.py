@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from services.data_migration.dependency_discovery_service import DiscoveredDependency
@@ -126,13 +128,13 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
     report_items = []
 
     service._export_mcp_tools(
-        object(),
         tenant_id="tenant-1",
         provider_ids=["mcp-1"],
         include_secrets=False,
         exported_mcp_tools=mcp_tools,
         dependencies=dependencies,
         report_items=report_items,
+        session=MagicMock(),
     )
 
     assert mcp_tools == []
@@ -151,12 +153,14 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
 def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id():
     statements = []
 
-    class StubSession:
-        def scalar(self, statement):
-            statements.append(str(statement))
+    def capture_scalar(statement):
+        statements.append(str(statement))
+
+    session = MagicMock()
+    session.scalar.side_effect = capture_scalar
 
     with pytest.raises(MigrationDataError, match="MCP provider not found"):
-        MigrationExportService()._get_mcp_provider(StubSession(), "tenant-1", "my-test-mcp")
+        MigrationExportService()._get_mcp_provider("tenant-1", "my-test-mcp", session=session)
 
     assert len(statements) == 1
     assert "tool_mcp_providers.id =" not in statements[0]

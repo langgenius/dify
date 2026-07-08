@@ -236,7 +236,9 @@ def test_upload_file_from_environment_rejects_missing_download_url(
     )
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._files.request_agent_stub_file_download_sync",
-        lambda **_kwargs: type("Response", (), {"filename": "report.pdf", "mime_type": "application/pdf", "size": 12})(),
+        lambda **_kwargs: type(
+            "Response", (), {"filename": "report.pdf", "mime_type": "application/pdf", "size": 12}
+        )(),
     )
 
     with pytest.raises(AgentStubTransferError, match="missing download_url"):
