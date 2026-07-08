@@ -25,6 +25,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -1148,8 +1149,8 @@ def test_switch_active_provider_credential_success_and_failures() -> None:
 def test_get_custom_model_record_supports_plugin_id_alias() -> None:
     configuration = _build_provider_configuration(provider_name="langgenius/openai/openai")
     session = Mock()
-    custom_model_record = SimpleNamespace(id="model-1")
-    session.execute.return_value.scalar_one_or_none.return_value = custom_model_record
+    custom_model_record = SimpleNamespace(id="model-1", provider_name="openai")
+    session.execute.return_value = _exec_result(scalars_all=[custom_model_record])
 
     result = configuration._get_custom_model_record(ModelType.LLM, "gpt-4o", session)
     assert result is custom_model_record
@@ -1275,7 +1276,9 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     session.flush.side_effect = lambda: None
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     credential_record = SimpleNamespace(id="cred-1", encrypted_config="{}", credential_name="Old", updated_at=None)
 
     with _patched_session(session):
@@ -1324,18 +1327,21 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     lb_config = SimpleNamespace(id="lb-1")
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=credential_record),
         _exec_result(scalars_all=[lb_config]),
         _exec_result(scalar=2),
     ]
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
+        with patch.object(ProviderConfiguration, "_get_custom_model_records", return_value=[provider_model_record]):
             with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
+    assert mock_cache.call_args_list[-1].kwargs["cache_type"] == ProviderCredentialsCacheType.MODEL
 
     session = Mock()
     mismatched_credential_record = SimpleNamespace(
@@ -1343,7 +1349,9 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
         model_name="stored-model",
         model_type=ModelType.TEXT_EMBEDDING,
     )
-    provider_model_record = SimpleNamespace(id="model-2", credential_id="cred-2", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-2", credential_id="cred-2", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=None),
         _exec_result(scalar_one_or_none=mismatched_credential_record),
@@ -1353,8 +1361,8 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     with _patched_session(session):
         with patch.object(
             ProviderConfiguration,
-            "_get_custom_model_record",
-            return_value=provider_model_record,
+            "_get_custom_model_records",
+            return_value=[provider_model_record],
         ) as mock_get_model:
             configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
     mock_get_model.assert_called_once_with(ModelType.TEXT_EMBEDDING, "stored-model", session=session)
@@ -1409,8 +1417,11 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-            with pytest.raises(ValueError, match="custom model record not found"):
+            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
                 configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    session.add.assert_called_once()
+    session.commit.assert_called_once()
+    mock_cache.return_value.delete.assert_called_once()
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
@@ -1427,14 +1438,81 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
 def test_delete_custom_model_and_model_setting_methods() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
-    provider_model_record = SimpleNamespace(id="model-1")
+    legacy_provider_model_record = SimpleNamespace(id="model-legacy", provider_name="openai")
+    canonical_provider_model_record = SimpleNamespace(id="model-canonical", provider_name="langgenius/openai/openai")
+    session.execute.return_value = _exec_result(
+        scalars_all=[legacy_provider_model_record, canonical_provider_model_record]
+    )
+    assert (
+        _build_provider_configuration(provider_name="langgenius/openai/openai")._get_custom_model_record(
+            ModelType.LLM, "gpt-4o", session
+        )
+        is canonical_provider_model_record
+    )
+
+    session = Mock()
+    provider_model_record = SimpleNamespace(id="model-1", provider_name="openai")
+    credential_record = SimpleNamespace(id="cred-1")
+    lb_config = SimpleNamespace(id="lb-1")
+    session.execute.side_effect = [
+        _exec_result(scalars_all=[credential_record]),
+        _exec_result(scalars_all=[lb_config]),
+    ]
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
-    session.delete.assert_called_once_with(provider_model_record)
+        with patch.object(ProviderConfiguration, "_get_custom_model_records", return_value=[provider_model_record]):
+            with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+                with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
+                    configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+    session.delete.assert_any_call(provider_model_record)
+    session.delete.assert_any_call(credential_record)
+    session.delete.assert_any_call(lb_config)
     session.commit.assert_called_once()
-    mock_cache.return_value.delete.assert_called_once()
+    assert mock_cache.return_value.delete.call_count == 2
+    mock_invalidate.assert_called_once_with(
+        provider_models=True,
+        provider_model_credentials=True,
+        provider_load_balancing_configs=True,
+    )
+
+    session = Mock()
+    residual_credential_record = SimpleNamespace(id="cred-2")
+    session.execute.side_effect = [
+        _exec_result(scalars_all=[residual_credential_record]),
+        _exec_result(scalars_all=[]),
+    ]
+    with _patched_session(session):
+        with patch.object(ProviderConfiguration, "_get_custom_model_records", return_value=[]):
+            with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+                configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+    session.delete.assert_called_once_with(residual_credential_record)
+    session.commit.assert_called_once()
+    mock_invalidate.assert_called_once_with(
+        provider_models=False,
+        provider_model_credentials=True,
+        provider_load_balancing_configs=False,
+    )
+
+    session = Mock()
+    provider_model_records = [
+        SimpleNamespace(id="model-legacy", provider_name="openai"),
+        SimpleNamespace(id="model-canonical", provider_name="langgenius/openai/openai"),
+    ]
+    credential_record = SimpleNamespace(id="cred-3")
+    session.execute.side_effect = [
+        _exec_result(scalars_all=provider_model_records),
+        _exec_result(scalars_all=[credential_record]),
+        _exec_result(scalars_all=[]),
+    ]
+    with _patched_session(session):
+        with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache"):
+            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
+                _build_provider_configuration(provider_name="langgenius/openai/openai").delete_custom_model(
+                    ModelType.LLM, "gpt-4o"
+                )
+    session.delete.assert_any_call(provider_model_records[0])
+    session.delete.assert_any_call(provider_model_records[1])
+    session.delete.assert_any_call(credential_record)
+    assert mock_cache.return_value.delete.call_count == 2
 
     session = Mock()
     existing = SimpleNamespace(enabled=False, updated_at=None)
@@ -2023,7 +2101,9 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
     configuration = _build_provider_configuration()
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=credential_record),
         _exec_result(scalars_all=[]),
@@ -2031,7 +2111,7 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
     ]
 
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
+        with patch.object(ProviderConfiguration, "_get_custom_model_records", return_value=[provider_model_record]):
             configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert any(call.args and call.args[0] is provider_model_record for call in session.delete.call_args_list)
@@ -2048,7 +2128,7 @@ def test_delete_custom_model_credential_rolls_back_on_error() -> None:
     ]
 
     with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
+        with patch.object(ProviderConfiguration, "_get_custom_model_records", return_value=[]):
             with pytest.raises(RuntimeError, match="boom"):
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
