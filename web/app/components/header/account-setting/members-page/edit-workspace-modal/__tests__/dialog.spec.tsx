@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AppContextValue } from '@/context/app-context'
 import { render } from '@testing-library/react'
-import { useAppContext } from '@/context/app-context'
 import EditWorkspaceModal from '../index'
 
 type DialogProps = {
@@ -14,6 +13,7 @@ let latestOnOpenChange: DialogProps['onOpenChange']
 const mockAppContextState = vi.hoisted(() => ({
   current: {} as Partial<AppContextValue>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
@@ -30,7 +30,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -52,7 +52,7 @@ describe('EditWorkspaceModal dialog lifecycle', () => {
       isCurrentWorkspaceOwner: true,
     } as never
     mockAppContextState.current = appContextValue
-    vi.mocked(useAppContext).mockReturnValue(appContextValue)
+    mockUseAppContext.mockReturnValue(appContextValue)
   })
 
   it('should only call onCancel when the dialog requests closing', () => {

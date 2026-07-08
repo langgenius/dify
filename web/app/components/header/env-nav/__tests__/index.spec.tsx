@@ -1,15 +1,15 @@
 import type { AppContextValue } from '@/context/app-context'
 import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
 import EnvNav from '../index'
 
 const mockAppContextState = vi.hoisted(() => ({
   current: {} as Partial<AppContextValue>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -23,8 +23,6 @@ vi.mock('jotai', async (importOriginal) => {
 })
 
 describe('EnvNav', () => {
-  const mockUseAppContext = vi.mocked(useAppContext)
-
   beforeEach(() => {
     vi.clearAllMocks()
   })

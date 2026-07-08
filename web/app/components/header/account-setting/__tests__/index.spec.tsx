@@ -3,7 +3,6 @@ import type { AppContextValue } from '@/context/app-context'
 import { fireEvent, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ACCOUNT_SETTING_TAB } from '../constants'
@@ -13,6 +12,7 @@ const mockResetModelProviderListExpanded = vi.fn()
 const mockAppContextState = vi.hoisted(() => ({
   current: null as unknown,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -26,7 +26,7 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/app-context')>()
   return {
     ...actual,
-    useAppContext: vi.fn(),
+    useAppContext: mockUseAppContext,
     useSelector: vi.fn((selector: (state: unknown) => unknown) => selector(mockAppContextState.current)),
   }
 })
@@ -239,7 +239,7 @@ describe('AccountSetting', () => {
       enableBilling: true,
       enableReplaceWebAppLogo: true,
     })
-    vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
+    mockUseAppContext.mockReturnValue(baseAppContextValue)
     mockAppContextState.current = baseAppContextValue
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -362,7 +362,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         isCurrentWorkspaceDatasetOperator: true,
       }
-      vi.mocked(useAppContext).mockReturnValue(datasetOperatorContext)
+      mockUseAppContext.mockReturnValue(datasetOperatorContext)
       mockAppContextState.current = datasetOperatorContext
 
       // Act
@@ -383,7 +383,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'api_extension.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutApiExtensionPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutApiExtensionPermission)
       mockAppContextState.current = contextWithoutApiExtensionPermission
 
       // Act
@@ -401,7 +401,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'customization.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutCustomizationPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutCustomizationPermission)
       mockAppContextState.current = contextWithoutCustomizationPermission
 
       // Act
@@ -420,7 +420,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'workspace.role.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutRoleManagePermission)
+      mockUseAppContext.mockReturnValue(contextWithoutRoleManagePermission)
       mockAppContextState.current = contextWithoutRoleManagePermission
 
       // Act
@@ -505,7 +505,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutBillingViewPermission)
       mockAppContextState.current = contextWithoutBillingViewPermission
 
       // Act
@@ -521,7 +521,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutBillingViewPermission)
       mockAppContextState.current = contextWithoutBillingViewPermission
 
       // Act

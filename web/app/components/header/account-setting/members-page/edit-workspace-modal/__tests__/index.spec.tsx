@@ -3,7 +3,6 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import EditWorkspaceModal from '../index'
 
@@ -13,10 +12,13 @@ const toastMocks = vi.hoisted(() => ({
 const mockAppContextState = vi.hoisted(() => ({
   current: {} as Partial<AppContextValue>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/app-context')
+vi.mock('@/context/app-context', () => ({
+  useAppContext: mockUseAppContext,
+}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
@@ -50,7 +52,7 @@ describe('EditWorkspaceModal', () => {
       isCurrentWorkspaceOwner: true,
     } as unknown as AppContextValue
     mockAppContextState.current = appContextValue
-    vi.mocked(useAppContext).mockReturnValue(appContextValue)
+    mockUseAppContext.mockReturnValue(appContextValue)
   })
 
   afterEach(() => {
@@ -165,7 +167,7 @@ describe('EditWorkspaceModal', () => {
   })
 
   it('should disable confirm button for non-owners', async () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    mockUseAppContext.mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
     } as unknown as AppContextValue)

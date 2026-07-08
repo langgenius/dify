@@ -10,7 +10,6 @@ import { Plan } from '@/app/components/billing/type'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
-  useAppContext,
   userProfilePlaceholder,
 } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
@@ -46,6 +45,7 @@ const { mockToast } = vi.hoisted(() => {
   })
   return { mockToast }
 })
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -57,7 +57,7 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/app-context')>()
   return {
     ...actual,
-    useAppContext: vi.fn(),
+    useAppContext: mockUseAppContext,
   }
 })
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -66,7 +66,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
-const mockUseAppContext = vi.mocked(useAppContext)
 
 const createProviderContext = ({
   enableBilling = false,

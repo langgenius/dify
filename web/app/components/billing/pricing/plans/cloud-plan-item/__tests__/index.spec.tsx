@@ -2,7 +2,6 @@ import type { Mock } from 'vitest'
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
@@ -13,9 +12,10 @@ import { PlanRange } from '../../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from '../index'
 
 let mockAppCtx: Record<string, unknown> = {}
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -56,7 +56,6 @@ vi.mock('../../../assets', () => ({
   Team: () => <div>Team Icon</div>,
 }))
 
-const mockUseAppContext = useAppContext as Mock
 const mockUseProviderContext = useProviderContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
 const mockBillingInvoices = consoleClient.billing.invoices.get as Mock

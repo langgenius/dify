@@ -7,7 +7,6 @@ import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -17,8 +16,11 @@ import MembersPage from '../index'
 const mockAppContextState = vi.hoisted(() => ({
   current: {} as Partial<AppContextValue>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context')
+vi.mock('@/context/app-context', () => ({
+  useAppContext: mockUseAppContext,
+}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
@@ -55,7 +57,7 @@ const createRole = (overrides: Partial<Role>): Role => ({
 
 const setAppContextValue = (value: AppContextValue) => {
   mockAppContextState.current = value
-  vi.mocked(useAppContext).mockReturnValue(value)
+  mockUseAppContext.mockReturnValue(value)
 }
 
 vi.mock('../edit-workspace-modal', () => ({

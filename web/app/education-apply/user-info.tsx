@@ -1,15 +1,16 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 
 const UserInfo = () => {
   const router = useRouter()
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
