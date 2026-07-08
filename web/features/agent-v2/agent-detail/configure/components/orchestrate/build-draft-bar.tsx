@@ -56,6 +56,8 @@ export function AgentBuildDraftBar({
     <CollapsibleRoot
       open={open}
       onOpenChange={handleOpenChange}
+      role="group"
+      aria-label={t('agentDetail.configure.buildDraft.title')}
       className="group/build-draft pointer-events-auto relative w-full max-w-full min-w-0 overflow-hidden rounded-xl border-[1.5px] border-[#A0BDFF] bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
     >
       <AgentBuildGridTexture
