@@ -35,13 +35,7 @@ export default function SignInLayout({ children }: any) {
           <Header />
           <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]')}>
             <div className="flex flex-col md:w-[400px]">
-              {isLoggedIn
-                ? (
-                    <AppContextProvider>
-                      {children}
-                    </AppContextProvider>
-                  )
-                : children}
+              {children}
             </div>
           </div>
           {systemFeatures.branding.enabled === false && (
