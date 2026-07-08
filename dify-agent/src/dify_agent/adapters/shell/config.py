@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class ShellAdapterSettings(BaseSettings):
     """Env-backed settings used to construct a shell provider.
 
@@ -32,9 +33,7 @@ class ShellAdapterSettings(BaseSettings):
         match self.shell_provider:
             case "shellctl":
                 if not self.shellctl_entrypoint or not self.shellctl_entrypoint.strip():
-                    raise ValueError(
-                        "shellctl_entrypoint is required when shell_provider is 'shellctl'."
-                    )
+                    raise ValueError("shellctl_entrypoint is required when shell_provider is 'shellctl'.")
                 _validate_url(self.shellctl_entrypoint, field_name="shellctl_entrypoint")
             case "enterprise":
                 if not self.enterprise_sandbox_gateway_endpoint or not self.enterprise_sandbox_gateway_endpoint.strip():

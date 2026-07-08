@@ -2,7 +2,6 @@ import sys
 import types
 from typing import cast
 
-import pytest
 from pydantic import BaseModel
 
 

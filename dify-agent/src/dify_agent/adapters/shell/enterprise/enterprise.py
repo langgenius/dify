@@ -51,9 +51,7 @@ class EnterpriseGatewayClient:
             timeout=httpx.Timeout(30.0),
         )
 
-    async def create_sandbox(
-        self, *, tenant_id: str | None = None, template: str | None = None
-    ) -> _CreateSandboxReply:
+    async def create_sandbox(self, *, tenant_id: str | None = None, template: str | None = None) -> _CreateSandboxReply:
         body: dict[str, str] = {}
         if tenant_id:
             body["tenantId"] = tenant_id
@@ -74,18 +72,14 @@ class EnterpriseGatewayClient:
             response.raise_for_status()
             return response
         except httpx.TimeoutException as exc:
-            raise ShellProviderError(
-                f"Gateway request timed out: {method} {path}", code="timeout"
-            ) from exc
+            raise ShellProviderError(f"Gateway request timed out: {method} {path}", code="timeout") from exc
         except httpx.HTTPStatusError as exc:
             raise ShellProviderError(
                 f"Gateway returned {exc.response.status_code}: {exc.response.text}",
                 code="gateway_error",
             ) from exc
         except httpx.RequestError as exc:
-            raise ShellProviderError(
-                f"Gateway request failed: {exc}", code="request_error"
-            ) from exc
+            raise ShellProviderError(f"Gateway request failed: {exc}", code="request_error") from exc
 
 
 # ---------------------------------------------------------------------------

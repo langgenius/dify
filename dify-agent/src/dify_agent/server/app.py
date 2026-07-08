@@ -69,9 +69,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
-    sandbox_file_service = (
-        SandboxFileService(layer_providers=layer_providers) if shell_provider is not None else None
-    )
+    sandbox_file_service = SandboxFileService(layer_providers=layer_providers) if shell_provider is not None else None
     state: dict[str, object] = {}
 
     @asynccontextmanager
