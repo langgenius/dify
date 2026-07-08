@@ -524,9 +524,7 @@ def test_get_response_stream_filter_restores_dumped_state() -> None:
     original = _create_initialized_response_stream_filter()
     context = WorkflowResumptionContext(
         serialized_graph_runtime_state=json.dumps({"state": "workflow"}),
-        generate_entity=_WorkflowGenerateEntityWrapper(
-            entity=TestPauseStatePersistenceLayer._create_generate_entity()
-        ),
+        generate_entity=_WorkflowGenerateEntityWrapper(entity=TestPauseStatePersistenceLayer._create_generate_entity()),
         serialized_response_stream_filter_state=original.dumps(),
     )
 
@@ -538,9 +536,7 @@ def test_get_response_stream_filter_restores_dumped_state() -> None:
 def test_get_response_stream_filter_defaults_when_state_missing() -> None:
     context = WorkflowResumptionContext(
         serialized_graph_runtime_state=json.dumps({"state": "workflow"}),
-        generate_entity=_WorkflowGenerateEntityWrapper(
-            entity=TestPauseStatePersistenceLayer._create_generate_entity()
-        ),
+        generate_entity=_WorkflowGenerateEntityWrapper(entity=TestPauseStatePersistenceLayer._create_generate_entity()),
     )
 
     restored = context.get_response_stream_filter()
