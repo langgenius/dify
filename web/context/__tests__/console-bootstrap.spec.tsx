@@ -9,7 +9,6 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { AppContextBootstrapQueries } from '../app-context-bootstrap-queries'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
   currentWorkspaceAtom,
@@ -22,6 +21,7 @@ import {
   workspacePermissionKeysLoadingAtom,
   workspaceRoleFlagsAtom,
 } from '../app-context-state'
+import { ExternalServiceSync } from '../external-service-sync'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
@@ -167,7 +167,7 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
   default: () => null,
 }))
 
-function AppContextProbe() {
+function ConsoleBootstrapProbe() {
   const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
@@ -257,15 +257,15 @@ function createTestQueryClient() {
   })
 }
 
-function renderBootstrapEffects() {
+function renderConsoleBootstrap() {
   const queryClient = createTestQueryClient()
   const view = render(
     <JotaiProvider>
       <QueryClientProvider client={queryClient}>
         <TestQueryClientHydrator queryClient={queryClient}>
           <Suspense fallback={<span>loading</span>}>
-            <AppContextBootstrapQueries />
-            <AppContextProbe />
+            <ExternalServiceSync />
+            <ConsoleBootstrapProbe />
           </Suspense>
         </TestQueryClientHydrator>
       </QueryClientProvider>
@@ -278,7 +278,7 @@ function renderBootstrapEffects() {
   }
 }
 
-describe('App context bootstrap', () => {
+describe('Console bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPermissionKeysState.isPending = false
@@ -339,7 +339,7 @@ describe('App context bootstrap', () => {
 
   describe('Bootstrap atoms', () => {
     it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
@@ -360,7 +360,7 @@ describe('App context bootstrap', () => {
       mockPermissionKeysState.permissionKeys = []
       mockLangGeniusVersionState.data = undefined
 
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       expect(await screen.findByText('user:')).toBeInTheDocument()
       expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
@@ -375,7 +375,7 @@ describe('App context bootstrap', () => {
         role: 'unsupported-role',
       }
 
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       expect(await screen.findByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
     })
@@ -386,7 +386,7 @@ describe('App context bootstrap', () => {
         role: 'owner',
       }
 
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       expect(await screen.findByText('manager:true')).toBeInTheDocument()
       expect(screen.getByText('owner:true')).toBeInTheDocument()
@@ -398,7 +398,7 @@ describe('App context bootstrap', () => {
       mockPermissionKeysState.isPending = true
       mockCurrentWorkspaceQueryState.isPending = true
 
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       expect(await screen.findByText('workspace loading:true')).toBeInTheDocument()
       expect(screen.getByText('permission loading:true')).toBeInTheDocument()
@@ -407,7 +407,7 @@ describe('App context bootstrap', () => {
 
   describe('Refresh actions', () => {
     it('should invalidate the source queries when refresh actions are called', async () => {
-      const { queryClient } = renderBootstrapEffects()
+      const { queryClient } = renderConsoleBootstrap()
       const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
@@ -420,7 +420,7 @@ describe('App context bootstrap', () => {
 
   describe('External side effects', () => {
     it('should sync Zendesk fields and Amplitude identity when bootstrap data is available', async () => {
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       await waitFor(() => {
         expect(setZendeskConversationFields).toHaveBeenCalledWith([{
@@ -469,7 +469,7 @@ describe('App context bootstrap', () => {
         },
       }
 
-      renderBootstrapEffects()
+      renderConsoleBootstrap()
 
       await screen.findByText('user:')
       expect(setUserId).not.toHaveBeenCalled()
