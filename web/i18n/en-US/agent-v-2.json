@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Advanced Settings",
   "agentDetail.configure.advancedSettings.toggle": "Toggle advanced settings",
+  "agentDetail.configure.answer.workedFor": "Worked for {{duration}}",
+  "agentDetail.configure.answer.workingFor": "Working for {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, while offering versioning to the extracted configs, does not support versioning on the file system itself. Be careful with your actions in Build mode, as changes made to the file system happen in real time and cannot always be neatly reverted. Community Edition is not your ideal choice for serving mass external audiences.",
   "agentDetail.configure.build.empty.description": "Describe what you want and it fills in the form on the left as you go.",
   "agentDetail.configure.build.empty.title": "Build your agent by chatting",

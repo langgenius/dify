@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "고급 설정",
   "agentDetail.configure.advancedSettings.toggle": "고급 설정 전환",
+  "agentDetail.configure.answer.workedFor": "{{duration}} 동안 작업함",
+  "agentDetail.configure.answer.workingFor": "{{duration}} 동안 작업 중",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition은 추출된 설정에 대한 버전 관리는 제공하지만 파일 시스템 자체의 버전 관리는 지원하지 않습니다. Build 모드에서의 작업에 주의하세요. 파일 시스템 변경은 실시간으로 발생하며 항상 깔끔하게 되돌릴 수 있는 것은 아닙니다. Community Edition은 대규모 외부 사용자에게 서비스를 제공하기에 이상적인 선택이 아닙니다.",
   "agentDetail.configure.build.empty.description": "원하는 내용을 설명하면 대화에 맞춰 왼쪽 양식이 채워집니다.",
   "agentDetail.configure.build.empty.title": "채팅으로 에이전트 만들기",

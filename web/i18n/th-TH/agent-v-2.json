@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "การตั้งค่าขั้นสูง",
   "agentDetail.configure.advancedSettings.toggle": "สลับการตั้งค่าขั้นสูง",
+  "agentDetail.configure.answer.workedFor": "ทำงานเป็นเวลา {{duration}}",
+  "agentDetail.configure.answer.workingFor": "กำลังทำงานเป็นเวลา {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition แม้จะมีการจัดการเวอร์ชันสำหรับการกำหนดค่าที่แยกออกมา แต่ไม่รองรับการจัดการเวอร์ชันของระบบไฟล์เอง โปรดระมัดระวังการดำเนินการในโหมด Build เนื่องจากการเปลี่ยนแปลงระบบไฟล์เกิดขึ้นแบบเรียลไทม์และอาจไม่สามารถย้อนกลับได้อย่างเรียบร้อยเสมอไป Community Edition ไม่ใช่ตัวเลือกที่เหมาะสมที่สุดสำหรับการให้บริการผู้ชมภายนอกจำนวนมาก",
   "agentDetail.configure.build.empty.description": "อธิบายสิ่งที่คุณต้องการ แล้วแบบฟอร์มด้านซ้ายจะถูกกรอกไปพร้อมกับการสนทนา",
   "agentDetail.configure.build.empty.title": "สร้างเอเจนต์ของคุณด้วยการแชท",

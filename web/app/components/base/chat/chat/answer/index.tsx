@@ -42,6 +42,11 @@ type AnswerProps = {
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
+  renderAgentContent?: (props: {
+    item: ChatItem
+    responding?: boolean
+    content?: string
+  }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
@@ -58,6 +63,7 @@ const Answer: FC<AnswerProps> = ({
   noChatInput,
   switchSibling,
   hideAvatar,
+  renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
   const { t } = useTranslation()
@@ -144,6 +150,15 @@ const Answer: FC<AnswerProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
+  const agentContentNode = renderAgentContent
+    ? renderAgentContent({ item, responding, content })
+    : (
+        <AgentContent
+          item={item}
+          responding={responding}
+          content={content}
+        />
+      )
   // Reasoning is "done" — freeze the elapsed timer and collapse the panel — as soon as ANY of:
   //  ① the answer has begun streaming (first text delta): the only signal that fires
   //     mid-node, so it drives the normal think→answer handoff;
@@ -279,11 +294,7 @@ const Answer: FC<AnswerProps> = ({
               }
               {
                 hasAgentThoughts && (
-                  <AgentContent
-                    item={item}
-                    responding={responding}
-                    content={content}
-                  />
+                  agentContentNode
                 )
               }
               {
@@ -393,11 +404,7 @@ const Answer: FC<AnswerProps> = ({
               }
               {
                 hasAgentThoughts && (
-                  <AgentContent
-                    item={item}
-                    responding={responding}
-                    content={content}
-                  />
+                  agentContentNode
                 )
               }
               {

@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Cài đặt nâng cao",
   "agentDetail.configure.advancedSettings.toggle": "Bật/tắt cài đặt nâng cao",
+  "agentDetail.configure.answer.workedFor": "Đã làm việc trong {{duration}}",
+  "agentDetail.configure.answer.workingFor": "Đang làm việc trong {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, mặc dù cung cấp phiên bản cho các cấu hình được trích xuất, không hỗ trợ phiên bản cho chính hệ thống tệp. Hãy cẩn thận với các thao tác trong chế độ Build, vì các thay đổi đối với hệ thống tệp diễn ra theo thời gian thực và không phải lúc nào cũng có thể hoàn tác gọn gàng. Community Edition không phải là lựa chọn lý tưởng để phục vụ lượng lớn khán giả bên ngoài.",
   "agentDetail.configure.build.empty.description": "Mô tả điều bạn muốn và biểu mẫu bên trái sẽ được điền dần khi trò chuyện.",
   "agentDetail.configure.build.empty.title": "Xây dựng tác nhân bằng trò chuyện",

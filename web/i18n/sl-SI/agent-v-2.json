@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Napredne nastavitve",
   "agentDetail.configure.advancedSettings.toggle": "Preklopi napredne nastavitve",
+  "agentDetail.configure.answer.workedFor": "Delal {{duration}}",
+  "agentDetail.configure.answer.workingFor": "Dela {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition sicer ponuja različice za izvlečene konfiguracije, vendar ne podpira različic samega datotečnega sistema. Pri dejanjih v načinu Build bodite previdni, saj se spremembe datotečnega sistema zgodijo v realnem času in jih ni vedno mogoče lepo razveljaviti. Community Edition ni idealna izbira za množično zunanjo publiko.",
   "agentDetail.configure.build.empty.description": "Opišite, kaj želite, in obrazec na levi se bo sproti izpolnjeval.",
   "agentDetail.configure.build.empty.title": "Izdelajte agenta s klepetom",

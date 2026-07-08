@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Erweiterte Einstellungen",
   "agentDetail.configure.advancedSettings.toggle": "Erweiterte Einstellungen umschalten",
+  "agentDetail.configure.answer.workedFor": "Gearbeitet für {{duration}}",
+  "agentDetail.configure.answer.workingFor": "Arbeitet seit {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition bietet zwar Versionierung für extrahierte Konfigurationen, unterstützt aber keine Versionierung des Dateisystems selbst. Seien Sie bei Aktionen im Build-Modus vorsichtig, da Änderungen am Dateisystem in Echtzeit erfolgen und nicht immer sauber rückgängig gemacht werden können. Community Edition ist nicht die ideale Wahl, um große externe Zielgruppen zu bedienen.",
   "agentDetail.configure.build.empty.description": "Beschreiben Sie, was Sie möchten, und das Formular links wird während des Chats ausgefüllt.",
   "agentDetail.configure.build.empty.title": "Agent per Chat erstellen",

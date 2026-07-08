@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "الإعدادات المتقدمة",
   "agentDetail.configure.advancedSettings.toggle": "تبديل الإعدادات المتقدمة",
+  "agentDetail.configure.answer.workedFor": "عمل لمدة {{duration}}",
+  "agentDetail.configure.answer.workingFor": "يعمل منذ {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "توفر Community Edition إدارة إصدارات للتكوينات المستخرجة، لكنها لا تدعم إدارة إصدارات نظام الملفات نفسه. كن حذراً في إجراءاتك ضمن وضع Build، لأن التغييرات التي تُجرى على نظام الملفات تحدث في الوقت الفعلي ولا يمكن دائماً التراجع عنها بشكل منظم. Community Edition ليست الخيار المثالي لخدمة جماهير خارجية واسعة.",
   "agentDetail.configure.build.empty.description": "صِف ما تريده وسيتم ملء النموذج على اليسار أثناء المحادثة.",
   "agentDetail.configure.build.empty.title": "ابنِ وكيلك عبر الدردشة",

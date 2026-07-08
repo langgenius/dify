@@ -43,6 +43,7 @@ import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { AgentRosterResponseContent } from './agent-roster-response-content'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -812,6 +813,7 @@ function AgentPreviewChatSession({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      renderAgentContent={AgentRosterResponseContent}
       noSpacing
     />
   )

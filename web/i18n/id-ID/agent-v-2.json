@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Pengaturan Lanjutan",
   "agentDetail.configure.advancedSettings.toggle": "Alihkan pengaturan lanjutan",
+  "agentDetail.configure.answer.workedFor": "Bekerja selama {{duration}}",
+  "agentDetail.configure.answer.workingFor": "Bekerja selama {{duration}}",
   "agentDetail.configure.build.empty.communityEditionTip": "Community Edition, meskipun menawarkan versioning untuk konfigurasi yang diekstrak, tidak mendukung versioning pada sistem file itu sendiri. Berhati-hatilah dengan tindakan Anda dalam mode Build, karena perubahan pada sistem file terjadi secara real time dan tidak selalu dapat dikembalikan dengan rapi. Community Edition bukan pilihan ideal untuk melayani audiens eksternal dalam skala besar.",
   "agentDetail.configure.build.empty.description": "Jelaskan yang Anda inginkan dan formulir di kiri akan terisi seiring percakapan.",
   "agentDetail.configure.build.empty.title": "Bangun agen Anda lewat chat",
