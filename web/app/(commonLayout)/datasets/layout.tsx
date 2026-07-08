@@ -3,10 +3,16 @@
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { datasetWorkspaceAccessAtom } from '@/context/app-context-state'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceLoadingAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/app-context-state'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
 import { usePathname, useRouter } from '@/next/navigation'
+import { hasPermission } from '@/utils/permission'
 
 const isDatasetCreatePath = (pathname: string) => {
   return pathname === '/datasets/create'
@@ -21,12 +27,14 @@ const isDatasetExternalConnectPath = (pathname: string) => {
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const {
-    currentWorkspaceId,
-    isLoadingAccess,
-    canCreateDataset,
-    canConnectExternalDataset,
-  } = useAtomValue(datasetWorkspaceAccessAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const currentWorkspaceId = currentWorkspace.id
+  const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
+  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const router = useRouter()
   const pathname = usePathname()
   const shouldRedirectToDatasets = !isLoadingAccess

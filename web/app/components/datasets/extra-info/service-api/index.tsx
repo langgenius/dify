@@ -6,7 +6,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import { datasetWorkspaceAccessAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -19,7 +20,8 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
-  const { canManageDatasetApiKeys: canManageSecretKey } = useAtomValue(datasetWorkspaceAccessAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)

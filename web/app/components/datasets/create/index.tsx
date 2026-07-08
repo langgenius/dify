@@ -12,9 +12,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
-  datasetWorkspaceAccessAtom,
   userProfileAtom,
   workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
@@ -48,7 +48,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const router = useRouter()
   const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
-  const { isLoadingWorkspacePermissionKeys } = useAtomValue(datasetWorkspaceAccessAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const userProfile = useAtomValue(userProfileAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)

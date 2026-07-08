@@ -8,10 +8,11 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
+  currentWorkspaceLoadingAtom,
   datasetRbacEnabledAtom,
-  datasetWorkspaceAccessAtom,
   userProfileAtom,
   workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
 } from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -62,10 +63,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const {
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
-  } = useAtomValue(datasetWorkspaceAccessAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const userProfile = useAtomValue(userProfileAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)

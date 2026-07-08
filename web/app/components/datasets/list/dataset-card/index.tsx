@@ -7,13 +7,12 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  datasetWorkspaceAccessAtom,
   userProfileAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
-import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission } from '@/utils/permission'
+import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission, hasPermission } from '@/utils/permission'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -37,9 +36,9 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { canManageDatasetTags } = useAtomValue(datasetWorkspaceAccessAtom)
   const userProfile = useAtomValue(userProfileAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageDatasetTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {

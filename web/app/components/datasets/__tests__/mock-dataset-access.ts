@@ -1,5 +1,3 @@
-import { hasPermission } from '@/utils/permission'
-
 const DATASET_ACCESS_ATOM_KIND = Symbol('dataset-access-atom-kind')
 
 type DatasetAccessMockState = {
@@ -26,9 +24,12 @@ type DatasetAccessMockOptions = {
 
 type DatasetAccessAtomKind
   = | 'userProfile'
+    | 'currentWorkspace'
+    | 'workspaceRoleFlags'
     | 'workspacePermissionKeys'
+    | 'currentWorkspaceLoading'
+    | 'workspacePermissionKeysLoading'
     | 'datasetRbacEnabled'
-    | 'datasetWorkspaceAccess'
 
 type DatasetAccessMockAtom = {
   [DATASET_ACCESS_ATOM_KIND]: DatasetAccessAtomKind
@@ -67,25 +68,6 @@ const getUserProfile = (state: DatasetAccessMockState) => ({
 
 const getWorkspacePermissionKeys = (state: DatasetAccessMockState) => state.workspacePermissionKeys ?? []
 
-const getDatasetWorkspaceAccess = (state: DatasetAccessMockState) => {
-  const workspacePermissionKeys = getWorkspacePermissionKeys(state)
-  const isLoadingCurrentWorkspace = state.isLoadingCurrentWorkspace ?? false
-  const isLoadingWorkspacePermissionKeys = state.isLoadingWorkspacePermissionKeys ?? false
-
-  return {
-    currentWorkspaceId: state.currentWorkspace?.id ?? 'workspace-1',
-    isCurrentWorkspaceOwner: state.isCurrentWorkspaceOwner ?? false,
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
-    isLoadingAccess: isLoadingCurrentWorkspace || isLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys,
-    canCreateDataset: hasPermission(workspacePermissionKeys, 'dataset.create_and_management'),
-    canConnectExternalDataset: hasPermission(workspacePermissionKeys, 'dataset.external.connect'),
-    canManageDatasetTags: hasPermission(workspacePermissionKeys, 'dataset.tag.manage'),
-    canManageDatasetApiKeys: hasPermission(workspacePermissionKeys, 'dataset.api_key.manage'),
-  }
-}
-
 export const createDatasetAccessAtomMock = async (
   importOriginal: <T>() => Promise<T>,
   getState: () => DatasetAccessMockState,
@@ -100,9 +82,12 @@ export const createDatasetAccessAtomMock = async (
   return {
     ...actual,
     userProfileAtom: createMockAtom('userProfile'),
+    currentWorkspaceAtom: createMockAtom('currentWorkspace'),
+    workspaceRoleFlagsAtom: createMockAtom('workspaceRoleFlags'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
+    currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
+    workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
     datasetRbacEnabledAtom: createMockAtom('datasetRbacEnabled'),
-    datasetWorkspaceAccessAtom: createMockAtom('datasetWorkspaceAccess'),
   }
 }
 
@@ -128,14 +113,29 @@ export const createDatasetAccessJotaiMock = async (
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfile')
         return userProfile
 
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'currentWorkspace')
+        return { id: state.currentWorkspace?.id ?? 'workspace-1' }
+
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'workspaceRoleFlags') {
+        return {
+          isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: state.isCurrentWorkspaceOwner ?? false,
+          isCurrentWorkspaceEditor: false,
+          isCurrentWorkspaceDatasetOperator: false,
+        }
+      }
+
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'workspacePermissionKeys')
         return workspacePermissionKeys
 
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'currentWorkspaceLoading')
+        return state.isLoadingCurrentWorkspace ?? false
+
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'workspacePermissionKeysLoading')
+        return state.isLoadingWorkspacePermissionKeys ?? false
+
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'datasetRbacEnabled')
         return options.isRbacEnabled ?? true
-
-      if (atom[DATASET_ACCESS_ATOM_KIND] === 'datasetWorkspaceAccess')
-        return getDatasetWorkspaceAccess(state)
 
       throw new Error(`Unsupported dataset access atom: ${atom[DATASET_ACCESS_ATOM_KIND]}`)
     },
