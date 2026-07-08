@@ -132,6 +132,26 @@ const renderWithClient = async <T,>(hook: () => T) => {
   }
 }
 
+const renderWithClientProps = async <T, P>(
+  hook: (props: P) => T,
+  initialProps: P,
+) => {
+  const queryClient = createQueryClient()
+  const wrapper = createWrapper(queryClient)
+  let result: ReturnType<typeof renderHook<T, P>> | undefined
+  act(() => {
+    result = renderHook(hook, { wrapper, initialProps })
+  })
+  await waitFor(() => {
+    if (queryClient.isFetching() > 0)
+      throw new Error('Queries are still fetching')
+  }, { timeout: 2000 })
+  return {
+    queryClient,
+    ...result!,
+  }
+}
+
 const createConversationItem = (overrides: Partial<ConversationItem> = {}): ConversationItem => ({
   id: 'conversation-1',
   name: 'Conversation 1',
@@ -591,6 +611,68 @@ describe('useEmbeddedChatbot', () => {
       })
 
       expect(updateFeedback).toHaveBeenCalled()
+    })
+
+    // Scenario: regression for #38403 — handleNewConversation must regenerate when
+    // handleChangeConversation regenerates (its dep), so the embedded-chatbot reset
+    // button always invokes the freshest handleConversationIdInfoChange. Before the
+    // fix, handleChangeConversation was omitted from handleNewConversation's
+    // useCallback deps, leaving the reset click to capture a stale closure.
+    it('handleNewConversation tracks handleChangeConversation identity (regression for #38403)', async () => {
+      // Disable the URL-sourced conversation id so currentConversationId
+      // resolves via the localStorage branch only — this is the path the bug
+      // actually breaks.
+      mockStoreState.embeddedConversationId = null
+      mockStoreState.embeddedUserId = null
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
+        'app-1': { DEFAULT: 'stored-conv-id' },
+      }))
+
+      const { result, rerender } = await renderWithClientProps(
+        () => useEmbeddedChatbot(AppSourceType.webApp),
+        undefined,
+      )
+
+      await waitFor(() => {
+        expect(result.current.currentConversationId).toBe('stored-conv-id')
+      }, { timeout: 3000 })
+
+      const firstHandleNewConversation = result.current.handleNewConversation
+      const firstHandleChangeConversation = result.current.handleChangeConversation
+      expect(typeof firstHandleNewConversation).toBe('function')
+      expect(typeof firstHandleChangeConversation).toBe('function')
+
+      // No-prop rerender: useCallback must short-circuit and preserve identity
+      // because no dependency reference changed.
+      await act(async () => {
+        rerender(undefined)
+      })
+
+      const secondHandleNewConversation = result.current.handleNewConversation
+      const secondHandleChangeConversation = result.current.handleChangeConversation
+
+      expect(secondHandleNewConversation).toBe(firstHandleNewConversation)
+      expect(secondHandleChangeConversation).toBe(firstHandleChangeConversation)
+
+      // Flip userId via the store mock; the new embeddedUserId propagates
+      // through the useEffect at hooks.tsx:75-77, which fires setUserId, which
+      // invalidates handleConversationIdInfoChange's `userId` dep, which
+      // invalidates handleChangeConversation's deps, which (with the fix)
+      // invalidates handleNewConversation's deps too.
+      mockStoreState.embeddedUserId = 'embedded-user-2'
+
+      await act(async () => {
+        rerender(undefined)
+      })
+
+      await waitFor(() => {
+        expect(result.current.handleChangeConversation).not.toBe(firstHandleChangeConversation)
+      })
+
+      // Regression assertion: with the dep re-added, handleNewConversation
+      // regenerates alongside handleChangeConversation. Without the fix, this
+      // would still reference firstHandleNewConversation (stale closure).
+      expect(result.current.handleNewConversation).not.toBe(firstHandleNewConversation)
     })
   })
 
