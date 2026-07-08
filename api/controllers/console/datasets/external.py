@@ -284,7 +284,9 @@ class ExternalApiTemplateApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(session, current_tenant_id, external_knowledge_api_id_str)
+        ExternalDatasetService.delete_external_knowledge_api(
+            current_tenant_id, external_knowledge_api_id_str, session=session
+        )
         return "", 204
 
 
@@ -303,9 +305,7 @@ class ExternalApiUseCheckApi(Resource):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            session,
-            external_knowledge_api_id_str,
-            current_tenant_id,
+            external_knowledge_api_id_str, current_tenant_id, session=session
         )
         return UsageCountResponse(is_using=external_knowledge_api_is_using, count=count).model_dump(mode="json"), 200
 
@@ -352,6 +352,7 @@ class ExternalDatasetCreateApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
+            session=session,
         )
         data = DatasetDetailResponse.model_validate(dataset).model_dump(mode="json")
         data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])

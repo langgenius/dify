@@ -16,11 +16,12 @@ import {
   RiRobot2Fill,
   RiSendPlane2Line,
 } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/app-context-state'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
@@ -51,7 +52,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const email = useAppContextWithSelector(s => s.userProfile.email)
+  const email = useAtomValue(userProfileEmailAtom)
   const [isHovering, setIsHovering] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showTestEmailModal, setShowTestEmailModal] = useState(false)

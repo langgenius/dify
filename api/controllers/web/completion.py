@@ -30,6 +30,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -219,7 +220,10 @@ class ChatApi(WebApiResource):
             # Eagerly validate conversation to avoid hanging on invalid conversation_id
             if payload.conversation_id:
                 ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=payload.conversation_id, user=end_user
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=end_user,
+                    session=db.session(),
                 )
 
             response = AppGenerateService.generate(

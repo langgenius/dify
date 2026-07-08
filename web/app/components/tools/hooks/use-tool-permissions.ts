@@ -1,16 +1,17 @@
 'use client'
 
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useAtomValue } from 'jotai'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { hasPermission } from '@/utils/permission'
 
 export const useCanManageTools = () => {
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   return hasPermission(workspacePermissionKeys, 'tool.manage')
 }
 
 export const useCanManageMCP = () => {
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   return hasPermission(workspacePermissionKeys, 'mcp.manage')
 }

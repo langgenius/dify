@@ -331,7 +331,7 @@ class TestAsyncWorkflowService:
         assert trigger_log.triggered_at is not None
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
-        called_trigger_data = mock_trigger_workflow_async.call_args[0][2]
+        called_trigger_data = mock_trigger_workflow_async.call_args.args[1]
         assert isinstance(called_trigger_data, TriggerData)
         assert called_trigger_data.app_id == "app-123"
 
@@ -465,11 +465,16 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow_by_id.return_value = workflow
 
         # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, workflow_id="workflow-123")
+        session = MagicMock()
+        result = AsyncWorkflowService._get_workflow(
+            workflow_service, app_model, workflow_id="workflow-123", session=session
+        )
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123", session=None)
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app_model, "workflow-123", session=session
+        )
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
@@ -481,7 +486,9 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Act / Assert
         with pytest.raises(WorkflowNotFoundError, match="Published workflow not found: workflow-404"):
-            AsyncWorkflowService._get_workflow(workflow_service, app_model, workflow_id="workflow-404")
+            AsyncWorkflowService._get_workflow(
+                workflow_service, app_model, workflow_id="workflow-404", session=MagicMock()
+            )
 
     def test_should_return_default_published_workflow_when_workflow_id_not_provided(self):
         """Test _get_workflow returns default published workflow when no id is provided."""
@@ -493,11 +500,12 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow.return_value = workflow
 
         # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model)
+        session = MagicMock()
+        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, session=session)
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=None)
+        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=session)
         workflow_service.get_published_workflow_by_id.assert_not_called()
 
     def test_should_raise_when_default_published_workflow_not_found(self):
@@ -510,4 +518,4 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Act / Assert
         with pytest.raises(WorkflowNotFoundError, match="No published workflow found for app: app-123"):
-            AsyncWorkflowService._get_workflow(workflow_service, app_model)
+            AsyncWorkflowService._get_workflow(workflow_service, app_model, session=MagicMock())

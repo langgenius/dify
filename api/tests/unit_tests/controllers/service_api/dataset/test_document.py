@@ -933,7 +933,7 @@ class TestDocumentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_doc_svc.delete_document.assert_called_once_with(mock_document, mock_db.session)
+        mock_doc_svc.delete_document.assert_called_once_with(mock_document, mock_db.session())
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")

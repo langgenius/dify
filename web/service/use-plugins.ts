@@ -40,12 +40,13 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
@@ -1233,7 +1234,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
   const query = useQuery<PluginTaskListResponse>({

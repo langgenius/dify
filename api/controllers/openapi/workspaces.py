@@ -64,14 +64,14 @@ def _member_response(account: Account) -> MemberResponse:
 
 
 def _load_tenant(workspace_id: str) -> Tenant:
-    tenant = TenantService.get_tenant_by_id(db.session, workspace_id)
+    tenant = TenantService.get_tenant_by_id(workspace_id, session=db.session())
     if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise NotFound("workspace not found")
     return tenant
 
 
 def _load_account(account_id: object) -> Account:
-    account = AccountService.get_account_by_id(db.session, str(account_id)) if account_id else None
+    account = AccountService.get_account_by_id(str(account_id), session=db.session()) if account_id else None
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
     return account
@@ -94,7 +94,7 @@ class WorkspacesApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceListResponse, description="Workspace list")
     def get(self, *, auth_data: AuthData):
-        rows = TenantService.get_workspaces_for_account(db.session, str(auth_data.account_id))
+        rows = TenantService.get_workspaces_for_account(str(auth_data.account_id), session=db.session())
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
 
@@ -104,7 +104,7 @@ class WorkspaceByIdApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     def get(self, workspace_id: str, *, auth_data: AuthData):
-        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=db.session())
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
         if row is None:
             raise NotFound("workspace not found")
@@ -113,7 +113,7 @@ class WorkspaceByIdApi(Resource):
         return _workspace_detail(tenant, membership)
 
 
-@openapi_ns.route("/workspaces/<string:workspace_id>/switch")
+@openapi_ns.route("/workspaces/<string:workspace_id>:switch")
 class WorkspaceSwitchApi(Resource):
     """Server-side switch — equivalent to the console's POST /workspaces/switch.
 
@@ -128,11 +128,11 @@ class WorkspaceSwitchApi(Resource):
         account = _load_account(auth_data.account_id)
 
         try:
-            TenantService.switch_tenant(account, workspace_id, session=db.session)
+            TenantService.switch_tenant(account, workspace_id, session=db.session())
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(db.session, str(auth_data.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=db.session())
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -152,7 +152,7 @@ class WorkspaceMembersApi(Resource):
     @accepts(query=MemberListQuery)
     def get(self, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
         tenant = _load_tenant(workspace_id)
-        members = TenantService.get_tenant_members(tenant, session=db.session)
+        members = TenantService.get_tenant_members(tenant, session=db.session())
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -184,7 +184,7 @@ class WorkspaceMembersApi(Resource):
                 language=None,
                 role=body.role,
                 inviter=inviter,
-                session=db.session,
+                session=db.session(),
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
@@ -194,7 +194,7 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
 
         normalized_email = body.email.lower()
-        member = AccountService.get_account_by_email_with_case_fallback(db.session, normalized_email)
+        member = AccountService.get_account_by_email_with_case_fallback(normalized_email, session=db.session())
         if member is None:
             # invite_new_member just created or fetched this account.
             raise RuntimeError("invited member missing from DB after invite")
@@ -212,11 +212,12 @@ class WorkspaceMembersApi(Resource):
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>")
 class WorkspaceMemberApi(Resource):
-    """Remove a member.
+    """Remove a member (DELETE) or change a member's role (PATCH).
 
     Self-removal and owner-removal are explicitly rejected by the service
     layer (CannotOperateSelfError, NoPermissionError) — both surface as
-    400 per the spec, with the service's message preserved.
+    400 per the spec, with the service's message preserved. Owner can never be
+    assigned via PATCH (closed enum); admin cannot demote the standing owner.
     """
 
     @auth_router.guard_workspace(
@@ -228,12 +229,12 @@ class WorkspaceMemberApi(Resource):
     def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
-        member = AccountService.get_account_by_id(db.session, member_id)
+        member = AccountService.get_account_by_id(member_id, session=db.session())
         if member is None:
             raise NotFound("member not found")
 
         try:
-            TenantService.remove_member_from_tenant(tenant, member, operator, session=db.session)
+            TenantService.remove_member_from_tenant(tenant, member, operator, session=db.session())
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -243,15 +244,6 @@ class WorkspaceMemberApi(Resource):
 
         return MemberActionResponse()
 
-
-@openapi_ns.route("/workspaces/<string:workspace_id>/members/<string:member_id>/role")
-class WorkspaceMemberRoleApi(Resource):
-    """Change a member's role.
-
-    Owner cannot be assigned here (closed enum). Admin cannot demote the
-    standing owner (service NoPermissionError → 400, per spec).
-    """
-
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
@@ -259,15 +251,15 @@ class WorkspaceMemberRoleApi(Resource):
     )
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
-    def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
+    def patch(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
-        member = AccountService.get_account_by_id(db.session, member_id)
+        member = AccountService.get_account_by_id(member_id, session=db.session())
         if member is None:
             raise NotFound("member not found")
 
         try:
-            TenantService.update_member_role(tenant, member, body.role, operator, session=db.session)
+            TenantService.update_member_role(tenant, member, body.role, operator, session=db.session())
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:

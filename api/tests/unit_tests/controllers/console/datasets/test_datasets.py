@@ -3,7 +3,7 @@ import json
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -64,6 +64,18 @@ def dataset_model_property_defaults():
         for name, value in properties.items():
             property_mock = stack.enter_context(patch.object(Dataset, name, new_callable=PropertyMock))
             property_mock.return_value = value
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=enterprise_rbac_service.MyPermissionsResponse(),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetPermissions.batch_get",
+                return_value={},
+            )
+        )
         yield
 
 
@@ -246,7 +258,7 @@ class TestDatasetList:
             ):
                 resp, status = method(api, "tenant-1", current_user)
 
-        get_permissions.assert_called_once_with("tenant-1", current_user.id)
+        get_permissions.assert_called_once_with("tenant-1", current_user.id, session=ANY)
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
@@ -743,7 +755,7 @@ class TestDatasetApiGet:
 
             data, status = method(api, tenant_id, user, dataset_id)
 
-        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id)
+        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id, session=ANY)
         assert status == 200
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 

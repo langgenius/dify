@@ -54,6 +54,16 @@ vi.mock('@/context/app-context', () => ({
   },
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
@@ -67,6 +77,12 @@ vi.mock('@/context/modal-context', () => ({
     return selector(state)
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined

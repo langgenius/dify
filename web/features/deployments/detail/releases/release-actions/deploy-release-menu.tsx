@@ -28,8 +28,10 @@ import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
 import {
   deleteReleaseDialogOpenAtom,
-  deployReleaseMenuAppInstanceQueryAtom,
-  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  deployReleaseMenuAppInstanceNameAtom,
+  deployReleaseMenuEnvironmentDeploymentsAtom,
+  deployReleaseMenuEnvironmentDeploymentsIsErrorAtom,
+  deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom,
   deployReleaseMenuOpenAtom,
   openDeleteReleaseDialogAtom,
   openEditReleaseDialogAtom,
@@ -54,19 +56,21 @@ function DeployReleaseMenuContent({ onDeleted }: {
   const setDeleteReleaseDialogOpen = useSetAtom(deleteReleaseDialogOpenAtom)
   const openEditReleaseDialog = useSetAtom(openEditReleaseDialogAtom)
   const openDeleteReleaseDialog = useSetAtom(openDeleteReleaseDialogAtom)
-  const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
-  const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
+  const environmentDeployments = useAtomValue(deployReleaseMenuEnvironmentDeploymentsAtom)
+  const environmentDeploymentsIsLoading = useAtomValue(deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom)
+  const environmentDeploymentsIsError = useAtomValue(deployReleaseMenuEnvironmentDeploymentsIsErrorAtom)
+  const appInstanceName = useAtomValue(deployReleaseMenuAppInstanceNameAtom)
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
   const exportReleaseDslMutation = useMutation(mutationOptions({
     mutationKey: ['deployments', 'release-dsl-export'],
     mutationFn: (input: ExportReleaseDslInput) => exportReleaseDsl(input),
   }))
 
-  const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
+  const deploymentEnvironmentRows = environmentDeployments?.environmentDeployments ?? []
+  const environments = deploymentEnvironmentRows
     .map(row => row.environment)
-  const deploymentRows = environmentDeploymentsQuery.data?.environmentDeployments.filter(row => !isUndeployedDeploymentRow(row)) ?? []
+  const deploymentRows = deploymentEnvironmentRows.filter(row => !isUndeployedDeploymentRow(row))
   const targetRelease = releaseRows.find(release => release.id === releaseId)
-  const appInstanceName = appInstanceQuery.data?.appInstance.displayName
 
   if (!targetRelease)
     return null
@@ -74,8 +78,8 @@ function DeployReleaseMenuContent({ onDeleted }: {
   const release = targetRelease
   const targetReleaseName = release.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
-  const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
-  const hasDeleteUsageCheckFailed = open && environmentDeploymentsQuery.isError
+  const isCheckingDeleteUsage = open && environmentDeploymentsIsLoading
+  const hasDeleteUsageCheckFailed = open && environmentDeploymentsIsError
   const isReleaseInUse = deleteUsageCount > 0
   const isDeletingRelease = deleteRelease.isPending
   const isExportingDsl = exportReleaseDslMutation.isPending
@@ -130,7 +134,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
 
   const groupedRows = buildDeployMenuSections({
     environments,
-    environmentDeployments: environmentDeploymentsQuery.data?.environmentDeployments ?? [],
+    environmentDeployments: deploymentEnvironmentRows,
     releaseRows,
     releaseId,
     targetRelease: release,

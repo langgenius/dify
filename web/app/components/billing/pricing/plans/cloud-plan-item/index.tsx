@@ -10,10 +10,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
@@ -56,7 +57,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const canManageBillingSubscription = hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
   const { enableEducationPlan, isEducationAccount } = useProviderContext()

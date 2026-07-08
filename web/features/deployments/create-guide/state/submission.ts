@@ -22,7 +22,7 @@ import {
   selectedEnvironmentIdAtom,
   submissionUnsupportedDslNodesAtom,
 } from './primitives'
-import { deployableEnvironmentsQueryAtom, deploymentOptionsQueryAtom } from './queries'
+import { deployableEnvironmentsQueryAtom, deploymentOptionsDataAtom } from './queries'
 import { submittedReleaseReadyAtom } from './release'
 import { dslContentAtom, effectiveSelectedAppAtom } from './source'
 import {
@@ -75,7 +75,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
 
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
-  const deploymentOptions = get(deploymentOptionsQueryAtom).data?.options
+  const deploymentOptions = get(deploymentOptionsDataAtom)?.options
   const envVarSlots = get(deploymentTargetEnvVarSlotsAtom)
   const envVarValues = get(envVarValuesAtom)
   const bindingSlots = get(deploymentTargetBindingSlotsAtom)

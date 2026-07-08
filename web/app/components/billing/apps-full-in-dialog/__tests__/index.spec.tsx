@@ -11,6 +11,8 @@ import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
 
+let mockAppContextState: AppContextValue
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -22,6 +24,16 @@ vi.mock('@/config', async (importOriginal) => {
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -123,7 +135,8 @@ describe('AppsFull', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(useProviderContext as Mock).mockReturnValue(buildProviderContext())
-    ;(useAppContext as Mock).mockReturnValue(buildAppContext())
+    mockAppContextState = buildAppContext()
+    ;(useAppContext as Mock).mockReturnValue(mockAppContextState)
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 

@@ -5,12 +5,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,
@@ -129,7 +130,7 @@ const EmbeddedContent = ({
   )
   const latestResolvedIframeUrlRef = useRef('')
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const themeBuilder = useThemeContext()
   const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
 

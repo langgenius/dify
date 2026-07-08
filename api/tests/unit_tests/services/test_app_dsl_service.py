@@ -1,50 +1,49 @@
-from types import SimpleNamespace
 from unittest.mock import Mock
 
-from services.app_dsl_service import AppDslService, ImportStatus
+import pytest
+
+from services.app_dsl_service import AppDslService
+from services.entities.dsl_entities import ImportStatus
 
 
-def test_import_app_rejects_oversized_yaml_content_by_bytes(monkeypatch) -> None:
-    monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 1)
-    service = AppDslService(session=SimpleNamespace())
+def test_import_app_rejects_oversized_yaml_content_before_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
+    service = AppDslService(session=Mock())
+    account = Mock(current_tenant_id="tenant-1")
 
-    result = service.import_app(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
-        import_mode="yaml-content",
-        yaml_content="é",
-    )
+    result = service.import_app(account=account, import_mode="yaml-content", yaml_content="你你")
 
     assert result.status == ImportStatus.FAILED
-    assert "10MB" in result.error
+    assert result.error == "File size exceeds the limit of 10MB"
 
 
-def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(monkeypatch) -> None:
+def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 1)
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b"\xff\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=SimpleNamespace())
+    service = AppDslService(session=Mock())
 
     result = service.import_app(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=Mock(current_tenant_id="tenant-1"),
         import_mode="yaml-url",
         yaml_url="https://example.com/app.yaml",
     )
 
     assert result.status == ImportStatus.FAILED
-    assert "10MB" in result.error
+    assert result.error == "File size exceeds the limit of 10MB"
 
 
-def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(monkeypatch) -> None:
+def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b"\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=SimpleNamespace())
+    service = AppDslService(session=Mock())
 
     result = service.import_app(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=Mock(current_tenant_id="tenant-1"),
         import_mode="yaml-url",
         yaml_url="https://example.com/app.yaml",
     )
