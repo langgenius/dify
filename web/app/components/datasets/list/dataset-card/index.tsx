@@ -38,7 +38,6 @@ const DatasetCard = ({
   const { push } = useRouter()
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageDatasetTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -63,7 +62,8 @@ const DatasetCard = ({
     resourceMaintainer: dataset.maintainer,
     workspacePermissionKeys,
   }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
-  const canBindOrUnbindTags = !isPreviewOnly && (canManageDatasetTags || datasetACLCapabilities.canEdit)
+  const canManageAppTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
+  const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {
     toast.warning(t('noAccessResourcePermission', { ns: 'app' }))

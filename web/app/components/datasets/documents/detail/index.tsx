@@ -56,11 +56,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const embeddingAvailable = !!dataset?.embedding_available
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: dataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canEditDocument = datasetACLCapabilities.canEdit
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)

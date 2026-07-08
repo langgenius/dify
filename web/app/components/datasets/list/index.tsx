@@ -27,9 +27,6 @@ const List = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -55,6 +52,9 @@ const List = () => {
     handleTagsUpdate()
   }
 
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
+  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const datasetListQuery = useDatasetList({
     initialPage: 1,

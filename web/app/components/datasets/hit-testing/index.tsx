@@ -69,12 +69,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+  const canRunRetrievalRecall = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
-  }), [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
-  const canRunRetrievalRecall = datasetACLCapabilities.canRetrievalRecall
+  }).canRetrievalRecall, [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
 
   const total = recordsRes?.total || 0

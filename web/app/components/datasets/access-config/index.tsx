@@ -36,13 +36,12 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const canAccessConfig = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
-  const canAccessConfig = datasetACLCapabilities.canAccessConfig
+  }).canAccessConfig, [currentUserId, dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, workspacePermissionKeys])
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)

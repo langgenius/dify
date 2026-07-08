@@ -36,11 +36,14 @@ export const useFormState = () => {
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: currentDataset?.maintainer,
-    workspacePermissionKeys,
-  }), [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: currentDataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state

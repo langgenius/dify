@@ -3,7 +3,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   userProfileIdAtom,
@@ -31,11 +31,14 @@ const Card = ({
 
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: dataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canManageApiAccess = datasetACLCapabilities.canEdit
 
   const apiReferenceUrl = useDatasetApiAccessUrl()

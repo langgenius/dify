@@ -49,12 +49,11 @@ const CreateFormPipeline = () => {
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const canAddDocumentsToDataset = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
-  const canAddDocumentsToDataset = datasetACLCapabilities.canUse
+  }).canUse, [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const shouldRedirectToDocuments = !!dataset
     && !isLoadingWorkspacePermissionKeys
     && !canAddDocumentsToDataset

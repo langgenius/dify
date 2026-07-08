@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import Loading from '@/app/components/base/loading'
 import {
   userProfileIdAtom,
@@ -39,7 +38,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const embeddingAvailable = !!dataset?.embedding_available
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,

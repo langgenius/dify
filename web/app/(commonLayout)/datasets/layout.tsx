@@ -31,11 +31,11 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const router = useRouter()
+  const pathname = usePathname()
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const router = useRouter()
-  const pathname = usePathname()
   const shouldRedirectToDatasets = !isLoadingAccess
     && !!currentWorkspaceId
     && ((isDatasetCreatePath(pathname) && !canCreateDataset)
