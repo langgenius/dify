@@ -335,10 +335,12 @@ class RunStartedEvent(BaseRunEvent):
 
 
 class PydanticAIStreamRunEvent(BaseRunEvent):
-    """Pydantic AI stream event using the upstream typed event model."""
+    """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
     data: AgentStreamEvent
+    agent_message_delta: str | None = None
+    terminal_output_delta: str | None = None
 
 
 class RunSucceededEvent(BaseRunEvent):

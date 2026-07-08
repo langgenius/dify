@@ -18,6 +18,7 @@ from clients.agent_backend.errors import (
     AgentBackendValidationError,
 )
 from clients.agent_backend.event_adapter import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
@@ -27,6 +28,7 @@ from clients.agent_backend.event_adapter import (
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTerminalOutputDeltaInternalEvent,
 )
 from clients.agent_backend.factory import create_agent_backend_run_client
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
@@ -61,6 +63,7 @@ __all__ = [
     "DIFY_PLUGIN_TOOLS_LAYER_ID",
     "WORKFLOW_NODE_JOB_PROMPT_LAYER_ID",
     "WORKFLOW_USER_PROMPT_LAYER_ID",
+    "AgentBackendAgentMessageDeltaInternalEvent",
     "AgentBackendAgentAppRunInput",
     "AgentBackendDeferredToolCallInternalEvent",
     "AgentBackendError",
@@ -82,6 +85,7 @@ __all__ = [
     "AgentBackendSessionCleanupResult",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
+    "AgentBackendTerminalOutputDeltaInternalEvent",
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",
