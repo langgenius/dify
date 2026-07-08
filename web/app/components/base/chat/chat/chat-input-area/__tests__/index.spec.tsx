@@ -316,7 +316,12 @@ describe('ChatInputArea', () => {
 
     it('should apply disabled styles when the disabled prop is true', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
-      expect(container.firstChild).toHaveClass('opacity-50')
+      expect(container.firstChild).toHaveClass('pointer-events-none', 'opacity-50')
+    })
+
+    it('should restore pointer events on the input surface', () => {
+      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
+      expect(container.firstChild).toHaveClass('pointer-events-auto')
     })
 
     it('should apply drag-active styles when a file is being dragged over', () => {
@@ -334,6 +339,27 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} sendButtonLabel="Start build" />)
       expect(screen.getByRole('button', { name: 'Start build' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
+    })
+
+    it('should render the send button loading state when provided', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn()
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          onSend={onSend}
+          sendButtonLabel="Start build"
+          sendButtonLoading
+        />,
+      )
+
+      await user.type(getTextarea()!, 'Build an agent')
+      const startBuildButton = screen.getByRole('button', { name: 'Start build' })
+
+      expect(startBuildButton).toHaveAttribute('aria-disabled', 'true')
+      expect(startBuildButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+      await user.click(startBuildButton)
+      expect(onSend).not.toHaveBeenCalled()
     })
   })
 
@@ -730,6 +756,20 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
+    it('should render footer notice with tooltip when provided', async () => {
+      const user = userEvent.setup({ delay: null })
+      const footerNotice = 'Agent runs in a Linux sandbox.'
+      const footerNoticeTooltip = 'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
+      render(<ChatInputArea visionConfig={mockVisionConfig} footerNotice={footerNotice} footerNoticeTooltip={footerNoticeTooltip} />)
+
+      expect(screen.getByText(footerNotice)).toBeInTheDocument()
+      expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
+
+      await user.hover(screen.getByRole('button', { name: footerNoticeTooltip }))
+
+      expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
+    })
+
     it('should render feature bar when showFeatureBar is true', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} showFeatureBar />)
       expect(screen.getByText(/feature.bar.empty/i)).toBeTruthy()

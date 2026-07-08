@@ -1170,12 +1170,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -3299,14 +3293,6 @@
       "count": 1
     }
   },
-  "web/app/components/explore/sidebar/app-nav-item/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/app/text-generation.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3781,14 +3767,6 @@
     },
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/__tests__/operation-dropdown.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
@@ -7053,11 +7031,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/use-permission-keys.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7074,11 +7047,6 @@
     }
   },
   "web/service/access-control/use-permission-catalog.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-permission-keys.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7247,17 +7215,6 @@
   },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-common.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

@@ -7,14 +7,16 @@ import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers import pause_state_persist_layer as pause_layer_module
 from core.app.layers.pause_state_persist_layer import (
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from graphon.graph_events import (
@@ -262,6 +264,63 @@ class TestPauseStatePersistenceLayer:
         pause_reasons = call_kwargs["pause_reasons"]
 
         assert isinstance(pause_reasons, list)
+
+    def test_on_event_enriches_hitl_pause_reasons_before_persisting(self, monkeypatch: pytest.MonkeyPatch):
+        session_factory = Mock(name="session_factory")
+        generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner-123",
+            generate_entity=generate_entity,
+        )
+
+        mock_repo = Mock()
+        mock_factory = Mock(return_value=mock_repo)
+        mock_form_repository = Mock(name="form_repository")
+        enriched_reason = HumanInputRequired(
+            form_id="form-123",
+            form_content="Rendered content",
+            inputs=[],
+            actions=[],
+            node_id="node-123",
+            node_title="Ask for approval",
+        )
+        enrich_mock = Mock(return_value=[enriched_reason])
+        monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+        monkeypatch.setattr(
+            pause_layer_module,
+            "HumanInputFormSubmissionRepository",
+            Mock(return_value=mock_form_repository),
+            raising=False,
+        )
+        monkeypatch.setattr(
+            pause_layer_module,
+            "enrich_graph_pause_reasons",
+            enrich_mock,
+            raising=False,
+        )
+
+        graph_runtime_state = MockReadOnlyGraphRuntimeState(
+            workflow_execution_id="run-123",
+        )
+        command_channel = MockCommandChannel()
+        layer.initialize(graph_runtime_state, command_channel)
+
+        raw_reason = HitlRequired(
+            session_id="session-123",
+            node_id="node-123",
+            node_title="Ask for approval",
+        )
+        event = GraphRunPausedEvent(reasons=[raw_reason], outputs={})
+
+        layer.on_event(event)
+
+        enrich_mock.assert_called_once_with(
+            reasons=[raw_reason],
+            form_repository=mock_form_repository,
+            variable_pool=graph_runtime_state.variable_pool,
+        )
+        assert mock_repo.create_workflow_pause.call_args.kwargs["pause_reasons"] == [enriched_reason]
 
     def test_on_event_ignores_non_paused_events(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")

@@ -12,9 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { hasAgentComposerUnpublishedChangesAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
@@ -35,6 +33,7 @@ type AgentConfigurePublishBarProps = {
   draftSavedAt?: number
   isPublishing?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  workflowReferencesEnabled?: boolean
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
@@ -92,6 +91,7 @@ export function AgentConfigurePublishBar({
   draftSavedAt,
   isPublishing = false,
   selectedVersionSnapshot,
+  workflowReferencesEnabled = true,
   onPublish,
   onExitVersions,
   onOpenVersions,
@@ -109,9 +109,6 @@ export function AgentConfigurePublishBar({
   const stableActiveConfigIsPublished = activeConfigIsPublished ?? (lastKnownPublishedRef.current ? true : undefined)
   const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
   const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
-  const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
-  const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
-  const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished: stableActiveConfigIsPublished,
     activeConfigSnapshot,
@@ -127,20 +124,17 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
-  const publishValidationMessage = getValidationMessage(knowledgeValidation.firstIssue?.code)
   const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
     input: {
       params: {
         agent_id: agentId,
       },
     },
+    enabled: workflowReferencesEnabled && publishIsAvailable && !selectedVersionSnapshot,
   })
-  const workflowReferencesQuery = useQuery({
-    ...workflowReferencesQueryOptions,
-    enabled: publishIsAvailable && !selectedVersionSnapshot,
-  })
+  const workflowReferencesQuery = useQuery(workflowReferencesQueryOptions)
   const restoreVersionMutation = useMutation(consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions())
-  const canPublish = publishIsAvailable && knowledgeValidation.isValid
+  const canPublish = publishIsAvailable
 
   const handleRestoreVersion = (versionId: string) => {
     if (restoreVersionMutation.isPending)
@@ -201,7 +195,9 @@ export function AgentConfigurePublishBar({
     }
 
     const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
-    const references = (cachedReferences ?? workflowReferencesQuery.data ?? await queryClient.ensureQueryData(workflowReferencesQueryOptions))?.data ?? []
+    const references = workflowReferencesEnabled
+      ? (cachedReferences ?? workflowReferencesQuery.data ?? await queryClient.ensureQueryData(workflowReferencesQueryOptions))?.data ?? []
+      : []
 
     if (references.length > 0) {
       setPublishBarMode({ status: 'confirmingImpact', references })
@@ -284,9 +280,6 @@ export function AgentConfigurePublishBar({
   const currentStateMeta = stateMeta[publishState]
   const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && (canPublish || isPublishing)
   const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
-  const effectiveMetaLabel = publishValidationMessage && publishIsAvailable
-    ? publishValidationMessage
-    : currentStateMeta.metaLabel
 
   return (
     <CollapsibleRoot
@@ -305,7 +298,7 @@ export function AgentConfigurePublishBar({
         actionLabel={currentStateMeta.actionLabel}
         dotStatus={currentStateMeta.dotStatus}
         isPublishing={isPublishing}
-        metaLabel={effectiveMetaLabel}
+        metaLabel={currentStateMeta.metaLabel}
         showShortcut={currentStateMeta.showShortcut}
         statusLabel={currentStateMeta.statusLabel}
         canPublish={canPublish}

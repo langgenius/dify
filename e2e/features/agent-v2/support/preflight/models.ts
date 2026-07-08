@@ -1,4 +1,4 @@
-import type { ProviderWithModelsDataResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
@@ -7,13 +7,19 @@ import { skipBlockedPrecondition } from './common'
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'
 const stableChatModelTypeEnv = 'E2E_STABLE_MODEL_TYPE'
+const agentDecisionChatModelProviderEnv = 'E2E_AGENT_DECISION_MODEL_PROVIDER'
+const agentDecisionChatModelNameEnv = 'E2E_AGENT_DECISION_MODEL_NAME'
+const agentDecisionChatModelTypeEnv = 'E2E_AGENT_DECISION_MODEL_TYPE'
 const brokenChatModelProviderEnv = 'E2E_BROKEN_MODEL_PROVIDER'
 const brokenChatModelNameEnv = 'E2E_BROKEN_MODEL_NAME'
 const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
 const activeModelStatus = 'active'
 const defaultStableChatModelProvider = 'openai'
-const defaultStableChatModelName = 'gpt-5.4-mini'
+const defaultStableChatModelName = 'gpt-5-nano'
 const defaultStableChatModelType = 'llm'
+const defaultAgentDecisionChatModelProvider = 'openai'
+const defaultAgentDecisionChatModelName = 'gpt-5.5'
+const defaultAgentDecisionChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
 const getProviderAlias = (provider: string) => provider.split('/').filter(Boolean).at(-1) ?? provider
@@ -43,6 +49,23 @@ export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
     ok: true,
     provider,
     resourceName: agentBuilderPreseededResources.stableChatModel,
+    type,
+    value: name,
+  }
+}
+
+export function readAgentBuilderAgentDecisionChatModelConfig(): ModelPreflightConfig {
+  const provider = process.env[agentDecisionChatModelProviderEnv]?.trim()
+    || defaultAgentDecisionChatModelProvider
+  const name = process.env[agentDecisionChatModelNameEnv]?.trim()
+    || defaultAgentDecisionChatModelName
+  const type = process.env[agentDecisionChatModelTypeEnv]?.trim()
+    || defaultAgentDecisionChatModelType
+
+  return {
+    ok: true,
+    provider,
+    resourceName: agentBuilderPreseededResources.agentDecisionChatModel,
     type,
     value: name,
   }
@@ -87,7 +110,7 @@ async function skipMissingAgentBuilderModel(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
-    const body = (await response.json()) as ProviderWithModelsDataResponse
+    const body = (await response.json()) as { data: ProviderWithModelsResponse[] }
     const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
       item =>
@@ -125,6 +148,14 @@ export async function skipMissingAgentBuilderStableChatModel(
   world: DifyWorld,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
   return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
+    requireActive: true,
+  })
+}
+
+export async function skipMissingAgentBuilderAgentDecisionChatModel(
+  world: DifyWorld,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
+  return skipMissingAgentBuilderModel(world, readAgentBuilderAgentDecisionChatModelConfig(), {
     requireActive: true,
   })
 }

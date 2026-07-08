@@ -3,6 +3,7 @@
 import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 
@@ -28,6 +29,10 @@ export const releaseHistoryQueryAtom = atomWithQuery((get) => {
     placeholderData: keepPreviousData,
   })
 })
+
+export const releaseHistoryAtom = selectAtom(releaseHistoryQueryAtom, query => query.data)
+export const releaseHistoryIsLoadingAtom = selectAtom(releaseHistoryQueryAtom, query => query.isLoading)
+export const releaseHistoryIsErrorAtom = selectAtom(releaseHistoryQueryAtom, query => query.isError)
 
 export const setReleaseHistoryCurrentPageAtom = atom(null, (_get, set, page: number) => {
   set(releaseHistoryCurrentPageAtom, Math.max(page, 0))

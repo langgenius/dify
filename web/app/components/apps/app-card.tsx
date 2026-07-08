@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -39,7 +40,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
@@ -311,8 +312,8 @@ type AppCardActionBarProps = {
 export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -744,8 +745,8 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
 export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -1076,7 +1077,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
       <div className="flex h-[26px] shrink-0 items-start px-3" />
       <div
         className={cn(
-          'flex min-w-0 shrink-0 items-center pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
+          'flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
           app.access_mode ? 'pr-9' : 'pr-4',
         )}
       >
@@ -1087,7 +1088,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
               <div className="shrink-0">·</div>
             </>
           )}
-          <div className="shrink-0">{editTimeText}</div>
+          <div className="min-w-0 truncate">{editTimeText}</div>
         </div>
       </div>
     </>

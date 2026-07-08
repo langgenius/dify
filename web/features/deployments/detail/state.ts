@@ -3,6 +3,7 @@
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { nextPathnameAtom } from '@/app/components/next-route-state/atoms'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
@@ -35,6 +36,10 @@ export const deploymentDetailAppInstanceQueryAtom = atomWithQuery((get) => {
   })
 })
 
+export const deploymentDetailAppInstanceAtom = selectAtom(deploymentDetailAppInstanceQueryAtom, query => query.data)
+export const deploymentDetailAppInstanceIsLoadingAtom = selectAtom(deploymentDetailAppInstanceQueryAtom, query => query.isLoading)
+export const deploymentDetailAppInstanceIsErrorAtom = selectAtom(deploymentDetailAppInstanceQueryAtom, query => query.isError)
+
 export const deploymentEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
 
@@ -49,6 +54,10 @@ export const deploymentEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => 
   })
 })
 
+export const deploymentEnvironmentDeploymentsAtom = selectAtom(deploymentEnvironmentDeploymentsQueryAtom, query => query.data)
+export const deploymentEnvironmentDeploymentsIsLoadingAtom = selectAtom(deploymentEnvironmentDeploymentsQueryAtom, query => query.isLoading)
+export const deploymentEnvironmentDeploymentsIsErrorAtom = selectAtom(deploymentEnvironmentDeploymentsQueryAtom, query => query.isError)
+
 export const deploymentRuntimeInstanceRowsAtom = atom((get) => {
-  return get(deploymentEnvironmentDeploymentsQueryAtom).data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
+  return get(deploymentEnvironmentDeploymentsAtom)?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
 })

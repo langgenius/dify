@@ -5,7 +5,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
 import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
-import { accessSettingsQueryAtom } from '../../state'
+import {
+  accessSettingsAtom,
+  accessSettingsIsErrorAtom,
+  accessSettingsIsLoadingAtom,
+} from '../../state'
 import { EnvironmentPermissionRow } from '../environment-permission-row'
 import { AccessPermissionsSection } from '../section'
 
@@ -236,15 +240,15 @@ describe('AccessPermissionsSection', () => {
     mockUseAtomValue.mockImplementation((atom) => {
       if (atom === deploymentRouteAppInstanceIdAtom)
         return 'app-instance-1'
-      if (atom === accessSettingsQueryAtom) {
+      if (atom === accessSettingsAtom) {
         return {
-          data: {
-            environmentPolicies: [createEnvironmentAccessPolicy()],
-          },
-          isLoading: false,
-          isError: false,
+          environmentPolicies: [createEnvironmentAccessPolicy()],
         }
       }
+      if (atom === accessSettingsIsLoadingAtom)
+        return false
+      if (atom === accessSettingsIsErrorAtom)
+        return false
       return undefined
     })
   })

@@ -36,10 +36,20 @@ export const normalAgentSoulConfig: AgentSoulConfig = {
   },
 }
 
+export const publishOnlyAgentModel: AgentModelSelection = {
+  name: 'gpt-5-nano',
+  provider: 'openai',
+}
+
 export const updatedAgentSoulConfig: AgentSoulConfig = {
   prompt: {
     system_prompt: updatedAgentPrompt,
   },
+}
+
+const stableAgentModelSettings = {
+  max_tokens: 4096,
+  temperature: 0,
 }
 
 const getAgentModelPluginId = (provider: string) => {
@@ -71,12 +81,16 @@ export function createAgentSoulConfigWithModel(
       plugin_id: getAgentModelPluginId(model.provider),
       model_provider: model.provider,
       model: model.name,
-      model_settings: {
-        temperature: 0,
-        max_tokens: 512,
-      },
+      model_settings: stableAgentModelSettings,
     },
   }
+}
+
+export function createPublishableAgentSoulConfig(agentSoul: AgentSoulConfig): AgentSoulConfig {
+  if (agentSoul.model)
+    return agentSoul
+
+  return createAgentSoulConfigWithModel(agentSoul, publishOnlyAgentModel)
 }
 
 export function createAgentSoulConfigWithKnowledgeDataset(
@@ -99,6 +113,22 @@ export function createAgentSoulConfigWithKnowledgeDataset(
             top_k: 4,
           },
         },
+      ],
+    },
+  }
+}
+
+export function createAgentSoulConfigWithDifyTool(
+  agentSoul: AgentSoulConfig,
+  tool: NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number],
+): AgentSoulConfig {
+  return {
+    ...agentSoul,
+    tools: {
+      ...agentSoul.tools,
+      dify_tools: [
+        ...(agentSoul.tools?.dify_tools ?? []),
+        tool,
       ],
     },
   }

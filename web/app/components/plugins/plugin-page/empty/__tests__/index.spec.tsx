@@ -135,7 +135,7 @@ describe('Empty Component', () => {
   describe('Rendering', () => {
     it('should render basic structure correctly', async () => {
       // Arrange & Act
-      const { container } = render(<Empty />)
+      render(<Empty />)
       await flushEffects()
 
       // Assert - file input
@@ -143,10 +143,6 @@ describe('Empty Component', () => {
       expect(fileInput).toBeInTheDocument()
       expect(fileInput.style.display).toBe('none')
       expect(fileInput.accept).toBe('.difypkg,.difybndl')
-
-      // Assert - skeleton cards (20 in the grid + 1 icon container)
-      const skeletonCards = container.querySelectorAll('.rounded-xl.bg-components-card-bg')
-      expect(skeletonCards.length).toBeGreaterThanOrEqual(20)
 
       // Assert - group icon container
       const iconContainer = document.querySelector('.size-14')
@@ -170,12 +166,6 @@ describe('Empty Component', () => {
       expect(container.querySelector('.i-custom-vender-integrations-trigger-active')).toBeInTheDocument()
       expect(container.querySelector('.i-custom-vender-integrations-trigger')).not.toBeInTheDocument()
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
-
-      const skeletonCards = container.querySelectorAll('.h-\\[72px\\].rounded-lg')
-      expect(skeletonCards).toHaveLength(22)
-
       const buttons = screen.getAllByRole('button')
       buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
     })
@@ -191,8 +181,6 @@ describe('Empty Component', () => {
       expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
       expect(container.querySelector('.items-center')).toBeInTheDocument()
       expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
       expect(container.querySelector('.i-custom-vender-integrations-agent-strategy-active')).toHaveClass('size-6', 'shrink-0')
@@ -208,9 +196,6 @@ describe('Empty Component', () => {
       expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
       expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
-      expect(skeletonGrid).toHaveStyle({ background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' })
       expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
     })
   })

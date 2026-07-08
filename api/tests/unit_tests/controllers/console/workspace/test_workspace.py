@@ -1,5 +1,6 @@
 import inspect
 import logging
+from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -26,7 +27,9 @@ from controllers.console.workspace.workspace import (
     WebappLogoWorkspaceApi,
     WorkspaceInfoApi,
     WorkspaceListApi,
+    WorkspaceLogoUploadResponse,
     WorkspacePermissionApi,
+    WorkspacePermissionResponse,
 )
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
@@ -99,7 +102,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, "t1", user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert len(result["workspaces"]) == 2
         assert result["workspaces"][0]["current"] is True
         assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
@@ -146,7 +149,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, "t1", user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
         assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
@@ -192,7 +195,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, "t2", user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
         assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
@@ -226,7 +229,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, "t1", user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
         get_features_mock.assert_called_once_with("t1", exclude_vector_space=True)
 
@@ -251,7 +254,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, "t2", user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["workspaces"][0]["plan"] == CloudPlan.SANDBOX
         assert result["workspaces"][1]["plan"] == CloudPlan.SANDBOX
         assert result["workspaces"][0]["current"] is False
@@ -276,7 +279,7 @@ class TestTenantListApi:
         ):
             result, status = method(api, None, user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["workspaces"] == []
         get_features_mock.assert_not_called()
 
@@ -291,11 +294,11 @@ class TestWorkspaceListApi:
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
+            patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
             result, status = method(api)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["total"] == 1
         assert result["has_more"] is False
 
@@ -308,11 +311,11 @@ class TestWorkspaceListApi:
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
+            patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
             result, status = method(api)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["has_more"] is True
 
 
@@ -332,7 +335,7 @@ class TestTenantApi:
         ):
             result, status = method(api, user)
 
-        assert status == 200
+        assert status == HTTPStatus.OK
         assert result["id"] == "t1"
 
     def test_post_archived_with_switch(self, app: Flask):
@@ -386,7 +389,7 @@ class TestTenantApi:
             result, status = method(api, user)
 
         assert "Deprecated URL /info was used." in caplog.messages
-        assert status == 200
+        assert status == HTTPStatus.OK
 
 
 class TestTenantInfoResponse:
@@ -586,8 +589,9 @@ class TestWebappLogoWorkspaceApi:
 
             result, status = method(api, user)
 
-        assert status == 201
-        assert result["id"] == "file1"
+        assert status == HTTPStatus.CREATED
+        assert result == {"id": "file1"}
+        assert WorkspaceLogoUploadResponse.model_validate(result).model_dump(mode="json") == {"id": "file1"}
 
     def test_filename_missing(self, app: Flask):
         api = WebappLogoWorkspaceApi()
@@ -676,7 +680,7 @@ class TestWorkspaceInfoApi:
             patch("controllers.console.workspace.workspace.db.session.commit"),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"name": "New Name"},
+                return_value={"id": "t1", "name": "New Name"},
             ),
         ):
             result = method(api, "t1")
@@ -716,8 +720,14 @@ class TestWorkspacePermissionApi:
         ):
             result, status = method(api, "t1")
 
-        assert status == 200
-        assert result["workspace_id"] == "t1"
+        assert status == HTTPStatus.OK
+        expected = {
+            "workspace_id": "t1",
+            "allow_member_invite": True,
+            "allow_owner_transfer": False,
+        }
+        assert result == expected
+        assert WorkspacePermissionResponse.model_validate(result).model_dump(mode="json") == expected
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspacePermissionApi()

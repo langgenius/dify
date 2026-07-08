@@ -41,8 +41,10 @@ vi.mock('../state', async (importOriginal) => {
 
   return {
     ...actual,
-    deployReleaseMenuEnvironmentDeploymentsQueryAtom: atom(environmentDeploymentsErrorResult()),
-    deployReleaseMenuAppInstanceQueryAtom: atom(appInstanceResult()),
+    deployReleaseMenuEnvironmentDeploymentsAtom: atom(undefined),
+    deployReleaseMenuEnvironmentDeploymentsIsErrorAtom: atom(true),
+    deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom: atom(false),
+    deployReleaseMenuAppInstanceNameAtom: atom('Deployment 1'),
   }
 })
 
@@ -79,24 +81,6 @@ function createRelease(): Release {
       displayName: 'Dify Admin',
     },
     createdAt: '2026-01-01T00:00:00.000Z',
-  }
-}
-
-function environmentDeploymentsErrorResult() {
-  return {
-    isError: true,
-    isLoading: false,
-    data: undefined,
-  }
-}
-
-function appInstanceResult() {
-  return {
-    data: {
-      appInstance: {
-        displayName: 'Deployment 1',
-      },
-    },
   }
 }
 

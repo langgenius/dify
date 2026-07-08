@@ -228,7 +228,7 @@ class CredentialType(enum.StrEnum):
     OAUTH2 = "oauth2"
     UNAUTHORIZED = "unauthorized"
 
-    def get_name(self):
+    def get_name(self) -> str:
         if self == CredentialType.API_KEY:
             return "API KEY"
         elif self == CredentialType.OAUTH2:

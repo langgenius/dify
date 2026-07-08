@@ -21,7 +21,7 @@ import {
 
 const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
   <DropdownMenuTrigger
-    render={<button type="button" className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover" />}
+    render={<button type="button" className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid" />}
   >
     {label}
   </DropdownMenuTrigger>

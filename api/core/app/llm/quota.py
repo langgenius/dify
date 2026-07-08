@@ -125,6 +125,7 @@ def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configurat
                 CreditPoolService.deduct_credits_capped(
                     tenant_id=tenant_id,
                     credits_required=used_quota,
+                    session=db.session(),
                 )
             case ProviderQuotaType.PAID:
                 from services.credit_pool_service import CreditPoolService
@@ -133,6 +134,7 @@ def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configurat
                     tenant_id=tenant_id,
                     credits_required=used_quota,
                     pool_type="paid",
+                    session=db.session(),
                 )
             case ProviderQuotaType.FREE:
                 _deduct_free_llm_quota(

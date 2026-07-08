@@ -91,33 +91,31 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 # Keep agent-app roster DTOs agent-specific instead of reusing the shared
 # /apps response/request models. The roster surface needs Agent-only fields such
 # as `role`, while the generic console/apps contracts must stay unchanged.
 class AgentAppUpdatePayload(GenericUpdateAppPayload):
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 class AgentAppCopyPayload(BaseModel):
@@ -133,10 +131,7 @@ class AgentAppCopyPayload(BaseModel):
     def validate_role(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required when provided.")
-        return role
+        return value.strip()
 
 
 class AgentApiStatusPayload(BaseModel):
@@ -531,6 +526,7 @@ class AgentAppListApi(Resource):
             page=args.page,
             limit=args.limit,
             mode="agent",
+            sort_by=args.sort_by,
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,
@@ -538,7 +534,7 @@ class AgentAppListApi(Resource):
             status="normal",
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session)
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session())
         if app_pagination is None:
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
@@ -565,13 +561,13 @@ class AgentAppListApi(Resource):
             name=args.name,
             description=args.description,
             mode="agent",
-            agent_role=args.role,
+            agent_role=args.role or "",
             icon_type=args.icon_type,
             icon=args.icon,
             icon_background=args.icon_background,
         )
 
-        app = AppService().create_app(current_tenant_id, params, current_user)
+        app = AppService().create_app(current_tenant_id, params, current_user, session=db.session())
         return _serialize_agent_app_detail(app, current_user=current_user), 201
 
 
@@ -611,7 +607,7 @@ class AgentAppApi(Resource):
             "max_active_requests": args.max_active_requests or 0,
             "role": args.role,
         }
-        updated = AppService().update_app(app_model, args_dict)
+        updated = AppService().update_app(app_model, args_dict, session=db.session())
         return _serialize_agent_app_detail(updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
@@ -623,7 +619,7 @@ class AgentAppApi(Resource):
     @with_current_tenant_id
     def delete(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model)
+        AppService().delete_app(app_model, session=db.session())
         return "", 204
 
 
@@ -672,6 +668,7 @@ class AgentPublishApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             version_note=args.version_note,
+            session=db.session(),
         )
 
 
@@ -692,6 +689,7 @@ class AgentBuildDraftCheckoutApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             force=args.force,
+            session=db.session(),
         )
 
 
@@ -709,6 +707,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -726,6 +725,7 @@ class AgentBuildDraftApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=payload,
+            session=db.session(),
         )
 
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
@@ -740,6 +740,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
 
@@ -757,6 +758,7 @@ class AgentBuildDraftApplyApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
 
@@ -814,7 +816,7 @@ class AgentApiStatusApi(Resource):
     def post(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         args = AgentApiStatusPayload.model_validate(console_ns.payload)
-        app_model = AppService().update_app_api_status(app_model, args.enable_api)
+        app_model = AppService().update_app_api_status(app_model, args.enable_api, session=db.session())
         return _serialize_agent_api_access(app_model)
 
 

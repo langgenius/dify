@@ -350,6 +350,7 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,  # No starting point specified
             limit=10,
+            session=db_session_with_containers,
         )
 
         # Assert - Verify the results
@@ -395,6 +396,7 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=first_message.id,
             limit=10,
+            session=db_session_with_containers,
         )
 
         # Assert - Verify the results
@@ -426,6 +428,7 @@ class TestConversationServiceMessageCreation:
                 conversation_id=conversation.id,
                 first_id=str(uuid4()),
                 limit=10,
+                session=db_session_with_containers,
             )
 
     def test_pagination_with_has_more_flag(self, db_session_with_containers: Session):
@@ -461,6 +464,7 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,
             limit=limit,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -498,7 +502,8 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,
             limit=10,
-            order="asc",  # Ascending order
+            order="asc",  # Ascending order,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -547,7 +552,7 @@ class TestConversationServiceSummarization:
         mock_llm_generator.return_value = generated_name
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
+        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == generated_name  # Name updated on conversation object
@@ -572,7 +577,7 @@ class TestConversationServiceSummarization:
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            ConversationService.auto_generate_name(app_model, conversation)
+            ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
     @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
     def test_auto_generate_name_handles_llm_failure_gracefully(
@@ -604,7 +609,7 @@ class TestConversationServiceSummarization:
         mock_llm_generator.side_effect = Exception("LLM service unavailable")
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
+        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == original_name  # Name remains unchanged
@@ -637,6 +642,7 @@ class TestConversationServiceSummarization:
             user=user,
             name=new_name,
             auto_generate=False,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -671,6 +677,7 @@ class TestConversationServiceSummarization:
             user=user,
             name=None,
             auto_generate=True,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -719,7 +726,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "AI is artificial intelligence"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id == message.id
@@ -753,7 +762,9 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id is None
@@ -802,7 +813,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "Updated annotation content"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.id == existing_annotation.id
@@ -838,7 +851,11 @@ class TestConversationServiceMessageAnnotation:
 
         # Act
         result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id, page=1, limit=10, keyword=""
+            app_id=app_model.id,
+            page=1,
+            limit=10,
+            keyword="",
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -886,7 +903,8 @@ class TestConversationServiceMessageAnnotation:
             app_id=app_model.id,
             page=1,
             limit=10,
-            keyword="machine",  # Search keyword
+            keyword="machine",  # Search keyword,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -914,7 +932,9 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
+        result = AppAnnotationService.insert_app_annotation_directly(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.question == args["question"]
@@ -942,7 +962,9 @@ class TestConversationServiceExport:
         )
 
         # Act
-        result = ConversationService.get_conversation(app_model=app_model, conversation_id=conversation.id, user=user)
+        result = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation.id, user=user, session=db_session_with_containers
+        )
 
         # Assert
         assert result == conversation
@@ -956,7 +978,12 @@ class TestConversationServiceExport:
 
         # Act & Assert
         with pytest.raises(ConversationNotExistsError):
-            ConversationService.get_conversation(app_model=app_model, conversation_id=str(uuid4()), user=user)
+            ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=str(uuid4()),
+                user=user,
+                session=db_session_with_containers,
+            )
 
     @patch("services.annotation_service.current_account_with_tenant")
     def test_export_annotation_list(self, mock_current_account, db_session_with_containers: Session):
@@ -982,7 +1009,7 @@ class TestConversationServiceExport:
         mock_current_account.return_value = (account, app_model.tenant_id)
 
         # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id)
+        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, session=db_session_with_containers)
 
         # Assert
         assert len(result) == 10
@@ -1006,7 +1033,9 @@ class TestConversationServiceExport:
         )
 
         # Act
-        result = MessageService.get_message(app_model=app_model, user=user, message_id=message.id)
+        result = MessageService.get_message(
+            app_model=app_model, user=user, message_id=message.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result == message
@@ -1020,7 +1049,9 @@ class TestConversationServiceExport:
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            MessageService.get_message(app_model=app_model, user=user, message_id=str(uuid4()))
+            MessageService.get_message(
+                app_model=app_model, user=user, message_id=str(uuid4()), session=db_session_with_containers
+            )
 
     def test_get_conversation_for_end_user(self, db_session_with_containers: Session):
         """
@@ -1041,7 +1072,10 @@ class TestConversationServiceExport:
 
         # Act
         result = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation.id, user=end_user
+            app_model=app_model,
+            conversation_id=conversation.id,
+            user=end_user,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -1069,7 +1103,9 @@ class TestConversationServiceExport:
         conversation_id = conversation.id
 
         # Act - Delete the conversation
-        ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+        ConversationService.delete(
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db_session_with_containers
+        )
 
         # Assert - Verify two-step deletion process
         # Step 1: Immediate database deletion
@@ -1104,6 +1140,7 @@ class TestConversationServiceExport:
                 app_model=app_model,
                 conversation_id=conversation.id,
                 user=other_account,
+                session=db_session_with_containers,
             )
 
         # Verify no deletion and no async cleanup trigger
@@ -1129,9 +1166,14 @@ class TestConversationServiceExport:
         conversation_id = conversation.id
 
         # Act — force an error during the delete to exercise the rollback path
-        with patch("services.conversation_service.db.session.delete", side_effect=Exception("DB error")):
+        with patch.object(db_session_with_containers, "delete", side_effect=Exception("DB error")):
             with pytest.raises(Exception, match="DB error"):
-                ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+                ConversationService.delete(
+                    app_model=app_model,
+                    conversation_id=conversation_id,
+                    user=user,
+                    session=db_session_with_containers,
+                )
 
         # Assert — async cleanup must NOT have been scheduled
         mock_delete_task.delay.assert_not_called()

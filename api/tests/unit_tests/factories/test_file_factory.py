@@ -283,6 +283,7 @@ class TestExtractFilename:
         result = extract_filename("http://example.com/path/file%20name%GG.txt?x=1", None)
         # %GG is invalid, should be replaced with replacement character
 
+        assert result is not None
         assert "file" in result
         assert ".txt" in result
 

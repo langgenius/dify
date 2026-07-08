@@ -19,7 +19,7 @@ type SelectOption = {
 }
 
 type TimezoneOption = {
-  value: string | number
+  value: string
   name: string
 }
 
@@ -119,7 +119,7 @@ export default function PreferencePage() {
           value={selectedLanguage?.value ?? null}
           disabled={editing}
           onValueChange={(nextValue) => {
-            if (!nextValue)
+            if (nextValue == null)
               return
             const nextItem = languageOptions.find(item => item.value === nextValue)
             if (nextItem)
@@ -142,12 +142,12 @@ export default function PreferencePage() {
       <div className="mb-6">
         <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
         <Select
-          value={selectedTimezone ? String(selectedTimezone.value) : null}
+          value={selectedTimezone?.value ?? null}
           disabled={editing}
           onValueChange={(nextValue) => {
             if (!nextValue)
               return
-            const nextItem = timezones.find(item => String(item.value) === nextValue)
+            const nextItem = timezones.find(item => item.value === nextValue)
             if (nextItem)
               handleSelectTimezone(nextItem)
           }}
@@ -157,7 +157,7 @@ export default function PreferencePage() {
           </SelectTrigger>
           <SelectContent>
             {timezones.map(item => (
-              <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>

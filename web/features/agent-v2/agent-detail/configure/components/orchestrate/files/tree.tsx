@@ -52,6 +52,7 @@ function AgentFileTreeRows({
   folderOpenStrategy,
   folderOpenState,
   onFolderOpenChange,
+  onFolderDoubleClick,
   onFolderOpen,
   renderFile,
   renderFolderSuffix,
@@ -63,6 +64,7 @@ function AgentFileTreeRows({
   folderOpenStrategy: AgentFileTreeFolderOpenStrategy
   folderOpenState?: AgentFileTreeFolderOpenState
   onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentFileNode, depth: number }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile: AgentFileTreeRenderFile
   renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
@@ -84,7 +86,10 @@ function AgentFileTreeRows({
           open={folderOpenState?.({ file, depth })}
           onOpenChange={open => onFolderOpenChange?.({ file, depth, open })}
         >
-          <FileTreeFolderTrigger onClick={() => onFolderOpen?.(file)}>
+          <FileTreeFolderTrigger
+            onClick={() => onFolderOpen?.(file)}
+            onDoubleClick={() => onFolderDoubleClick?.({ file, depth })}
+          >
             <FileTreeIcon type="folder" />
             <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
             {renderFolderSuffix?.({ depth, file })}
@@ -98,6 +103,7 @@ function AgentFileTreeRows({
               folderOpenStrategy={folderOpenStrategy}
               folderOpenState={folderOpenState}
               onFolderOpenChange={onFolderOpenChange}
+              onFolderDoubleClick={onFolderDoubleClick}
               onFolderOpen={onFolderOpen}
               renderFile={renderFile}
               renderFolderSuffix={renderFolderSuffix}
@@ -121,8 +127,8 @@ function AgentFileTreeRows({
   })
 }
 
-const defaultRenderFile: AgentFileTreeRenderFile = ({ selected, children }) => (
-  <FileTreeFile selected={selected}>
+const defaultRenderFile: AgentFileTreeRenderFile = ({ depth, selected, children }) => (
+  <FileTreeFile level={depth} selected={selected}>
     {children}
   </FileTreeFile>
 )
@@ -142,6 +148,7 @@ export function AgentFileTree({
   folderOpenStrategy = firstLevelFolderOpenStrategy,
   folderOpenState,
   onFolderOpenChange,
+  onFolderDoubleClick,
   onFolderOpen,
   renderFile = defaultRenderFile,
   renderFolderSuffix,
@@ -161,6 +168,7 @@ export function AgentFileTree({
   folderOpenStrategy?: AgentFileTreeFolderOpenStrategy
   folderOpenState?: AgentFileTreeFolderOpenState
   onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentFileNode, depth: number }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile?: AgentFileTreeRenderFile
   renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
@@ -174,7 +182,7 @@ export function AgentFileTree({
         label={label}
         labelledBy={labelledBy}
         slotClassNames={{
-          viewport: 'max-h-[inherit] overscroll-contain',
+          viewport: 'max-h-[inherit]',
           content: 'w-full max-w-full min-w-0!',
           scrollbar: 'hidden',
         }}
@@ -192,6 +200,7 @@ export function AgentFileTree({
               folderOpenStrategy={folderOpenStrategy}
               folderOpenState={folderOpenState}
               onFolderOpenChange={onFolderOpenChange}
+              onFolderDoubleClick={onFolderDoubleClick}
               onFolderOpen={onFolderOpen}
               renderFile={renderFile}
               renderFolderSuffix={renderFolderSuffix}

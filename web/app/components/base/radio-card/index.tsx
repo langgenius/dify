@@ -1,8 +1,8 @@
 'use client'
-import type { RadioRootProps } from '@langgenius/dify-ui/radio'
+import type { RadioItemProps } from '@langgenius/dify-ui/radio'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
 
 type BaseProps = {
   className?: string
@@ -14,9 +14,9 @@ type BaseProps = {
   chosenConfigWrapClassName?: string
 }
 
-type SelectableRadioCardProps = BaseProps & {
+type SelectableRadioCardProps<Value = string> = BaseProps & {
   noRadio?: false
-} & Omit<RadioRootProps<string>, 'children' | 'className' | 'variant' | 'render' | 'nativeButton'>
+} & Omit<RadioItemProps<Value>, 'children' | 'className' | 'render' | 'nativeButton'>
 
 type StaticRadioCardProps = BaseProps & {
   noRadio: true
@@ -24,9 +24,9 @@ type StaticRadioCardProps = BaseProps & {
   checked?: never
 }
 
-type Props = SelectableRadioCardProps | StaticRadioCardProps
+type Props<Value = string> = SelectableRadioCardProps<Value> | StaticRadioCardProps
 
-function RadioCard(props: Props) {
+function RadioCard<Value = string>(props: Props<Value>) {
   if (props.noRadio) {
     const {
       icon,
@@ -106,16 +106,15 @@ function RadioCard(props: Props) {
     <div
       className={rootClassName}
     >
-      <RadioRoot
+      <RadioItem<Value>
         {...radioRootProps}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         className="flex w-full cursor-pointer gap-x-2 border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
       >
         {content}
         <RadioControl className="absolute top-3 right-3" aria-hidden="true" />
-      </RadioRoot>
+      </RadioItem>
       {config}
     </div>
   )

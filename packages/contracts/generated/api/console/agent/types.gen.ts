@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role: string
+  role?: string | null
 }
 
 export type AgentAppDetailWithSite = {
@@ -74,7 +74,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -417,6 +417,11 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
+export type SandboxInfoResponse = {
+  session_id: string
+  workspace_cwd: string
+}
+
 export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
@@ -437,8 +442,7 @@ export type AgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -841,7 +845,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig | null
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -1003,11 +1007,6 @@ export type SandboxFileEntryResponse = {
   type: 'dir' | 'file' | 'other' | 'symlink'
 }
 
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
-}
-
 export type SkillManifest = {
   description: string
   entry_path: string
@@ -1111,6 +1110,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -1322,6 +1322,16 @@ export type AgentModerationProviderConfig = {
   [key: string]: unknown
 }
 
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]: unknown
+}
+
 export type SimpleAccount = {
   email: string
   id: string
@@ -1412,6 +1422,16 @@ export type AgentConfigRevisionOperation
     | 'save_new_agent'
     | 'save_new_version'
     | 'save_to_roster'
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
 
 export type AgentSecretRefConfig = {
   credential_id?: string | null
@@ -1664,6 +1684,15 @@ export type FormInputConfig
 
 export type JsonValue2 = unknown
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
@@ -1785,10 +1814,6 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -2975,6 +3000,24 @@ export type GetAgentByAgentIdReferencingWorkflowsResponses = {
 
 export type GetAgentByAgentIdReferencingWorkflowsResponse
   = GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
+
+export type GetAgentByAgentIdSandboxData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    conversation_id: string
+  }
+  url: '/agent/{agent_id}/sandbox'
+}
+
+export type GetAgentByAgentIdSandboxResponses = {
+  200: SandboxInfoResponse
+}
+
+export type GetAgentByAgentIdSandboxResponse
+  = GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
 
 export type GetAgentByAgentIdSandboxFilesData = {
   body?: never

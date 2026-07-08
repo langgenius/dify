@@ -32,6 +32,7 @@ from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
@@ -62,10 +63,6 @@ from models.agent_config_entities import AgentSoulConfig
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
-
-
-class AgentAppGeneratorError(ValueError):
-    """Raised when an Agent App turn cannot be set up."""
 
 
 def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
@@ -108,7 +105,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
@@ -287,7 +284,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         out of scope here — the message is persisted and can be re-fetched.
         """
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
         )
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
@@ -507,6 +504,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             ),
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppRuntimeSessionStore(),
+            text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
         )
 
     def _run_input_guards(
@@ -613,6 +611,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
             )
             return agent, draft.id, config_version_kind, agent_soul
+        # active_config_is_published tracks whether the editable draft matches the active snapshot.
+        # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
+        if not agent.active_config_snapshot_id:
+            raise AgentAppNotPublishedError("Agent has not been published")
         _, snapshot, agent_soul = self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id,
             agent_id=agent.id,
@@ -708,4 +710,4 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return agent, draft, agent_soul
 
 
-__all__ = ["AgentAppGenerator", "AgentAppGeneratorError"]
+__all__ = ["AgentAppGenerator", "AgentAppGeneratorError", "AgentAppNotPublishedError"]

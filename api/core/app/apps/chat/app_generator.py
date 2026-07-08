@@ -7,6 +7,7 @@ from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -36,6 +37,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -46,6 +48,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -56,6 +59,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -65,6 +69,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -100,7 +105,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
             )
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
@@ -197,6 +202,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
@@ -223,6 +229,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         application_generate_entity: ChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation_id: str,
@@ -246,6 +253,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = ChatAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,

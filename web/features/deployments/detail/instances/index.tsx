@@ -14,7 +14,8 @@ import {
 } from '../../shared/components/detail-table'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import {
-  deploymentEnvironmentDeploymentsQueryAtom,
+  deploymentEnvironmentDeploymentsIsErrorAtom,
+  deploymentEnvironmentDeploymentsIsLoadingAtom,
   deploymentRuntimeInstanceRowsAtom,
 } from '../state'
 import { DeploymentEnvironmentList } from './environment-list/deployment-environment-list'
@@ -89,10 +90,9 @@ function DeploymentEnvironmentListSkeleton() {
 
 export function DeploymentInstances() {
   const { t } = useTranslation('deployments')
-  const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
+  const isLoading = useAtomValue(deploymentEnvironmentDeploymentsIsLoadingAtom)
+  const hasError = useAtomValue(deploymentEnvironmentDeploymentsIsErrorAtom)
   const rows = useAtomValue(deploymentRuntimeInstanceRowsAtom)
-  const isLoading = environmentDeploymentsQuery.isLoading
-  const hasError = environmentDeploymentsQuery.isError
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">

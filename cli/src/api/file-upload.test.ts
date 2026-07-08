@@ -41,7 +41,7 @@ describe('FileUploadClient.upload', () => {
     const result = await makeClient(stub.url).upload('app-1', filePath)
 
     expect(stub.captured.method).toBe('POST')
-    expect(stub.captured.url).toBe('/openapi/v1/apps/app-1/files/upload')
+    expect(stub.captured.url).toBe('/openapi/v1/apps/app-1/files')
     // The client must let fetch own the multipart Content-Type + boundary; it
     // must NOT coerce this to application/json the way a json body would.
     const contentType = stub.captured.headers?.['content-type'] ?? ''
@@ -61,7 +61,7 @@ describe('FileUploadClient.upload', () => {
 
     await makeClient(stub.url).upload('app/with space', filePath)
 
-    expect(stub.captured.url).toBe('/openapi/v1/apps/app%2Fwith%20space/files/upload')
+    expect(stub.captured.url).toBe('/openapi/v1/apps/app%2Fwith%20space/files')
   })
 
   it('propagates a server 413 as a classified BaseError', async () => {

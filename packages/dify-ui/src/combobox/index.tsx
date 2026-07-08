@@ -17,7 +17,15 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Combobox = BaseCombobox.Root
+export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
+  = BaseCombobox.Root.Props<Value, Multiple>
+
+export function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxRootProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseCombobox.Root {...props} />
+}
+
 export const ComboboxValue = BaseCombobox.Value
 export const ComboboxGroup = BaseCombobox.Group
 export const ComboboxCollection = BaseCombobox.Collection
@@ -25,8 +33,6 @@ export const ComboboxRow = BaseCombobox.Row
 export const useComboboxFilter = BaseCombobox.useFilter
 export const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
-export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
-  = BaseCombobox.Root.Props<Value, Multiple>
 export type ComboboxRootChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
 export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 

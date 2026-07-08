@@ -18,9 +18,10 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -308,7 +309,7 @@ type MemberItemProps = {
   subject: Subject
 }
 function MemberItem({ member, subject }: MemberItemProps) {
-  const currentUser = useSelector(s => s.userProfile)
+  const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   const isChecked = specificMembers.some(m => m.id === member.id)

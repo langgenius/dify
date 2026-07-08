@@ -47,13 +47,6 @@ class FakeCredentialsProvider:
         return {"api_key": "secret-key"}
 
 
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
-
-
 class CapturingCredentialsProvider:
     def __init__(self) -> None:
         self.provider_name: str | None = None
@@ -232,6 +225,15 @@ def _previous_node_prompt_payload(result, selector: str) -> object:
         if line.startswith(prefix):
             return json.loads(line.removeprefix(prefix))
     raise AssertionError(f"missing prompt payload for {selector}")
+
+
+def _uploaded_workflow_files_prompt_payload(result) -> object:
+    prefix = "  - sys.files: "
+    user_prompt = _workflow_user_prompt(result)
+    for line in user_prompt.splitlines():
+        if line.startswith(prefix):
+            return json.loads(line.removeprefix(prefix))
+    raise AssertionError("missing prompt payload for sys.files")
 
 
 def test_builds_create_run_request_from_agent_soul_and_node_job():
@@ -491,7 +493,8 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
-                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
+                    {"name": "EDITABLE_TOKEN", "value": "inline-secret-value"},
+                    {"name": "LEGACY_SECRET_REF", "id": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -508,11 +511,12 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
         {"name": "RETRY_COUNT", "value": "3"},
+        {"name": "EDITABLE_TOKEN", "value": "inline-secret-value"},
     ]
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
-        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
+        {"name": "LEGACY_SECRET_REF", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -613,7 +617,37 @@ def test_build_shell_layer_config_maps_cli_tool_scoped_env():
     ]
 
 
-def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
+def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "value": "ghp_" + "x" * 300}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GITHUB_TOKEN", "value": "ghp_" + "x" * 300}],
+            "secret_refs": [],
+        }
+    ]
+
+
+def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -649,7 +683,10 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["type"] == "dify.plugin.tools"
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "shell": DIFY_SHELL_LAYER_ID,
+    }
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["tools"][0]["tool_name"] == "current_time"
     assert result.metadata["agent_tools"] == {
         "dify_tool_count": 1,
@@ -1224,6 +1261,48 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
     ]
 
 
+def test_uploaded_workflow_files_are_included_without_prompt_marker():
+    file_reference = build_file_reference(record_id="uploaded-file-1")
+
+    class UploadedFilesVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=file_reference,
+                            remote_url=None,
+                            filename="requirements.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=12,
+                        )
+                    ]
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=UploadedFilesVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Answer the user's question.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+    assert "- Uploaded workflow files:" in user_prompt
+    assert _uploaded_workflow_files_prompt_payload(result) == [
+        {
+            "transfer_method": "local_file",
+            "reference": file_reference,
+        }
+    ]
+    assert "Previous node outputs:" not in user_prompt
+
+
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():
     remote_url = "https://example.com/" + ("a" * 2100) + ".pdf"
 
@@ -1300,7 +1379,7 @@ def test_build_config_layer_config_includes_soul_context_and_mentions():
     assert warnings == []
 
 
-def test_build_config_layer_config_returns_none_for_empty_agent_soul():
+def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
     soul = AgentSoulConfig(
@@ -1308,30 +1387,43 @@ def test_build_config_layer_config_returns_none_for_empty_agent_soul():
     )
     config, warnings = build_config_layer_config(soul)
 
-    assert config is None
+    assert config is not None
+    assert config.model_dump(mode="json") == {
+        "agent_id": None,
+        "config_version": {"id": None, "kind": "snapshot", "writable": False},
+        "skills": [],
+        "files": [],
+        "env_keys": [],
+        "note": "",
+        "mentioned_skill_names": [],
+        "mentioned_file_names": [],
+    }
     assert warnings == []
 
 
-def test_workflow_run_request_has_no_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
+def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert DIFY_CONFIG_LAYER_ID not in layers
+    assert layers[DIFY_CONFIG_LAYER_ID]["config"] == {
+        "agent_id": "agent-1",
+        "config_version": {"id": "snapshot-1", "kind": "snapshot", "writable": False},
+        "skills": [],
+        "files": [],
+        "env_keys": [],
+        "note": "",
+        "mentioned_skill_names": [],
+        "mentioned_file_names": [],
+    }
     assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] is None
 
 
-def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_run_request_contains_config_layer():
     """Contract test: locks the dify.config composition shape against cross-package drift."""
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
     context = _context()
     context.snapshot.config_snapshot = _soul_with_config_assets()
 
@@ -1372,10 +1464,7 @@ def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatc
     assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
 
 
-def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
+def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():
     context = _context()
     context.snapshot.config_snapshot = _soul_with_config_assets()
 
@@ -1386,10 +1475,7 @@ def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt(monkeypat
     assert "[§" not in soul_prompt.config.prefix
 
 
-def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
+def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name():
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={
@@ -1405,20 +1491,11 @@ def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(m
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
     assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
     assert "[§" not in soul_prompt.config.prefix
-
-
-def test_workflow_run_request_has_no_config_layer_when_flag_disabled(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
-    context = _context()
-    context.snapshot.config_snapshot = _soul_with_config_assets()
-
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
-
-    dumped = result.request.model_dump(mode="json")
-    assert all(layer["name"] != DIFY_CONFIG_LAYER_ID for layer in dumped["composition"]["layers"])
-    assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
+    assert [warning["code"] for warning in result.metadata["runtime_support"]["unsupported_runtime_warnings"]] == [
+        "mention_target_missing",
+        "mention_target_missing",
+        "mention_target_missing",
+    ]
 
 
 def test_build_config_layer_config_missing_mentions_warn_without_catalog():
