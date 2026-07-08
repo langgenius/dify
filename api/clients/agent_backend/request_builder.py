@@ -114,7 +114,8 @@ def _markdown_backtick_fence(text: str) -> str:
 _BUILD_DRAFT_AGENT_SOUL_PROMPT = """You are running in build mode.
 
 Objective:
-- Improve this agent's working environment, configuration, tools, files, notes, and context so it can handle the intended task well.
+- Improve this agent's working environment, configuration, tools, files, notes,
+  and context so it can handle the intended task well.
 
 Guidance:
 - Treat the intended task as context for setup work, validation, and configuration decisions.
