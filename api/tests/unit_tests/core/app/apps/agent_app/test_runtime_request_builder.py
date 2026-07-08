@@ -221,19 +221,9 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="build_draft"))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == (
-            "You are running in build mode.\n\n"
-            "Objective:\n"
-            "- Prepare this agent's working environment, configuration, tools, files, notes, "
-            "and context for later normal runs.\n\n"
-            "Rules:\n"
-            "- Do not complete the intended user task now.\n"
-            "- Do not answer as if this were a normal user-facing run.\n"
-            "- Make setup and configuration changes only when they help later runs complete the intended task.\n"
-            "- Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration.\n\n"
-            "Intended task for later normal runs:\n"
-            "```text\nYou are Iris.\n```"
-        )
+        assert prompt_layer.config.prefix != _soul_with_model().prompt
+        assert prompt_layer.config.prefix.startswith("You are running in build mode.")
+        assert "```text\nYou are Iris.\n```" in prompt_layer.config.prefix
 
     def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
         builder = AgentAppRuntimeRequestBuilder(

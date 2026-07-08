@@ -114,12 +114,11 @@ def _markdown_backtick_fence(text: str) -> str:
 _BUILD_DRAFT_AGENT_SOUL_PROMPT = """You are running in build mode.
 
 Objective:
-- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.
+- Improve this agent's working environment, configuration, tools, files, notes, and context so it can handle the intended task well.
 
-Rules:
-- Do not complete the intended user task now.
-- Do not answer as if this were a normal user-facing run.
-- Make setup and configuration changes only when they help later runs complete the intended task.
+Guidance:
+- Treat the intended task as context for setup work, validation, and configuration decisions.
+- Perform concrete investigative or setup steps when they help improve or verify the agent configuration.
 - Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration."""
 
 
