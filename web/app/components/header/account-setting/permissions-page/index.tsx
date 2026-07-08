@@ -4,9 +4,10 @@ import type { RoleModalMode, submitRoleData } from './role-modal'
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
@@ -32,7 +33,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
 
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 

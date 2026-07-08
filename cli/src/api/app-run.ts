@@ -54,7 +54,7 @@ export class AppRunClient {
     body: Record<string, unknown>,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}/run`, {
+    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}:run`, {
       method: 'POST',
       json: body,
       headers: { Accept: 'text/event-stream' },
@@ -79,7 +79,7 @@ export class AppRunClient {
     action: string,
     inputs: Record<string, unknown>,
   ): Promise<void> {
-    await this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
+    await this.orpc.apps.byAppId.humanInputForms.byFormToken.submit.post({
       params: { app_id: appId, form_token: formToken },
       body: { action, inputs },
     })

@@ -154,13 +154,13 @@ describe('MembersClient.updateRole', () => {
     await stub?.stop()
   })
 
-  it('PUTs role payload to /role subresource', async () => {
+  it('PATCHes role payload to the member resource', async () => {
     stub = await startStubServer(cap => jsonResponder(200, { result: 'success' }, cap))
 
     const result = await makeClient(stub.url).updateRole('ws-1', 'm-1', { role: 'admin' })
 
-    expect(stub.captured.method).toBe('PUT')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/members/m-1/role')
+    expect(stub.captured.method).toBe('PATCH')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/members/m-1')
     expect(JSON.parse(stub.captured.body ?? '{}')).toEqual({ role: 'admin' })
     expect(result.result).toBe('success')
   })
@@ -181,7 +181,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     await stub?.stop()
   })
 
-  it('POSTs /workspaces/<id>/switch and returns workspace detail', async () => {
+  it('POSTs /workspaces/<id>:switch and returns workspace detail', async () => {
     stub = await startStubServer(cap =>
       jsonResponder(
         200,
@@ -200,7 +200,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
     const result = await client.switch('ws-1')
 
     expect(stub.captured.method).toBe('POST')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/switch')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1:switch')
     expect(result.current).toBe(true)
   })
 

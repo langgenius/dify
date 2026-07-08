@@ -9,8 +9,8 @@ from collections.abc import Mapping
 from typing import Any, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
@@ -94,20 +94,22 @@ class WorkflowCollaborationService:
             },
         )
 
-    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str) -> tuple[str, bool] | None:
+    def authorize_and_join_workflow_room(
+        self, workflow_id: str, sid: str, *, session: Session
+    ) -> tuple[str, bool] | None:
         """
         Join a collaboration room only after validating the socket session and tenant-scoped app access.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
         """
-        session = self._socketio.get_session(sid)
-        user_id = session.get("user_id")
-        tenant_id = session.get("tenant_id")
+        socket_session = self._socketio.get_session(sid)
+        user_id = socket_session.get("user_id")
+        tenant_id = socket_session.get("tenant_id")
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id)):
+        if not self._can_access_workflow(workflow_id, str(tenant_id), session=session):
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,
@@ -121,8 +123,8 @@ class WorkflowCollaborationService:
 
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
-            "username": str(session.get("username", "Unknown")),
-            "avatar": session.get("avatar"),
+            "username": str(socket_session.get("username", "Unknown")),
+            "avatar": socket_session.get("avatar"),
             "sid": sid,
             "connected_at": int(time.time()),
             "server_id": self.server_id,
@@ -140,10 +142,9 @@ class WorkflowCollaborationService:
 
         return str(user_id), is_leader
 
-    def _can_access_workflow(self, workflow_id: str, tenant_id: str) -> bool:
+    def _can_access_workflow(self, workflow_id: str, tenant_id: str, *, session: Session) -> bool:
         """Check room access without relying on Flask's app-context-bound scoped session."""
-        with session_factory.create_session() as session:
-            app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
+        app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
         return app_id is not None
 
     def disconnect_session(self, sid: str) -> None:

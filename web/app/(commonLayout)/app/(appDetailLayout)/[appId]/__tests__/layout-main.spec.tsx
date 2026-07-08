@@ -10,8 +10,14 @@ import AppDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
 let mockPathname = '/app/app-1/workflow'
-let mockIsLoadingWorkspacePermissionKeys = false
 let mockIsRbacEnabled = true
+const mockAppContextState = vi.hoisted(() => ({
+  currentWorkspace: { id: 'workspace-1' },
+  isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
 
 const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -28,16 +34,17 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: { id: 'workspace-1' },
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -65,8 +72,12 @@ describe('AppDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/app/app-1/workflow'
-    mockIsLoadingWorkspacePermissionKeys = false
     mockIsRbacEnabled = true
+    mockAppContextState.currentWorkspace = { id: 'workspace-1' }
+    mockAppContextState.isLoadingCurrentWorkspace = false
+    mockAppContextState.isLoadingWorkspacePermissionKeys = false
+    mockAppContextState.userProfile = { id: 'user-1' }
+    mockAppContextState.workspacePermissionKeys = []
     mockUsePathname.mockImplementation(() => mockPathname)
     mockUseRouter.mockReturnValue({
       back: vi.fn(),
@@ -240,7 +251,7 @@ describe('AppDetailLayout', () => {
   })
 
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
-    mockIsLoadingWorkspacePermissionKeys = true
+    mockAppContextState.isLoadingWorkspacePermissionKeys = true
     mockPathname = '/app/app-1/overview'
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }))
 
@@ -256,7 +267,7 @@ describe('AppDetailLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
 
-    mockIsLoadingWorkspacePermissionKeys = false
+    mockAppContextState.isLoadingWorkspacePermissionKeys = false
     rerender(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>

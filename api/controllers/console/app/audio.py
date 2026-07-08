@@ -161,7 +161,7 @@ class ChatMessageTextApi(Resource):
             # response-contract:ignore
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session,
+                session=db.session(),
                 text=payload.text,
                 voice=payload.voice,
                 message_ref=message_ref,

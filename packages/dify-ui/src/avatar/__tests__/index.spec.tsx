@@ -1,6 +1,30 @@
 import { render } from 'vitest-browser-react'
 import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '..'
 
+function stubImageLoader() {
+  const originalImage = window.Image
+  const images: HTMLImageElement[] = []
+
+  function TestImage(_width?: number, _height?: number): HTMLImageElement {
+    const image = document.createElement('img')
+    images.push(image)
+    return image
+  }
+
+  Object.defineProperty(window, 'Image', {
+    configurable: true,
+    value: TestImage,
+    writable: true,
+  })
+
+  return {
+    images,
+    restore: () => {
+      window.Image = originalImage
+    },
+  }
+}
+
 describe('Avatar', () => {
   describe('Rendering', () => {
     it('should keep the fallback visible when avatar URL is provided before image load', async () => {
@@ -69,7 +93,7 @@ describe('Avatar', () => {
     })
 
     it('should handle empty string avatar as falsy value', async () => {
-      const screen = await render(<Avatar name="Test" avatar={'' as string | null} />)
+      const screen = await render(<Avatar name="Test" avatar="" />)
 
       expect(screen.container.querySelector('img')).not.toBeInTheDocument()
       await expect.element(screen.getByText('T')).toBeInTheDocument()
@@ -77,25 +101,32 @@ describe('Avatar', () => {
   })
 
   describe('onLoadingStatusChange', () => {
-    it('should render the fallback when avatar and onLoadingStatusChange are provided', async () => {
-      const screen = await render(
-        <Avatar
-          name="John"
-          avatar="https://example.com/avatar.jpg"
-          onLoadingStatusChange={vi.fn()}
-        />,
-      )
-
-      await expect.element(screen.getByText('J')).toBeInTheDocument()
-    })
-
-    it('should not render image when avatar is null even with onLoadingStatusChange', async () => {
+    it('should forward image loading status changes', async () => {
+      const { images, restore } = stubImageLoader()
       const onStatusChange = vi.fn()
-      const screen = await render(
-        <Avatar name="John" avatar={null} onLoadingStatusChange={onStatusChange} />,
-      )
 
-      expect(screen.container.querySelector('img')).not.toBeInTheDocument()
+      try {
+        await render(
+          <Avatar
+            name="John"
+            avatar="https://example.com/avatar.jpg"
+            onLoadingStatusChange={onStatusChange}
+          />,
+        )
+
+        await vi.waitFor(() => {
+          expect(onStatusChange).toHaveBeenCalledWith('loading')
+        })
+
+        images[0]?.onload?.(new Event('load'))
+
+        await vi.waitFor(() => {
+          expect(onStatusChange).toHaveBeenCalledWith('loaded')
+        })
+      }
+      finally {
+        restore()
+      }
     })
   })
 })

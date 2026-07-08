@@ -26,7 +26,7 @@ describe('AppDslClient.exportDsl', () => {
     const yaml = await makeClient(stub.url).exportDsl('app-1')
 
     expect(stub.captured.method).toBe('GET')
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/export')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/dsl')
     expect(yaml).toBe(DSL_YAML)
   })
 
@@ -90,7 +90,7 @@ describe('AppDslClient.confirmImport', () => {
     const result = await makeClient(stub.url).confirmImport('ws-1', 'imp-1')
 
     expect(stub.captured.method).toBe('POST')
-    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/apps/imports/imp-1/confirm')
+    expect(stub.captured.url).toBe('/openapi/v1/workspaces/ws-1/apps/imports/imp-1:confirm')
     expect(result.status).toBe('completed')
   })
 })
@@ -107,7 +107,7 @@ describe('AppDslClient.checkDependencies', () => {
 
     const result = await makeClient(stub.url).checkDependencies('app-1')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/check-dependencies')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/dependencies:check')
     expect(result.leaked_dependencies).toEqual([])
   })
 })

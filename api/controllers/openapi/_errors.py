@@ -45,6 +45,7 @@ class OpenApiErrorCode(StrEnum):
     TOO_MANY_REQUESTS = "too_many_requests"
     INTERNAL_ERROR = "internal_server_error"
     BAD_GATEWAY = "bad_gateway"
+    UPGRADE_REQUIRED = "upgrade_required"
     UNKNOWN = "unknown"
     # domain codes (must match the error_code attribute of the exception
     # classes raised on the openapi surface)

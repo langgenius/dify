@@ -616,16 +616,14 @@ export type WorkspaceAccessMatrix = {
   pagination?: Pagination | null
 }
 
-export type ToolProviderOpaqueResponse = unknown
+export type ToolLabelListResponse = Array<ToolLabel>
 
 export type ApiToolProviderAddPayload = {
   credentials: {
     [key: string]: unknown
   }
   custom_disclaimer?: string
-  icon: {
-    [key: string]: unknown
-  }
+  icon: ToolEmojiIcon
   labels?: Array<string> | null
   privacy_policy?: string | null
   provider: string
@@ -637,8 +635,35 @@ export type ApiToolProviderDeletePayload = {
   provider: string
 }
 
+export type ApiProviderDetailResponse = {
+  credentials?: {
+    [key: string]: unknown
+  }
+  custom_disclaimer?: string | null
+  description?: string | null
+  icon: ToolEmojiIcon
+  labels?: Array<string>
+  privacy_policy?: string | null
+  schema: string
+  schema_type: ApiProviderSchemaType
+  tools: Array<ApiToolBundle>
+}
+
+export type ApiProviderRemoteSchemaResponse = {
+  schema: string
+}
+
 export type ApiToolSchemaPayload = {
   schema: string
+}
+
+export type ApiSchemaParseResponse = {
+  credentials_schema: Array<ProviderConfig>
+  parameters_schema: Array<ApiToolBundle>
+  schema_type: ApiProviderSchemaType
+  warning: {
+    [key: string]: string
+  }
 }
 
 export type ApiToolTestPayload = {
@@ -654,14 +679,16 @@ export type ApiToolTestPayload = {
   tool_name: string
 }
 
+export type ApiToolPreviewResponse = ApiToolPreviewResult
+
+export type ToolApiListResponse = Array<ToolApiEntity>
+
 export type ApiToolProviderUpdatePayload = {
   credentials: {
     [key: string]: unknown
   }
   custom_disclaimer?: string
-  icon: {
-    [key: string]: unknown
-  }
+  icon: ToolEmojiIcon
   labels?: Array<string> | null
   original_provider: string
   privacy_policy?: string | null
@@ -679,6 +706,16 @@ export type BuiltinToolAddPayload = {
   visibility?: string | null
 }
 
+export type ToolProviderCredentialInfoApiEntity = {
+  credentials: Array<ToolProviderCredentialApiEntity>
+  is_oauth_custom_client_enabled?: boolean
+  supported_credential_types: Array<CredentialType>
+}
+
+export type ProviderConfigListResponse = Array<ProviderConfig>
+
+export type ToolProviderCredentialListResponse = Array<ToolProviderCredentialApiEntity>
+
 export type BuiltinProviderDefaultCredentialPayload = {
   id: string
 }
@@ -687,12 +724,56 @@ export type BuiltinToolCredentialDeletePayload = {
   credential_id: string
 }
 
-export type ToolOAuthClientSchemaResponse = Array<{
-  [key: string]: unknown
-}>
+export type ToolProviderApiEntityResponse = {
+  allow_delete?: boolean
+  authentication?: McpAuthentication | null
+  author: string
+  configuration?: McpConfiguration | null
+  description: I18nObject
+  icon:
+    | string
+    | {
+      [key: string]: string
+    }
+  icon_dark?:
+    | string
+    | {
+      [key: string]: string
+    }
+  id: string
+  identity_mode?: string
+  is_dynamic_registration?: boolean
+  is_team_authorization?: boolean
+  label: I18nObject
+  labels?: Array<string>
+  masked_headers?: {
+    [key: string]: string
+  } | null
+  name: string
+  original_headers?: {
+    [key: string]: string
+  } | null
+  plugin_id?: string | null
+  plugin_unique_identifier?: string | null
+  server_identifier?: string | null
+  server_url?: string | null
+  team_credentials?: {
+    [key: string]: unknown
+  }
+  tools?: Array<ToolApiEntity>
+  type: ToolProviderType
+  updated_at?: number
+  workflow_app_id?: string | null
+}
 
-export type ToolOAuthCustomClientResponse = {
-  [key: string]: unknown
+export type BuiltinProviderOAuthClientSchemaResponse = {
+  client_params?: {
+    [key: string]: unknown
+  } | null
+  is_oauth_custom_client_enabled: boolean
+  is_system_oauth_params_exists: boolean
+  redirect_uri: string
+  schema: Array<ProviderConfig>
 }
 
 export type ToolOAuthCustomClientPayload = {
@@ -715,14 +796,10 @@ export type McpProviderDeletePayload = {
 }
 
 export type McpProviderCreatePayload = {
-  authentication?: {
-    [key: string]: unknown
-  } | null
-  configuration?: {
-    [key: string]: unknown
-  } | null
+  authentication?: McpAuthentication | null
+  configuration?: McpConfiguration | null
   headers?: {
-    [key: string]: unknown
+    [key: string]: string
   } | null
   icon: string
   icon_background?: string
@@ -734,14 +811,10 @@ export type McpProviderCreatePayload = {
 }
 
 export type McpProviderUpdatePayload = {
-  authentication?: {
-    [key: string]: unknown
-  } | null
-  configuration?: {
-    [key: string]: unknown
-  } | null
+  authentication?: McpAuthentication | null
+  configuration?: McpConfiguration | null
   headers?: {
-    [key: string]: unknown
+    [key: string]: string
   } | null
   icon: string
   icon_background?: string
@@ -758,11 +831,14 @@ export type McpAuthPayload = {
   provider_id: string
 }
 
+export type McpAuthResponse = {
+  authorization_url?: string | null
+  result?: 'success' | null
+}
+
 export type WorkflowToolCreatePayload = {
   description: string
-  icon: {
-    [key: string]: unknown
-  }
+  icon: ToolEmojiIcon
   label: string
   labels?: Array<string> | null
   name: string
@@ -775,11 +851,25 @@ export type WorkflowToolDeletePayload = {
   workflow_tool_id: string
 }
 
-export type WorkflowToolUpdatePayload = {
+export type WorkflowToolDetailResponse = {
   description: string
-  icon: {
+  icon: ToolEmojiIcon
+  label: string
+  name: string
+  output_schema?: {
     [key: string]: unknown
   }
+  parameters: Array<WorkflowToolParameterConfiguration>
+  privacy_policy?: string | null
+  synced: boolean
+  tool: ToolApiEntity
+  workflow_app_id: string
+  workflow_tool_id: string
+}
+
+export type WorkflowToolUpdatePayload = {
+  description: string
+  icon: ToolEmojiIcon
   label: string
   labels?: Array<string> | null
   name: string
@@ -787,6 +877,8 @@ export type WorkflowToolUpdatePayload = {
   privacy_policy?: string | null
   workflow_tool_id: string
 }
+
+export type ToolProviderListResponse = Array<ToolProviderApiEntityResponse>
 
 export type TriggerProviderApiEntity = {
   author: string
@@ -808,7 +900,7 @@ export type TriggerOAuthClientResponse = {
   configured: boolean
   custom_configured: boolean
   custom_enabled: boolean
-  oauth_client_schema: Array<TriggerProviderConfigResponse>
+  oauth_client_schema: Array<ProviderConfig>
   params: {
     [key: string]: unknown
   }
@@ -835,8 +927,6 @@ export type TriggerSubscriptionBuilderUpdatePayload = {
     [key: string]: unknown
   } | null
 }
-
-export type TriggerProviderOpaqueResponse = unknown
 
 export type TriggerSubscriptionBuilderCreatePayload = {
   credential_type?: string
@@ -873,11 +963,15 @@ export type TriggerSubscriptionBuilderVerifyPayload = {
   }
 }
 
-export type TriggerSubscriptionBuilderVerifyResponse = {
+export type TriggerVerificationResponse = {
   verified: boolean
 }
 
-export type TriggerSubscriptionListResponse = Array<TriggerProviderSubscriptionApiEntity>
+export type TriggerProviderSubscriptionListResponse = Array<TriggerProviderSubscriptionApiEntity>
+
+export type TriggerProviderErrorResponse = {
+  error: string
+}
 
 export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
@@ -1369,16 +1463,91 @@ export type AccessPolicyRole = {
   role_tag?: string
 }
 
+export type ToolLabel = {
+  icon: string
+  label: I18nObject
+  name: string
+}
+
+export type ToolEmojiIcon = {
+  background: string
+  content: string
+}
+
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
+
+export type ApiToolBundle = {
+  author: string
+  icon?: string | null
+  method: string
+  openapi: {
+    [key: string]: unknown
+  }
+  operation_id?: string | null
+  output_schema?: {
+    [key: string]: unknown
+  }
+  parameters?: Array<ToolParameter> | null
+  server_url: string
+  summary?: string | null
+}
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type ApiToolPreviewResult = {
+  error?: string
+  result?: string
+}
+
+export type ToolApiEntity = {
+  author: string
+  description: I18nObject
+  label: I18nObject
+  labels?: Array<string>
+  name: string
+  output_schema?: {
+    [key: string]: unknown
+  }
+  parameters?: Array<ToolParameter> | null
+}
 
 export type CredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 
-export type IdentityMode = 'idp_token' | 'off'
-
-export type WorkflowToolParameterConfiguration = {
-  description: string
-  form: ToolParameterForm
+export type ToolProviderCredentialApiEntity = {
+  created_by?: string
+  credential_type: CredentialType
+  credentials?: {
+    [key: string]: unknown
+  }
+  from_other_member?: boolean
+  id: string
+  is_default?: boolean
   name: string
+  partial_member_list?: Array<string>
+  provider: string
+  visibility?: string
+}
+
+export type McpAuthentication = {
+  client_id: string
+  client_secret?: string | null
+}
+
+export type McpConfiguration = {
+  sse_read_timeout?: number
+  timeout?: number
 }
 
 export type I18nObject = {
@@ -1386,6 +1555,23 @@ export type I18nObject = {
   ja_JP?: string | null
   pt_BR?: string | null
   zh_Hans?: string | null
+}
+
+export type ToolProviderType
+  = | 'api'
+    | 'app'
+    | 'builtin'
+    | 'dataset-retrieval'
+    | 'mcp'
+    | 'plugin'
+    | 'workflow'
+
+export type IdentityMode = 'idp_token' | 'off'
+
+export type WorkflowToolParameterConfiguration = {
+  description: string
+  form: ToolParameterForm
+  name: string
 }
 
 export type EventApiEntity = {
@@ -1404,42 +1590,7 @@ export type SubscriptionConstructor = {
   parameters?: Array<EventParameter>
 }
 
-export type ProviderConfig = {
-  default?: number | string | number | boolean | null
-  help?: I18nObject | null
-  label?: I18nObject | null
-  multiple?: boolean
-  name: string
-  options?: Array<Option> | null
-  placeholder?: I18nObject | null
-  required?: boolean
-  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: ProviderConfigType
-  url?: string | null
-}
-
 export type TriggerCreationMethod = 'APIKEY' | 'MANUAL' | 'OAUTH'
-
-export type TriggerProviderConfigResponse = {
-  default?: number | string | number | boolean | null
-  help?: I18nObject | null
-  label?: I18nObject | null
-  multiple?: boolean
-  name: string
-  options?: Array<TriggerProviderConfigOptionResponse> | null
-  placeholder?: I18nObject | null
-  required?: boolean
-  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type:
-    | 'app-selector'
-    | 'array[tools]'
-    | 'boolean'
-    | 'model-selector'
-    | 'secret-input'
-    | 'select'
-    | 'text-input'
-  url?: string | null
-}
 
 export type RequestLog = {
   created_at: string
@@ -1770,15 +1921,6 @@ export type PluginCategoryBuiltinToolResponse = {
   [key: string]: unknown
 }
 
-export type ToolProviderType
-  = | 'api'
-    | 'app'
-    | 'builtin'
-    | 'dataset-retrieval'
-    | 'mcp'
-    | 'plugin'
-    | 'workflow'
-
 export type RbacRoleAccount = {
   account_id: string
   account_name?: string
@@ -1796,6 +1938,64 @@ export type PermissionCatalogItem = {
   key: string
   name: string
 }
+
+export type ToolParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+      [key: string]: unknown
+    }
+    | null
+  form: ToolParameterForm
+  human_description?: I18nObject | null
+  input_schema?: {
+    [key: string]: unknown
+  } | null
+  label: I18nObject
+  llm_description?: string | null
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: ToolParameterType
+}
+
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope
+  = | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type ProviderConfigType
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
 
 export type ToolParameterForm = 'form' | 'llm' | 'schema'
 
@@ -1826,38 +2026,6 @@ export type EventParameter = {
 export type OAuthSchema = {
   client_schema?: Array<ProviderConfig>
   credentials_schema?: Array<ProviderConfig>
-}
-
-export type Option = {
-  label: I18nObject
-  value: string
-}
-
-export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
-
-export type ModelSelectorScope
-  = | 'llm'
-    | 'moderation'
-    | 'rerank'
-    | 'speech2text'
-    | 'text-embedding'
-    | 'tts'
-    | 'vision'
-
-export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
-
-export type ProviderConfigType
-  = | 'app-selector'
-    | 'array[tools]'
-    | 'boolean'
-    | 'model-selector'
-    | 'secret-input'
-    | 'select'
-    | 'text-input'
-
-export type TriggerProviderConfigOptionResponse = {
-  label: I18nObject
-  value: string
 }
 
 export type AiModelEntityResponse = {
@@ -2047,6 +2215,23 @@ export type PluginParameterAutoGenerate = {
 export type PluginParameterTemplate = {
   enabled?: boolean
 }
+
+export type ToolParameterType
+  = | 'any'
+    | 'app-selector'
+    | 'array'
+    | 'boolean'
+    | 'checkbox'
+    | 'dynamic-select'
+    | 'file'
+    | 'files'
+    | 'model-selector'
+    | 'number'
+    | 'object'
+    | 'secret-input'
+    | 'select'
+    | 'string'
+    | 'system-files'
 
 export type EventParameterType
   = | 'app-selector'
@@ -4399,7 +4584,7 @@ export type GetWorkspacesCurrentToolLabelsData = {
 }
 
 export type GetWorkspacesCurrentToolLabelsResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolLabelListResponse
 }
 
 export type GetWorkspacesCurrentToolLabelsResponse
@@ -4413,7 +4598,7 @@ export type PostWorkspacesCurrentToolProviderApiAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiAddResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiAddResponse
@@ -4427,7 +4612,7 @@ export type PostWorkspacesCurrentToolProviderApiDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiDeleteResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiDeleteResponse
@@ -4443,7 +4628,7 @@ export type GetWorkspacesCurrentToolProviderApiGetData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiGetResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ApiProviderDetailResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiGetResponse
@@ -4459,7 +4644,7 @@ export type GetWorkspacesCurrentToolProviderApiRemoteData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiRemoteResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ApiProviderRemoteSchemaResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiRemoteResponse
@@ -4473,7 +4658,7 @@ export type PostWorkspacesCurrentToolProviderApiSchemaData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiSchemaResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ApiSchemaParseResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiSchemaResponse
@@ -4487,7 +4672,7 @@ export type PostWorkspacesCurrentToolProviderApiTestPreData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiTestPreResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ApiToolPreviewResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiTestPreResponse
@@ -4503,7 +4688,7 @@ export type GetWorkspacesCurrentToolProviderApiToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiToolsResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolApiListResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiToolsResponse
@@ -4517,7 +4702,7 @@ export type PostWorkspacesCurrentToolProviderApiUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiUpdateResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiUpdateResponse
@@ -4533,7 +4718,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse
@@ -4551,7 +4736,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoData 
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderCredentialInfoApiEntity
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse
@@ -4570,7 +4755,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponses
   = {
-    200: ToolProviderOpaqueResponse
+    200: ProviderConfigListResponse
   }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse
@@ -4588,7 +4773,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderCredentialListResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse
@@ -4604,7 +4789,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialD
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse
@@ -4620,7 +4805,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse
@@ -4636,7 +4821,9 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconResponses = {
-  200: BinaryFileResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse
@@ -4652,7 +4839,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderApiEntityResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse
@@ -4668,7 +4855,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponses = {
-  200: ToolOAuthClientSchemaResponse
+  200: BuiltinProviderOAuthClientSchemaResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse
@@ -4700,7 +4887,9 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
-  200: ToolOAuthCustomClientResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
@@ -4732,7 +4921,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolApiListResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse
@@ -4748,7 +4937,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse
@@ -4776,7 +4965,7 @@ export type PostWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderApiEntityResponse
 }
 
 export type PostWorkspacesCurrentToolProviderMcpResponse
@@ -4804,7 +4993,7 @@ export type PostWorkspacesCurrentToolProviderMcpAuthData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpAuthResponses = {
-  200: ToolProviderOpaqueResponse
+  200: McpAuthResponse
 }
 
 export type PostWorkspacesCurrentToolProviderMcpAuthResponse
@@ -4820,7 +5009,7 @@ export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderApiEntityResponse
 }
 
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse
@@ -4836,7 +5025,7 @@ export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderApiEntityResponse
 }
 
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse
@@ -4850,7 +5039,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateResponse
@@ -4864,7 +5053,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponse
@@ -4881,7 +5070,7 @@ export type GetWorkspacesCurrentToolProviderWorkflowGetData = {
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowGetResponses = {
-  200: ToolProviderOpaqueResponse
+  200: WorkflowToolDetailResponse
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowGetResponse
@@ -4897,7 +5086,7 @@ export type GetWorkspacesCurrentToolProviderWorkflowToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowToolsResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolApiListResponse
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowToolsResponse
@@ -4911,7 +5100,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponses = {
-  200: ToolProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponse
@@ -4927,7 +5116,7 @@ export type GetWorkspacesCurrentToolProvidersData = {
 }
 
 export type GetWorkspacesCurrentToolProvidersResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderListResponse
 }
 
 export type GetWorkspacesCurrentToolProvidersResponse
@@ -4941,7 +5130,7 @@ export type GetWorkspacesCurrentToolsApiData = {
 }
 
 export type GetWorkspacesCurrentToolsApiResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderListResponse
 }
 
 export type GetWorkspacesCurrentToolsApiResponse
@@ -4955,7 +5144,7 @@ export type GetWorkspacesCurrentToolsBuiltinData = {
 }
 
 export type GetWorkspacesCurrentToolsBuiltinResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderListResponse
 }
 
 export type GetWorkspacesCurrentToolsBuiltinResponse
@@ -4969,7 +5158,7 @@ export type GetWorkspacesCurrentToolsMcpData = {
 }
 
 export type GetWorkspacesCurrentToolsMcpResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderListResponse
 }
 
 export type GetWorkspacesCurrentToolsMcpResponse
@@ -4983,7 +5172,7 @@ export type GetWorkspacesCurrentToolsWorkflowData = {
 }
 
 export type GetWorkspacesCurrentToolsWorkflowResponses = {
-  200: ToolProviderOpaqueResponse
+  200: ToolProviderListResponse
 }
 
 export type GetWorkspacesCurrentToolsWorkflowResponse
@@ -4999,7 +5188,9 @@ export type GetWorkspacesCurrentTriggerProviderByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconResponses = {
-  200: BinaryFileResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconResponse
@@ -5082,7 +5273,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponses
   = {
-    200: TriggerProviderOpaqueResponse
+    200: SimpleResultResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse
@@ -5155,7 +5346,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVe
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponses
   = {
-    200: TriggerSubscriptionBuilderVerifyResponse
+    200: TriggerVerificationResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse
@@ -5189,8 +5380,15 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListData =
   url: '/workspaces/current/trigger-provider/{provider}/subscriptions/list'
 }
 
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors = {
+  404: TriggerProviderErrorResponse
+}
+
+export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListError
+  = GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors[keyof GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors]
+
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponses = {
-  200: TriggerSubscriptionListResponse
+  200: TriggerProviderSubscriptionListResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse
@@ -5225,7 +5423,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponses
   = {
-    200: TriggerSubscriptionBuilderVerifyResponse
+    200: TriggerVerificationResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse
@@ -5257,7 +5455,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponses = {
-  200: TriggerProviderOpaqueResponse
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse

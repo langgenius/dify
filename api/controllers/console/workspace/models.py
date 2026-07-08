@@ -24,6 +24,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -305,6 +306,7 @@ class ModelProviderModelApi(Resource):
                 model_type=args.model_type,
                 configs=args.load_balancing.configs,
                 config_from=args.config_from or "",
+                session=db.session(),
             )
 
             if args.load_balancing.enabled:
@@ -368,6 +370,7 @@ class ModelProviderModelCredentialApi(Resource):
             provider=provider,
             model=args.model,
             model_type=args.model_type,
+            session=db.session(),
             config_from=args.config_from or "",
         )
 

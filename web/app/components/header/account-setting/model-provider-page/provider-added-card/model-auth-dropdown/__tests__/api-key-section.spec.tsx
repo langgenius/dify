@@ -9,6 +9,18 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
   credential_id: 'cred-1',
   credential_name: 'Test API Key',

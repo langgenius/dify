@@ -7,7 +7,11 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/components/empty-state'
 import { Section } from '../../../shared/components/section'
-import { accessSettingsQueryAtom } from '../state'
+import {
+  accessSettingsAtom,
+  accessSettingsIsErrorAtom,
+  accessSettingsIsLoadingAtom,
+} from '../state'
 import { EnvironmentPermissionRow } from './environment-permission-row'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
@@ -28,10 +32,10 @@ function AccessPermissionsSkeleton() {
 export function AccessPermissionsSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const accessSettingsQuery = useAtomValue(accessSettingsQueryAtom)
-  const environmentPolicies: EnvironmentAccessPolicy[] | undefined = accessSettingsQuery.data?.environmentPolicies
-  const isLoading = accessSettingsQuery.isLoading
-  const isError = accessSettingsQuery.isError
+  const accessSettings = useAtomValue(accessSettingsAtom)
+  const isLoading = useAtomValue(accessSettingsIsLoadingAtom)
+  const isError = useAtomValue(accessSettingsIsErrorAtom)
+  const environmentPolicies: EnvironmentAccessPolicy[] | undefined = accessSettings?.environmentPolicies
   const policyRows = environmentPolicies ?? []
 
   return (

@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { waitForAppsConsole } from '../support/apps'
+import { waitForConsoleHome } from '../support/home'
 import { apiURL, defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -150,12 +150,12 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     const { mode, usedInitPassword } = await ensureAdminAccount(context, deadline)
     await loginAdmin(context, deadline)
 
-    console.warn('[e2e] auth bootstrap: verifying apps console')
-    await page.goto(appURL(baseURL, '/apps'), {
+    console.warn('[e2e] auth bootstrap: verifying console home')
+    await page.goto(appURL(baseURL, '/'), {
       timeout: getRemainingTimeout(deadline),
       waitUntil: 'domcontentloaded',
     })
-    await waitForAppsConsole(page, getRemainingTimeout(deadline))
+    await waitForConsoleHome(page, getRemainingTimeout(deadline))
 
     await context.storageState({ path: authStatePath })
 

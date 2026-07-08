@@ -6,7 +6,7 @@ import { createHttpClient } from '@/http/client'
 import { getTokenStore } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
-import { hostWithScheme, openAPIBase } from '@/util/host'
+import { activeHostInfo, openAPIBase } from '@/util/host'
 import { runLogout } from './logout.js'
 
 export default class Logout extends DifyCommand {
@@ -32,7 +32,8 @@ export default class Logout extends DifyCommand {
       }
       catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
       if (bearer !== '') {
-        http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
+        const { host, insecure } = activeHostInfo(active)
+        http = createHttpClient({ baseURL: openAPIBase(host), bearer, retryAttempts: 0, insecure })
       }
     }
 

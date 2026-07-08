@@ -15,47 +15,40 @@ PLUGIN_CATEGORY = TenantPluginAutoUpgradeCategory.TOOL
 
 
 def _patched_session():
-    """Patch session_factory.create_session() to return a mock session as context manager."""
+    """Return a mock SQLAlchemy session for service calls."""
     session = MagicMock()
-    session.__enter__ = MagicMock(return_value=session)
-    session.__exit__ = MagicMock(return_value=False)
-    mock_factory = MagicMock()
-    mock_factory.create_session.return_value = session
-    patcher = patch(f"{MODULE}.session_factory", mock_factory)
-    return patcher, session
+    return session
 
 
 class TestGetStrategy:
     def test_returns_strategy_when_found(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         strategy = MagicMock()
         session.scalar.return_value = strategy
 
-        with p1:
-            from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+        from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.get_strategy("t1", PLUGIN_CATEGORY)
+        result = PluginAutoUpgradeService.get_strategy("t1", PLUGIN_CATEGORY, session=session)
 
         assert result is strategy
 
     def test_returns_none_when_not_found(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         session.scalar.return_value = None
 
-        with p1:
-            from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+        from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.get_strategy("t1", PLUGIN_CATEGORY)
+        result = PluginAutoUpgradeService.get_strategy("t1", PLUGIN_CATEGORY, session=session)
 
         assert result is None
 
 
 class TestChangeStrategy:
     def test_creates_new_strategy(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         session.scalar.return_value = None
 
-        with p1, patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+        with patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
             strat_cls.return_value = MagicMock()
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
@@ -67,28 +60,29 @@ class TestChangeStrategy:
                 [],
                 [],
                 category=PLUGIN_CATEGORY,
+                session=session,
             )
 
         assert result is True
         session.add.assert_called_once()
 
     def test_updates_existing_strategy(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         existing = MagicMock()
         session.scalar.return_value = existing
 
-        with p1:
-            from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+        from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.change_strategy(
-                "t1",
-                TenantPluginAutoUpgradeStrategySetting.LATEST,
-                5,
-                TenantPluginAutoUpgradeMode.PARTIAL,
-                ["p1"],
-                ["p2"],
-                category=PLUGIN_CATEGORY,
-            )
+        result = PluginAutoUpgradeService.change_strategy(
+            "t1",
+            TenantPluginAutoUpgradeStrategySetting.LATEST,
+            5,
+            TenantPluginAutoUpgradeMode.PARTIAL,
+            ["p1"],
+            ["p2"],
+            category=PLUGIN_CATEGORY,
+            session=session,
+        )
 
         assert result is True
         assert existing.strategy_setting == TenantPluginAutoUpgradeStrategySetting.LATEST
@@ -100,11 +94,10 @@ class TestChangeStrategy:
 
 class TestExcludePlugin:
     def test_creates_default_strategy_when_none_exists(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         session.scalar.return_value = None
 
         with (
-            p1,
             patch(f"{MODULE}.select"),
             patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy"),
         ):
@@ -114,74 +107,87 @@ class TestExcludePlugin:
                 "t1",
                 "plugin-1",
                 PLUGIN_CATEGORY,
+                session=session,
             )
 
         assert result is True
         session.add.assert_called_once()
 
     def test_appends_to_exclude_list_in_exclude_mode(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         existing = MagicMock()
         existing.upgrade_mode = TenantPluginAutoUpgradeMode.EXCLUDE
         existing.exclude_plugins = ["p-existing"]
         session.scalar.return_value = existing
 
-        with p1, patch(f"{MODULE}.select"):
+        with patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+            strat_cls.UpgradeMode.EXCLUDE = "exclude"
+            strat_cls.UpgradeMode.PARTIAL = "partial"
+            strat_cls.UpgradeMode.ALL = "all"
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.exclude_plugin("t1", "p-new", PLUGIN_CATEGORY)
+            result = PluginAutoUpgradeService.exclude_plugin("t1", "p-new", PLUGIN_CATEGORY, session=session)
 
         assert result is True
         assert existing.exclude_plugins == ["p-existing", "p-new"]
 
     def test_removes_from_include_list_in_partial_mode(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         existing = MagicMock()
         existing.upgrade_mode = TenantPluginAutoUpgradeMode.PARTIAL
         existing.include_plugins = ["p1", "p2"]
         session.scalar.return_value = existing
 
-        with p1, patch(f"{MODULE}.select"):
+        with patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+            strat_cls.UpgradeMode.EXCLUDE = "exclude"
+            strat_cls.UpgradeMode.PARTIAL = "partial"
+            strat_cls.UpgradeMode.ALL = "all"
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY)
+            result = PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY, session=session)
 
         assert result is True
         assert existing.include_plugins == ["p2"]
 
     def test_switches_to_exclude_mode_from_all(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         existing = MagicMock()
         existing.upgrade_mode = TenantPluginAutoUpgradeMode.ALL
         session.scalar.return_value = existing
 
-        with p1, patch(f"{MODULE}.select"):
+        with patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+            strat_cls.UpgradeMode.EXCLUDE = "exclude"
+            strat_cls.UpgradeMode.PARTIAL = "partial"
+            strat_cls.UpgradeMode.ALL = "all"
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY)
+            result = PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY, session=session)
 
         assert result is True
         assert existing.upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE
         assert existing.exclude_plugins == ["p1"]
 
     def test_no_duplicate_in_exclude_list(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         existing = MagicMock()
         existing.upgrade_mode = TenantPluginAutoUpgradeMode.EXCLUDE
         existing.exclude_plugins = ["p1"]
         session.scalar.return_value = existing
 
-        with p1, patch(f"{MODULE}.select"):
+        with patch(f"{MODULE}.select"), patch(f"{MODULE}.TenantPluginAutoUpgradeStrategy") as strat_cls:
+            strat_cls.UpgradeMode.EXCLUDE = "exclude"
+            strat_cls.UpgradeMode.PARTIAL = "partial"
+            strat_cls.UpgradeMode.ALL = "all"
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY)
+            PluginAutoUpgradeService.exclude_plugin("t1", "p1", PLUGIN_CATEGORY, session=session)
 
         assert existing.exclude_plugins == ["p1"]
 
 
 class TestBackfillStrategyCategories:
     def test_creates_default_missing_categories_without_fetching_daemon(self):
-        p1, session = _patched_session()
+        session = _patched_session()
         tool_strategy = SimpleNamespace(
             category=TenantPluginAutoUpgradeCategory.TOOL,
             strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
@@ -193,10 +199,10 @@ class TestBackfillStrategyCategories:
         session.scalars.return_value.all.return_value = [tool_strategy]
         installer = MagicMock()
 
-        with p1, patch(f"{MODULE}.PluginInstaller", return_value=installer):
+        with patch(f"{MODULE}.PluginInstaller", return_value=installer):
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.backfill_strategy_categories("t1")
+            result = PluginAutoUpgradeService.backfill_strategy_categories("t1", session=session)
             expected_time = PluginAutoUpgradeService.default_upgrade_time_of_day("t1")
 
         assert result.created_count == len(TenantPluginAutoUpgradeCategory) - 1
@@ -219,7 +225,7 @@ class TestBackfillStrategyCategories:
         assert 0 <= default_time < 24 * 60 * 60
 
     def test_creates_missing_categories_and_splits_known_plugins(self, caplog: pytest.LogCaptureFixture):
-        p1, session = _patched_session()
+        session = _patched_session()
         tool_strategy = SimpleNamespace(
             category=TenantPluginAutoUpgradeCategory.TOOL,
             strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
@@ -252,13 +258,12 @@ class TestBackfillStrategyCategories:
         installer.list_plugins.return_value = installed_plugins
 
         with (
-            p1,
             patch(f"{MODULE}.PluginInstaller", return_value=installer),
             caplog.at_level(logging.WARNING, logger=MODULE),
         ):
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
-            result = PluginAutoUpgradeService.backfill_strategy_categories("t1")
+            result = PluginAutoUpgradeService.backfill_strategy_categories("t1", session=session)
 
         assert result.created_count == len(TenantPluginAutoUpgradeCategory) - 2
         assert result.normalized is True

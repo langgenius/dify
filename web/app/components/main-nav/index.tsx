@@ -3,12 +3,17 @@
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import { useAppContext } from '@/context/app-context'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+  langGeniusVersionInfoAtom,
+} from '@/context/app-context-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
@@ -28,7 +33,9 @@ export function MainNav({
 }: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'

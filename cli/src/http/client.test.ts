@@ -184,7 +184,7 @@ describe('http client', () => {
     const client = createHttpClient({ baseURL: base(mock.url), bearer: 'dfoa_test' })
     let caught: unknown
     try {
-      await client.get('apps/nope/describe')
+      await client.get('apps/nope')
     }
     catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
@@ -545,7 +545,7 @@ describe('empty / No-Content bodies', () => {
     })
     try {
       const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test' })
-      await expect(client.post('apps/app-1/tasks/t-1/stop', { json: {} })).resolves.toBeUndefined()
+      await expect(client.post('apps/app-1/tasks/t-1:stop', { json: {} })).resolves.toBeUndefined()
     }
     finally {
       await stub.stop()
