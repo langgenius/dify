@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-access'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'

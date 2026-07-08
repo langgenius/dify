@@ -1,11 +1,12 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
+import { datasetWorkspaceAccessAtom } from '@/context/app-context-state'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -25,7 +26,7 @@ const List = () => {
     isCurrentWorkspaceOwner,
     canCreateDataset,
     canConnectExternalDataset,
-  } = useDatasetWorkspaceAccess()
+  } = useAtomValue(datasetWorkspaceAccessAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)

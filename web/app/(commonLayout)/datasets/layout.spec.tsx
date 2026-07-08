@@ -20,15 +20,21 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: AppContextMock) => unknown) => selector(mockUseAppContext()),
 }))
 
-vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
-  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-  return createDatasetAccessHookMock(() => mockUseAppContext())
+  return createDatasetAccessAtomMock(importOriginal, () => mockUseAppContext())
 })
 
 vi.mock('@/context/external-api-panel-context', () => ({
   ExternalApiPanelProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/external-knowledge-api-context', () => ({
   ExternalKnowledgeApiProvider: ({ children, enabled }: { children: ReactNode, enabled?: boolean }) => {

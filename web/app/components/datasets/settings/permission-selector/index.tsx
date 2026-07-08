@@ -8,12 +8,13 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useDatasetCurrentUser,
-  useDatasetRbacEnabled,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+  datasetRbacEnabledAtom,
+  userProfileAtom,
+} from '@/context/app-context-state'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import Item from './permission-item'
@@ -36,8 +37,8 @@ const PermissionSelector = ({
   onMemberSelect,
 }: RoleSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useDatasetCurrentUser()
-  const isRbacEnabled = useDatasetRbacEnabled()
+  const userProfile = useAtomValue(userProfileAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const [open, setOpen] = useState(false)
 
   const [keywords, setKeywords] = useState('')

@@ -42,10 +42,10 @@ vi.mock('@/context/app-context', () => ({
     }),
 }))
 
-vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
-  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-  return createDatasetAccessHookMock(() => ({
+  return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
   }))
@@ -60,6 +60,12 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
     handleSave: vi.fn(),
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {

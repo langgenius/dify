@@ -28,10 +28,10 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
-vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
-  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-  return createDatasetAccessHookMock(() => mockAppContextState)
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
 
 // Mock external api panel context
@@ -42,6 +42,12 @@ vi.mock('@/context/external-api-panel-context', () => ({
     setShowExternalApiPanel: mockSetShowExternalApiPanel,
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({

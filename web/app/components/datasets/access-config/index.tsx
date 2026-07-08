@@ -2,14 +2,13 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import Loading from '@/app/components/base/loading'
-import {
-  useDatasetACLCapabilities,
-  useDatasetRbacEnabled,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
+import { datasetRbacEnabledAtom } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
@@ -30,7 +29,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const isRbacEnabled = useDatasetRbacEnabled()
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const canAccessConfig = useDatasetACLCapabilities(dataset, { isRbacEnabled }).canAccessConfig
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })

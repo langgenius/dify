@@ -3,17 +3,18 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, createDocumentResponse, FileItem } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import {
-  useDatasetACLCapabilities,
-  useDatasetWorkspaceAccess,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  datasetWorkspaceAccessAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
@@ -45,7 +46,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const router = useRouter()
   const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
-  const { isLoadingWorkspacePermissionKeys } = useDatasetWorkspaceAccess()
+  const { isLoadingWorkspacePermissionKeys } = useAtomValue(datasetWorkspaceAccessAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const datasetACLCapabilities = useDatasetACLCapabilities(datasetDetail)
   const canAddDocumentsToDataset = !datasetId || datasetACLCapabilities.canUse

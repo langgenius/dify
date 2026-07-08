@@ -3,12 +3,13 @@ import type { KeyboardEvent, MouseEvent } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
-  useDatasetACLCapabilities,
-  useDatasetWorkspaceAccess,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+  datasetWorkspaceAccessAtom,
+} from '@/context/app-context-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import { hasOnlyDatasetPreviewPermission } from '@/utils/permission'
@@ -35,7 +36,7 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { canManageDatasetTags } = useDatasetWorkspaceAccess()
+  const { canManageDatasetTags } = useAtomValue(datasetWorkspaceAccessAtom)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {

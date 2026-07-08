@@ -9,7 +9,7 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
-import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-access'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'

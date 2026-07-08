@@ -12,6 +12,7 @@ import { defaultSystemFeatures } from '@/features/system-features/config'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
+import { hasPermission } from '@/utils/permission'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
@@ -85,6 +86,31 @@ export const workspacePermissionKeysLoadingAtom = atom((get) => {
 
 export const currentWorkspaceLoadingAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).isPending
+})
+
+export const datasetRbacEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).rbac_enabled
+})
+
+export const datasetWorkspaceAccessAtom = atom((get) => {
+  const currentWorkspace = get(currentWorkspaceAtom)
+  const roleFlags = get(workspaceRoleFlagsAtom)
+  const isLoadingCurrentWorkspace = get(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = get(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = get(workspacePermissionKeysAtom)
+
+  return {
+    currentWorkspaceId: currentWorkspace.id,
+    isCurrentWorkspaceOwner: roleFlags.isCurrentWorkspaceOwner,
+    isLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys,
+    isLoadingAccess: isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys,
+    canCreateDataset: hasPermission(workspacePermissionKeys, 'dataset.create_and_management'),
+    canConnectExternalDataset: hasPermission(workspacePermissionKeys, 'dataset.external.connect'),
+    canManageDatasetTags: hasPermission(workspacePermissionKeys, 'dataset.tag.manage'),
+    canManageDatasetApiKeys: hasPermission(workspacePermissionKeys, 'dataset.api_key.manage'),
+  }
 })
 
 export const currentWorkspaceValidatingAtom = atom((get) => {

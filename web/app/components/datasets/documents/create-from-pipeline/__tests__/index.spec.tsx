@@ -63,10 +63,10 @@ vi.mock('@/context/app-context', () => ({
   },
 }))
 
-vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
-  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-  return createDatasetAccessHookMock(() => ({
+  return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: mockCurrentUserId },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
@@ -82,6 +82,12 @@ vi.mock('@/service/use-billing', () => ({
     isFetching: false,
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset: { id: string, pipeline_id: string, permission_keys: string[] } }) => unknown) =>

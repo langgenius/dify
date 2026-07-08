@@ -3,15 +3,16 @@ import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { getDatasetACLCapabilities } from '@/utils/permission'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
-  useDatasetACLCapabilities,
-  useDatasetRbacEnabled,
-  useDatasetWorkspaceAccess,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+  datasetRbacEnabledAtom,
+  datasetWorkspaceAccessAtom,
+} from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -63,8 +64,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     isLoadingCurrentWorkspace,
     isLoadingWorkspacePermissionKeys,
-  } = useDatasetWorkspaceAccess()
-  const isRbacEnabled = useDatasetRbacEnabled()
+  } = useAtomValue(datasetWorkspaceAccessAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)

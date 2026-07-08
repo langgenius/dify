@@ -1,8 +1,9 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
+import { datasetWorkspaceAccessAtom } from '@/context/app-context-state'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -25,7 +26,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
     isLoadingAccess,
     canCreateDataset,
     canConnectExternalDataset,
-  } = useDatasetWorkspaceAccess()
+  } = useAtomValue(datasetWorkspaceAccessAtom)
   const router = useRouter()
   const pathname = usePathname()
   const shouldRedirectToDatasets = !isLoadingAccess

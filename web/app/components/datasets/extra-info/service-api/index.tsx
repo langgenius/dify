@@ -1,11 +1,12 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { datasetWorkspaceAccessAtom } from '@/context/app-context-state'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -18,7 +19,7 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
-  const { canManageDatasetApiKeys: canManageSecretKey } = useDatasetWorkspaceAccess()
+  const { canManageDatasetApiKeys: canManageSecretKey } = useAtomValue(datasetWorkspaceAccessAtom)
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)

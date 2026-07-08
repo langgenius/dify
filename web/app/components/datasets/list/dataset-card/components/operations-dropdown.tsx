@@ -5,11 +5,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
-  useDatasetACLCapabilities,
-  useDatasetRbacEnabled,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+  datasetRbacEnabledAtom,
+} from '@/context/app-context-state'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
@@ -28,7 +29,7 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const isRbacEnabled = useDatasetRbacEnabled()
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const datasetACLCapabilities = useDatasetACLCapabilities(dataset, { isRbacEnabled })
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL

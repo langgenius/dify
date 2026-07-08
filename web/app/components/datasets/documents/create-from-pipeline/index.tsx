@@ -5,14 +5,15 @@ import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-acl-capabilities'
 import {
-  useDatasetACLCapabilities,
-  useDatasetWorkspaceAccess,
-} from '@/app/components/datasets/hooks/use-dataset-access'
+  datasetWorkspaceAccessAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
@@ -42,7 +43,7 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const { isLoadingWorkspacePermissionKeys } = useDatasetWorkspaceAccess()
+  const { isLoadingWorkspacePermissionKeys } = useAtomValue(datasetWorkspaceAccessAtom)
   const dataSourceStore = useDataSourceStore()
   const canAddDocumentsToDataset = useDatasetACLCapabilities(dataset).canUse
   const shouldRedirectToDocuments = !!dataset
