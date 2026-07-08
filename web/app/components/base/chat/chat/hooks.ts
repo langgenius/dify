@@ -288,15 +288,7 @@ export const useChat = (
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          const isAgentMode = responseItem.agent_thoughts && responseItem.agent_thoughts.length > 0
-          if (!isAgentMode) {
-            responseItem.content = responseItem.content + message
-          }
-          else {
-            const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-            if (lastThought)
-              lastThought.thought = lastThought.thought + message
-          }
+          responseItem.content = responseItem.content + message
           if (messageId)
             responseItem.id = messageId
         })
@@ -766,7 +758,6 @@ export const useChat = (
       })
     }
 
-    let isAgentMode = false
     let hasSetResponseId = false
     let hasSettled = false
     const settleSend = (hasError?: boolean) => {
@@ -786,14 +777,7 @@ export const useChat = (
         workflowEventsAbortControllerRef.current = abortController
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        if (!isAgentMode) {
-          responseItem.content = responseItem.content + message
-        }
-        else {
-          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought)
-            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
-        }
+        responseItem.content = responseItem.content + message
 
         if (messageId && !hasSetResponseId) {
           questionItem.id = `question-${messageId}`
@@ -944,7 +928,6 @@ export const useChat = (
         })
       },
       onThought(thought) {
-        isAgentMode = true
         const response = responseItem as any
         if (thought.message_id && !hasSetResponseId)
           response.id = thought.message_id

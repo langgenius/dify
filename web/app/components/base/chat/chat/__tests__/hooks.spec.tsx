@@ -444,7 +444,7 @@ describe('useChat', () => {
         // onThought
         callbacks.onThought({ id: 'th-1', message_id: 'm-2', thought: 'thinking...', message_files: [] })
 
-        // onData (for agent mode, appends to thought)
+        // onData appends to answer content, not agent thought.
         callbacks.onData(' detailed', false, { messageId: 'm-2' })
 
         // onThought (update same thought)
@@ -1977,7 +1977,7 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.status).toBe('succeeded')
     })
 
-    it('should cover onThought creating tracing and appending message correctly when isAgentMode=true', () => {
+    it('should append message chunks to answer content after agent thoughts', () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
@@ -1994,13 +1994,14 @@ describe('useChat', () => {
         // onThought when array is implicitly empty
         callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
 
-        // onData which appends to last thought
+        // onData comes from message/agent_message events and should render as answer content.
         callbacks.onData(' appended', false, { messageId: 'm-thought' })
       })
 
       const lastResponse = result.current.chatList[result.current.chatList.length - 1]
+      expect(lastResponse!.content).toBe(' appended')
       expect(lastResponse!.agent_thoughts).toHaveLength(1)
-      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought appended')
+      expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought')
     })
   })
 
