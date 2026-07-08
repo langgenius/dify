@@ -9,10 +9,11 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/app-context-state'
 import { getAvatar } from '@/service/common'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
@@ -54,12 +55,11 @@ const OnlineUsers = () => {
   const { t } = useTranslation()
   const appId = useStore(s => s.appId)
   const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const currentUserId = userProfile?.id
   const fallbackUsername = t('comments.fallback.user', { ns: 'workflow' })
   const currentUserSuffix = t('members.you', { ns: 'common' })
 
