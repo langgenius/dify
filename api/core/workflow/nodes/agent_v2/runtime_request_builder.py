@@ -696,7 +696,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
                 "Upload each sandbox-local file through the Agent Stub CLI first. For structured `final_output`, use "
-                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` value.",
+                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
+                "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
                 "file, include the returned `download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",

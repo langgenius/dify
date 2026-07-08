@@ -24,7 +24,7 @@ def _create_app(db_session: Session, account: Account, *, name: str = "Runner") 
         icon="🤖",
         icon_background="#FF6B6B",
     )
-    app_model = AppService().create_app(tenant.id, params, account)
+    app_model = AppService().create_app(tenant.id, params, account, session=db_session)
     db_session.commit()
     return app_model
 

@@ -40,7 +40,7 @@ class TestGetPartialMemberList:
         session = MagicMock()
         session.scalars.return_value.all.return_value = []
         result = CredentialPermissionService.get_partial_member_list(
-            session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
         )
         assert result == []
         session.scalars.assert_called_once()
@@ -49,7 +49,7 @@ class TestGetPartialMemberList:
         session = MagicMock()
         session.scalars.return_value.all.return_value = [user_id, other_user_id]
         result = CredentialPermissionService.get_partial_member_list(
-            session, credential_id, CredentialType.TRIGGER_SUBSCRIPTION
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
         )
         assert set(result) == {user_id, other_user_id}
         session.scalars.assert_called_once()

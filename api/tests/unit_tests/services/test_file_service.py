@@ -377,7 +377,7 @@ class TestFileService:
 
     def test_get_upload_files_by_ids_empty(self):
         session = MagicMock()
-        result = FileService.get_upload_files_by_ids(session, "tenant_id", [])
+        result = FileService.get_upload_files_by_ids("tenant_id", [], session=session)
         assert result == {}
 
     def test_get_upload_files_by_ids(self):
@@ -387,7 +387,9 @@ class TestFileService:
         session = MagicMock()
         session.scalars().all.return_value = [upload_file]
 
-        result = FileService.get_upload_files_by_ids(session, "tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
+        result = FileService.get_upload_files_by_ids(
+            "tenant_id", ["550e8400-e29b-41d4-a716-446655440000"], session=session
+        )
         assert result["550e8400-e29b-41d4-a716-446655440000"] == upload_file
 
     def test_sanitize_zip_entry_name(self):

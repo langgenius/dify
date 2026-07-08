@@ -41,10 +41,6 @@ vi.mock('@/service/common', async () => {
   }
 })
 
-vi.mock('./utils/post-login-redirect', () => ({
-  resolvePostLoginRedirect: vi.fn(() => null),
-}))
-
 const mockReplace = vi.fn()
 const mockUseQuery = vi.mocked(useQuery)
 const mockUseSuspenseQuery = vi.mocked(useSuspenseQuery)
@@ -74,11 +70,17 @@ const invitationQueryResult = {
   },
 }
 
+const nonInviteQueryResult = {
+  isPending: false,
+  isError: false,
+  data: undefined,
+}
+
 describe('NormalForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ replace: mockReplace })
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('invite_token=invite-token'))
+    mockUseSearchParams.mockReturnValue(new URLSearchParams())
     mockUseSuspenseQuery.mockReturnValue({
       data: {
         enable_social_oauth_login: false,
@@ -97,8 +99,25 @@ describe('NormalForm', () => {
     } as unknown as ReturnType<typeof useSuspenseQuery>)
   })
 
+  describe('Default Redirects', () => {
+    it('should send logged-in visitors without a redirect target to the console home', async () => {
+      const searchParams = new URLSearchParams()
+      mockUseSearchParams.mockReturnValue(searchParams)
+      mockUseQuery
+        .mockReturnValueOnce(loggedInQueryResult as unknown as ReturnType<typeof useQuery>)
+        .mockReturnValueOnce(nonInviteQueryResult as unknown as ReturnType<typeof useQuery>)
+
+      render(<NormalForm />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/')
+      })
+    })
+  })
+
   describe('Invite Redirects', () => {
     it('should send logged-in invite visitors to the invite confirmation page', async () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams('invite_token=invite-token'))
       mockUseQuery
         .mockReturnValueOnce(loggedInQueryResult as unknown as ReturnType<typeof useQuery>)
         .mockReturnValueOnce(invitationQueryResult as unknown as ReturnType<typeof useQuery>)

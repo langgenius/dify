@@ -299,7 +299,9 @@ class ExternalApiTemplateApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(session, current_tenant_id, external_knowledge_api_id_str)
+        ExternalDatasetService.delete_external_knowledge_api(
+            current_tenant_id, external_knowledge_api_id_str, session=session
+        )
         return "", 204
 
 
@@ -318,9 +320,7 @@ class ExternalApiUseCheckApi(Resource):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            session,
-            external_knowledge_api_id_str,
-            current_tenant_id,
+            external_knowledge_api_id_str, current_tenant_id, session=session
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
@@ -366,6 +366,7 @@ class ExternalDatasetCreateApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
+            session=session,
         )
         item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
 
@@ -393,12 +394,12 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @with_session
     def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user, db.session)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session())
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 

@@ -224,7 +224,8 @@ class TestAgentAppRuntimeRequestBuilder:
         assert prompt_layer.config.prefix == (
             "You are running in build mode.\n\n"
             "Objective:\n"
-            "- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.\n\n"
+            "- Prepare this agent's working environment, configuration, tools, files, notes, "
+            "and context for later normal runs.\n\n"
             "Rules:\n"
             "- Do not complete the intended user task now.\n"
             "- Do not answer as if this were a normal user-facing run.\n"

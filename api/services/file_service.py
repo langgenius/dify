@@ -268,7 +268,7 @@ class FileService:
 
     @staticmethod
     def get_upload_files_by_ids(
-        session: Session, tenant_id: str, upload_file_ids: Sequence[str]
+        tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
     ) -> dict[str, UploadFile]:
         """
         Fetch `UploadFile` rows for a tenant in a single batch query.

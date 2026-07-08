@@ -118,6 +118,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables: list[Varia
         app_model=app_model,
         variables=default_variables,
         external_data_variables=external_data_variables,
+        session=MagicMock(),
     )
 
     assert len(nodes) == 2
@@ -160,6 +161,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables: list[
         app_model=app_model,
         variables=default_variables,
         external_data_variables=external_data_variables,
+        session=MagicMock(),
     )
 
     body = json.loads(nodes[0]["data"]["body"]["data"])
@@ -364,6 +366,7 @@ def test_convert_to_workflow_should_raise_when_app_model_config_is_missing(conve
             icon_type="emoji",
             icon="robot",
             icon_background="#fff",
+            session=MagicMock(),
         )
 
 
@@ -389,7 +392,6 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     monkeypatch.setattr(converter_module, "App", FakeApp)
 
     db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), commit=MagicMock())
-    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     send_mock = MagicMock()
     monkeypatch.setattr(converter_module.app_was_created, "send", send_mock)
@@ -417,6 +419,7 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
         icon_type="",
         icon="",
         icon_background="",
+        session=db_session,
     )
 
     assert new_app.name == "Source App(workflow)"
@@ -501,12 +504,12 @@ def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_a
     monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
 
     db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
-    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     workflow = converter.convert_app_model_config_to_workflow(
         app_model=app_model,
         app_model_config=_app_model_config(id="cfg"),
         account_id="account-1",
+        session=db_session,
     )
 
     graph = json.loads(workflow.graph)
@@ -568,12 +571,12 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     monkeypatch.setattr(converter_module, "Workflow", FakeWorkflow)
 
     db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
-    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     workflow = converter.convert_app_model_config_to_workflow(
         app_model=app_model,
         app_model_config=_app_model_config(id="cfg"),
         account_id="account-1",
+        session=db_session,
     )
 
     graph = json.loads(workflow.graph)
@@ -644,6 +647,7 @@ def test_convert_to_http_request_node_should_skip_non_api_and_missing_extension_
         app_model=app_model,
         variables=[],
         external_data_variables=external_data_variables,
+        session=MagicMock(),
     )
 
     assert nodes == []
@@ -810,10 +814,9 @@ def test_get_api_based_extension_should_raise_when_extension_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     db_session = SimpleNamespace(scalar=MagicMock(return_value=None))
-    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
     with pytest.raises(ValueError, match="API Based Extension not found"):
-        converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
+        converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1", session=db_session)
     db_session.scalar.assert_called_once()
 
 
@@ -823,9 +826,10 @@ def test_get_api_based_extension_should_return_entity_when_found(
 ) -> None:
     extension = SimpleNamespace(id="ext-1")
     db_session = SimpleNamespace(scalar=MagicMock(return_value=extension))
-    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
 
-    result = converter._get_api_based_extension(tenant_id="tenant-1", api_based_extension_id="ext-1")
+    result = converter._get_api_based_extension(
+        tenant_id="tenant-1", api_based_extension_id="ext-1", session=db_session
+    )
 
     assert result is extension
     db_session.scalar.assert_called_once()

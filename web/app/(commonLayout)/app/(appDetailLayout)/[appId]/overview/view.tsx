@@ -1,9 +1,10 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ChartView from './chart-view'
 import TracingPanel from './tracing/panel'
@@ -14,8 +15,8 @@ type OverviewViewProps = {
 
 const OverviewView = ({ appId }: OverviewViewProps) => {
   const appDetail = useAppStore(state => state.appDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,

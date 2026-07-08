@@ -158,7 +158,8 @@ def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
     assert prompt_config.prefix == (
         "You are running in build mode.\n\n"
         "Objective:\n"
-        "- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.\n\n"
+        "- Prepare this agent's working environment, configuration, tools, files, notes, "
+        "and context for later normal runs.\n\n"
         "Rules:\n"
         "- Do not complete the intended user task now.\n"
         "- Do not answer as if this were a normal user-facing run.\n"

@@ -22,8 +22,9 @@ def test_get_pipeline_templates(mocker: MockerFixture) -> None:
         },
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
+    session = mocker.Mock()
 
-    templates = retrieval.get_pipeline_templates(mocker.Mock(), "en-US")
+    templates = retrieval.get_pipeline_templates("en-US", session=session)
 
     assert templates == {"pipeline_templates": [{"id": "tpl-1"}]}
 
@@ -39,8 +40,9 @@ def test_get_pipeline_template_detail(mocker: MockerFixture) -> None:
         },
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
+    session = mocker.Mock()
 
-    detail = retrieval.get_pipeline_template_detail(mocker.Mock(), "tpl-1")
+    detail = retrieval.get_pipeline_template_detail("tpl-1", session=session)
 
     assert detail == {"id": "tpl-1", "name": "Template 1"}
 
@@ -52,8 +54,9 @@ def test_get_pipeline_templates_missing_language_returns_empty_dict(mocker: Mock
         return_value={"pipeline_templates": {}},
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
+    session = mocker.Mock()
 
-    result = retrieval.get_pipeline_templates(mocker.Mock(), "fr-FR")
+    result = retrieval.get_pipeline_templates("fr-FR", session=session)
 
     assert result == {}
 
@@ -65,8 +68,9 @@ def test_get_pipeline_template_detail_returns_none_for_unknown_id(mocker: Mocker
         return_value={"pipeline_templates": {"tpl-1": {"id": "tpl-1"}}},
     )
     retrieval = BuiltInPipelineTemplateRetrieval()
+    session = mocker.Mock()
 
-    result = retrieval.get_pipeline_template_detail(mocker.Mock(), "nonexistent-id")
+    result = retrieval.get_pipeline_template_detail("nonexistent-id", session=session)
 
     assert result is None
 

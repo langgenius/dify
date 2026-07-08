@@ -5,7 +5,7 @@ from __future__ import annotations
 import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, Literal, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -19,6 +19,10 @@ from dify_agent.agent_stub.client import (
     upload_file_to_signed_url_sync,
 )
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileMapping, is_canonical_dify_file_reference
+
+
+class _AgentStubFileDownloadResponse(Protocol):
+    download_url: str
 
 
 class UploadedToolFileMapping(BaseModel):
@@ -195,12 +199,15 @@ def _normalize_uploaded_tool_file_payload(payload: dict[str, object]) -> tuple[s
 
 
 def _request_uploaded_tool_file_download_url(*, url: str, auth_jwe: str, reference: str) -> str:
-    download_request: object = request_agent_stub_file_download_sync(
-        url=url,
-        auth_jwe=auth_jwe,
-        file=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
+    download_request = cast(
+        _AgentStubFileDownloadResponse,
+        request_agent_stub_file_download_sync(
+            url=url,
+            auth_jwe=auth_jwe,
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
+        ),
     )
-    download_url = getattr(download_request, "download_url", None)
+    download_url = download_request.download_url
     if not isinstance(download_url, str) or not download_url:
         raise AgentStubTransferError("signed file download response is missing download_url")
     return download_url
