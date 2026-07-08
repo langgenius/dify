@@ -489,6 +489,56 @@ describe('Logs Container', () => {
         })
       })
     })
+
+    it('should update query when typing session id', async () => {
+      const user = userEvent.setup()
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      const sessionInput = screen.getByPlaceholderText('appLog.filter.sessionId.placeholder')
+      await user.type(sessionInput, 'session-abc')
+
+      await waitFor(() => {
+        const lastCall = getMockCallParams()
+        expect(lastCall?.params).toMatchObject({
+          created_by_end_user_session_id: 'session-abc',
+        })
+      })
+    })
+
+    it('should reset page to first when filters change', async () => {
+      const user = userEvent.setup()
+      const logsPage1 = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+        createMockWorkflowLog({ id: `log-${i}` }))
+      const logsPage2 = [createMockWorkflowLog({ id: 'log-page-2' })]
+
+      mockedUseWorkflowLogs
+        .mockReturnValueOnce(createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse(logsPage1, APP_PAGE_LIMIT + 1),
+        }))
+        .mockReturnValue(createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse(logsPage2, APP_PAGE_LIMIT + 1),
+        }))
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+      await waitFor(() => {
+        expect(getMockCallParams()?.params?.page).toBe(2)
+      })
+
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      await user.type(searchInput, 'reset-page')
+
+      await waitFor(() => {
+        expect(getMockCallParams()?.params?.page).toBe(1)
+      })
+    })
   })
 
   // --------------------------------------------------------------------------
