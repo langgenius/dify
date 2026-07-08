@@ -12,7 +12,7 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -34,13 +34,13 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
-  }), [currentDataset?.maintainer, currentDataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state

@@ -7,8 +7,8 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  isCurrentWorkspaceOwnerAtom,
   workspacePermissionKeysAtom,
-  workspaceRoleFlagsAtom,
 } from '@/context/app-context-state'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
@@ -26,9 +26,8 @@ import DatasetListHeader from './header'
 const List = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isCurrentWorkspaceOwner = roleFlags.isCurrentWorkspaceOwner
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)

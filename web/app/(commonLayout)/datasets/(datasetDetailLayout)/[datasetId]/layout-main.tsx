@@ -10,7 +10,7 @@ import Loading from '@/app/components/base/loading'
 import {
   currentWorkspaceLoadingAtom,
   datasetRbacEnabledAtom,
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/app-context-state'
@@ -66,17 +66,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetRes?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
   const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath

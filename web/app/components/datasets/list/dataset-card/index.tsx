@@ -7,7 +7,7 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
@@ -36,7 +36,7 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageDatasetTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
 
@@ -59,10 +59,10 @@ const DatasetCard = ({
   }, [dataset.runtime_mode, dataset.is_published])
   const isPreviewOnly = hasOnlyDatasetPreviewPermission(dataset.permission_keys)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset.maintainer,
     workspacePermissionKeys,
-  }), [dataset.maintainer, dataset.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
   const canBindOrUnbindTags = !isPreviewOnly && (canManageDatasetTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {

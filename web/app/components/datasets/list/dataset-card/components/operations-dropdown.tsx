@@ -9,7 +9,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import {
   datasetRbacEnabledAtom,
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -32,14 +32,14 @@ const OperationsDropdown = ({
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [dataset.maintainer, dataset.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
+  }), [dataset.maintainer, dataset.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig

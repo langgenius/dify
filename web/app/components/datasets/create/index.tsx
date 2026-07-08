@@ -12,7 +12,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/app-context-state'
@@ -49,14 +49,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetDetail?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetDetail?.maintainer,
     workspacePermissionKeys,
-  }), [datasetDetail?.maintainer, datasetDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [datasetDetail?.maintainer, datasetDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const canAddDocumentsToDataset = !datasetId || datasetACLCapabilities.canUse
   const shouldRedirectToDocuments = !!datasetId
     && !!datasetDetail

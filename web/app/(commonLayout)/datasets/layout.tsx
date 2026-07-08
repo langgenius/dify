@@ -4,7 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import {
-  currentWorkspaceAtom,
+  currentWorkspaceIdAtom,
   currentWorkspaceLoadingAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -27,11 +27,10 @@ const isDatasetExternalConnectPath = (pathname: string) => {
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const currentWorkspaceId = currentWorkspace.id
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')

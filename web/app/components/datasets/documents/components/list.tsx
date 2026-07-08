@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
@@ -65,13 +65,13 @@ const DocumentList = ({
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetConfig?.maintainer,
     workspacePermissionKeys,
-  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa

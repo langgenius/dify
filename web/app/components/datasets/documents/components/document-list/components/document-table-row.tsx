@@ -11,7 +11,7 @@ import Operations from '@/app/components/datasets/documents/components/operation
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -66,13 +66,13 @@ const DocumentTableRow = React.memo(({
   const searchParams = useSearchParams()
   const documentNameId = React.useId()
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''

@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -29,13 +29,13 @@ const Card = ({
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canManageApiAccess = datasetACLCapabilities.canEdit
 
   const apiReferenceUrl = useDatasetApiAccessUrl()

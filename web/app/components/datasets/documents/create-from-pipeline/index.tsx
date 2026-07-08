@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/app-context-state'
@@ -46,14 +46,14 @@ const CreateFormPipeline = () => {
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canAddDocumentsToDataset = datasetACLCapabilities.canUse
   const shouldRedirectToDocuments = !!dataset
     && !isLoadingWorkspacePermissionKeys

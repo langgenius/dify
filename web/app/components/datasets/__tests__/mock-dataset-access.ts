@@ -24,8 +24,9 @@ type DatasetAccessMockOptions = {
 
 type DatasetAccessAtomKind
   = | 'userProfile'
-    | 'currentWorkspace'
-    | 'workspaceRoleFlags'
+    | 'userProfileId'
+    | 'currentWorkspaceId'
+    | 'isCurrentWorkspaceOwner'
     | 'workspacePermissionKeys'
     | 'currentWorkspaceLoading'
     | 'workspacePermissionKeysLoading'
@@ -82,8 +83,9 @@ export const createDatasetAccessAtomMock = async (
   return {
     ...actual,
     userProfileAtom: createMockAtom('userProfile'),
-    currentWorkspaceAtom: createMockAtom('currentWorkspace'),
-    workspaceRoleFlagsAtom: createMockAtom('workspaceRoleFlags'),
+    userProfileIdAtom: createMockAtom('userProfileId'),
+    currentWorkspaceIdAtom: createMockAtom('currentWorkspaceId'),
+    isCurrentWorkspaceOwnerAtom: createMockAtom('isCurrentWorkspaceOwner'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
@@ -113,17 +115,14 @@ export const createDatasetAccessJotaiMock = async (
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfile')
         return userProfile
 
-      if (atom[DATASET_ACCESS_ATOM_KIND] === 'currentWorkspace')
-        return { id: state.currentWorkspace?.id ?? 'workspace-1' }
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'userProfileId')
+        return userProfile.id
 
-      if (atom[DATASET_ACCESS_ATOM_KIND] === 'workspaceRoleFlags') {
-        return {
-          isCurrentWorkspaceManager: false,
-          isCurrentWorkspaceOwner: state.isCurrentWorkspaceOwner ?? false,
-          isCurrentWorkspaceEditor: false,
-          isCurrentWorkspaceDatasetOperator: false,
-        }
-      }
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'currentWorkspaceId')
+        return state.currentWorkspace?.id ?? 'workspace-1'
+
+      if (atom[DATASET_ACCESS_ATOM_KIND] === 'isCurrentWorkspaceOwner')
+        return state.isCurrentWorkspaceOwner ?? false
 
       if (atom[DATASET_ACCESS_ATOM_KIND] === 'workspacePermissionKeys')
         return workspacePermissionKeys

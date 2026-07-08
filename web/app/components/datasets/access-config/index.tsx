@@ -9,7 +9,7 @@ import AccessRulesEditor from '@/app/components/access-rules-editor'
 import Loading from '@/app/components/base/loading'
 import {
   datasetRbacEnabledAtom,
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -34,14 +34,14 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
+  }), [dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
   const canAccessConfig = datasetACLCapabilities.canAccessConfig
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })

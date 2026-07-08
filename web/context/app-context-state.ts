@@ -42,6 +42,10 @@ export const userProfileAtom = atom((get): GetAccountProfileResponse => {
   return accountProfileQuery.data?.profile || userProfilePlaceholder
 })
 
+export const userProfileIdAtom = atom((get) => {
+  return get(userProfileAtom).id
+})
+
 const profileMetaAtom = atom((get) => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
 
@@ -65,12 +69,20 @@ export const currentWorkspaceAtom = atom((get) => {
   return get(normalizedCurrentWorkspaceAtom)
 })
 
+export const currentWorkspaceIdAtom = atom((get) => {
+  return get(currentWorkspaceAtom).id
+})
+
 export const workspaceRoleFlagsAtom = atom((get) => {
   return getWorkspaceRoleFlags(get(currentWorkspaceAtom))
 })
 
+export const isCurrentWorkspaceOwnerAtom = atom((get) => {
+  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceOwner
+})
+
 const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
-  const workspaceId = get(currentWorkspaceAtom).id
+  const workspaceId = get(currentWorkspaceIdAtom)
 
   return workspacePermissionKeysQueryOptions(workspaceId)
 })

@@ -29,7 +29,7 @@ import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import {
-  userProfileAtom,
+  userProfileIdAtom,
   workspacePermissionKeysAtom,
 } from '@/context/app-context-state'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -67,13 +67,13 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
-  }), [currentDataset?.maintainer, currentDataset?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canRunRetrievalRecall = datasetACLCapabilities.canRetrievalRecall
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
 
