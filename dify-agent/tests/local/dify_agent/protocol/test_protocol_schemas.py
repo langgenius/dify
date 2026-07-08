@@ -47,6 +47,11 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
             data=FinalResultEvent(tool_name=None, tool_call_id=None),
             agent_message_delta="hello",
         ),
+        PydanticAIStreamRunEvent(
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            terminal_output_delta="done",
+        ),
         RunSucceededEvent(
             run_id="run-1",
             data=RunSucceededEventData(

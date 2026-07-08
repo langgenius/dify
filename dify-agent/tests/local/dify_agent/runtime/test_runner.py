@@ -421,7 +421,8 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
     assert "session_snapshot" not in event_types
     assert event_types[-1:] == ["run_succeeded"]
     pydantic_events = [event for event in sink.events["run-1"] if isinstance(event, PydanticAIStreamRunEvent)]
-    assert "".join(event.agent_message_delta or "" for event in pydantic_events) == "done"
+    assert "".join(event.terminal_output_delta or "" for event in pydantic_events) == "done"
+    assert "".join(event.agent_message_delta or "" for event in pydantic_events) == ""
     terminal = sink.events["run-1"][-1]
     assert isinstance(terminal, RunSucceededEvent)
     assert terminal.data.output == "done"

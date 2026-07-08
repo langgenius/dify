@@ -29,6 +29,7 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTerminalOutputDeltaInternalEvent,
     extract_runtime_layer_specs,
 )
 from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
@@ -583,7 +584,7 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal = self._consume_stream(
+        terminal, streamed_terminal_answer = self._consume_stream(
             create_response.run_id,
             dify_context=dify_context,
             message_id=message_id,
@@ -624,6 +625,7 @@ class AgentAppRunner:
                 model_name=model_name,
                 answer=answer,
                 query=query,
+                streamed_answer=streamed_terminal_answer,
                 usage=_llm_usage_from_agent_backend(terminal.usage),
             )
             session_saved = self._save_session(
@@ -645,6 +647,7 @@ class AgentAppRunner:
                     model_name=model_name,
                     answer=answer,
                     query=query,
+                    streamed_answer=streamed_terminal_answer,
                     usage=_llm_usage_from_agent_backend(terminal.usage),
                 )
             finally:
@@ -815,6 +818,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
+        streamed_terminal_parts: list[str] = []
 
         def persist_answer_text(content_delta: str) -> None:
             try:
@@ -834,25 +838,26 @@ class AgentAppRunner:
                 user_query=query,
             )
 
-        def flush_pending_answer_text() -> None:
+        def flush_pending_agent_message_text() -> None:
             pending_text = text_delta_debouncer.flush()
             if pending_text:
                 persist_answer_text(pending_text)
 
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
-                flush_pending_answer_text()
+                flush_pending_agent_message_text()
                 self._cancel_run(run_id)
                 raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
                 if queue_manager.is_stopped():
-                    flush_pending_answer_text()
+                    flush_pending_agent_message_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
                 if internal_event.type in (
                     AgentBackendInternalEventType.RUN_STARTED,
                     AgentBackendInternalEventType.STREAM_EVENT,
                     AgentBackendInternalEventType.AGENT_MESSAGE_DELTA,
+                    AgentBackendInternalEventType.TERMINAL_OUTPUT_DELTA,
                 ):
                     if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                         debounced_delta = text_delta_debouncer.push(internal_event.delta)
@@ -860,8 +865,19 @@ class AgentAppRunner:
                             persist_answer_text(debounced_delta)
                         continue
 
+                    if isinstance(internal_event, AgentBackendTerminalOutputDeltaInternalEvent):
+                        flush_pending_agent_message_text()
+                        streamed_terminal_parts.append(internal_event.delta)
+                        publish_text_delta(
+                            queue_manager=queue_manager,
+                            model_name=model_name,
+                            delta=internal_event.delta,
+                            user_query=query,
+                        )
+                        continue
+
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
-                        flush_pending_answer_text()
+                        flush_pending_agent_message_text()
                         try:
                             process_recorder.handle_stream_event(internal_event)
                         except Exception:
@@ -875,13 +891,13 @@ class AgentAppRunner:
                             )
                         continue
                     continue
-                flush_pending_answer_text()
+                flush_pending_agent_message_text()
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
-        flush_pending_answer_text()
-        return terminal
+        flush_pending_agent_message_text()
+        return terminal, "".join(streamed_terminal_parts)
 
     def _cancel_run(self, run_id: str) -> None:
         try:
@@ -903,10 +919,34 @@ class AgentAppRunner:
         model_name: str,
         answer: str,
         query: str | None,
+        streamed_answer: str,
         usage: LLMUsage | None,
     ) -> None:
         """Finish a successful turn from the backend terminal output."""
-        publish_text_answer(
+        if not streamed_answer:
+            publish_text_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                user_query=query,
+                usage=usage,
+            )
+            return
+
+        if answer.startswith(streamed_answer):
+            publish_text_delta(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                delta=answer[len(streamed_answer) :],
+                user_query=query,
+            )
+        elif answer != streamed_answer:
+            logger.warning(
+                "Agent App streamed terminal output does not match terminal output; "
+                "using terminal output for message persistence."
+            )
+
+        publish_message_end(
             queue_manager=queue_manager,
             model_name=model_name,
             answer=answer,

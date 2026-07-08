@@ -112,14 +112,14 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            agent_message_delta="hello ",
+            terminal_output_delta="hello ",
         )
         yield PydanticAIStreamRunEvent(
             id="3-0",
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            agent_message_delta="agent",
+            terminal_output_delta="agent",
         )
         yield RunSucceededEvent(
             id="4-0",
@@ -144,14 +144,14 @@ class _StreamingRecordingFakeAgentBackendRunClient(_RecordingFakeAgentBackendRun
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            agent_message_delta="hello ",
+            terminal_output_delta="hello ",
         )
         yield PydanticAIStreamRunEvent(
             id="3-0",
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            agent_message_delta="agent",
+            terminal_output_delta="agent",
         )
         yield RunSucceededEvent(
             id="4-0",
@@ -179,7 +179,7 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            agent_message_delta="hello ",
+            terminal_output_delta="hello ",
         )
         self._queue_manager.request_stop()
         yield PydanticAIStreamRunEvent(
@@ -187,7 +187,7 @@ class _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(_RecordingFakeAgent
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            agent_message_delta="agent",
+            terminal_output_delta="agent",
         )
 
 
@@ -316,7 +316,7 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             run_id=run_id,
             created_at=created_at,
             data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="final answer")),
-            agent_message_delta="final answer",
+            terminal_output_delta="final answer",
         )
         yield RunSucceededEvent(
             id="6-0",
@@ -342,6 +342,9 @@ class _FakeDbSession:
 
     def get(self, _model: type[MessageAgentThought], row_id: str) -> MessageAgentThought | None:
         return self.rows.get(row_id)
+
+    def delete(self, row: MessageAgentThought) -> None:
+        self.rows.pop(str(row.id), None)
 
     def rollback(self) -> None:
         self.rollback_count += 1
@@ -653,16 +656,15 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
-    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello ", "agent"]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
+    assert agent_message_events == []
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
     assert end_events[0].llm_result.usage.prompt_tokens == 3
     assert end_events[0].llm_result.usage.completion_tokens == 5
     assert end_events[0].llm_result.usage.total_tokens == 8
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert len(rows) == 1
-    assert rows[0].answer == "hello agent"
+    assert rows == []
     assert store.saved
 
 
@@ -762,13 +764,10 @@ def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
-    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
-    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
-    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
-    assert len(thought_events) == 1
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
+    assert agent_message_events == []
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert len(rows) == 1
-    assert rows[0].answer == "hello agent"
+    assert rows == []
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
@@ -783,7 +782,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
-    assert [event.chunk.delta.message.content for event in agent_message_events] == ["final answer"]
+    assert agent_message_events == []
     thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
     assert len(thought_events) >= 3
 
@@ -793,7 +792,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
-    assert rows[2].answer == "final answer"
+    assert len(rows) == 2
 
 
 def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
@@ -808,11 +807,10 @@ def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
-    assert chunk_events == []
-    assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello "]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello "]
+    assert agent_message_events == []
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
-    assert len(rows) == 1
-    assert rows[0].answer == "hello "
+    assert rows == []
     assert client.cancelled_run_ids == ["fake-run-1"]
 
 

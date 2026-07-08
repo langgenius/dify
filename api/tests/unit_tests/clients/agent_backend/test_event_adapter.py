@@ -24,6 +24,7 @@ from clients.agent_backend import (
     AgentBackendRunStartedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    AgentBackendTerminalOutputDeltaInternalEvent,
 )
 
 
@@ -69,6 +70,25 @@ def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotat
         AgentBackendAgentMessageDeltaInternalEvent(
             run_id="run-1",
             source_event_id="2-0",
+            delta="hello",
+        )
+    ]
+
+
+def test_event_adapter_maps_pydantic_ai_stream_event_terminal_output_delta_annotation():
+    adapted = AgentBackendRunEventAdapter().adapt(
+        PydanticAIStreamRunEvent(
+            id="2-1",
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            terminal_output_delta="hello",
+        )
+    )
+
+    assert adapted == [
+        AgentBackendTerminalOutputDeltaInternalEvent(
+            run_id="run-1",
+            source_event_id="2-1",
             delta="hello",
         )
     ]

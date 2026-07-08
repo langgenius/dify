@@ -340,6 +340,7 @@ class PydanticAIStreamRunEvent(BaseRunEvent):
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
     data: AgentStreamEvent
     agent_message_delta: str | None = None
+    terminal_output_delta: str | None = None
 
 
 class RunSucceededEvent(BaseRunEvent):
