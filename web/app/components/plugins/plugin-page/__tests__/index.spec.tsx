@@ -51,7 +51,15 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: { current_version: '1.0.0' },
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
     workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
   }),
 }))
@@ -61,7 +69,15 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
   return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: { current_version: '1.0.0' },
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
     workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
   }))
 })
