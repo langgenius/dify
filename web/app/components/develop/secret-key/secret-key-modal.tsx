@@ -136,7 +136,7 @@ const SecretKeyModal = ({
               className="flex size-6 cursor-pointer items-center justify-center text-text-tertiary"
               onClick={handleClose}
             >
-              <span className="i-heroicons-x-mark-20-solid size-6" aria-hidden="true" />
+              <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer" aria-hidden="true" />
             </button>
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
