@@ -15,12 +15,23 @@ const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
 let mockDropdownOpen = false
 let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys
+    },
+  },
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({

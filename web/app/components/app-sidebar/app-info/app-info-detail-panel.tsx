@@ -10,11 +10,12 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import AppIcon from '../../base/app-icon'
@@ -38,8 +39,8 @@ const AppInfoDetailPanel = ({
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail.maintainer,

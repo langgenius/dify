@@ -22,7 +22,7 @@ export type AppContextStateMockState = {
   isLoadingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
-  langGeniusVersionInfo?: LangGeniusVersionResponse
+  langGeniusVersionInfo?: Partial<LangGeniusVersionResponse>
   refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
 }
@@ -36,6 +36,8 @@ type AppContextStateAtomKind
     | 'workspaceRoleFlags'
     | 'isCurrentWorkspaceManager'
     | 'isCurrentWorkspaceOwner'
+    | 'isCurrentWorkspaceEditor'
+    | 'isCurrentWorkspaceDatasetOperator'
     | 'currentWorkspaceLoading'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
@@ -98,6 +100,11 @@ const getCurrentWorkspace = (state: AppContextStateMockState) => ({
   ...state.currentWorkspace,
 })
 
+const getLangGeniusVersionInfo = (state: AppContextStateMockState): LangGeniusVersionResponse => ({
+  ...defaultLangGeniusVersionInfo,
+  ...state.langGeniusVersionInfo,
+})
+
 export const createAppContextStateAtomMock = async (
   importOriginal: <T>() => Promise<T>,
   getState: () => AppContextStateMockState,
@@ -117,6 +124,8 @@ export const createAppContextStateAtomMock = async (
     workspaceRoleFlagsAtom: createMockAtom('workspaceRoleFlags'),
     isCurrentWorkspaceManagerAtom: createMockAtom('isCurrentWorkspaceManager'),
     isCurrentWorkspaceOwnerAtom: createMockAtom('isCurrentWorkspaceOwner'),
+    isCurrentWorkspaceEditorAtom: createMockAtom('isCurrentWorkspaceEditor'),
+    isCurrentWorkspaceDatasetOperatorAtom: createMockAtom('isCurrentWorkspaceDatasetOperator'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
@@ -175,6 +184,12 @@ export const createAppContextStateJotaiMock = async (
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceOwner')
         return state.isCurrentWorkspaceOwner ?? false
 
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceEditor')
+        return state.isCurrentWorkspaceEditor ?? false
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceDatasetOperator')
+        return state.isCurrentWorkspaceDatasetOperator ?? false
+
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
 
@@ -185,10 +200,10 @@ export const createAppContextStateJotaiMock = async (
         return state.isLoadingWorkspacePermissionKeys ?? false
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusVersionInfo')
-        return state.langGeniusVersionInfo ?? defaultLangGeniusVersionInfo
+        return getLangGeniusVersionInfo(state)
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusCurrentVersion')
-        return (state.langGeniusVersionInfo ?? defaultLangGeniusVersionInfo).current_version
+        return getLangGeniusVersionInfo(state).current_version
 
       throw new Error(`Unsupported app context state atom: ${atom[APP_CONTEXT_STATE_ATOM_KIND]}`)
     },
