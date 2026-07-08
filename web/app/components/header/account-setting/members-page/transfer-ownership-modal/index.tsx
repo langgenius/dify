@@ -1,11 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, userProfileAtom } from '@/context/app-context-state'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
@@ -13,15 +14,22 @@ type Props = Readonly<{
   show: boolean
   onClose: () => void
 }>
-enum STEP {
-  start = 'start',
-  verify = 'verify',
-  transfer = 'transfer',
+const STEP = {
+  start: 'start',
+  verify: 'verify',
+  transfer: 'transfer',
 }
+type Step = typeof STEP[keyof typeof STEP]
+
+const getErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : ''
+}
+
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
-  const { currentWorkspace, userProfile } = useAppContext()
-  const [step, setStep] = useState<STEP>(STEP.start)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)
   const [stepToken, setStepToken] = useState<string>('')
@@ -71,7 +79,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       }
     }
     catch (error) {
-      toast.error(`Error verifying email: ${error ? (error as any).message : ''}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
     }
   }
   const sendCodeToOriginEmail = async () => {
@@ -96,7 +104,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       globalThis.location.reload()
     }
     catch (error) {
-      toast.error(`Error ownership transfer: ${error ? (error as any).message : ''}`)
+      toast.error(`Error ownership transfer: ${getErrorMessage(error)}`)
     }
     finally {
       setIsTransfer(false)
