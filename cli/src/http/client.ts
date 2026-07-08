@@ -74,7 +74,7 @@ function compileState(opts: ClientOptions): ClientState {
     hooks: { onRequest, onResponse, onRequestError, onResponseError },
     logger: opts.logger,
     originalOptions: opts,
-    dispatcher: proxyDispatcher(),
+    dispatcher: proxyDispatcher({ insecure: opts.insecure }),
   }
 }
 

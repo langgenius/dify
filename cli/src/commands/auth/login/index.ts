@@ -27,7 +27,7 @@ export default class Login extends DifyCommand {
       default: false,
     }),
     'insecure': Flags.boolean({
-      description: 'allow http:// hosts (local-dev only)',
+      description: 'allow http:// hosts and skip TLS certificate verification (local-dev only)',
       default: false,
     }),
   }
@@ -40,7 +40,7 @@ export default class Login extends DifyCommand {
       noBrowser: flags['no-browser'],
       insecure: flags.insecure,
       verifyServer: async (host) => {
-        await enforceDifyVersion(host, { forceFresh: true })
+        await enforceDifyVersion(host, { forceFresh: true, insecure: flags.insecure })
       },
     })
   }

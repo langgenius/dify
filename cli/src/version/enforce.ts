@@ -16,15 +16,18 @@ const UPGRADE_HINT
     + '(https://docs.dify.ai/en/getting-started/install-self-hosted)'
 
 // /_version is unauthenticated; same timeout/no-retry budget as the auto-nudge probe.
-const defaultProbe: ServerVersionProbe = async (host) => {
-  const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
-  return new MetaClient(http).serverVersion()
+function buildDefaultProbe(insecure: boolean): ServerVersionProbe {
+  return async (host) => {
+    const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0, insecure })
+    return new MetaClient(http).serverVersion()
+  }
 }
 
 export type EnforceOptions = {
   readonly probe?: ServerVersionProbe
   readonly store?: CompatStore
   readonly forceFresh?: boolean
+  readonly insecure?: boolean
 }
 
 /**
@@ -45,7 +48,7 @@ export async function enforceDifyVersion(
   if (opts.forceFresh !== true && store.isFreshCompatible(host))
     return undefined
 
-  const probe = opts.probe ?? defaultProbe
+  const probe = opts.probe ?? buildDefaultProbe(opts.insecure === true)
   let server: ServerVersionResponse
   try {
     server = await probe(host)
