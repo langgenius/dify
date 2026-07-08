@@ -7,8 +7,8 @@ export type AppContextStateMockState = {
     id?: string
     name?: string
     email?: string
-    avatar?: string
-    avatar_url?: string
+    avatar?: string | null
+    avatar_url?: string | null
     is_password_set?: boolean
   } | null
   currentWorkspace?: {
@@ -27,13 +27,16 @@ export type AppContextStateMockState = {
 type AppContextStateAtomKind
   = | 'userProfile'
     | 'userProfileId'
+    | 'userProfileEmail'
     | 'currentWorkspace'
     | 'currentWorkspaceId'
     | 'workspaceRoleFlags'
+    | 'isCurrentWorkspaceManager'
     | 'currentWorkspaceLoading'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
     | 'langGeniusVersionInfo'
+    | 'langGeniusCurrentVersion'
 
 type AppContextStateMockAtom = {
   [APP_CONTEXT_STATE_ATOM_KIND]: AppContextStateAtomKind
@@ -101,13 +104,16 @@ export const createAppContextStateAtomMock = async (
     ...actual,
     userProfileAtom: createMockAtom('userProfile'),
     userProfileIdAtom: createMockAtom('userProfileId'),
+    userProfileEmailAtom: createMockAtom('userProfileEmail'),
     currentWorkspaceAtom: createMockAtom('currentWorkspace'),
     currentWorkspaceIdAtom: createMockAtom('currentWorkspaceId'),
     workspaceRoleFlagsAtom: createMockAtom('workspaceRoleFlags'),
+    isCurrentWorkspaceManagerAtom: createMockAtom('isCurrentWorkspaceManager'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
     langGeniusVersionInfoAtom: createMockAtom('langGeniusVersionInfo'),
+    langGeniusCurrentVersionAtom: createMockAtom('langGeniusCurrentVersion'),
   }
 }
 
@@ -135,6 +141,9 @@ export const createAppContextStateJotaiMock = async (
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'userProfileId')
         return userProfile.id
 
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'userProfileEmail')
+        return userProfile.email
+
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspace')
         return currentWorkspace
 
@@ -150,6 +159,9 @@ export const createAppContextStateJotaiMock = async (
         }
       }
 
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceManager')
+        return state.isCurrentWorkspaceManager ?? false
+
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
 
@@ -161,6 +173,9 @@ export const createAppContextStateJotaiMock = async (
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusVersionInfo')
         return state.langGeniusVersionInfo ?? defaultLangGeniusVersionInfo
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusCurrentVersion')
+        return (state.langGeniusVersionInfo ?? defaultLangGeniusVersionInfo).current_version
 
       throw new Error(`Unsupported app context state atom: ${atom[APP_CONTEXT_STATE_ATOM_KIND]}`)
     },

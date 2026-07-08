@@ -21,11 +21,16 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => currentPath,
 }))
 
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.isCloudEdition
-  },
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get IS_CLOUD_EDITION() {
+      return mockConfig.isCloudEdition
+    },
+  }
+})
 
 const setShowAccountSettingModalMock = vi.fn()
 vi.mock('@/context/modal-context', () => ({
@@ -46,6 +51,20 @@ vi.mock('@/context/app-context', () => ({
     workspacePermissionKeys,
   }),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { email: 'user@example.com' },
+    isCurrentWorkspaceManager,
+    workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/education-apply/storage', () => ({
   useSetEducationVerifying: () => setEducationVerifyingMock,
