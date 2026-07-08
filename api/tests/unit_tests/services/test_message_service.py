@@ -1,13 +1,19 @@
 import json
 from datetime import datetime
+from decimal import Decimal
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import Table, create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, EndUser, Message
+from models.enums import FeedbackFromSource, FeedbackRating, MessageStatus
+from models.model import App, AppMode, ConversationFromSource, EndUser, Message
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
@@ -15,6 +21,12 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService, attach_message_extra_contents
+
+
+def _create_message_table(engine: Engine):
+    message_table = Message.__table__
+    assert isinstance(message_table, Table)
+    message_table.create(engine)
 
 
 class TestMessageServiceFactory:
@@ -25,24 +37,24 @@ class TestMessageServiceFactory:
         app_id: str = "app-123",
         mode: str = AppMode.ADVANCED_CHAT.value,
         name: str = "Test App",
-    ) -> MagicMock:
+    ) -> App:
         """Create a mock App object."""
         app = MagicMock(spec=App)
         app.id = app_id
         app.mode = mode
         app.name = name
-        return app
+        return cast(App, app)
 
     @staticmethod
     def create_end_user_mock(
         user_id: str = "user-456",
         session_id: str = "session-789",
-    ) -> MagicMock:
+    ) -> EndUser:
         """Create a mock EndUser object."""
         user = MagicMock(spec=EndUser)
         user.id = user_id
         user.session_id = session_id
-        return user
+        return cast(EndUser, user)
 
     @staticmethod
     def create_conversation_mock(
@@ -88,6 +100,42 @@ class TestMessageServicePaginationByFirstId:
     def factory(self):
         """Provide test data factory."""
         return TestMessageServiceFactory()
+
+    @pytest.fixture
+    def sqlite_session(self):
+        engine = create_engine("sqlite:///:memory:")
+        _create_message_table(engine)
+        with Session(engine) as session:
+            yield session
+        engine.dispose()
+
+    @staticmethod
+    def _seed_messages_with_same_timestamp(session: Session):
+        created_at = datetime(2024, 1, 1, 12, 0, 0)
+        session.add_all(
+            [
+                Message(
+                    id=f"msg-{index:03d}",
+                    app_id="app-123",
+                    conversation_id="conv-001",
+                    _inputs={},
+                    query=f"query-{index}",
+                    message={},
+                    message_unit_price=Decimal(0),
+                    answer=f"answer-{index}",
+                    answer_unit_price=Decimal(0),
+                    total_price=Decimal(0),
+                    currency="USD",
+                    status=MessageStatus.NORMAL,
+                    from_source=ConversationFromSource.API,
+                    created_at=created_at,
+                    updated_at=created_at,
+                    app_mode=AppMode.CHAT,
+                )
+                for index in range(1, 5)
+            ]
+        )
+        session.commit()
 
     # Test 01: No user provided
     def test_pagination_by_first_id_no_user(self, factory: TestMessageServiceFactory):
@@ -360,6 +408,35 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
         assert result.limit == 10
 
+    def test_pagination_by_first_id_keeps_same_timestamp_rows(
+        self,
+        sqlite_session: Session,
+        factory: TestMessageServiceFactory,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        self._seed_messages_with_same_timestamp(sqlite_session)
+
+        monkeypatch.setattr("services.message_service.db", SimpleNamespace(session=sqlite_session))
+        monkeypatch.setattr(
+            "services.message_service.ConversationService.get_conversation",
+            lambda **_kwargs: SimpleNamespace(id="conv-001"),
+        )
+        monkeypatch.setattr(
+            "services.message_service._create_execution_extra_content_repository",
+            lambda: SimpleNamespace(get_by_message_ids=lambda message_ids: [[] for _ in message_ids]),
+        )
+
+        result = MessageService.pagination_by_first_id(
+            app_model=factory.create_app_mock(),
+            user=factory.create_end_user_mock(),
+            conversation_id="conv-001",
+            first_id="msg-003",
+            limit=2,
+        )
+
+        assert [message.id for message in result.data] == ["msg-001", "msg-002"]
+        assert result.has_more is False
+
 
 class TestMessageServicePaginationByLastId:
     """
@@ -376,6 +453,42 @@ class TestMessageServicePaginationByLastId:
     def factory(self):
         """Provide test data factory."""
         return TestMessageServiceFactory()
+
+    @pytest.fixture
+    def sqlite_session(self):
+        engine = create_engine("sqlite:///:memory:")
+        _create_message_table(engine)
+        with Session(engine) as session:
+            yield session
+        engine.dispose()
+
+    @staticmethod
+    def _seed_messages_with_same_timestamp(session: Session):
+        created_at = datetime(2024, 1, 1, 12, 0, 0)
+        session.add_all(
+            [
+                Message(
+                    id=f"msg-{index:03d}",
+                    app_id="app-123",
+                    conversation_id="conv-001",
+                    _inputs={},
+                    query=f"query-{index}",
+                    message={},
+                    message_unit_price=Decimal(0),
+                    answer=f"answer-{index}",
+                    answer_unit_price=Decimal(0),
+                    total_price=Decimal(0),
+                    currency="USD",
+                    status=MessageStatus.NORMAL,
+                    from_source=ConversationFromSource.API,
+                    created_at=created_at,
+                    updated_at=created_at,
+                    app_mode=AppMode.CHAT,
+                )
+                for index in range(1, 5)
+            ]
+        )
+        session.commit()
 
     # Test 09: No user provided
     def test_pagination_by_last_id_no_user(self, factory: TestMessageServiceFactory):
@@ -584,6 +697,27 @@ class TestMessageServicePaginationByLastId:
         assert len(result.data) == 10  # Last message trimmed
         assert result.has_more is True
         assert result.limit == 10
+
+    def test_pagination_by_last_id_keeps_same_timestamp_rows(
+        self,
+        sqlite_session: Session,
+        factory: TestMessageServiceFactory,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        self._seed_messages_with_same_timestamp(sqlite_session)
+
+        monkeypatch.setattr("services.message_service.db", SimpleNamespace(session=sqlite_session))
+
+        result = MessageService.pagination_by_last_id(
+            app_model=factory.create_app_mock(),
+            user=factory.create_end_user_mock(),
+            last_id="msg-003",
+            limit=2,
+            conversation_id=None,
+        )
+
+        assert [message.id for message in result.data] == ["msg-002", "msg-001"]
+        assert result.has_more is False
 
 
 class TestMessageServiceUtilities:
