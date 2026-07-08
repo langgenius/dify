@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
@@ -235,6 +235,34 @@ describe('GetAutomaticRes', () => {
       variables: ['city'],
       opening_statement: 'hello there',
     }))
+  })
+
+  it('should use chat model mode for agent app prompt generation', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.AGENT_CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText('generate.generate'))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(expect.objectContaining({
+        model_config: expect.objectContaining({
+          mode: ModelModeType.chat,
+        }),
+      }))
+    })
   })
 
   it('should close overwrite confirmation without applying the generated result when cancelled', async () => {
