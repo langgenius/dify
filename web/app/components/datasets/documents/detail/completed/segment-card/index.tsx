@@ -50,6 +50,21 @@ type ISegmentCardProps = {
   }
 }
 
+export const canToggleSegmentStatus = ({
+  archived,
+  enabled,
+  status,
+}: {
+  archived?: boolean
+  enabled?: boolean
+  status?: string
+}) => {
+  if (archived)
+    return false
+
+  return !enabled || status === 'completed'
+}
+
 const SegmentCard: FC<ISegmentCardProps> = ({
   detail = { status: '' },
   onClick,
@@ -228,7 +243,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                       >
                         <Switch
                           size="md"
-                          disabled={archived || detail?.status !== 'completed'}
+                          disabled={!canToggleSegmentStatus({ archived, enabled, status: detail?.status })}
                           checked={enabled}
                           onCheckedChange={async (val) => {
                             await onChangeSwitch?.(val, id)
