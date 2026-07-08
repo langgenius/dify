@@ -26,7 +26,7 @@ export default class Login extends DifyCommand {
       default: false,
     }),
     'insecure': Flags.boolean({
-      description: 'allow http:// hosts (local-dev only)',
+      description: 'allow http:// hosts and skip TLS certificate verification (local-dev only)',
       default: false,
     }),
   }

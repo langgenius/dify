@@ -40,7 +40,7 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
   const host = await resolveLoginHost(opts, insecure)
   const label = opts.deviceLabel ?? defaultDeviceLabel()
 
-  const api = opts.api ?? new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(host) }))
+  const api = opts.api ?? new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(host), insecure }))
   const code = await api.requestCode({ device_label: label })
 
   renderCodePrompt(opts.io.err, cs, code)
@@ -81,6 +81,7 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
   reg.token_storage = storeBundle.mode
   reg.activate(display, email, ctx)
   applyScheme(reg, display, host)
+  reg.setInsecureTls(display, insecure)
   await reg.save()
 
   renderLoggedIn(opts.io.out, cs, host, success)
