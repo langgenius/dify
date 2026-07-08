@@ -1281,7 +1281,12 @@ class TestConversationServiceExport:
         db_session_with_containers.commit()
 
         with patch.object(AgentAppRuntimeSessionStore, "mark_cleaned", side_effect=RuntimeError("cleanup failed")):
-            ConversationService.delete(app_model=app_model, conversation_id=conversation.id, user=user)
+            ConversationService.delete(
+                app_model=app_model,
+                conversation_id=conversation.id,
+                user=user,
+                session=db_session_with_containers,
+            )
 
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
         assert deleted is None
@@ -1321,7 +1326,12 @@ class TestConversationServiceExport:
         db_session_with_containers.commit()
         mock_cleanup_task.delay.side_effect = RuntimeError("queue down")
 
-        ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+        ConversationService.delete(
+            app_model=app_model,
+            conversation_id=conversation_id,
+            user=user,
+            session=db_session_with_containers,
+        )
 
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
         assert deleted is None

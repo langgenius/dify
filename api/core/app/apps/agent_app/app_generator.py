@@ -98,8 +98,10 @@ def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] |
         url = _string_value(file_mapping, "url") or _string_value(file_mapping, "remote_url")
         if url is None:
             return None
-        locator = {"transfer_method": transfer_method, "url": url}
+        return {"transfer_method": "remote_url", "url": url}
     elif transfer_method in _REFERENCE_FILE_TRANSFER_METHODS:
+        if transfer_method is None:
+            return None
         reference = _canonical_file_reference(
             _string_value(file_mapping, "reference")
             or _string_value(file_mapping, "upload_file_id")
@@ -108,11 +110,9 @@ def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] |
         )
         if reference is None:
             return None
-        locator = {"transfer_method": transfer_method, "reference": reference}
+        return {"transfer_method": transfer_method, "reference": reference}
     else:
         return None
-
-    return locator
 
 
 def _canonical_file_reference(reference: str | None) -> str | None:

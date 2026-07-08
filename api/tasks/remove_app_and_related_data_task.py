@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from agenton.compositor import CompositorSessionSnapshot
 from celery import shared_task
 from dify_agent.protocol import RuntimeLayerSpec
-from pydantic import TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
@@ -209,7 +209,7 @@ def _build_agent_runtime_session_cleanup_payload(
     if not runtime_layer_specs:
         return None
 
-    metadata: dict[str, object | None] = {
+    metadata: dict[str, JsonValue] = {
         "tenant_id": row.tenant_id,
         "app_id": row.app_id,
         "agent_id": row.agent_id,
