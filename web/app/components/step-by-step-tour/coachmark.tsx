@@ -5,7 +5,7 @@ import type { StepByStepTourGuide, StepByStepTourGuideInteractionPolicy } from '
 import type { StepByStepTourCoachmarkPlacement, StepByStepTourCoachmarkSize } from './use-coachmark-position'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getStepByStepTourGuideKind, getStepByStepTourTargetSelector } from './target-registry'
 import { useStepByStepTourCoachmarkPosition } from './use-coachmark-position'
@@ -16,6 +16,7 @@ const DEFAULT_COACHMARK_SIZE: StepByStepTourCoachmarkSize = {
   height: 158,
   width: 352,
 }
+const STEP_BY_STEP_TOUR_PORTAL_ROOT_ATTRIBUTE = 'data-step-by-step-tour-portal-root'
 const VERTICAL_ARROW_LENGTH = 28
 const VERTICAL_ARROW_DOT_SIZE = 12
 const VERTICAL_ARROW_DOT_OVERHANG = 3
@@ -35,6 +36,34 @@ const getStepByStepTourVerticalArrowStyle = (
     ? { bottom: -VERTICAL_ARROW_EDGE_OFFSET }
     : { top: -VERTICAL_ARROW_EDGE_OFFSET }),
 })
+
+const useStepByStepTourPortalRoot = (enabled: boolean) => {
+  const portalRoot = useMemo(() => {
+    if (!enabled || typeof document === 'undefined')
+      return null
+
+    const portalElement = document.createElement('div')
+    portalElement.setAttribute(STEP_BY_STEP_TOUR_PORTAL_ROOT_ATTRIBUTE, '')
+    return portalElement
+  }, [enabled])
+
+  useLayoutEffect(() => {
+    if (!portalRoot)
+      return
+
+    document.body.appendChild(portalRoot)
+    return () => {
+      portalRoot.remove()
+    }
+  }, [portalRoot])
+
+  useLayoutEffect(() => {
+    if (portalRoot && portalRoot.nextSibling)
+      document.body.appendChild(portalRoot)
+  })
+
+  return portalRoot
+}
 
 type StepByStepTourCoachmarkGuide = Omit<StepByStepTourGuide, 'description' | 'learnMoreLabel' | 'primaryActionLabel' | 'title'> & {
   description: string
@@ -68,6 +97,8 @@ export function StepByStepTourCoachmark({
   const { anchorRect, highlightPartsReady, highlightRect, rectSettled, targetElement: measuredTargetElement } = useStepByStepTourTargetRect(targetElement, guide.highlightPartSelectors)
   const coachmarkRef = useRef<HTMLDivElement>(null)
   const coachmarkSizeFrameRef = useRef<number | undefined>(undefined)
+  const shouldUseLatePortalRoot = guide.portalOrder === 'afterOverlays'
+  const portalRoot = useStepByStepTourPortalRoot(shouldUseLatePortalRoot)
   const [coachmarkSize, setCoachmarkSize] = useState<StepByStepTourCoachmarkSize>(DEFAULT_COACHMARK_SIZE)
   const coachmarkPosition = useStepByStepTourCoachmarkPosition(highlightRect, placement, anchorRect, coachmarkSize)
   const stableOverlayRef = useRef<{
@@ -159,6 +190,8 @@ export function StepByStepTourCoachmark({
   }, [coachmarkMeasurementKey, syncCoachmarkSize])
 
   if (typeof document === 'undefined')
+    return null
+  if (shouldUseLatePortalRoot && !portalRoot)
     return null
 
   const targetBlockerStyles: CSSProperties[] = stableOverlay && highlightStyle
@@ -294,6 +327,6 @@ export function StepByStepTourCoachmark({
         </>
       )}
     </>,
-    document.body,
+    portalRoot ?? document.body,
   )
 }

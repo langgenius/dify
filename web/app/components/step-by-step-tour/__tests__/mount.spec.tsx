@@ -1155,7 +1155,44 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('renders the coachmark overlay at the body level so dialogs do not cover it', async () => {
+  it('keeps the first Learn Dify guide in the default body portal layer', async () => {
+    setStepByStepTourTestState({
+      activeTaskId: 'home',
+      activeGuideIndex: 0,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 240, {
+      height: 40,
+      left: 980,
+      width: 320,
+    })
+
+    try {
+      renderStepByStepTourMount()
+
+      const coachmark = await screen.findByText('Pick a lesson to see how it works.')
+      const coachmarkOverlay = coachmark.closest('[data-step-by-step-tour-coachmark]')
+      const highlightOverlay = document.body.querySelector('[data-step-by-step-tour-highlight]')
+      const backdropOverlay = document.body.querySelector('[data-step-by-step-tour-backdrop]')
+
+      expect(document.body.querySelector('[data-step-by-step-tour-portal-root]')).not.toBeInTheDocument()
+      expect(coachmarkOverlay?.parentElement).toBe(document.body)
+      expect(highlightOverlay?.parentElement).toBe(document.body)
+      expect(backdropOverlay?.parentElement).toBe(document.body)
+      expect(coachmarkOverlay).toHaveClass('z-50')
+      expect(highlightOverlay).toHaveClass('z-50')
+      expect(backdropOverlay).toHaveClass('z-50')
+    }
+    finally {
+      target.remove()
+    }
+  })
+
+  it('renders the Learn Dify create guide after existing dialog overlays', async () => {
     setStepByStepTourTestState({
       activeTaskId: 'home',
       activeGuideIndex: 1,
@@ -1170,22 +1207,35 @@ describe('StepByStepTourMount', () => {
       left: 980,
       width: 320,
     })
+    const existingDialogLayer = document.createElement('div')
+    existingDialogLayer.setAttribute('role', 'dialog')
+    existingDialogLayer.className = 'fixed z-50'
+    document.body.appendChild(existingDialogLayer)
 
     try {
       renderStepByStepTourMount()
 
       const coachmark = await screen.findByText('Click here to make it yours')
       const coachmarkOverlay = coachmark.closest('[data-step-by-step-tour-coachmark]')
+      const tourPortalRoot = coachmarkOverlay?.parentElement
       const coachmarkRegion = screen.getByRole('region', { name: 'Click here to make it yours' })
       const highlightOverlay = document.body.querySelector('[data-step-by-step-tour-highlight]')
       const backdropOverlay = document.body.querySelector('[data-step-by-step-tour-backdrop]')
 
-      expect(coachmarkOverlay?.parentElement).toBe(document.body)
+      expect(tourPortalRoot).toHaveAttribute('data-step-by-step-tour-portal-root')
+      expect(tourPortalRoot?.parentElement).toBe(document.body)
+      expect(Array.from(document.body.children).indexOf(tourPortalRoot!)).toBeGreaterThan(
+        Array.from(document.body.children).indexOf(existingDialogLayer),
+      )
       expect(coachmarkRegion).toHaveClass('bg-state-accent-hover', 'border-state-accent-hover-alt')
-      expect(highlightOverlay?.parentElement).toBe(document.body)
-      expect(backdropOverlay?.parentElement).toBe(document.body)
+      expect(highlightOverlay?.parentElement).toBe(tourPortalRoot)
+      expect(backdropOverlay?.parentElement).toBe(tourPortalRoot)
+      expect(coachmarkOverlay).toHaveClass('z-50')
+      expect(highlightOverlay).toHaveClass('z-50')
+      expect(backdropOverlay).toHaveClass('z-50')
     }
     finally {
+      existingDialogLayer.remove()
       target.remove()
     }
   })
