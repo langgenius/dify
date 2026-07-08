@@ -77,4 +77,30 @@ describe('useWorkflowNodeStarted', () => {
     expect(tracing).toHaveLength(2)
     expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
   })
+
+  it('matches parallel-branch entries by execution id, not node_id', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'exec-a', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+          ],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(createNodeStartedResponse({
+        data: {
+          id: 'exec-b',
+          node_id: 'n1',
+          execution_metadata: { parallel_id: 'p1' },
+        } as never,
+      }), containerParams)
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(2)
+    expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+  })
 })
