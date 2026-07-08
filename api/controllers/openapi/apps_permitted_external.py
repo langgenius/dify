@@ -87,7 +87,7 @@ class PermittedExternalAppsListApi(Resource):
         return env
 
 
-@openapi_ns.route("/permitted-external-apps/<string:app_id>/describe")
+@openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,

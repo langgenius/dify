@@ -38,7 +38,7 @@ class TestAppRunTaskStop:
         task_id = str(uuid4())
 
         api = AppRunTaskStopApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/tasks/{task_id}/stop", method="POST"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/tasks/{task_id}:stop", method="POST"):
             result = unwrap(api.post)(
                 api,
                 app_id=app_model.id,

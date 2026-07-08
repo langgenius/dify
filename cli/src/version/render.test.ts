@@ -131,7 +131,7 @@ describe('renderVersionText', () => {
       compat: {
         minDify: '1.6.0',
         maxDify: '1.7.0',
-        status: 'unsupported',
+        status: 'too_new',
         detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
       },
     }
@@ -175,7 +175,7 @@ describe('renderVersionText', () => {
         compat: {
           minDify: '1.6.0',
           maxDify: '1.7.0',
-          status: 'unsupported',
+          status: 'too_new',
           detail: 'server 99.0.0 outside [1.6.0, 1.7.0]',
         },
       }

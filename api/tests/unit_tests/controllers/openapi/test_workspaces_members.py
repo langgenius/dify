@@ -1,7 +1,7 @@
 """Member endpoints under /openapi/v1/workspaces/<id>/...
 
 Coverage:
-- Route registration (5 endpoints across 4 URL patterns)
+- Route registration (5 endpoints across 3 URL patterns)
 - Body validation lands at 400 (per spec — not Pydantic's default 422)
 - Domain exception → HTTP code mapping is preserved with the service's
   original message (so CLI users see what the console user sees)
@@ -37,7 +37,6 @@ from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePay
 from controllers.openapi.auth.data import AuthData
 from controllers.openapi.workspaces import (
     WorkspaceMemberApi,
-    WorkspaceMemberRoleApi,
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
@@ -175,7 +174,7 @@ def _account_service(**overrides) -> SimpleNamespace:
 
 
 def test_switch_route_registered(openapi_app: Flask):
-    rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>/switch")
+    rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>:switch")
     assert openapi_app.view_functions[rule.endpoint].view_class is WorkspaceSwitchApi
     assert "POST" in rule.methods
 
@@ -191,12 +190,7 @@ def test_member_by_id_route_registered(openapi_app: Flask):
     rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>/members/<string:member_id>")
     assert openapi_app.view_functions[rule.endpoint].view_class is WorkspaceMemberApi
     assert "DELETE" in rule.methods
-
-
-def test_member_role_route_registered(openapi_app: Flask):
-    rule = _rule(openapi_app, "/openapi/v1/workspaces/<string:workspace_id>/members/<string:member_id>/role")
-    assert openapi_app.view_functions[rule.endpoint].view_class is WorkspaceMemberRoleApi
-    assert "PUT" in rule.methods
+    assert "PATCH" in rule.methods
 
 
 # ---------------------------------------------------------------------------
@@ -250,17 +244,17 @@ def test_update_role_rejects_invalid_body_with_422(app: Flask, bypass_pipeline):
     """Invalid role-update body surfaces as 422 through @accepts (was 400)."""
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
-    api = WorkspaceMemberRoleApi()
+    api = WorkspaceMemberApi()
 
     with app.test_request_context(
-        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
-        method="PUT",
+        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
+        method="PATCH",
         data=json.dumps({"role": "owner"}),  # closed enum rejects owner
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(UnprocessableEntity):
-            api.put.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
+            api.patch.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +285,7 @@ def test_switch_returns_workspace_detail_with_current_true(
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
-    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
+    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}:switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
         body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
@@ -320,7 +314,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     )
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
-    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/switch", method="POST"):
+    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}:switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
             api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
@@ -767,7 +761,7 @@ def test_delete_member_404_when_member_missing(app: Flask, bypass_pipeline, monk
 def test_update_role_happy_path(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
-    api = WorkspaceMemberRoleApi()
+    api = WorkspaceMemberApi()
 
     mock_db = MagicMock()
     mock_db.session.get.side_effect = [
@@ -785,13 +779,15 @@ def test_update_role_happy_path(app: Flask, bypass_pipeline, monkeypatch: pytest
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
-        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
-        method="PUT",
+        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
+        method="PATCH",
         data=json.dumps({"role": "admin"}),
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.put.__wrapped__(api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id))
+        body, status = api.patch.__wrapped__(
+            api, workspace_id=ws_id, member_id=member_id, auth_data=_auth_data(acct_id)
+        )
 
     assert status == 200
     assert body == {"result": "success"}
@@ -811,7 +807,7 @@ def test_update_role_happy_path(app: Flask, bypass_pipeline, monkeypatch: pytest
 def test_update_role_exception_mapping(app: Flask, bypass_pipeline, monkeypatch, exc, expected):
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
-    api = WorkspaceMemberRoleApi()
+    api = WorkspaceMemberApi()
 
     mock_db = MagicMock()
     mock_db.session.get.side_effect = [
@@ -828,14 +824,14 @@ def test_update_role_exception_mapping(app: Flask, bypass_pipeline, monkeypatch,
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
     with app.test_request_context(
-        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}/role",
-        method="PUT",
+        f"/openapi/v1/workspaces/{ws_id}/members/{member_id}",
+        method="PATCH",
         data=json.dumps({"role": "admin"}),
         content_type="application/json",
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(expected):
-            api.put.__wrapped__(
+            api.patch.__wrapped__(
                 api,
                 workspace_id=ws_id,
                 member_id=member_id,

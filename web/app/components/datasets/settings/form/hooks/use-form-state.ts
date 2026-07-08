@@ -5,12 +5,16 @@ import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -30,8 +34,8 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
       currentUserId,

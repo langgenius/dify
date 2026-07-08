@@ -41,7 +41,7 @@ describe('resumeApp pre-flight subject strategy', () => {
     const http = {
       baseURL: 'http://localhost',
       request: vi.fn().mockImplementation((opts: { path: string }) => {
-        if (typeof opts.path === 'string' && opts.path.includes('form/human_input')) {
+        if (typeof opts.path === 'string' && opts.path.includes('human-input-forms')) {
           return Promise.resolve(FORM_RESP)
         }
         // reconnect stream — return an async iterable that ends immediately

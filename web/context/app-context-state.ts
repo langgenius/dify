@@ -8,6 +8,7 @@ import { atom } from 'jotai'
 import { atomWithQuery, atomWithSuspenseQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
@@ -15,7 +16,7 @@ import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
   userProfilePlaceholder,
-} from './app-context'
+} from './app-context-defaults'
 import {
   emptyWorkspacePermissionKeys,
   getLangGeniusVersionInfo,
@@ -29,10 +30,20 @@ const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOpti
 
 const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
 
+const systemFeaturesAtom = atom((get): GetSystemFeaturesResponse => {
+  const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
+
+  return systemFeaturesQuery.data ?? defaultSystemFeatures
+})
+
 export const userProfileAtom = atom((get): GetAccountProfileResponse => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
 
   return accountProfileQuery.data?.profile || userProfilePlaceholder
+})
+
+export const userProfileIdAtom = atom((get) => {
+  return get(userProfileAtom).id
 })
 
 const profileMetaAtom = atom((get) => {
@@ -58,18 +69,26 @@ export const currentWorkspaceAtom = atom((get) => {
   return get(normalizedCurrentWorkspaceAtom)
 })
 
+export const currentWorkspaceIdAtom = atom((get) => {
+  return get(currentWorkspaceAtom).id
+})
+
 export const workspaceRoleFlagsAtom = atom((get) => {
   return getWorkspaceRoleFlags(get(currentWorkspaceAtom))
 })
 
+export const isCurrentWorkspaceOwnerAtom = atom((get) => {
+  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceOwner
+})
+
 const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
-  const workspaceId = get(currentWorkspaceAtom).id
+  const workspaceId = get(currentWorkspaceIdAtom)
 
   return workspacePermissionKeysQueryOptions(workspaceId)
 })
 
 export const workspacePermissionKeysAtom = atom((get) => {
-  return get(workspacePermissionKeysQueryAtom).data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys
+  return get(workspacePermissionKeysQueryAtom).data?.workspace?.permission_keys ?? emptyWorkspacePermissionKeys
 })
 
 export const workspacePermissionKeysLoadingAtom = atom((get) => {
@@ -78,6 +97,10 @@ export const workspacePermissionKeysLoadingAtom = atom((get) => {
 
 export const currentWorkspaceLoadingAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).isPending
+})
+
+export const datasetRbacEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).rbac_enabled
 })
 
 export const currentWorkspaceValidatingAtom = atom((get) => {

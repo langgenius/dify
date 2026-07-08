@@ -65,7 +65,7 @@ export class FileUploadClient {
     form.append('file', blob, filename)
 
     return this.http.post<UploadedFile>(
-      `apps/${encodeURIComponent(appId)}/files/upload`,
+      `apps/${encodeURIComponent(appId)}/files`,
       { body: form, timeoutMs: 60_000 },
     )
   }

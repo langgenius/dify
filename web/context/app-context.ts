@@ -4,6 +4,11 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import {
+  initialLangGeniusVersionInfo as defaultLangGeniusVersionInfo,
+  userProfilePlaceholder as defaultUserProfilePlaceholder,
+  initialWorkspaceInfo as defaultWorkspaceInfo,
+} from './app-context-defaults'
 
 export type AppContextValue = {
   userProfile: GetAccountProfileResponse
@@ -22,37 +27,11 @@ export type AppContextValue = {
   workspacePermissionKeys: string[]
 }
 
-export const userProfilePlaceholder = {
-  id: '',
-  name: '',
-  email: '',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: false,
-}
+export const userProfilePlaceholder = defaultUserProfilePlaceholder
 
-export const initialLangGeniusVersionInfo = {
-  current_env: '',
-  current_version: '',
-  latest_version: '',
-  release_date: '',
-  release_notes: '',
-  version: '',
-  can_auto_update: false,
-}
+export const initialLangGeniusVersionInfo = defaultLangGeniusVersionInfo
 
-export const initialWorkspaceInfo: ICurrentWorkspace = {
-  id: '',
-  name: '',
-  plan: '',
-  status: '',
-  created_at: 0,
-  role: 'normal',
-  providers: [],
-  trial_credits: 200,
-  trial_credits_used: 0,
-  next_credit_reset_date: 0,
-}
+export const initialWorkspaceInfo = defaultWorkspaceInfo
 
 export const AppContext = createContext<AppContextValue>({
   userProfile: userProfilePlaceholder,
