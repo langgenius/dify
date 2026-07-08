@@ -2,6 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useState,
@@ -9,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow } from '@/service/use-workflow'
@@ -39,7 +40,7 @@ const HeaderInRestoring = ({
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const { plan, enableBilling } = useProviderContext()
   const workflowStore = useWorkflowStore()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const userProfile = useAtomValue(userProfileAtom)
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
