@@ -4,6 +4,8 @@ from urllib.parse import urlparse
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_SHELL_PROVIDER = "shellctl"
+
 
 class ShellAdapterSettings(BaseSettings):
     """Env-backed settings used to construct a shell provider.
