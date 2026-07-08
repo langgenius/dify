@@ -26,7 +26,6 @@ def _account() -> Account:
 
 def _state_response() -> dict[str, object]:
     return {
-        "eligible": True,
         "first_workspace_id": "workspace-1",
         "skipped": False,
         "completed_task_ids": ["home"],
@@ -47,7 +46,6 @@ def test_get_step_by_step_tour_state(app: Flask, monkeypatch: pytest.MonkeyPatch
         result = method(api, "workspace-1", _account())
 
     assert result == {
-        "eligible": True,
         "first_workspace_id": "workspace-1",
         "skipped": False,
         "completed_task_ids": ["home"],

@@ -51,7 +51,6 @@ class StepByStepTourStatePatchPayload(BaseModel):
 
 
 class StepByStepTourStateResponse(ResponseModel):
-    eligible: bool
     first_workspace_id: str | None = None
     skipped: bool = False
     completed_task_ids: list[StepByStepTourTaskId] = Field(default_factory=list)

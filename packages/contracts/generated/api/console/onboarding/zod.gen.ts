@@ -7,7 +7,6 @@ import * as z from 'zod'
  */
 export const zStepByStepTourStateResponse = z.object({
   completed_task_ids: z.array(z.enum(['home', 'integration', 'knowledge', 'studio'])).optional(),
-  eligible: z.boolean(),
   first_workspace_id: z.string().nullish(),
   manually_disabled_workspace_ids: z.array(z.string()).optional(),
   manually_enabled_workspace_ids: z.array(z.string()).optional(),

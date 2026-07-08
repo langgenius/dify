@@ -94,7 +94,6 @@ def test_get_state_creates_state_and_records_first_workspace_for_eligible_accoun
         session=session,
     )
 
-    assert result["eligible"] is True
     assert result["first_workspace_id"] == "workspace-1"
     assert result["completed_task_ids"] == []
     assert len(session.added) == 1
@@ -125,7 +124,6 @@ def test_get_state_does_not_create_state_for_ineligible_account_without_existing
     )
 
     assert result == {
-        "eligible": False,
         "first_workspace_id": None,
         "skipped": False,
         "completed_task_ids": [],
@@ -148,7 +146,6 @@ def test_patch_state_persists_even_when_account_is_not_eligible(monkeypatch: pyt
         session=session,
     )
 
-    assert result["eligible"] is False
     assert result["skipped"] is False
     assert result["manually_enabled_workspace_ids"] == ["workspace-2"]
     assert result["manually_disabled_workspace_ids"] == []
@@ -171,7 +168,6 @@ def test_patch_state_skip_action_sets_skipped_and_removes_current_workspace_enab
         session=session,
     )
 
-    assert result["eligible"] is False
     assert result["skipped"] is True
     assert result["manually_enabled_workspace_ids"] == ["workspace-2"]
     assert result["manually_disabled_workspace_ids"] == []

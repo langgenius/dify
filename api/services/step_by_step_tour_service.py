@@ -16,7 +16,6 @@ STEP_BY_STEP_TOUR_TASK_IDS = frozenset(("home", "studio", "knowledge", "integrat
 
 
 class StepByStepTourStateResponse(TypedDict):
-    eligible: bool
     first_workspace_id: str | None
     skipped: bool
     completed_task_ids: list[str]
@@ -51,7 +50,7 @@ class StepByStepTourService:
                 session.commit()
                 session.refresh(state)
 
-        return cls._build_response(eligible=eligible, state=state)
+        return cls._build_response(state=state)
 
     @classmethod
     def patch_state(
@@ -72,7 +71,7 @@ class StepByStepTourService:
 
         session.commit()
         session.refresh(state)
-        return cls._build_response(eligible=cls.is_eligible(account), state=state)
+        return cls._build_response(state=state)
 
     @classmethod
     def is_eligible(cls, account: Account) -> bool:
@@ -176,12 +175,10 @@ class StepByStepTourService:
     def _build_response(
         cls,
         *,
-        eligible: bool,
         state: AccountStepByStepTourState | None,
     ) -> StepByStepTourStateResponse:
         if state is None:
             return {
-                "eligible": eligible,
                 "first_workspace_id": None,
                 "skipped": False,
                 "completed_task_ids": [],
@@ -191,7 +188,6 @@ class StepByStepTourService:
             }
 
         return {
-            "eligible": eligible,
             "first_workspace_id": state.first_workspace_id,
             "skipped": state.skipped,
             "completed_task_ids": cls._normalize_ids(state.completed_task_ids),

@@ -6,7 +6,6 @@ export type ClientOptions = {
 
 export type StepByStepTourStateResponse = {
   completed_task_ids?: Array<'home' | 'integration' | 'knowledge' | 'studio'>
-  eligible: boolean
   first_workspace_id?: string | null
   manually_disabled_workspace_ids?: Array<string>
   manually_enabled_workspace_ids?: Array<string>
