@@ -21,10 +21,6 @@ vi.mock('@/context/query-client-server', () => ({
   getQueryClientServer: () => mocks.queryClient,
 }))
 
-vi.mock('@/context/external-service-sync', () => ({
-  ExternalServiceSync: () => null,
-}))
-
 vi.mock('@/next/headers', () => ({
   headers: () => mocks.headers(),
 }))

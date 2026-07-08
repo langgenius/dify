@@ -5,6 +5,7 @@ import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
 import { Suspense } from 'react'
+import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -21,7 +22,6 @@ import {
   workspacePermissionKeysLoadingAtom,
   workspaceRoleFlagsAtom,
 } from '../app-context-state'
-import { ExternalServiceSync } from '../external-service-sync'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({

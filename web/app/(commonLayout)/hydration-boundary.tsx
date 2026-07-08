@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { ExternalServiceSync } from '@/context/external-service-sync'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
@@ -82,7 +81,6 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <ExternalServiceSync />
       {children}
     </HydrationBoundary>
   )

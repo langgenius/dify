@@ -1,8 +1,8 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { amplitudeIdentitySyncAtom } from './amplitude-identity-sync'
-import { zendeskConversationSyncAtom } from './zendesk-conversation-sync'
+import { amplitudeIdentitySyncAtom } from '@/context/amplitude-identity-sync'
+import { zendeskConversationSyncAtom } from '@/context/zendesk-conversation-sync'
 
 export function ExternalServiceSync() {
   useAtomValue(zendeskConversationSyncAtom)
