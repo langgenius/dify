@@ -279,21 +279,11 @@
       "count": 1
     }
   },
-  "web/app/account/(commonLayout)/delete-account/components/check-email.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
     "no-restricted-imports": {
       "count": 1
     },
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/account/oauth/authorize/layout.tsx": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -318,14 +308,6 @@
   "web/app/components/app-sidebar/app-info/app-operations.tsx": {
     "react/set-state-in-effect": {
       "count": 4
-    }
-  },
-  "web/app/components/app-sidebar/dataset-info/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/app-sidebar/dataset-info/menu-item.tsx": {
@@ -3406,28 +3388,9 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/members-page/edit-workspace-modal/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
@@ -3455,14 +3418,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/__tests__/switch-credential-in-load-balancing.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
@@ -3577,14 +3532,6 @@
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/__tests__/use-activate-credential.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {
@@ -7031,11 +6978,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/use-permission-keys.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7052,11 +6994,6 @@
     }
   },
   "web/service/access-control/use-permission-catalog.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-permission-keys.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7225,17 +7162,6 @@
   },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-common.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

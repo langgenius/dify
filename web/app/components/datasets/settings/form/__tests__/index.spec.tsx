@@ -47,6 +47,17 @@ vi.mock('@/context/app-context', () => ({
   },
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
   name: 'Test Dataset',
@@ -128,6 +139,12 @@ vi.mock('@/context/dataset-detail', () => ({
     return selector(state)
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock services
 vi.mock('@/service/datasets', () => ({

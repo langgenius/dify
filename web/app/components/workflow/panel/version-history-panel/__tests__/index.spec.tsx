@@ -18,6 +18,12 @@ const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'test-user-id',
+    name: 'Test User',
+  },
+}))
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
@@ -60,8 +66,18 @@ type MockVersionHistoryItemProps = {
 }
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({ id: 'test-user-id' }),
+  useSelector: () => mockAppContextState.userProfile,
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({

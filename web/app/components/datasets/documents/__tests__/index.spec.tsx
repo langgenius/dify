@@ -55,6 +55,15 @@ vi.mock('@/context/app-context', () => ({
     }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'test-user' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+
 // Mock document service hooks
 const mockInvalidDocumentList = vi.fn()
 const mockInvalidDocumentDetail = vi.fn()
@@ -91,6 +100,12 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDocumentList: vi.fn(() => mockInvalidDocumentList),
   useInvalidDocumentDetail: vi.fn(() => mockInvalidDocumentDetail),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock segment service hooks
 vi.mock('@/service/knowledge/use-segment', () => ({

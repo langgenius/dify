@@ -45,7 +45,7 @@ class AnnotationReplyFeature:
             embedding_model_name = collection_binding_detail.model_name
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, db.session, CollectionBindingType.ANNOTATION
+                embedding_provider_name, embedding_model_name, db.session(), CollectionBindingType.ANNOTATION
             )
 
             dataset = Dataset(
@@ -66,7 +66,7 @@ class AnnotationReplyFeature:
             if documents and documents[0].metadata:
                 annotation_id = documents[0].metadata["annotation_id"]
                 score = documents[0].metadata["score"]
-                annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
+                annotation = AppAnnotationService.get_annotation_by_id(annotation_id, session=db.session())
                 if annotation:
                     if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
                         from_source = ConversationFromSource.API
@@ -84,6 +84,7 @@ class AnnotationReplyFeature:
                         message.id,
                         from_source,
                         score,
+                        session=db.session(),
                     )
 
                     return annotation

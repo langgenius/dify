@@ -95,7 +95,7 @@ class TestWorkspaceSwitch:
         )
 
         api = WorkspaceSwitchApi()
-        with app.test_request_context(f"/openapi/v1/workspaces/{target.id}/switch", method="POST"):
+        with app.test_request_context(f"/openapi/v1/workspaces/{target.id}:switch", method="POST"):
             detail = unwrap(api.post)(api, workspace_id=target.id, auth_data=auth_for(account))
 
         # Response reflects the post-switch state.
@@ -118,6 +118,6 @@ class TestWorkspaceSwitch:
         assert outsider_ws is not None
 
         api = WorkspaceSwitchApi()
-        with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}/switch", method="POST"):
+        with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", method="POST"):
             with pytest.raises(NotFound):
                 unwrap(api.post)(api, workspace_id=outsider_ws.id, auth_data=auth_for(account))

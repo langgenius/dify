@@ -35,6 +35,13 @@ vi.mock('@/features/deployments/create-release/state', async () => {
   const { atom } = await import('jotai')
 
   return {
+    createReleaseSourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap(page => page.data)),
+    createReleaseSourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
+    createReleaseSourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
+    createReleaseSourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
+    createReleaseSourceAppsIsFetchingAtom: atom(() => mocks.sourceAppsQuery.isFetching),
+    createReleaseSourceAppsIsFetchingNextPageAtom: atom(() => mocks.sourceAppsQuery.isFetchingNextPage),
+    createReleaseSourceAppsIsLoadingAtom: atom(() => mocks.sourceAppsQuery.isLoading),
     createReleaseSourceAppSearchTextAtom: atom(''),
     createReleaseSourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
   }
@@ -98,7 +105,13 @@ describe('SourceAppPicker', () => {
     renderSourceAppPicker(false)
 
     expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
-      mocks.sourceAppsQuery,
+      expect.objectContaining({
+        fetchNextPage: expect.any(Function),
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+        isLoading: false,
+      }),
       expect.objectContaining({
         enabled: false,
         rootMargin: '0px 0px 160px 0px',
@@ -110,7 +123,13 @@ describe('SourceAppPicker', () => {
 
     await waitFor(() => {
       expect(mocks.useInfiniteScroll).toHaveBeenLastCalledWith(
-        mocks.sourceAppsQuery,
+        expect.objectContaining({
+          fetchNextPage: expect.any(Function),
+          hasNextPage: true,
+          isFetching: false,
+          isFetchingNextPage: false,
+          isLoading: false,
+        }),
         expect.objectContaining({
           enabled: true,
           rootMargin: '0px 0px 160px 0px',

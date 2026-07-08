@@ -4,6 +4,7 @@ import type { Getter } from 'jotai/vanilla'
 import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { encodeDslContent } from '@/features/deployments/shared/domain/dsl'
 import { consoleQuery } from '@/service/client'
 import { effectiveMethodAtom, instanceNameAtom, submissionUnsupportedDslNodesAtom } from './primitives'
@@ -53,6 +54,11 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
   })
 })
 
+export const deployableEnvironmentsDataAtom = selectAtom(deployableEnvironmentsQueryAtom, query => query.data)
+export const deployableEnvironmentsIsErrorAtom = selectAtom(deployableEnvironmentsQueryAtom, query => query.isError)
+export const deployableEnvironmentsIsLoadingAtom = selectAtom(deployableEnvironmentsQueryAtom, query => query.isLoading)
+export const deployableEnvironmentsIsFetchingAtom = selectAtom(deployableEnvironmentsQueryAtom, query => query.isFetching)
+
 const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
@@ -88,17 +94,22 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   return precheckReleaseQueryOptions
 })
 
+const precheckReleaseDataAtom = selectAtom(precheckReleaseQueryAtom, query => query.data)
+const precheckReleaseIsSuccessAtom = selectAtom(precheckReleaseQueryAtom, query => query.isSuccess)
+const precheckReleaseIsLoadingAtom = selectAtom(precheckReleaseQueryAtom, query => query.isLoading)
+const precheckReleaseIsFetchingAtom = selectAtom(precheckReleaseQueryAtom, query => query.isFetching)
+
 function precheckReleaseReady(get: Getter) {
-  const precheckReleaseQuery = get(precheckReleaseQueryAtom)
+  const precheckRelease = get(precheckReleaseDataAtom)
 
   return sourceReady(get)
-    && precheckReleaseQuery.isSuccess
-    && Boolean(precheckReleaseQuery.data?.canCreate)
-    && (precheckReleaseQuery.data?.unsupportedNodes.length ?? 0) === 0
+    && get(precheckReleaseIsSuccessAtom)
+    && Boolean(precheckRelease?.canCreate)
+    && (precheckRelease?.unsupportedNodes.length ?? 0) === 0
     && get(submissionUnsupportedDslNodesAtom).length === 0
 }
 
-export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
+const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
@@ -133,6 +144,12 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   return deploymentOptionsQueryOptions
 })
 
+export const deploymentOptionsDataAtom = selectAtom(deploymentOptionsQueryAtom, query => query.data)
+export const deploymentOptionsIsErrorAtom = selectAtom(deploymentOptionsQueryAtom, query => query.isError)
+export const deploymentOptionsIsLoadingAtom = selectAtom(deploymentOptionsQueryAtom, query => query.isLoading)
+export const deploymentOptionsIsFetchingAtom = selectAtom(deploymentOptionsQueryAtom, query => query.isFetching)
+const deploymentOptionsIsSuccessAtom = selectAtom(deploymentOptionsQueryAtom, query => query.isSuccess)
+
 export const unsupportedDslNodesAtom = atom((get) => {
   const submissionUnsupportedDslNodes = get(submissionUnsupportedDslNodesAtom)
   if (submissionUnsupportedDslNodes.length > 0)
@@ -141,7 +158,7 @@ export const unsupportedDslNodesAtom = atom((get) => {
   if (!sourceReady(get))
     return []
 
-  return get(precheckReleaseQueryAtom).data?.unsupportedNodes ?? []
+  return get(precheckReleaseDataAtom)?.unsupportedNodes ?? []
 })
 
 const precheckReleaseReadyAtom = atom((get) => {
@@ -149,21 +166,17 @@ const precheckReleaseReadyAtom = atom((get) => {
 })
 
 export const deploymentOptionsReadyAtom = atom((get) => {
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
-
   return sourceReady(get)
     && get(precheckReleaseReadyAtom)
-    && deploymentOptionsQuery.isSuccess
+    && get(deploymentOptionsIsSuccessAtom)
 })
 
 export const deploymentOptionsContentCheckedAtom = atom((get) => {
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
-  const precheckReleaseQuery = get(precheckReleaseQueryAtom)
-  const isLoadingOptions = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
-  const isCheckingReleaseContent = precheckReleaseQuery.isLoading || (precheckReleaseQuery.isFetching && !precheckReleaseQuery.data)
+  const isLoadingOptions = get(deploymentOptionsIsLoadingAtom) || (get(deploymentOptionsIsFetchingAtom) && !get(deploymentOptionsDataAtom))
+  const isCheckingReleaseContent = get(precheckReleaseIsLoadingAtom) || (get(precheckReleaseIsFetchingAtom) && !get(precheckReleaseDataAtom))
 
   if (!sourceReady(get) || isCheckingReleaseContent || isLoadingOptions)
     return false
 
-  return get(precheckReleaseReadyAtom) && deploymentOptionsQuery.isSuccess
+  return get(precheckReleaseReadyAtom) && get(deploymentOptionsIsSuccessAtom)
 })

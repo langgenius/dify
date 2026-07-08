@@ -3,6 +3,7 @@ import yaml
 
 from models.tools import MCPToolProvider, WorkflowToolProvider
 from services.app_dsl_service import Import
+from services.data_migration import import_service
 from services.data_migration.entities import (
     ConflictStrategy,
     IdStrategy,
@@ -92,8 +93,12 @@ def test_package_target_tenant_id_ignores_invalid_uuid(monkeypatch):
 
             return EmptyResult()
 
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
     with pytest.raises(MigrationDataError, match="Target tenant not found"):
-        ImportTargetResolver().resolve(StubSession(), ImportRequest(package=package))
+        ImportTargetResolver().resolve(ImportRequest(package=package), session=import_service.db.session)
 
 
 def test_options_override_replaces_package_defaults():
@@ -113,7 +118,7 @@ def test_options_override_replaces_package_defaults():
     captured_options: list[ImportOptions] = []
 
     class StubResolver(ImportTargetResolver):
-        def resolve(self, session, request: ImportRequest) -> ImportTarget:
+        def resolve(self, request: ImportRequest, session) -> ImportTarget:
             return ImportTarget(
                 tenant_id="tenant-1",
                 tenant_name="target",
@@ -124,7 +129,6 @@ def test_options_override_replaces_package_defaults():
     class CapturingImportService(MigrationImportService):
         def _import_workflows(
             self,
-            session,
             package: MigrationPackage,
             target: ImportTarget,
             options: ImportOptions,
@@ -137,7 +141,8 @@ def test_options_override_replaces_package_defaults():
     override = ImportOptions(create_app_api_token_on_import=False, conflict_strategy=ConflictStrategy.SKIP)
 
     CapturingImportService(target_resolver=StubResolver()).import_package(
-        object(), ImportRequest(package=package, options_override=override)
+        ImportRequest(package=package, options_override=override),
+        session=import_service.db.session,
     )
 
     assert captured_options == [override]
@@ -150,37 +155,53 @@ def test_only_preserve_id_strategy_reuses_source_app_id():
     assert service._should_preserve_source_app_id(ImportOptions(id_strategy=IdStrategy.GENERATE_NEW_ID)) is False
 
 
-def test_find_existing_app_ignores_invalid_uuid():
+def test_find_existing_app_ignores_invalid_uuid(monkeypatch):
     class StubSession:
         def scalar(self, statement):
             raise AssertionError("invalid UUID should not be queried against App.id")
 
-    assert MigrationImportService()._find_existing_app(StubSession(), "not-a-uuid", "tenant-1") is None
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
+    assert (
+        MigrationImportService()._find_existing_app("not-a-uuid", "tenant-1", session=import_service.db.session) is None
+    )
 
 
-def test_find_existing_workflow_tool_does_not_compare_invalid_uuid():
+def test_find_existing_workflow_tool_does_not_compare_invalid_uuid(monkeypatch):
     captured = []
 
     class StubSession:
         def scalar(self, statement):
             captured.append(statement)
 
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
     MigrationImportService()._find_existing_workflow_tool(
-        StubSession(), "tenant-1", "not-a-uuid", "tool-name", "app-id"
+        "tenant-1", "not-a-uuid", "tool-name", "app-id", session=import_service.db.session
     )
 
     where_clause = str(captured[0].whereclause)
     assert f"{WorkflowToolProvider.__tablename__}.id" not in where_clause
 
 
-def test_find_existing_mcp_tool_does_not_compare_invalid_uuid():
+def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(monkeypatch):
     captured = []
 
     class StubSession:
         def scalar(self, statement):
             captured.append(statement)
 
-    MigrationImportService()._find_existing_mcp_tool(StubSession(), "tenant-1", "my-test-mcp", "my-test-mcp")
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
+    MigrationImportService()._find_existing_mcp_tool(
+        "tenant-1", "my-test-mcp", "my-test-mcp", session=import_service.db.session
+    )
 
     where_clause = str(captured[0].whereclause)
     assert f"{MCPToolProvider.__tablename__}.id" not in where_clause
@@ -211,16 +232,17 @@ def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(import_service, "AppDslService", StubAppDslService)
 
     imported_app_id = MigrationImportService()._import_workflow_app(
-        session=StubSession(),
         account=object(),
         workflow_data={"name": "main_chatflow"},
         dsl_content="app:\n  mode: workflow\n",
         app_id="source-app-id",
         existing_app=None,
         options=ImportOptions(id_strategy=IdStrategy.PRESERVE_ID),
+        session=import_service.db.session,
     )
 
     assert imported_app_id == "imported-app-id"
@@ -317,19 +339,20 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
             return account
 
     class PublishingImportService(MigrationImportService):
-        def _find_existing_app(self, session, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, session, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             if ("created", app_id) in events:
                 return type("WorkflowToolProvider", (), {"id": workflow_tool_id or "created-workflow-tool-id"})()
             return None
 
-        def _ensure_workflow_app_is_published(self, session, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             events.append(("published", app_id))
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(
         import_service.WorkflowToolManageService,
         "create_workflow_tool",
@@ -337,7 +360,6 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
     )
 
     PublishingImportService()._import_workflow_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -360,6 +382,7 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
         {},
         [],
         [],
+        session=import_service.db.session,
     )
 
     assert events == [("published", "workflow-app-1"), ("created", "workflow-app-1")]
@@ -384,17 +407,18 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch: pytest.MonkeyP
             return account
 
     class StrategyImportService(MigrationImportService):
-        def _find_existing_app(self, session, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, session, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             return target_provider if created_kwargs else None
 
-        def _ensure_workflow_app_is_published(self, session, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             return None
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(
         import_service.WorkflowToolManageService,
         "create_workflow_tool",
@@ -402,7 +426,6 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch: pytest.MonkeyP
     )
 
     StrategyImportService()._import_workflow_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -425,6 +448,7 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch: pytest.MonkeyP
         id_mapping,
         id_mapping_details,
         [],
+        session=import_service.db.session,
     )
 
     assert created_kwargs[0]["import_id"] == expected_import_id
@@ -449,17 +473,20 @@ def test_workflow_tool_skip_records_id_mapping(monkeypatch):
             return account
 
     class SkipImportService(MigrationImportService):
-        def _find_existing_app(self, session, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, session, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             return existing_provider
 
-        def _ensure_workflow_app_is_published(self, session, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             return None
 
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
     SkipImportService()._import_workflow_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -482,6 +509,7 @@ def test_workflow_tool_skip_records_id_mapping(monkeypatch):
         id_mapping,
         [],
         [],
+        session=import_service.db.session,
     )
 
     assert id_mapping["source-workflow-tool-id"] == "existing-workflow-tool-id"
@@ -495,22 +523,18 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
     report_items = []
 
     class ExistingApiImportService(MigrationImportService):
-        def _find_api_tool_provider(self, session, tenant_id, provider_name):
-            return target_provider
-
-    class StubSession:
-        def scalar(self, statement):
+        def _find_api_tool_provider(self, tenant_id, provider_name, session):
             return target_provider
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db.session, "scalar", lambda statement: target_provider)
     monkeypatch.setattr(
         import_service.ApiToolManageService, "parser_api_schema", lambda schema: {"schema_type": "openapi"}
     )
     monkeypatch.setattr(import_service.ApiToolManageService, "update_api_tool_provider", lambda **kwargs: None)
 
     ExistingApiImportService()._import_api_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -528,6 +552,7 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         id_mapping,
         id_mapping_details,
         {"weather": {"source-api-provider-id-from-dsl"}},
+        session=import_service.db.session,
     )
 
     assert id_mapping == {
@@ -549,18 +574,18 @@ def test_api_tool_create_records_id_mapping(monkeypatch):
             return None
 
     class CreatedApiImportService(MigrationImportService):
-        def _find_api_tool_provider(self, session, tenant_id, provider_name):
+        def _find_api_tool_provider(self, tenant_id, provider_name, session):
             return target_provider
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(
         import_service.ApiToolManageService, "parser_api_schema", lambda schema: {"schema_type": "openapi"}
     )
     monkeypatch.setattr(import_service.ApiToolManageService, "create_api_tool_provider", lambda **kwargs: None)
 
     CreatedApiImportService()._import_api_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -578,6 +603,7 @@ def test_api_tool_create_records_id_mapping(monkeypatch):
         id_mapping,
         [],
         {},
+        session=import_service.db.session,
     )
 
     assert id_mapping["source-api-provider-id"] == "target-api-provider-id"
@@ -605,10 +631,10 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch):
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     MigrationImportService()._import_mcp_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -634,6 +660,7 @@ def test_mcp_tool_import_restores_exported_tool_list(monkeypatch):
         report_items,
         {},
         [],
+        session=import_service.db.session,
     )
 
     assert provider.tools == '[{"name": "echo"}]'
@@ -653,7 +680,7 @@ def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
             return None
 
     class ExistingMCPImportService(MigrationImportService):
-        def _find_existing_mcp_tool(self, session, tenant_id, provider_id, server_identifier):
+        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier, session):
             return provider
 
     class StubMCPToolManageService:
@@ -665,10 +692,10 @@ def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     ExistingMCPImportService()._import_mcp_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -694,6 +721,7 @@ def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
         [],
         id_mapping,
         id_mapping_details,
+        session=import_service.db.session,
     )
 
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
@@ -715,7 +743,7 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
             return None
 
     class CreatedMCPImportService(MigrationImportService):
-        def _find_existing_mcp_tool(self, session, tenant_id, provider_id, server_identifier):
+        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier, session):
             return provider if provider_created else None
 
     class StubMCPToolManageService:
@@ -728,10 +756,10 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
 
     from services.data_migration import import_service
 
+    monkeypatch.setattr(import_service.db, "session", StubSession())
     monkeypatch.setattr(import_service, "MCPToolManageService", StubMCPToolManageService)
 
     CreatedMCPImportService()._import_mcp_tools(
-        StubSession(),
         MigrationPackage.from_mapping(
             {
                 "metadata": {"version": "1", "source_scope": "single"},
@@ -756,6 +784,7 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
         [],
         id_mapping,
         [],
+        session=import_service.db.session,
     )
 
     assert id_mapping["source-mcp-provider-id"] == "target-mcp-provider-id"
@@ -800,12 +829,11 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
         }
     )
 
-    class StubSession:
-        def scalar(self, statement):
-            return None
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db.session, "scalar", lambda statement: None)
 
     MigrationImportService()._preflight_dependency_only_mcp(
-        StubSession(),
         package,
         ImportTarget(
             tenant_id="tenant-1",
@@ -814,6 +842,7 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
             operator_email="owner@example.com",
         ),
         report_items,
+        session=import_service.db.session,
     )
 
     assert report_items == [
@@ -828,18 +857,22 @@ def test_dependency_only_mcp_preflight_reports_missing_target_provider_with_work
     ]
 
 
-def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid_id():
+def test_dependency_only_mcp_lookup_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):
     captured = []
 
     class StubSession:
         def scalar(self, statement):
             captured.append(statement)
 
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db, "session", StubSession())
+
     MigrationImportService()._find_dependency_only_mcp_provider(
-        StubSession(),
         "tenant-1",
         "my-test-mcp-server",
         "my-test-mcp",
+        session=import_service.db.session,
     )
 
     where_clause = str(captured[0].whereclause)
@@ -860,12 +893,11 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(monkeyp
         {"id": "target-provider-id", "name": "my-test-mcp", "server_identifier": "my-test-mcp-server"},
     )()
 
-    class StubSession:
-        def scalar(self, statement):
-            return provider
+    from services.data_migration import import_service
+
+    monkeypatch.setattr(import_service.db.session, "scalar", lambda statement: provider)
 
     MigrationImportService()._preflight_dependency_only_mcp(
-        StubSession(),
         package,
         ImportTarget(
             tenant_id="tenant-1",
@@ -874,6 +906,7 @@ def test_dependency_only_mcp_preflight_reports_available_target_provider(monkeyp
             operator_email="owner@example.com",
         ),
         report_items,
+        session=import_service.db.session,
     )
 
     assert report_items == [
@@ -891,7 +924,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     events = []
 
     class StubResolver(ImportTargetResolver):
-        def resolve(self, session, request):
+        def resolve(self, request, session):
             return ImportTarget(
                 tenant_id="tenant-1",
                 tenant_name="target",
@@ -902,7 +935,6 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     class OrderedImportService(MigrationImportService):
         def _import_api_tools(
             self,
-            session,
             package,
             target,
             options,
@@ -910,12 +942,13 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             id_mapping,
             id_mapping_details,
             source_provider_ids_by_name,
+            *,
+            session=None,
         ):
             events.append(("api_tools", "imported"))
 
         def _import_workflows(
             self,
-            session,
             package,
             target,
             options,
@@ -926,6 +959,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             imported_workflow_ids=None,
             only_app_ids=None,
             skip_app_ids=None,
+            session=None,
         ):
             only_app_ids = set(only_app_ids or [])
             skip_app_ids = set(skip_app_ids or [])
@@ -941,11 +975,13 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
                     imported_workflow_ids.add(app_id)
 
         def _import_workflow_tools(
-            self, session, package, target, options, id_mapping, id_mapping_details, report_items
+            self, package, target, options, id_mapping, id_mapping_details, report_items, *, session=None
         ):
             events.append(("workflow_tool", package.workflow_tools[0]["id"]))
 
-        def _import_mcp_tools(self, session, package, target, options, report_items, id_mapping, id_mapping_details):
+        def _import_mcp_tools(
+            self, package, target, options, report_items, id_mapping, id_mapping_details, *, session=None
+        ):
             events.append(("mcp_tools", "imported"))
 
     package = MigrationPackage.from_mapping(
@@ -959,7 +995,9 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
         }
     )
 
-    OrderedImportService(target_resolver=StubResolver()).import_package(object(), ImportRequest(package=package))
+    OrderedImportService(target_resolver=StubResolver()).import_package(
+        ImportRequest(package=package), session=import_service.db.session
+    )
 
     assert events == [
         ("api_tools", "imported"),

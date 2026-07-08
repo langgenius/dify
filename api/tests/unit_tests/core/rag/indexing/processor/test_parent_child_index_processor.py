@@ -278,7 +278,7 @@ class TestParentChildIndexProcessor:
         ):
             processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[])
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"])
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"])
 
     def test_clean_deletes_all_summaries_when_node_ids_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock
@@ -291,7 +291,7 @@ class TestParentChildIndexProcessor:
         ):
             processor.clean(dataset, None, delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, None)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None)
 
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=None)

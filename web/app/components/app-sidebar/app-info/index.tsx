@@ -1,6 +1,7 @@
 import type { AppInfoActions } from './use-app-info-actions'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
@@ -86,8 +87,8 @@ export const AppInfoView = ({
     activeModal,
     secretEnvList,
   } = actions
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,

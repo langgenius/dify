@@ -267,6 +267,7 @@ class TestMessageService:
             conversation_id=str(uuid.uuid4()),
             first_id=None,
             limit=20,
+            session=Mock(),
         )
 
         assert hasattr(result, "data")
@@ -282,7 +283,12 @@ class TestMessageService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), conversation_id="invalid_id", first_id=None, limit=20
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                conversation_id="invalid_id",
+                first_id=None,
+                limit=20,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "pagination_by_first_id")
@@ -297,6 +303,7 @@ class TestMessageService:
                 conversation_id=str(uuid.uuid4()),
                 first_id="invalid_first_id",
                 limit=20,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "create_feedback")
@@ -310,6 +317,7 @@ class TestMessageService:
             user=Mock(spec=EndUser),
             rating=FeedbackRating.LIKE,
             content="Great response!",
+            session=Mock(),
         )
 
         mock_create_feedback.assert_called_once()
@@ -326,6 +334,7 @@ class TestMessageService:
                 user=Mock(spec=EndUser),
                 rating=FeedbackRating.LIKE,
                 content=None,
+                session=Mock(),
             )
 
     @patch.object(MessageService, "get_all_messages_feedbacks")
@@ -337,7 +346,7 @@ class TestMessageService:
         ]
         mock_get_feedbacks.return_value = mock_feedbacks
 
-        result = MessageService.get_all_messages_feedbacks(app_model=Mock(spec=App), page=1, limit=20)
+        result = MessageService.get_all_messages_feedbacks(app_model=Mock(spec=App), page=1, limit=20, session=Mock())
 
         assert len(result) == 2
         assert result[0]["rating"] == "like"
@@ -349,7 +358,11 @@ class TestMessageService:
         mock_get_questions.return_value = mock_questions
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id=str(uuid.uuid4()), invoke_from=Mock()
+            app_model=Mock(spec=App),
+            user=Mock(spec=EndUser),
+            message_id=str(uuid.uuid4()),
+            invoke_from=Mock(),
+            session=Mock(),
         )
 
         assert len(result) == 3
@@ -362,7 +375,11 @@ class TestMessageService:
 
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id=str(uuid.uuid4()), invoke_from=Mock()
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                message_id=str(uuid.uuid4()),
+                invoke_from=Mock(),
+                session=Mock(),
             )
 
     @patch.object(MessageService, "get_suggested_questions_after_answer")
@@ -372,7 +389,11 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), message_id="invalid_message_id", invoke_from=Mock()
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                message_id="invalid_message_id",
+                invoke_from=Mock(),
+                session=Mock(),
             )
 
 

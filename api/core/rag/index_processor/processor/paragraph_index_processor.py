@@ -5,7 +5,7 @@ import re
 import uuid
 from typing import Any, TypedDict, cast, override
 
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -162,10 +162,10 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                    SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=segment_ids)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=None)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset)
@@ -226,7 +226,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    account = AccountService.load_user(document.created_by, db.session)
+                    account = AccountService.load_user(document.created_by, db.session())
                     if not account:
                         raise ValueError("Invalid account")
                     doc.attachments = self._get_content_files(doc, current_user=account)
@@ -414,12 +414,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             # First, try to get images from SegmentAttachmentBinding (preferred method)
             if segment_id:
                 image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
-                    tenant_id, segment_id, db.session
+                    tenant_id, segment_id, db.session()
                 )
 
             # If no images from attachments, fall back to extracting from text
             if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, db.session)
+                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, db.session())
 
         # Build prompt messages
         prompt_messages = []
@@ -473,7 +473,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return summary_content, usage
 
     @staticmethod
-    def _extract_images_from_text(tenant_id: str, text: str, session: scoped_session) -> list[File]:
+    def _extract_images_from_text(tenant_id: str, text: str, session: Session) -> list[File]:
         """
         Extract images from markdown text and convert them to File objects.
 
@@ -553,9 +553,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return file_objects
 
     @staticmethod
-    def _extract_images_from_segment_attachments(
-        tenant_id: str, segment_id: str, session: scoped_session
-    ) -> list[File]:
+    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str, session: Session) -> list[File]:
         """
         Extract images from SegmentAttachmentBinding table (preferred method).
         This matches how DatasetRetrieval gets segment attachments.

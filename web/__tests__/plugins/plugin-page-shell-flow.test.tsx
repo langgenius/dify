@@ -44,7 +44,13 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
+      current_env: 'CLOUD',
       current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
     },
     workspacePermissionKeys: [
       'plugin.install',
@@ -53,6 +59,33 @@ vi.mock('@/context/app-context', () => ({
     ],
   }),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: false,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.delete',
+      'plugin.plugin_preferences',
+    ],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-plugins', () => ({
   hasPluginPermission: () => true,

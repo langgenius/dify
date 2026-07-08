@@ -6,7 +6,7 @@ Redis queuing, error handling, and community vs enterprise behavior.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -118,7 +118,7 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = False
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted")
+            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=MagicMock())
 
             assert result is True
             mock_queue_task.assert_not_called()
@@ -137,7 +137,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is True
             assert mock_queue_task.call_count == 3
@@ -151,7 +153,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted")
+            result = sync_account_deletion(
+                account_id=str(uuid4()), source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is True
             mock_queue_task.assert_not_called()
@@ -176,7 +180,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is False
             assert mock_queue_task.call_count == 3
@@ -196,7 +202,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is False
             mock_queue_task.assert_called_once()

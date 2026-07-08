@@ -245,7 +245,7 @@ class ConversationDetailApi(Resource):
         conversation_id = str(c_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return "", 204
@@ -295,7 +295,7 @@ class ConversationRenameApi(Resource):
 
         try:
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=db.session()
             )
             return dump_response(SimpleConversation, conversation)
         except services.errors.conversation.ConversationNotExistsError:
@@ -347,7 +347,13 @@ class ConversationVariablesApi(Resource):
 
         try:
             pagination = ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
+                app_model,
+                conversation_id,
+                end_user,
+                query_args.limit,
+                last_id,
+                query_args.variable_name,
+                session=db.session(),
             )
             return dump_response(ConversationVariableInfiniteScrollPaginationResponse, pagination)
         except services.errors.conversation.ConversationNotExistsError:
@@ -406,7 +412,7 @@ class ConversationVariableDetailApi(Resource):
 
         try:
             variable = ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id_str, end_user, payload.value
+                app_model, conversation_id, variable_id_str, end_user, payload.value, session=db.session()
             )
             return dump_response(ConversationVariableResponse, variable)
         except services.errors.conversation.ConversationNotExistsError:

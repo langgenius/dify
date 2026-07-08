@@ -190,7 +190,7 @@ class TextApi(Resource):
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session,
+                session=db.session(),
                 text=text,
                 voice=voice,
                 end_user=end_user.external_user_id,

@@ -5,12 +5,13 @@ import { SourceStepContent } from '../source-step'
 const mocks = vi.hoisted(() => {
   const sourceAppsQuery = {
     data: { pages: [{ data: [] }] },
+    error: null,
+    fetchNextPage: vi.fn(),
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
     isLoading: false,
     isPlaceholderData: false,
-    fetchNextPage: vi.fn(),
   }
 
   return {
@@ -46,6 +47,14 @@ vi.mock('@/features/deployments/create-guide/state/source', async () => {
     dslUnsupportedModeAtom: atom(false),
     effectiveSelectedAppAtom: atom(undefined),
     isReadingDslAtom: atom(false),
+    sourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap(page => page.data)),
+    sourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
+    sourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
+    sourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
+    sourceAppsIsFetchingAtom: atom(() => mocks.sourceAppsQuery.isFetching),
+    sourceAppsIsFetchingNextPageAtom: atom(() => mocks.sourceAppsQuery.isFetchingNextPage),
+    sourceAppsIsLoadingAtom: atom(() => mocks.sourceAppsQuery.isLoading),
+    sourceAppsIsPlaceholderDataAtom: atom(() => mocks.sourceAppsQuery.isPlaceholderData),
     sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
   }
 })
@@ -80,12 +89,13 @@ describe('SourceStepContent', () => {
     vi.clearAllMocks()
     Object.assign(mocks.sourceAppsQuery, {
       data: { pages: [{ data: [] }] },
+      error: null,
+      fetchNextPage: vi.fn(),
       hasNextPage: false,
       isFetching: false,
       isFetchingNextPage: false,
       isLoading: false,
       isPlaceholderData: false,
-      fetchNextPage: vi.fn(),
     })
   })
 
@@ -114,7 +124,13 @@ describe('SourceStepContent', () => {
     render(<SourceStepContent />)
 
     expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
-      mocks.sourceAppsQuery,
+      expect.objectContaining({
+        fetchNextPage: expect.any(Function),
+        hasNextPage: expect.any(Boolean),
+        isFetching: false,
+        isFetchingNextPage: false,
+        isLoading: false,
+      }),
       expect.objectContaining({
         rootMargin: '0px 0px 160px 0px',
         threshold: 0.1,

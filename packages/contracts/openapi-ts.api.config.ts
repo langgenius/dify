@@ -102,11 +102,11 @@ const segmentWords = (segment: string) => {
   return toWords(segment)
 }
 
+// Split on `:` too so custom methods nest as their own node (apps.byAppId.run), not apps.appIdRun.
+const routeNamingSegments = (routePath: string) => routePath.split(/[/:]/).filter(Boolean)
+
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routeNamingSegments(routePath).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
@@ -114,10 +114,7 @@ const operationId = (method: string, routePath: string) => {
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = operation.path
-    .split('/')
-    .filter(Boolean)
-    .map(segment => toCamelCase(segmentWords(segment)))
+  const segments = routeNamingSegments(operation.path).map(segment => toCamelCase(segmentWords(segment)))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }

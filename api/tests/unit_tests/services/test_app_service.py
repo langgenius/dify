@@ -29,14 +29,14 @@ class TestOpenapiVisibilityHelpers:
         sentinel_app.status = "archived"  # explicitly NOT "normal"
         mock_session.get.return_value = sentinel_app
 
-        assert AppService.get_app_by_id(mock_session, "app-uuid") is sentinel_app
+        assert AppService.get_app_by_id("app-uuid", session=mock_session) is sentinel_app
         mock_session.get.assert_called_once_with(App, "app-uuid")
 
     def test_get_app_by_id_returns_none_when_missing(self):
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert AppService.get_app_by_id(mock_session, "missing") is None
+        assert AppService.get_app_by_id("missing", session=mock_session) is None
 
     def test_get_visible_app_by_id_returns_app_when_visible(self):
         mock_session = MagicMock()
@@ -45,7 +45,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(mock_session, "app-uuid") is app
+            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is app
 
         mock_session.get.assert_called_once_with(App, "app-uuid")
 
@@ -53,7 +53,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert AppService.get_visible_app_by_id(mock_session, "missing") is None
+        assert AppService.get_visible_app_by_id("missing", session=mock_session) is None
 
     def test_get_visible_app_by_id_returns_none_when_status_not_normal(self):
         """Soft-deleted/archived rows must not surface on the openapi
@@ -65,7 +65,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(mock_session, "app-uuid") is None
+            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is None
 
     def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self):
         """``is_openapi_visible`` is the per-row counterpart to
@@ -78,7 +78,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=False):
-            assert AppService.get_visible_app_by_id(mock_session, "app-uuid") is None
+            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is None
 
     def test_find_visible_apps_by_name_returns_scalars_through_visibility_gate(self):
         """Tenant-scoped name lookup. The helper passes the SELECT through
@@ -90,7 +90,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.execute.return_value.scalars.return_value = iter(rows)
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_name(mock_session, name="my-app", tenant_id="tenant-1")
+            out = AppService.find_visible_apps_by_name(name="my-app", tenant_id="tenant-1", session=mock_session)
 
         assert out == rows
         # Visibility gate must wrap the SELECT exactly once.
@@ -102,7 +102,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.execute.return_value.scalars.return_value = iter([])
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q):
-            out = AppService.find_visible_apps_by_name(mock_session, name="nope", tenant_id="tenant-1")
+            out = AppService.find_visible_apps_by_name(name="nope", tenant_id="tenant-1", session=mock_session)
 
         assert out == []
 
@@ -113,7 +113,7 @@ class TestOpenapiVisibilityHelpers:
         """
         mock_session = MagicMock()
 
-        assert AppService.find_visible_apps_by_ids(mock_session, []) == []
+        assert AppService.find_visible_apps_by_ids([], session=mock_session) == []
         mock_session.execute.assert_not_called()
 
     def test_find_visible_apps_by_ids_passes_through_visibility_gate(self):
@@ -127,7 +127,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.execute.return_value.scalars.return_value.all.return_value = rows
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_ids(mock_session, ["a", "b"])
+            out = AppService.find_visible_apps_by_ids(["a", "b"], session=mock_session)
 
         assert out == rows
         gate.assert_called_once()
@@ -208,6 +208,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
+                session=mock_db.session,
             )
 
         assert updated_app.name == "Iris"
@@ -266,6 +267,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
+                session=mock_db.session,
             )
 
         assert backing_agent.role == "research assistant"
@@ -317,6 +319,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
+                session=mock_db.session,
             )
 
         assert backing_agent.role == ""
@@ -370,6 +373,7 @@ class TestAgentAppType:
                         "use_icon_as_answer_icon": False,
                         "max_active_requests": 0,
                     },
+                    session=mock_db.session,
                 )
 
         mock_db.session.rollback.assert_called_once()
@@ -392,7 +396,7 @@ class TestAgentAppType:
             patch("services.app_service.remove_app_and_related_data_task"),
         ):
             mock_db.session.scalar.return_value = backing_agent
-            AppService().delete_app(app)  # type: ignore[arg-type]
+            AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
         assert backing_agent.status == AgentStatus.ARCHIVED
         assert backing_agent.archived_by == "account-2"

@@ -210,7 +210,7 @@ class AnnotationListApi(Resource):
         query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_model.id, query.page, query.limit, query.keyword
+            app_model.id, query.page, query.limit, query.keyword, session=db.session()
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         return AnnotationList(
@@ -251,7 +251,7 @@ class AnnotationListApi(Resource):
         """Create a new annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id)
+        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id, session=db.session())
         return dump_response(Annotation, annotation), HTTPStatus.CREATED
 
 
@@ -292,7 +292,7 @@ class AnnotationUpdateDeleteApi(Resource):
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
         app_ref = AppRefService.create_app_ref(app_model)
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session)
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session())
         return dump_response(Annotation, annotation)
 
     @service_api_ns.doc(
@@ -322,5 +322,5 @@ class AnnotationUpdateDeleteApi(Resource):
         """Delete an annotation."""
         app_ref = AppRefService.create_app_ref(app_model)
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        AppAnnotationService.delete_app_annotation(annotation_ref, db.session)
+        AppAnnotationService.delete_app_annotation(annotation_ref, db.session())
         return "", 204
