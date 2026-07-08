@@ -28,8 +28,7 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
 
   const updateDatasetsDetail = useCallback(async (datasetIds: string[]) => {
     const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
-    if (datasetsDetail && datasetsDetail.length > 0)
-      storeRef.current!.getState().updateDatasetsDetail(datasetsDetail)
+    storeRef.current!.getState().updateDatasetsDetail(datasetsDetail || [], datasetIds)
   }, [])
 
   useEffect(() => {

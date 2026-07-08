@@ -168,6 +168,53 @@ describe('use-knowledge-dataset-selection', () => {
     expect(result.current.showImageQueryVarSelector).toBe(true)
   })
 
+  it('prunes stale dataset ids when fetched details omit deleted datasets', async () => {
+    const existingDataset = createDataset({
+      id: 'dataset-1',
+      name: 'Knowledge Base',
+    })
+    mockFetchDatasets.mockResolvedValueOnce({
+      data: [existingDataset],
+      page: 1,
+      limit: 20,
+      total: 1,
+      has_more: false,
+    })
+    const { inputRef, setInputs } = createState(createPayload({
+      dataset_ids: ['dataset-1', 'deleted-id'],
+    }))
+
+    const { result } = renderHook(() => useKnowledgeDatasetSelection({
+      inputs: inputRef.current,
+      inputRef,
+      setInputs,
+      payloadRetrievalMode: RETRIEVE_TYPE.multiWay,
+      updateDatasetsDetail,
+      fallbackRerankModel: {
+        provider: 'rerank-provider',
+        model: 'rerank-model',
+      },
+    }))
+
+    await waitFor(() => {
+      expect(result.current.selectedDatasetsLoaded).toBe(true)
+    })
+
+    expect(mockFetchDatasets).toHaveBeenCalledWith({
+      url: '/datasets',
+      params: {
+        page: 1,
+        ids: ['dataset-1', 'deleted-id'],
+      },
+    })
+    expect(result.current.selectedDatasets).toEqual([existingDataset])
+    expect(inputRef.current.dataset_ids).toEqual(['dataset-1'])
+    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
+      dataset_ids: ['dataset-1'],
+    }))
+    expect(updateDatasetsDetail).toHaveBeenCalledWith([existingDataset], ['dataset-1', 'deleted-id'])
+  })
+
   it('updates dataset ids, retrieval config, attachment selector, and rerank modal state', async () => {
     const { inputRef, setInputs } = createState(createPayload({
       dataset_ids: [],

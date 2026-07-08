@@ -115,6 +115,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
+                  selectedDatasets={selectedDatasets}
                   onChange={handleOnDatasetsChange}
                 />
               )}

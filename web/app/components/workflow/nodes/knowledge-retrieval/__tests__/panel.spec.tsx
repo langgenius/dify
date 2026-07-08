@@ -145,7 +145,7 @@ vi.mock('../components/dataset-list', () => ({
 
 vi.mock('../components/add-dataset', () => ({
   __esModule: true,
-  default: (props: { selectedIds: string[], onChange: (datasets: DataSet[]) => void }) => {
+  default: (props: { selectedDatasets: DataSet[], onChange: (datasets: DataSet[]) => void }) => {
     mockAddKnowledge(props)
     return (
       <button
@@ -318,6 +318,12 @@ describe('knowledge-retrieval/panel', () => {
 
     expect(screen.getByText('result:Array[Object]')).toBeInTheDocument()
     expect(screen.getByText('shared')).toBeInTheDocument()
+    expect(mockAddKnowledge).toHaveBeenCalledWith(expect.objectContaining({
+      selectedDatasets: [
+        expect.objectContaining({ id: 'dataset-1' }),
+        expect.objectContaining({ id: 'dataset-2' }),
+      ],
+    }))
 
     await user.click(screen.getAllByRole('button', { name: 'var-reference-picker' })[0]!)
     await user.click(screen.getAllByRole('button', { name: 'var-reference-picker' })[1]!)
