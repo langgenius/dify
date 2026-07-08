@@ -174,7 +174,22 @@ jobs:
 
       - name: Style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run lint:ci
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          lint_files=$(
+            printf '%s\n' "$ALL_CHANGED_FILES" \
+              | tr ' ' '\n' \
+              | grep -E '(\.(cjs|cts|js|json|jsx|mjs|mts|ts|tsx)$|(^|/)eslint\.config\.mjs$|^package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$)' \
+              || true
+          )
+
+          if [ -z "$lint_files" ]; then
+            echo "No changed files require TS common lint."
+            exit 0
+          fi
+
+          pnpm exec eslint --cache --cache-strategy content --concurrency 2 $lint_files
 
       - name: Type check
         if: steps.changed-files.outputs.any_changed == 'true'
