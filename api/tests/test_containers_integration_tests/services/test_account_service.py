@@ -1120,10 +1120,12 @@ class TestAccountService:
             mock_sync.return_value = True
 
             # Delete account
-            AccountService.delete_account(account)
+            AccountService.delete_account(account, session=db_session_with_containers)
 
             # Verify sync was called
-            mock_sync.assert_called_once_with(account_id=account.id, source="account_deleted")
+            mock_sync.assert_called_once_with(
+                account_id=account.id, source="account_deleted", session=db_session_with_containers
+            )
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)

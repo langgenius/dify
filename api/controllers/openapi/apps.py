@@ -66,13 +66,13 @@ class AppReadResource(Resource):
 
         if is_uuid:
             # ``str(parsed_uuid)`` normalises to the canonical dashed form.
-            app = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            app = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
             if app is None:
                 raise NotFound("app not found")
         else:
             if not workspace_id:
                 raise UnprocessableEntity("workspace_id is required for name-based lookup")
-            matches = AppService.find_visible_apps_by_name(db.session, name=app_id, tenant_id=workspace_id)
+            matches = AppService.find_visible_apps_by_name(name=app_id, tenant_id=workspace_id, session=db.session())
             if len(matches) == 0:
                 raise NotFound("app not found")
             if len(matches) > 1:
@@ -177,7 +177,7 @@ class AppListApi(Resource):
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
             if not _is_listable(app):
@@ -188,7 +188,7 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -215,13 +215,13 @@ class AppListApi(Resource):
         if apply_rbac_filter:
             access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session)
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session())
         if pagination is None:
             return empty
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
 
         items = [
             AppListRow(

@@ -44,7 +44,7 @@ def socket_connect(sid, environ, auth):
             return False
 
         with sio.app.app_context():
-            user = AccountService.load_logged_in_account(account_id=user_id, session=db.session)
+            user = AccountService.load_logged_in_account(account_id=user_id, session=db.session())
             if not user:
                 logging.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
                 return False
@@ -69,7 +69,7 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid)
+    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=db.session())
     if not result:
         return {"msg": "unauthorized"}, 401
 

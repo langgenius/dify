@@ -19,12 +19,12 @@ from dify_agent.client import Client
 from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.db.session_factory import session_factory
 from factories import file_factory
 from models.agent import AgentRuntimeSessionOwnerType, WorkflowAgentRuntimeSession, WorkflowAgentRuntimeSessionStatus
 
@@ -134,6 +134,7 @@ class WorkflowAgentSandboxService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session: Session,
     ):
         locator = self._resolve_locator(
             tenant_id=tenant_id,
@@ -141,6 +142,7 @@ class WorkflowAgentSandboxService:
             workflow_run_id=workflow_run_id,
             node_id=node_id,
             node_execution_id=node_execution_id,
+            session=session,
         )
         return self._client_factory().list_sandbox_files_sync(locator, path)
 
@@ -153,6 +155,7 @@ class WorkflowAgentSandboxService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session: Session,
     ):
         locator = self._resolve_locator(
             tenant_id=tenant_id,
@@ -160,6 +163,7 @@ class WorkflowAgentSandboxService:
             workflow_run_id=workflow_run_id,
             node_id=node_id,
             node_execution_id=node_execution_id,
+            session=session,
         )
         return self._client_factory().read_sandbox_file_sync(locator, path)
 
@@ -172,6 +176,7 @@ class WorkflowAgentSandboxService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session: Session,
     ) -> AgentSandboxUploadDownload:
         locator = self._resolve_locator(
             tenant_id=tenant_id,
@@ -179,6 +184,7 @@ class WorkflowAgentSandboxService:
             workflow_run_id=workflow_run_id,
             node_id=node_id,
             node_execution_id=node_execution_id,
+            session=session,
         )
         uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
         return _upload_download_response(
@@ -194,6 +200,7 @@ class WorkflowAgentSandboxService:
         workflow_run_id: str,
         node_id: str,
         node_execution_id: str | None,
+        session: Session,
     ) -> SandboxLocator:
         """Resolve one workflow Agent sandbox from product-facing identifiers.
 
@@ -216,8 +223,7 @@ class WorkflowAgentSandboxService:
             stmt = stmt.where(WorkflowAgentRuntimeSession.node_execution_id == node_execution_id)
         stmt = stmt.order_by(WorkflowAgentRuntimeSession.updated_at.desc()).limit(1)
 
-        with session_factory.create_session() as session:
-            row = session.scalar(stmt)
+        row = session.scalar(stmt)
 
         if row is None:
             raise AgentSandboxInspectorError(

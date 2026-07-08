@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from extensions.ext_database import db
 from services.enterprise import rbac_service as enterprise_rbac_service
 
 if TYPE_CHECKING:
@@ -76,7 +77,7 @@ def resolve_app_access_filter(
     inner-API round trip; otherwise it is fetched here.
     """
     if permissions is None:
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=db.session())
     whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(tenant_id, account_id)
 
     can_manage_own_apps = _MANAGE_OWN_APPS_PERMISSION_KEY in permissions.workspace.permission_keys

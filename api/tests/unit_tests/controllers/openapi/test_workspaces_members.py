@@ -151,8 +151,8 @@ def _tenant_service(**overrides) -> SimpleNamespace:
         "get_tenant_members": Mock(return_value=[]),
         "remove_member_from_tenant": Mock(),
         "update_member_role": Mock(),
-        "get_tenant_by_id": lambda session, tenant_id: session.get(None, tenant_id),
-        "find_workspace_for_account": lambda session, account_id, workspace_id: session.execute(None).first(),
+        "get_tenant_by_id": lambda tenant_id, *, session: session.get(None, tenant_id),
+        "find_workspace_for_account": lambda account_id, workspace_id, *, session: session.execute(None).first(),
     }
     methods.update(overrides)
     return SimpleNamespace(**methods)
@@ -162,10 +162,16 @@ def _account_service(**overrides) -> SimpleNamespace:
     """AccountService double; ``get_account_by_id`` delegates to the injected
     session (see :func:`_tenant_service`)."""
     methods: dict = {
-        "get_account_by_id": lambda session, account_id: session.get(None, account_id),
+        "get_account_by_id": lambda account_id, *, session: session.get(None, account_id),
     }
     methods.update(overrides)
     return SimpleNamespace(**methods)
+
+
+def _db_mock() -> MagicMock:
+    mock_db = MagicMock()
+    mock_db.session.return_value = mock_db.session
+    return mock_db
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +278,7 @@ def test_switch_returns_workspace_detail_with_current_true(
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = _account(account_id=str(acct_id))
     membership = SimpleNamespace(role=TenantAccountRole.OWNER, current=True)
     mock_db.session.execute.return_value.first.return_value = (_tenant(ws_id), membership)
@@ -304,7 +310,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = _account(account_id=str(acct_id))
 
     monkeypatch.setattr(
@@ -339,7 +345,7 @@ def test_members_list_returns_normalized_rows(app: Flask, bypass_pipeline, monke
         role=TenantAccountRole.ADMIN,
     )
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = _tenant(ws_id)
 
     monkeypatch.setattr(
@@ -381,7 +387,7 @@ def test_members_list_paginates_with_query_params(app: Flask, bypass_pipeline, m
         for i in range(5)
     ]
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = _tenant(ws_id)
 
     monkeypatch.setattr(
@@ -409,7 +415,7 @@ def test_members_list_rejects_unknown_query_param(app: Flask, bypass_pipeline, m
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = _tenant(ws_id)
     monkeypatch.setattr(sys.modules["controllers.openapi.workspaces"], "db", mock_db)
 
@@ -433,7 +439,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(
 
     invited = _account(account_id="new-1", email="new@example.com")
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     # session.get is called twice: once for inviter Account, once for Tenant
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
@@ -514,7 +520,7 @@ def test_invite_blocked_by_saas_members_cap(app: Flask, bypass_pipeline, monkeyp
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     invite_mock = Mock()
@@ -552,7 +558,7 @@ def test_invite_blocked_by_ee_workspace_members_license(app: Flask, bypass_pipel
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     invite_mock = Mock()
@@ -592,7 +598,7 @@ def test_invite_ce_passes_when_both_caps_disabled(app: Flask, bypass_pipeline, m
     api = WorkspaceMembersApi()
 
     invited = _account(account_id="new-1", email="new@example.com")
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     monkeypatch.setattr(
@@ -625,7 +631,7 @@ def test_invite_400_when_already_in_tenant(app: Flask, bypass_pipeline, monkeypa
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     monkeypatch.setattr(
@@ -656,7 +662,7 @@ def test_delete_member_happy_path(app: Flask, bypass_pipeline, monkeypatch: pyte
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),  # operator
         _tenant(ws_id),  # tenant
@@ -698,7 +704,7 @@ def test_delete_member_exception_mapping(app: Flask, bypass_pipeline, monkeypatc
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
@@ -731,7 +737,7 @@ def test_delete_member_404_when_member_missing(app: Flask, bypass_pipeline, monk
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
@@ -763,7 +769,7 @@ def test_update_role_happy_path(app: Flask, bypass_pipeline, monkeypatch: pytest
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
@@ -809,7 +815,7 @@ def test_update_role_exception_mapping(app: Flask, bypass_pipeline, monkeypatch,
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [
         _account(account_id=str(acct_id)),
         _tenant(ws_id),
@@ -851,7 +857,7 @@ def test_load_tenant_rejects_archived_workspace(app: Flask, bypass_pipeline, mon
     api = WorkspaceMembersApi()
 
     archived = SimpleNamespace(id=ws_id, name="WS", status="archive", created_at=datetime(2026, 5, 18, tzinfo=UTC))
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.return_value = archived
 
     monkeypatch.setattr(
@@ -878,7 +884,7 @@ def test_invite_400_when_register_error(app: Flask, bypass_pipeline, monkeypatch
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
-    mock_db = MagicMock()
+    mock_db = _db_mock()
     mock_db.session.get.side_effect = [_account(account_id=str(acct_id)), _tenant(ws_id)]
 
     monkeypatch.setattr(

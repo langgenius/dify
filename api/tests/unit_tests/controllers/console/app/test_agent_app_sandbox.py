@@ -48,6 +48,7 @@ class _WorkflowService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session,
     ) -> SandboxListResponse:
         self.calls.append(("list", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
         return SandboxListResponse(path=path, entries=[], truncated=False)
@@ -61,6 +62,7 @@ class _WorkflowService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session,
     ) -> SandboxReadResponse:
         self.calls.append(("read", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
         return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
@@ -74,6 +76,7 @@ class _WorkflowService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
+        session,
     ) -> AgentSandboxUploadDownload:
         self.calls.append(("upload", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
         return AgentSandboxUploadDownload(url="https://files.example/upload.txt")

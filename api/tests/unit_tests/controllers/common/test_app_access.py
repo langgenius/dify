@@ -152,7 +152,7 @@ class TestResolveAppAccessFilter:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=[]))
         monkeypatch.setattr(
             f"{_RBAC_MODULE}.RBACService.MyPermissions.get",
-            lambda tenant_id, account_id: _permissions(workspace_keys=["app.create_and_management"]),
+            lambda tenant_id, account_id, session: _permissions(workspace_keys=["app.create_and_management"]),
         )
 
         flt = resolve_app_access_filter("tenant-1", "acc-1")

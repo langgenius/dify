@@ -207,11 +207,11 @@ def handle_call_tool(
         raise ValueError("End user not found")
 
     response = AppGenerateService.generate(
-        session,
-        app,
-        end_user,
-        args,
-        InvokeFrom.SERVICE_API,
+        session=session,
+        app_model=app,
+        user=end_user,
+        args=args,
+        invoke_from=InvokeFrom.SERVICE_API,
         streaming=app.mode == AppMode.AGENT_CHAT,
     )
 
