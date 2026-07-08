@@ -289,12 +289,13 @@ export const useChat = (
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          const shouldAppendToAnswer = options.isNewAgent || !responseItem.agent_thoughts?.length
+          const agentThoughts = responseItem.agent_thoughts ?? []
+          const shouldAppendToAnswer = options.isNewAgent || !agentThoughts.length
           if (shouldAppendToAnswer) {
             responseItem.content = responseItem.content + message
           }
           else {
-            const lastThought = responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1]
+            const lastThought = agentThoughts[agentThoughts.length - 1]
             if (lastThought)
               lastThought.thought = lastThought.thought + message
           }
