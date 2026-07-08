@@ -35,20 +35,24 @@ const afterResponse204: AfterResponseHook = async (_request, _options, response)
 export type ResponseError = {
   code: string
   message: string
+  error?: string
   status: number
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async (_request, _options, response) => {
-    if (!/^([23])\d{2}$/.test(String(response.status))) {
-      const errorData = await response.clone()
-        .json()
-        .then(data => data as ResponseError)
-        .catch(() => null)
+    if (!/^[23]\d{2}$/.test(String(response.status))) {
+      let errorData: ResponseError | null = null
+      try {
+        const data: unknown = await response.clone().json()
+        errorData = data as ResponseError
+      }
+      catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError)
-        toast.error(errorData.message)
+      const errorMessage = errorData?.message || errorData?.error
+      if (shouldNotifyError && errorMessage)
+        toast.error(errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`

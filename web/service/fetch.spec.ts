@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from '@/app/components/base/ui/toast'
 import { base } from './fetch'
 
 vi.mock('@/app/components/base/ui/toast', () => ({
   toast: {
     add: vi.fn(),
+    error: vi.fn(),
   },
 }))
 
@@ -47,6 +49,31 @@ describe('base', () => {
         message: 'Unauthorized',
         status: 401,
       })
+    })
+
+    it('should show the error field when a non-401 response has no message', async () => {
+      // Arrange
+      const providerErrorResponse = new Response(
+        JSON.stringify({
+          code: 'provider_error',
+          error: 'Provider failure',
+          status: 500,
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(providerErrorResponse)
+
+      // Act
+      await expect(base('/model-provider')).rejects.toBeInstanceOf(Response)
+
+      // Assert
+      expect(toast.error).toHaveBeenCalledWith('Provider failure')
     })
   })
 })
