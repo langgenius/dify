@@ -3,11 +3,13 @@ import type { Getter, WritableAtom } from 'jotai'
 import type {
   AtomWithQueryOptions,
   AtomWithQueryResult,
+  AtomWithSuspenseQueryOptions,
+  AtomWithSuspenseQueryResult,
   DefinedInitialDataOptions,
   UndefinedInitialDataOptions,
 } from 'jotai-tanstack-query'
 import { atom } from 'jotai'
-import { atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithQuery, atomWithSuspenseQuery } from 'jotai-tanstack-query'
 
 type PrefetchedQueryResult<TResult extends { data: unknown }> = TResult extends unknown
   ? Omit<TResult, 'data'> & {
@@ -17,6 +19,10 @@ type PrefetchedQueryResult<TResult extends { data: unknown }> = TResult extends 
 
 type PrefetchedAtomWithQueryResult<TData, TError = DefaultError> = PrefetchedQueryResult<
   AtomWithQueryResult<TData, TError>
+>
+
+type ResolvedAtomWithSuspenseQueryResult<TData, TError = DefaultError> = Awaited<
+  AtomWithSuspenseQueryResult<TData, TError>
 >
 
 /**
@@ -66,6 +72,40 @@ export function atomWithPrefetchedQuery(
       }
 
       return result as PrefetchedQueryResult<typeof result>
+    },
+    (_get, set) => {
+      set(queryAtom)
+    },
+  )
+}
+
+/**
+ * Mirrors atomWithSuspenseQuery for suspense query data that must already be resolved.
+ */
+export function atomWithResolvedSuspenseQuery<
+  TQueryFnData = unknown,
+  TError = DefaultError,
+  TData = TQueryFnData,
+  TQueryKey extends QueryKey = QueryKey,
+>(
+  getOptions: (
+    get: Getter,
+  ) => AtomWithSuspenseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+  getQueryClient?: (get: Getter) => QueryClient,
+): WritableAtom<ResolvedAtomWithSuspenseQueryResult<TData, TError>, [], void> {
+  const queryAtom = atomWithSuspenseQuery(getOptions, getQueryClient)
+
+  return atom(
+    (get) => {
+      const result = get(queryAtom)
+
+      if (result instanceof Promise) {
+        throw new TypeError(
+          `Suspense query must be resolved before reading: ${JSON.stringify(getOptions(get).queryKey)}`,
+        )
+      }
+
+      return result
     },
     (_get, set) => {
       set(queryAtom)
