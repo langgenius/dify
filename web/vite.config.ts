@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
         ]
       : isStorybook
         ? [
+            tailwindcss(),
             react(),
           ]
         : [
