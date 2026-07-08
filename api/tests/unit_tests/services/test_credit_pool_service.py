@@ -1,9 +1,8 @@
+import logging
 from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
-
-import logging
 
 import pytest
 from sqlalchemy import create_engine, select
