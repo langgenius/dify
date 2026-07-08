@@ -10,6 +10,7 @@ import json
 import logging
 import secrets
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, NotRequired, TypedDict, cast
@@ -1562,6 +1563,27 @@ class TenantService:
             updated_accounts.append(account)
 
         return updated_accounts
+
+    @staticmethod
+    def iter_member_account_id_batches(
+        tenant_id: str, batch_size: int, *, session: Session
+    ) -> Iterator[list[str]]:
+        """Yield workspace member account ids in bounded, ordered batches."""
+        offset = 0
+        while True:
+            stmt = (
+                select(TenantAccountJoin.account_id)
+                .where(TenantAccountJoin.tenant_id == tenant_id)
+                .order_by(TenantAccountJoin.id)
+                .offset(offset)
+                .limit(batch_size)
+            )
+            account_ids = list(session.scalars(stmt).all())
+            if not account_ids:
+                return
+
+            yield account_ids
+            offset += batch_size
 
     @staticmethod
     def get_dataset_operator_members(tenant: Tenant, *, session: Session) -> list[Account]:

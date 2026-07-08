@@ -666,6 +666,33 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
+    def test_iter_member_account_id_batches_uses_offset_limit(self):
+        class FakeScalarResult:
+            def __init__(self, items: list[str]) -> None:
+                self.items = items
+
+            def all(self) -> list[str]:
+                return self.items
+
+        offsets: list[int] = []
+
+        def scalars(stmt):
+            offsets.append(stmt._offset_clause.value)
+            if len(offsets) == 1:
+                return FakeScalarResult(["acct-1", "acct-2"])
+            if len(offsets) == 2:
+                return FakeScalarResult(["acct-3"])
+            return FakeScalarResult([])
+
+        batches = list(
+            TenantService.iter_member_account_id_batches(
+                "tenant-1", 2, session=SimpleNamespace(scalars=scalars)
+            )
+        )
+
+        assert batches == [["acct-1", "acct-2"], ["acct-3"]]
+        assert offsets == [0, 2, 4]
+
     # ==================== get_account_role_in_tenant Tests ====================
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
     # (pipeline maps to 404), otherwise the caller's role (out-of-set role => 403).
