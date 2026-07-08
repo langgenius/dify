@@ -6,7 +6,6 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -46,6 +45,7 @@ const { mockSetTheme } = vi.hoisted(() => ({
 const mockAppContextState = vi.hoisted(() => ({
   current: undefined as AppContextValue | undefined,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -55,7 +55,7 @@ vi.mock('next-themes', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -166,7 +166,7 @@ const baseAppContextValue: AppContextValue = {
 
 const setAppContextValue = (value: AppContextValue) => {
   mockAppContextState.current = value
-  vi.mocked(useAppContext).mockReturnValue(value)
+  mockUseAppContext.mockReturnValue(value)
 }
 
 describe('AccountDropdown', () => {

@@ -5,11 +5,12 @@ import { Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
 import { Suspense } from 'react'
+import { useContext } from 'use-context-selector'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { initialWorkspaceInfo, useAppContext, useSelector } from '../app-context'
+import { AppContext, initialWorkspaceInfo, useSelector } from '../app-context'
 import { AppContextProvider } from '../app-context-provider'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
@@ -157,7 +158,7 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 }))
 
 function AppContextProbe() {
-  const context = useAppContext()
+  const context = useContext(AppContext)
   const selectedWorkspacePermissionKeys = useSelector(state => state.workspacePermissionKeys)
 
   return (

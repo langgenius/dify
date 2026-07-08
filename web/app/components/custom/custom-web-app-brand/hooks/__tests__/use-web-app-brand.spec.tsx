@@ -11,7 +11,6 @@ import { Plan } from '@/app/components/billing/type'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
-  useAppContext,
   userProfilePlaceholder,
 } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -46,6 +45,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
 const appContextStateRef = vi.hoisted(() => ({
   value: undefined as AppContextValue | undefined,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
@@ -57,7 +57,7 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/app-context')>()
   return {
     ...actual,
-    useAppContext: vi.fn(),
+    useAppContext: mockUseAppContext,
   }
 })
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -82,7 +82,6 @@ vi.mock('@/app/components/base/image-uploader/utils', () => ({
 }))
 
 const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
-const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)

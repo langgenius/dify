@@ -7,11 +7,11 @@ import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/comm
 import { render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
 
 let mockAppContextState: AppContextValue
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -22,7 +22,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -136,7 +136,7 @@ describe('AppsFull', () => {
     vi.clearAllMocks()
     ;(useProviderContext as Mock).mockReturnValue(buildProviderContext())
     mockAppContextState = buildAppContext()
-    ;(useAppContext as Mock).mockReturnValue(mockAppContextState)
+    mockUseAppContext.mockReturnValue(mockAppContextState)
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 

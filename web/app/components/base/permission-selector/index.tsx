@@ -74,7 +74,7 @@ const PermissionSelector = ({
   }, [userProfile, value, memberList])
 
   const showMe = useMemo(() => {
-    return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
+    return (userProfile.name ?? '').includes(searchKeywords) || (userProfile.email ?? '').includes(searchKeywords)
   }, [searchKeywords, userProfile])
 
   const filteredMemberList = useMemo(() => {
