@@ -185,6 +185,7 @@ catalog:
   iconify-import-svg: 0.2.0
   immer: 11.1.8
   jotai: 2.20.1
+  jotai-effect: 2.3.1
   jotai-scope: 0.11.0
   jotai-tanstack-query: 0.11.0
   js-audio-recorder: 1.0.7

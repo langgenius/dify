@@ -109,6 +109,7 @@
     "i18next-resources-to-backend": "catalog:",
     "immer": "catalog:",
     "jotai": "catalog:",
+    "jotai-effect": "catalog:",
     "jotai-scope": "catalog:",
     "jotai-tanstack-form": "workspace:*",
     "jotai-tanstack-query": "catalog:",

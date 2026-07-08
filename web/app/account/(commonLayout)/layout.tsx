@@ -6,7 +6,6 @@ import { EducationVerifyActionRecorder } from '@/app/components/education-verify
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
-import { AppBootstrapEffects } from '@/context/app-bootstrap-effects'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
@@ -22,7 +21,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
       <CommonLayoutHydrationBoundary>
         <div className="flex h-full flex-col overflow-hidden bg-background-body">
           <MaintenanceNotice />
-          <AppBootstrapEffects />
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>

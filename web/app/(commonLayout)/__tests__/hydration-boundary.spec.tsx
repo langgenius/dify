@@ -21,6 +21,10 @@ vi.mock('@/context/query-client-server', () => ({
   getQueryClientServer: () => mocks.queryClient,
 }))
 
+vi.mock('@/context/app-context-bootstrap-queries', () => ({
+  AppContextBootstrapQueries: () => null,
+}))
+
 vi.mock('@/next/headers', () => ({
   headers: () => mocks.headers(),
 }))

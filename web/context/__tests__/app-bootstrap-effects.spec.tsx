@@ -9,7 +9,7 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { AppBootstrapEffects } from '../app-bootstrap-effects'
+import { AppContextBootstrapQueries } from '../app-context-bootstrap-queries'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
   currentWorkspaceAtom,
@@ -264,7 +264,7 @@ function renderBootstrapEffects() {
       <QueryClientProvider client={queryClient}>
         <TestQueryClientHydrator queryClient={queryClient}>
           <Suspense fallback={<span>loading</span>}>
-            <AppBootstrapEffects />
+            <AppContextBootstrapQueries />
             <AppContextProbe />
           </Suspense>
         </TestQueryClientHydrator>
@@ -278,7 +278,7 @@ function renderBootstrapEffects() {
   }
 }
 
-describe('AppBootstrapEffects', () => {
+describe('App context bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPermissionKeysState.isPending = false

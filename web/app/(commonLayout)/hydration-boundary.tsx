@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { AppContextBootstrapQueries } from '@/context/app-context-bootstrap-queries'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
@@ -61,32 +62,27 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
   const queryClient = getQueryClientServer()
   const accountProfileUrl = resolveServerConsoleApiUrl(ACCOUNT_PROFILE_PATH)
 
-  if (!accountProfileUrl) {
-    return (
-      <HydrationBoundary state={dehydrate(queryClient)}>
-        {children}
-      </HydrationBoundary>
-    )
-  }
+  if (accountProfileUrl) {
+    try {
+      const context = await getServerConsoleClientContext()
 
-  try {
-    const context = await getServerConsoleClientContext()
-
-    await Promise.all([
-      queryClient.fetchQuery(serverUserProfileQueryOptions()),
-      queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
-      queryClient.prefetchQuery(serverConsoleQuery.workspaces.current.post.queryOptions({
-        context,
-        retry: false,
-      })),
-    ])
-  }
-  catch (error) {
-    await handleProfileError(error)
+      await Promise.all([
+        queryClient.fetchQuery(serverUserProfileQueryOptions()),
+        queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
+        queryClient.prefetchQuery(serverConsoleQuery.workspaces.current.post.queryOptions({
+          context,
+          retry: false,
+        })),
+      ])
+    }
+    catch (error) {
+      await handleProfileError(error)
+    }
   }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
+      <AppContextBootstrapQueries />
       {children}
     </HydrationBoundary>
   )
