@@ -571,11 +571,71 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
                 "batch_get",
                 lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
+            initialize_rbac = MagicMock()
+            monkeypatch.setattr(app_module, "_initialize_created_app_rbac_access", initialize_rbac)
 
             resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+    initialize_rbac.assert_called_once_with("tenant-1", "acct-1", "app-new")
+
+
+def test_initialize_created_app_rbac_access_batches_workspace_members(app_module, monkeypatch):
+    monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        app_module,
+        "_iter_tenant_member_account_id_batches",
+        lambda tenant_id, batch_size: iter([["acct-1", "acct-2"], ["acct-3"]]),
+    )
+    replace_whitelist = MagicMock()
+    replace_user_access_policies = MagicMock()
+    monkeypatch.setattr(
+        app_module.enterprise_rbac_service.RBACService.AppAccess,
+        "replace_whitelist",
+        replace_whitelist,
+    )
+    monkeypatch.setattr(
+        app_module.enterprise_rbac_service.RBACService.AppAccess,
+        "replace_user_access_policies",
+        replace_user_access_policies,
+    )
+
+    app_module._initialize_created_app_rbac_access("tenant-1", "actor-1", "app-1")
+
+    replace_whitelist.assert_called_once()
+    assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
+    assert replace_user_access_policies.call_count == 2
+    assert replace_user_access_policies.call_args_list[0].kwargs["payload"].account_ids == ["acct-1", "acct-2"]
+    assert replace_user_access_policies.call_args_list[1].kwargs["payload"].account_ids == ["acct-3"]
+    for call in replace_user_access_policies.call_args_list:
+        assert call.kwargs["payload"].access_policy_ids == [app_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
+
+
+def test_iter_tenant_member_account_id_batches_uses_offset_limit(app_module, monkeypatch):
+    class _FakeScalarResult:
+        def __init__(self, items):
+            self.items = items
+
+        def all(self):
+            return self.items
+
+    offsets = []
+
+    def scalars(stmt):
+        offsets.append(stmt._offset_clause.value)
+        if len(offsets) == 1:
+            return _FakeScalarResult(["acct-1", "acct-2"])
+        if len(offsets) == 2:
+            return _FakeScalarResult(["acct-3"])
+        return _FakeScalarResult([])
+
+    monkeypatch.setattr(app_module.db, "session", SimpleNamespace(scalars=scalars))
+
+    batches = list(app_module._iter_tenant_member_account_id_batches("tenant-1", 2))
+
+    assert batches == [["acct-1", "acct-2"], ["acct-3"]]
+    assert offsets == [0, 2, 4]
 
 
 def test_app_list_api_attaches_permission_keys(app, app_module):
