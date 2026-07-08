@@ -26,11 +26,6 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { email: string } }) => string) =>
-    selector({ userProfile: mockAppContextState.userProfile }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)

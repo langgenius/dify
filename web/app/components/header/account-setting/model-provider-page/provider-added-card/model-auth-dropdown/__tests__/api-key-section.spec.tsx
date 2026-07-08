@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ApiKeySection from '../api-key-section'
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({

@@ -23,29 +23,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-  useSelector: (selector: (state: {
-    isCurrentWorkspaceDatasetOperator: boolean
-    isLoadingCurrentWorkspace: boolean
-    isLoadingWorkspacePermissionKeys: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => unknown) => selector({
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 

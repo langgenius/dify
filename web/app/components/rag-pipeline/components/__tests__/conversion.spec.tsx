@@ -19,14 +19,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
 }))
 
-let mockAppContextState = {
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
-}))
-
 vi.mock('@/service/use-pipeline', () => ({
   useConvertDatasetToPipeline: () => ({
     mutateAsync: mockConvert,
@@ -77,10 +69,6 @@ describe('Conversion', () => {
         permission_keys: ['dataset.acl.edit'],
         maintainer: 'maintainer-id',
       },
-    }
-    mockAppContextState = {
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: [],
     }
   })
 

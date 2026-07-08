@@ -1,4 +1,4 @@
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 
 const APP_CONTEXT_STATE_ATOM_KIND = Symbol('app-context-state-atom-kind')
 
@@ -11,20 +11,23 @@ export type AppContextStateMockState = {
     avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?: {
+  currentWorkspace?: ({
     id?: string
     name?: string
-  } | null
+  } & Partial<ICurrentWorkspace>) | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
   isCurrentWorkspaceEditor?: boolean
   isCurrentWorkspaceDatasetOperator?: boolean
   isLoadingCurrentWorkspace?: boolean
+  isValidatingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   langGeniusVersionInfo?: Partial<LangGeniusVersionResponse>
   refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
+  mutateUserProfile?: () => void
+  mutateCurrentWorkspace?: () => void
 }
 
 type AppContextStateAtomKind
@@ -39,6 +42,7 @@ type AppContextStateAtomKind
     | 'isCurrentWorkspaceEditor'
     | 'isCurrentWorkspaceDatasetOperator'
     | 'currentWorkspaceLoading'
+    | 'currentWorkspaceValidating'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
     | 'langGeniusVersionInfo'
@@ -66,7 +70,15 @@ const defaultUserProfile = {
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
   name: 'Workspace',
-}
+  plan: '',
+  status: '',
+  created_at: 0,
+  role: 'owner',
+  providers: [],
+  trial_credits: 0,
+  trial_credits_used: 0,
+  next_credit_reset_date: 0,
+} satisfies ICurrentWorkspace
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
@@ -95,7 +107,7 @@ const getUserProfile = (state: AppContextStateMockState) => ({
   ...state.userProfile,
 })
 
-const getCurrentWorkspace = (state: AppContextStateMockState) => ({
+const getCurrentWorkspace = (state: AppContextStateMockState): ICurrentWorkspace => ({
   ...defaultCurrentWorkspace,
   ...state.currentWorkspace,
 })
@@ -127,6 +139,7 @@ export const createAppContextStateAtomMock = async (
     isCurrentWorkspaceEditorAtom: createMockAtom('isCurrentWorkspaceEditor'),
     isCurrentWorkspaceDatasetOperatorAtom: createMockAtom('isCurrentWorkspaceDatasetOperator'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
+    currentWorkspaceValidatingAtom: createMockAtom('currentWorkspaceValidating'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
     langGeniusVersionInfoAtom: createMockAtom('langGeniusVersionInfo'),
@@ -192,6 +205,9 @@ export const createAppContextStateJotaiMock = async (
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceValidating')
+        return state.isValidatingCurrentWorkspace ?? false
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'workspacePermissionKeys')
         return state.workspacePermissionKeys ?? []

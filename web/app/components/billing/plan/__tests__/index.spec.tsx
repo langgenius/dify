@@ -44,14 +44,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => providerContextMock(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { email: 'user@example.com' },
-    isCurrentWorkspaceManager,
-    workspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({

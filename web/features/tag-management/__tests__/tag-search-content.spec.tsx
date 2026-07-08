@@ -15,12 +15,6 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

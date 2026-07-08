@@ -47,14 +47,6 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      userProfile: { id: 'test-user' },
-      workspacePermissionKeys: ['dataset.create_and_management'],
-    }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 

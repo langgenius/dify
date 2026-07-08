@@ -37,16 +37,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: unknown) => unknown) => {
-    const state = {
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }
-    return selector(state)
-  },
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 

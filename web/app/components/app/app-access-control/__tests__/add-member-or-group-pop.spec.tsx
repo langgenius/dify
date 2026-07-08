@@ -10,14 +10,6 @@ const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string } }) => T) => selector({
-    userProfile: {
-      email: 'member@example.com',
-    },
-  }),
-}))
-
 vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))

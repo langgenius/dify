@@ -118,11 +118,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

@@ -16,7 +16,6 @@ const mockTrackCreateApp = vi.fn()
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-let mockIsCurrentWorkspaceEditor = true
 const mockUserProfile = { id: 'user-1' }
 
 vi.mock('ahooks', () => ({
@@ -28,13 +27,6 @@ vi.mock('ahooks', () => ({
       flush: () => latestDebounceFn(),
     }
   },
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -198,7 +190,6 @@ describe('Apps', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockIsCurrentWorkspaceEditor = true
     mockUseExploreAppList.mockReturnValue({
       data: defaultData,
       isLoading: false,
@@ -230,7 +221,6 @@ describe('Apps', () => {
   })
 
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
-    mockIsCurrentWorkspaceEditor = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
     render(<Apps />)
@@ -239,7 +229,6 @@ describe('Apps', () => {
   })
 
   it('does not allow template creation when app.create_and_management permission is missing', () => {
-    mockIsCurrentWorkspaceEditor = true
     mockWorkspacePermissionKeys = []
 
     render(<Apps />)

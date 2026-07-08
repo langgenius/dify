@@ -24,15 +24,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMocks,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: contextMocks.workspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

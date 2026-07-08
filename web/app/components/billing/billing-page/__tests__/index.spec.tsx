@@ -34,13 +34,6 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => openAsyncWindowMock,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: isManager,
-    workspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({

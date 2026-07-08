@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,7 +11,7 @@ import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
   userProfilePlaceholder,
-} from '@/context/app-context'
+} from '@/context/app-context-defaults'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
@@ -53,13 +53,6 @@ vi.mock('@/context/provider-context', () => ({
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: mockUseAppContext,
-  }
-})
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
@@ -83,7 +76,7 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (): AppContextValue => ({
+const createAppContextValue = (): AppContextStateMockState => ({
   userProfile: userProfilePlaceholder,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
@@ -99,7 +92,6 @@ const createAppContextValue = (): AppContextValue => ({
   isCurrentWorkspaceDatasetOperator: false,
   mutateCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [],

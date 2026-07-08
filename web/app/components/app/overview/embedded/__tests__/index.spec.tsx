@@ -24,26 +24,11 @@ const mockThemeBuilder = {
     primaryColor: '#123456',
   },
 }
-const mockUseAppContext = vi.fn(() => ({
-  langGeniusVersionInfo: {
-    current_env: 'PRODUCTION',
-    current_version: '',
-    latest_version: '',
-    release_date: '',
-    release_notes: '',
-    version: '',
-    can_auto_update: false,
-  },
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: () => mockThemeBuilder,
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)

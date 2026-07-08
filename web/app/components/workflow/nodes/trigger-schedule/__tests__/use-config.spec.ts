@@ -17,10 +17,6 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
-
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 

@@ -1,6 +1,6 @@
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
-import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from './app-context'
+import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from './app-context-defaults'
 
 const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
 

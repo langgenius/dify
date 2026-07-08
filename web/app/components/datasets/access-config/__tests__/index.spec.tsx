@@ -75,10 +75,6 @@ vi.mock('@/context/dataset-detail', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 

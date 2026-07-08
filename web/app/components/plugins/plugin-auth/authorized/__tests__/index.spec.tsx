@@ -79,12 +79,6 @@ const mockAppContext = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: {
-    userProfile: typeof mockAppContext.userProfile
-    workspacePermissionKeys: string[]
-  }) => unknown) => selector(mockAppContext),
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')

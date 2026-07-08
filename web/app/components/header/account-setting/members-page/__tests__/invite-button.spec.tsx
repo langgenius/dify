@@ -1,4 +1,4 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
 import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
@@ -8,9 +8,6 @@ import InviteButton from '../invite-button'
 
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
@@ -46,7 +43,7 @@ describe('InviteButton', () => {
     vi.clearAllMocks()
     mockUseAppContext.mockReturnValue({
       currentWorkspace: { id: 'workspace-id' } as ICurrentWorkspace,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
   })
 
   it('should show invite button when branding is disabled', () => {
