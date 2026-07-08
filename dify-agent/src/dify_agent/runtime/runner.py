@@ -38,14 +38,7 @@ from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
-from pydantic_ai.messages import (
-    AgentStreamEvent,
-    FinalResultEvent,
-    PartDeltaEvent,
-    PartStartEvent,
-    TextPart,
-    TextPartDelta,
-)
+from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 
@@ -284,40 +277,14 @@ class AgentRunRunner:
                     raise AgentRunValidationError(EMPTY_USER_PROMPTS_ERROR)
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
-                    terminal_output_started = False
-                    pending_event: AgentStreamEvent | None = None
-
-                    async def emit_classified_event(event: AgentStreamEvent, *, as_terminal: bool = False) -> None:
+                    async for event in events:
                         text_delta = _extract_agent_message_delta(event)
                         _ = await emit_pydantic_ai_event(
                             self.sink,
                             run_id=self.run_id,
                             data=event,
-                            agent_message_delta=text_delta if text_delta and not as_terminal else None,
-                            terminal_output_delta=text_delta if text_delta and as_terminal else None,
+                            agent_message_delta=text_delta,
                         )
-
-                    async for event in events:
-                        if pending_event is not None:
-                            if isinstance(event, FinalResultEvent) and _extract_agent_message_delta(pending_event):
-                                await emit_classified_event(pending_event, as_terminal=True)
-                                pending_event = None
-                                terminal_output_started = True
-                                await emit_classified_event(event)
-                                continue
-                            await emit_classified_event(pending_event, as_terminal=terminal_output_started)
-                            pending_event = None
-
-                        text_delta = _extract_agent_message_delta(event)
-                        if isinstance(event, FinalResultEvent):
-                            terminal_output_started = True
-                            await emit_classified_event(event)
-                        elif text_delta:
-                            pending_event = event
-                        else:
-                            await emit_classified_event(event)
-                    if pending_event is not None:
-                        await emit_classified_event(pending_event, as_terminal=terminal_output_started)
 
                 try:
                     output_contract = resolve_run_output_contract(run)
