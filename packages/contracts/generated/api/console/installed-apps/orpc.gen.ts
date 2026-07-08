@@ -560,7 +560,7 @@ export const get8 = oc
     path: '/installed-apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
+  .input(z.object({ query: zGetInstalledAppsQuery.optional() }).optional())
   .output(zGetInstalledAppsResponse)
 
 export const post12 = oc
