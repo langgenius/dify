@@ -1,6 +1,6 @@
 'use client'
 
-import type { MouseEvent, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import type { AccessPermissionKind, SelectableAccessSubject } from './access-policy'
 import type { AccessSubjectSelectionValue } from './access-subject-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -12,11 +12,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
@@ -154,7 +154,12 @@ function DeploymentAccessControlDialogBody({
               {t('accessControlDialog.accessItems.anyone', { ns: 'app' })}
             </p>
             {publicAccessDisabled && (
-              <PublicAccessDisabledTip label={t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })} />
+              <Infotip
+                aria-label={t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
+                iconClassName="size-3.5 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+              >
+                {t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
+              </Infotip>
             )}
           </div>
         </AccessControlItem>
@@ -188,33 +193,6 @@ function AccessControlItem({ type, children, disabled }: PropsWithChildren<{
     >
       {children}
     </RadioItem>
-  )
-}
-
-function PublicAccessDisabledTip({ label }: { label: string }) {
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-  }
-
-  return (
-    <Popover>
-      <PopoverTrigger
-        openOnHover
-        delay={300}
-        closeDelay={200}
-        aria-label={label}
-        onClick={handleClick}
-        className="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      >
-        <span aria-hidden className="i-ri-question-line size-3.5 text-text-warning-secondary hover:text-text-warning-secondary" />
-      </PopoverTrigger>
-      <PopoverContent
-        placement="top"
-        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
-      >
-        {label}
-      </PopoverContent>
-    </Popover>
   )
 }
 
