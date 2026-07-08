@@ -97,8 +97,17 @@ const Header = () => {
             />
           </div>
           {!currentConversationId && (
-            <div className={cn('grow truncate system-md-semibold text-text-secondary')}>{appData?.site.title}</div>
-          )}
+            <div className='grow min-w-0'>
+              <div className={cn('text-text-secondary system-md-semibold truncate')}>
+                {appData?.site.title}
+              </div>
+              {appData?.site.description && (
+                <div className='text-text-tertiary system-xs-regular truncate'>
+                  {appData?.site.description}
+                </div>
+              )}
+            </div>
+          )}  
           {currentConversationId && currentConversationItem && isSidebarCollapsed && (
             <>
               <div className="p-1 text-divider-deep">/</div>
