@@ -21,6 +21,28 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    email: 'owner@example.com',
+    name: 'Owner',
+  },
+  currentWorkspace: {
+    id: 'workspace-1',
+    name: 'Product Team',
+  },
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 type RecordedRequest = {
   url: string
   method: string
@@ -48,14 +70,11 @@ const renderWithProviders = (ui: ReactNode) => {
         value={{
           userProfile: {
             ...userProfilePlaceholder,
-            id: 'user-1',
-            email: 'owner@example.com',
-            name: 'Owner',
+            ...mockAppContextState.userProfile,
           },
           currentWorkspace: {
             ...initialWorkspaceInfo,
-            id: 'workspace-1',
-            name: 'Product Team',
+            ...mockAppContextState.currentWorkspace,
           },
           isCurrentWorkspaceManager: true,
           isCurrentWorkspaceOwner: true,
@@ -67,14 +86,11 @@ const renderWithProviders = (ui: ReactNode) => {
           useSelector: selector => selector({
             userProfile: {
               ...userProfilePlaceholder,
-              id: 'user-1',
-              email: 'owner@example.com',
-              name: 'Owner',
+              ...mockAppContextState.userProfile,
             },
             currentWorkspace: {
               ...initialWorkspaceInfo,
-              id: 'workspace-1',
-              name: 'Product Team',
+              ...mockAppContextState.currentWorkspace,
             },
             isCurrentWorkspaceManager: true,
             isCurrentWorkspaceOwner: true,
