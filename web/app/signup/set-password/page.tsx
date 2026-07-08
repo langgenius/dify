@@ -78,8 +78,8 @@ const ChangePasswordForm = () => {
       if (result === 'success') {
         const utmInfo = parseUtmInfo()
         rememberCreateAppExternalAttribution({ utmInfo })
-        // Defer the Amplitude event until the user ID is attached. It is flushed in
-        // AppBootstrapEffects after setUserId runs once the redirect lands on /apps.
+        // Defer the Amplitude event until the user ID is attached. The app context
+        // external sync replays it after setUserId runs once the redirect lands on /apps.
         // Firing it here would record it under an anonymous Amplitude profile.
         rememberRegistrationSuccess({ method: 'email', utmInfo })
 
