@@ -1,6 +1,6 @@
 import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import type { ErrorCodeValue } from '@/errors/codes'
-import { zErrorBody } from '@dify/contracts/api/openapi/zod.gen'
+import { zErrorBody, zOpenApiErrorCode } from '@dify/contracts/api/openapi/zod.gen'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { redactBearer } from './sanitize'
@@ -20,6 +20,16 @@ type StatusClass = {
 const AUTH_EXPIRED_CLASS: StatusClass = {
   code: ErrorCode.AuthExpired,
   fallbackMessage: () => AUTH_EXPIRED_MESSAGE,
+  hint: AUTH_LOGIN_HINT,
+  includeRaw: false,
+}
+
+// A 401 whose body carries the server's `token_expired` code is a known,
+// behavior-driving signal (not opaque data): the session lapsed rather than the
+// token being unknown/revoked, so wrappers get the distinct structured code.
+const TOKEN_EXPIRED_CLASS: StatusClass = {
+  code: ErrorCode.TokenExpired,
+  fallbackMessage: () => 'session expired',
   hint: AUTH_LOGIN_HINT,
   includeRaw: false,
 }
@@ -50,9 +60,9 @@ const ACCESS_DENIED_CLASS: StatusClass = {
   includeRaw: false,
 }
 
-function statusClass(status: number): StatusClass {
+function statusClass(status: number, serverError?: ErrorBody): StatusClass {
   if (status === 401)
-    return AUTH_EXPIRED_CLASS
+    return serverError?.code === zOpenApiErrorCode.enum.token_expired ? TOKEN_EXPIRED_CLASS : AUTH_EXPIRED_CLASS
   if (status === 403)
     return ACCESS_DENIED_CLASS
   if (status === 429)
@@ -87,7 +97,7 @@ export async function classifyResponse(request: Request, response: Response): Pr
 
   const serverError = parseServerError(raw)
   const status = response.status
-  const c = statusClass(status)
+  const c = statusClass(status, serverError)
   return new HttpClientError({
     code: c.code,
     message: serverError?.message ?? c.fallbackMessage(status),

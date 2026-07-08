@@ -72,6 +72,7 @@ def mint_token(flask_app: Flask):
         prefix: str,
         subject_email: str,
         subject_issuer: str | None,
+        expires_at: datetime | None = None,
     ) -> OAuthAccessToken:
         with flask_app.app_context():
             row = OAuthAccessToken(
@@ -82,7 +83,7 @@ def mint_token(flask_app: Flask):
                 subject_issuer=subject_issuer,
                 client_id="difyctl",
                 device_label="test-device",
-                expires_at=datetime.now(UTC) + timedelta(hours=1),
+                expires_at=expires_at or (datetime.now(UTC) + timedelta(hours=1)),
             )
             db.session.add(row)
             db.session.commit()
@@ -107,6 +108,21 @@ def account_token(workspace_account, mint_token) -> str:
         prefix="dfoa_",
         subject_email=account.email,
         subject_issuer="dify:account",
+    )
+    return token
+
+
+@pytest.fixture
+def expired_account_token(workspace_account, mint_token) -> str:
+    account, _, _ = workspace_account
+    token = "dfoa_" + uuid.uuid4().hex
+    mint_token(
+        token,
+        account_id=account.id,
+        prefix="dfoa_",
+        subject_email=account.email,
+        subject_issuer="dify:account",
+        expires_at=datetime.now(UTC) - timedelta(minutes=1),
     )
     return token
 

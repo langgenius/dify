@@ -6,6 +6,7 @@ acceptance/rejection on app-scoped routes.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Generator
 
 import pytest
@@ -14,6 +15,50 @@ from flask.testing import FlaskClient
 
 from extensions.ext_database import db
 from models import App, Tenant
+
+
+def test_expired_token_returns_401_token_expired(
+    test_client: FlaskClient,
+    expired_account_token: str,
+) -> None:
+    """An expired bearer is distinguishable from an unknown one: 401 with the
+    domain code ``token_expired`` (+ actionable hint), not a generic 401 or 500."""
+    res = test_client.get(
+        "/openapi/v1/account",
+        headers={"Authorization": f"Bearer {expired_account_token}"},
+    )
+    assert res.status_code == 401
+    assert res.json["code"] == "token_expired"
+    assert res.json["hint"]
+
+
+def test_expired_token_replay_stays_token_expired(
+    test_client: FlaskClient,
+    expired_account_token: str,
+) -> None:
+    """The distinct ``expired`` negative-cache marker keeps the second hit (served
+    from cache, inside NEGATIVE_TTL) reporting ``token_expired`` rather than
+    collapsing into a generic unknown-token 401."""
+    headers = {"Authorization": f"Bearer {expired_account_token}"}
+    first = test_client.get("/openapi/v1/account", headers=headers)
+    second = test_client.get("/openapi/v1/account", headers=headers)
+    assert first.json["code"] == "token_expired"
+    assert second.status_code == 401
+    assert second.json["code"] == "token_expired"
+
+
+def test_unknown_token_returns_401_unauthorized_not_500(
+    test_client: FlaskClient,
+    workspace_account,
+) -> None:
+    """An unknown bearer is a clean 401 ``unauthorized`` — not the latent 500 the
+    pipeline used to leak for unmapped InvalidBearerError."""
+    res = test_client.get(
+        "/openapi/v1/account",
+        headers={"Authorization": "Bearer dfoa_" + uuid.uuid4().hex},
+    )
+    assert res.status_code == 401
+    assert res.json["code"] == "unauthorized"
 
 
 def test_info_accepts_account_bearer_with_apps_read_scope(
