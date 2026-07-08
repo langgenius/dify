@@ -12,10 +12,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -68,7 +69,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { textGenerationModelList } = useProviderContext()
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()

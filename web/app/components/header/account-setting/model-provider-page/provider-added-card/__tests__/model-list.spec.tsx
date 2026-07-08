@@ -11,6 +11,18 @@ vi.mock('@/context/app-context', () => ({
     selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (state: { setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal }) => unknown) =>
     selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),

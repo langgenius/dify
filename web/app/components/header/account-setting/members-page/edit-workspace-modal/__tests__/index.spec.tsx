@@ -10,10 +10,21 @@ import EditWorkspaceModal from '../index'
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {} as Partial<AppContextValue>,
+}))
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
 vi.mock('@/context/app-context')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/service/common')
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
@@ -34,10 +45,12 @@ describe('EditWorkspaceModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextValue
+    mockAppContextState.current = appContextValue
+    vi.mocked(useAppContext).mockReturnValue(appContextValue)
   })
 
   afterEach(() => {

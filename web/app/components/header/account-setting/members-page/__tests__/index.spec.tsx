@@ -14,7 +14,19 @@ import { useUpdateRolesOfMember } from '@/service/access-control/use-member-role
 import { useMembers } from '@/service/use-common'
 import MembersPage from '../index'
 
+const mockAppContextState = vi.hoisted(() => ({
+  current: {} as Partial<AppContextValue>,
+}))
+
 vi.mock('@/context/app-context')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
@@ -40,6 +52,11 @@ const createRole = (overrides: Partial<Role>): Role => ({
   role_tag: '',
   ...overrides,
 })
+
+const setAppContextValue = (value: AppContextValue) => {
+  mockAppContextState.current = value
+  vi.mocked(useAppContext).mockReturnValue(value)
+}
 
 vi.mock('../edit-workspace-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
@@ -181,7 +198,7 @@ describe('MembersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'owner@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
@@ -289,7 +306,7 @@ describe('MembersPage', () => {
   })
 
   it('should hide manager controls for non-owner non-manager users', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
@@ -390,7 +407,7 @@ describe('MembersPage', () => {
   })
 
   it('should show invite button when user is manager but not owner', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
@@ -405,7 +422,7 @@ describe('MembersPage', () => {
   })
 
   it('should allow admins to operate other non-owner members only', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
@@ -483,7 +500,7 @@ describe('MembersPage', () => {
   })
 
   it('should render role badge names from account roles', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
@@ -551,7 +568,7 @@ describe('MembersPage', () => {
 
   it('should not allow assigning roles from member details when target is current user', async () => {
     const user = userEvent.setup()
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
