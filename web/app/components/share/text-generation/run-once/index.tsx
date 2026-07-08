@@ -24,6 +24,23 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
+const getDefaultFileInputValue = (defaultValue: unknown) => {
+  if (defaultValue && typeof defaultValue === 'object' && !Array.isArray(defaultValue))
+    return defaultValue
+
+  return undefined
+}
+
+const getDefaultFileListInputValue = (defaultValue: unknown) => {
+  if (Array.isArray(defaultValue))
+    return defaultValue
+
+  if (defaultValue && typeof defaultValue === 'object')
+    return [defaultValue]
+
+  return []
+}
+
 type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
@@ -101,9 +118,9 @@ const RunOnce: FC<IRunOnceProps> = ({
       else if (item.type === 'checkbox')
         newInputs[item.key] = item.default || false
       else if (item.type === 'file')
-        newInputs[item.key] = undefined
+        newInputs[item.key] = getDefaultFileInputValue(item.default)
       else if (item.type === 'file-list')
-        newInputs[item.key] = []
+        newInputs[item.key] = getDefaultFileListInputValue(item.default)
       else
         newInputs[item.key] = undefined
     })
