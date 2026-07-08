@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { render } from '@testing-library/react'
 import EditWorkspaceModal from '../index'
 
@@ -11,7 +11,7 @@ type DialogProps = {
 
 let latestOnOpenChange: DialogProps['onOpenChange']
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
@@ -27,10 +27,6 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
   DialogTitle: ({ children, className }: { children: ReactNode, className?: string }) => (
     <div className={className}>{children}</div>
   ),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {

@@ -1,6 +1,7 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
+import type { ICurrentWorkspace } from '@/models/common'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -12,7 +13,7 @@ import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
   userProfilePlaceholder,
-} from '@/context/app-context'
+} from '@/context/app-context-defaults'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
 import useWebAppBrand from '../use-web-app-brand'
@@ -43,7 +44,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 const appContextStateRef = vi.hoisted(() => ({
-  value: undefined as AppContextValue | undefined,
+  value: undefined as AppContextStateMockState | undefined,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
@@ -53,13 +54,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/service/common', () => ({
   updateCurrentWorkspace: vi.fn(),
 }))
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: mockUseAppContext,
-  }
-})
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
@@ -102,9 +96,9 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
+const createAppContextValue = (overrides: Partial<AppContextStateMockState> = {}): AppContextStateMockState => {
   const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
-  const workspaceOverrides: Partial<AppContextValue['currentWorkspace']> = currentWorkspaceOverride ?? {}
+  const workspaceOverrides: Partial<AppContextStateMockState['currentWorkspace']> = currentWorkspaceOverride ?? {}
   const currentWorkspace = {
     ...initialWorkspaceInfo,
     ...workspaceOverrides,
@@ -125,17 +119,15 @@ const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppCon
     workspacePermissionKeys: ['customization.manage'],
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo: initialLangGeniusVersionInfo,
-    useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
     ...restOverrides,
     currentWorkspace,
   }
 }
 
 describe('useWebAppBrand', () => {
-  let appContextValue: AppContextValue
-  const setAppContextValue = (nextValue: AppContextValue) => {
+  let appContextValue: AppContextStateMockState
+  const setAppContextValue = (nextValue: AppContextStateMockState) => {
     appContextValue = nextValue
     appContextStateRef.value = nextValue
   }
@@ -146,7 +138,7 @@ describe('useWebAppBrand', () => {
     setAppContextValue(createAppContextValue())
     currentBrandingOverrides = {}
 
-    mockUpdateCurrentWorkspace.mockResolvedValue(appContextValue.currentWorkspace)
+    mockUpdateCurrentWorkspace.mockResolvedValue(appContextValue.currentWorkspace as ICurrentWorkspace)
     mockUseAppContext.mockImplementation(() => appContextValue)
     mockUseProviderContext.mockReturnValue(createProviderContext())
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')

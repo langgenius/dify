@@ -1,4 +1,4 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
 import { screen, within } from '@testing-library/react'
@@ -14,13 +14,10 @@ import { useMembers } from '@/service/use-common'
 import MembersPage from '../index'
 
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
@@ -55,7 +52,7 @@ const createRole = (overrides: Partial<Role>): Role => ({
   ...overrides,
 })
 
-const setAppContextValue = (value: AppContextValue) => {
+const setAppContextValue = (value: AppContextStateMockState) => {
   mockAppContextState.current = value
   mockUseAppContext.mockReturnValue(value)
 }
@@ -206,7 +203,7 @@ describe('MembersPage', () => {
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: mockAccounts },
@@ -313,7 +310,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 
@@ -415,7 +412,7 @@ describe('MembersPage', () => {
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 
@@ -430,7 +427,7 @@ describe('MembersPage', () => {
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
     vi.mocked(useMembers).mockReturnValue({
       data: {
         accounts: [
@@ -507,7 +504,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
       refetch: mockRefetch,
@@ -576,7 +573,7 @@ describe('MembersPage', () => {
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 

@@ -1,16 +1,12 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import EnvNav from '../index'
 
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -32,7 +28,7 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'PRODUCTION',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 
@@ -45,7 +41,7 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'TESTING',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 
@@ -58,7 +54,7 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'DEVELOPMENT',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 

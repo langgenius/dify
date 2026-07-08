@@ -22,12 +22,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { userProfile: { email: string } }) => T) => selector({
-    userProfile: { email: 'debug@example.com' },
-  }),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))

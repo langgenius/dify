@@ -40,19 +40,6 @@ vi.mock('@/next/navigation', () => ({
 let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: {
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-    isLoadingWorkspacePermissionKeys: boolean
-  }) => unknown) => {
-    return selector({
-      userProfile: { id: mockCurrentUserId },
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-      isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    })
-  },
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')

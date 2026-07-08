@@ -1,4 +1,4 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,15 +10,12 @@ const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
@@ -50,7 +47,7 @@ describe('EditWorkspaceModal', () => {
     const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
   })
@@ -170,7 +167,7 @@ describe('EditWorkspaceModal', () => {
     mockUseAppContext.mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderModal()
 

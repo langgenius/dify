@@ -1,17 +1,27 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Provider as JotaiProvider } from 'jotai'
+import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
 import { Suspense } from 'react'
-import { useContext } from 'use-context-selector'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { AppContext, initialWorkspaceInfo, useSelector } from '../app-context'
-import { AppContextProvider } from '../app-context-provider'
+import { AppBootstrapEffects } from '../app-bootstrap-effects'
+import { initialWorkspaceInfo } from '../app-context-defaults'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceLoadingAtom,
+  langGeniusVersionInfoAtom,
+  refreshCurrentWorkspaceAtom,
+  refreshUserProfileAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+  workspaceRoleFlagsAtom,
+} from '../app-context-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
@@ -158,65 +168,68 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 }))
 
 function AppContextProbe() {
-  const context = useContext(AppContext)
-  const selectedWorkspacePermissionKeys = useSelector(state => state.workspacePermissionKeys)
+  const userProfile = useAtomValue(userProfileAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
+  const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
 
   return (
     <>
       <span>
         keys:
-        {selectedWorkspacePermissionKeys.join(',')}
+        {workspacePermissionKeys.join(',')}
       </span>
       <span>
         permission loading:
-        {String(context.isLoadingWorkspacePermissionKeys)}
+        {String(isLoadingWorkspacePermissionKeys)}
       </span>
       <span>
         workspace loading:
-        {String(context.isLoadingCurrentWorkspace)}
-      </span>
-      <span>
-        workspace validating:
-        {String(context.isValidatingCurrentWorkspace)}
+        {String(isLoadingCurrentWorkspace)}
       </span>
       <span>
         user:
-        {context.userProfile.email}
+        {userProfile.email}
       </span>
       <span>
         workspace:
-        {context.currentWorkspace.name}
+        {currentWorkspace.name}
       </span>
       <span>
         role:
-        {context.currentWorkspace.role}
+        {currentWorkspace.role}
       </span>
       <span>
         manager:
-        {String(context.isCurrentWorkspaceManager)}
+        {String(roleFlags.isCurrentWorkspaceManager)}
       </span>
       <span>
         owner:
-        {String(context.isCurrentWorkspaceOwner)}
+        {String(roleFlags.isCurrentWorkspaceOwner)}
       </span>
       <span>
         editor:
-        {String(context.isCurrentWorkspaceEditor)}
+        {String(roleFlags.isCurrentWorkspaceEditor)}
       </span>
       <span>
         dataset operator:
-        {String(context.isCurrentWorkspaceDatasetOperator)}
+        {String(roleFlags.isCurrentWorkspaceDatasetOperator)}
       </span>
       <span>
         version:
-        {context.langGeniusVersionInfo.current_version}
+        {langGeniusVersionInfo.current_version}
         /
-        {context.langGeniusVersionInfo.latest_version}
+        {langGeniusVersionInfo.latest_version}
         /
-        {context.langGeniusVersionInfo.current_env}
+        {langGeniusVersionInfo.current_env}
       </span>
-      <button type="button" onClick={context.mutateUserProfile}>refresh user</button>
-      <button type="button" onClick={context.mutateCurrentWorkspace}>refresh workspace</button>
+      <button type="button" onClick={refreshUserProfile}>refresh user</button>
+      <button type="button" onClick={refreshCurrentWorkspace}>refresh workspace</button>
     </>
   )
 }
@@ -244,16 +257,15 @@ function createTestQueryClient() {
   })
 }
 
-function renderProvider() {
+function renderBootstrapEffects() {
   const queryClient = createTestQueryClient()
   const view = render(
     <JotaiProvider>
       <QueryClientProvider client={queryClient}>
         <TestQueryClientHydrator queryClient={queryClient}>
           <Suspense fallback={<span>loading</span>}>
-            <AppContextProvider>
-              <AppContextProbe />
-            </AppContextProvider>
+            <AppBootstrapEffects />
+            <AppContextProbe />
           </Suspense>
         </TestQueryClientHydrator>
       </QueryClientProvider>
@@ -266,7 +278,7 @@ function renderProvider() {
   }
 }
 
-describe('AppContextProvider', () => {
+describe('AppBootstrapEffects', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPermissionKeysState.isPending = false
@@ -325,16 +337,15 @@ describe('AppContextProvider', () => {
     })
   })
 
-  describe('Context compatibility values', () => {
+  describe('Bootstrap atoms', () => {
     it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
-      renderProvider()
+      renderBootstrapEffects()
 
       expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(screen.getByText('workspace validating:false')).toBeInTheDocument()
       expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
@@ -349,7 +360,7 @@ describe('AppContextProvider', () => {
       mockPermissionKeysState.permissionKeys = []
       mockLangGeniusVersionState.data = undefined
 
-      renderProvider()
+      renderBootstrapEffects()
 
       expect(await screen.findByText('user:')).toBeInTheDocument()
       expect(screen.getByText(`workspace:${initialWorkspaceInfo.name}`)).toBeInTheDocument()
@@ -364,7 +375,7 @@ describe('AppContextProvider', () => {
         role: 'unsupported-role',
       }
 
-      renderProvider()
+      renderBootstrapEffects()
 
       expect(await screen.findByText(`role:${initialWorkspaceInfo.role}`)).toBeInTheDocument()
     })
@@ -375,7 +386,7 @@ describe('AppContextProvider', () => {
         role: 'owner',
       }
 
-      renderProvider()
+      renderBootstrapEffects()
 
       expect(await screen.findByText('manager:true')).toBeInTheDocument()
       expect(screen.getByText('owner:true')).toBeInTheDocument()
@@ -383,21 +394,20 @@ describe('AppContextProvider', () => {
       expect(screen.getByText('dataset operator:false')).toBeInTheDocument()
     })
 
-    it('should expose query loading and validating state', async () => {
+    it('should expose query loading state', async () => {
       mockPermissionKeysState.isPending = true
       mockCurrentWorkspaceQueryState.isPending = true
 
-      renderProvider()
+      renderBootstrapEffects()
 
       expect(await screen.findByText('workspace loading:true')).toBeInTheDocument()
-      expect(screen.getByText('workspace validating:true')).toBeInTheDocument()
       expect(screen.getByText('permission loading:true')).toBeInTheDocument()
     })
   })
 
   describe('Refresh actions', () => {
     it('should invalidate the source queries when refresh actions are called', async () => {
-      const { queryClient } = renderProvider()
+      const { queryClient } = renderBootstrapEffects()
       const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
@@ -410,7 +420,7 @@ describe('AppContextProvider', () => {
 
   describe('External side effects', () => {
     it('should sync Zendesk fields and Amplitude identity when bootstrap data is available', async () => {
-      renderProvider()
+      renderBootstrapEffects()
 
       await waitFor(() => {
         expect(setZendeskConversationFields).toHaveBeenCalledWith([{
@@ -459,7 +469,7 @@ describe('AppContextProvider', () => {
         },
       }
 
-      renderProvider()
+      renderBootstrapEffects()
 
       await screen.findByText('user:')
       expect(setUserId).not.toHaveBeenCalled()

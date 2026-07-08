@@ -19,7 +19,7 @@ import { useLogout } from '@/service/use-common'
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
-  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
   const { isEducationAccount } = useProviderContext()

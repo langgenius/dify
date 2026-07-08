@@ -30,9 +30,6 @@ const mockAppContextState = vi.hoisted(() => ({
 }))
 
 // Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => mockAppContextState.userProfile,
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
