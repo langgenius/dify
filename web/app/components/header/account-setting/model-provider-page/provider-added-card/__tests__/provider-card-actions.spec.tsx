@@ -158,6 +158,15 @@ describe('ProviderCardActions', () => {
     expect(mockHandleUpdate).toHaveBeenCalledWith(true)
   })
 
+  it('should show a compact debug badge after the version for debugging plugins', () => {
+    render(<ProviderCardActions detail={createDetail({ source: PluginSource.debugging })} />)
+
+    const version = screen.getByText('1.0.0')
+    const debugBadge = screen.getByText('appDebug.operation.debugConfig')
+
+    expect(version.compareDocumentPosition(debugBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('should trigger the latest marketplace update when clicking the update button', () => {
     render(<ProviderCardActions detail={createDetail()} />)
 

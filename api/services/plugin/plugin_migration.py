@@ -416,10 +416,9 @@ class PluginMigration:
                 data = _tenant_plugin_adapter.validate_json(line)
                 tenant_id = data["tenant_id"]
                 plugin_ids = data["plugins"]
-                plugin_not_exist: list[str] = []
-                for plugin_id in plugin_ids:
-                    if plugin_id not in package_identifier_by_plugin_id:
-                        plugin_not_exist.append(plugin_id)
+                plugin_not_exist = [
+                    plugin_id for plugin_id in plugin_ids if plugin_id not in package_identifier_by_plugin_id
+                ]
 
                 if plugin_not_exist:
                     not_installed.append(

@@ -10,9 +10,10 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { BillingPermission, hasPermission } from '@/utils/permission'
@@ -32,7 +33,7 @@ const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
   const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const shouldDefaultToYearly = canManageBilling && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()

@@ -27,7 +27,7 @@ export type UseWorkspaceDeps = {
  * workspace list and let the caller pick one interactively (TTY only).
  *
  * The server-side switch is the source of truth: if POST
- * `/workspaces/<id>/switch` fails we abort before touching `hosts.yml`, so
+ * `/workspaces/<id>:switch` fails we abort before touching `hosts.yml`, so
  * local state never diverges from the server.
  */
 export async function runUseWorkspace(

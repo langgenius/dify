@@ -12,9 +12,21 @@ import { Plan } from '../../../../type'
 import { PlanRange } from '../../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from '../index'
 
+let mockAppCtx: Record<string, unknown> = {}
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -53,6 +65,11 @@ const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 let assignedHref = ''
 const originalLocation = window.location
 
+const mockAppContext = (state: Record<string, unknown>) => {
+  mockAppCtx = state
+  mockUseAppContext.mockReturnValue(state)
+}
+
 const renderWithToastHost = (ui: React.ReactNode) => {
   return render(
     <>
@@ -79,7 +96,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({
+  mockAppContext({
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: [
       'billing.view',
@@ -183,7 +200,7 @@ describe('CloudPlanItem', () => {
   // Payment actions triggered from the CTA
   describe('Plan purchase flow', () => {
     it('should show toast when billing manage permission is missing for plan purchase', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -206,7 +223,7 @@ describe('CloudPlanItem', () => {
     it('should open billing portal when upgrading current paid plan', async () => {
       const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -229,7 +246,7 @@ describe('CloudPlanItem', () => {
     })
 
     it('should redirect to subscription url when selecting a new paid plan', async () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.manage'],
       })
@@ -316,7 +333,7 @@ describe('CloudPlanItem', () => {
     })
 
     it('should show default CTA and hide warning when billing manage permission is missing', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
       })
@@ -340,7 +357,7 @@ describe('CloudPlanItem', () => {
     })
 
     it('should hide education unsupported warning when billing manage permission is missing', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
       })

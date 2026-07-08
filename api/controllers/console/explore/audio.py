@@ -113,7 +113,7 @@ class ChatTextApi(InstalledAppResource):
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session,
+                session=db.session(),
                 text=text,
                 voice=voice,
                 message_ref=message_ref,

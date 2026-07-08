@@ -5,6 +5,7 @@ import type { JsonifiedClient } from '@orpc/openapi-client'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { cache } from 'react'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
@@ -93,7 +94,7 @@ function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerCons
   })
 }
 
-export const getServerConsoleClientContext = async (): Promise<ServerConsoleClientContext> => {
+export const getServerConsoleClientContext = cache(async (): Promise<ServerConsoleClientContext> => {
   const { cookies, headers } = await import('@/next/headers')
   const requestHeaders = await headers()
   const cookieStore = await cookies()
@@ -102,7 +103,7 @@ export const getServerConsoleClientContext = async (): Promise<ServerConsoleClie
     cookie: requestHeaders.get('cookie') || undefined,
     csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
   }
-}
+})
 
 export const getServerConsoleRequestHeaders = async () =>
   createServerConsoleRequestHeaders(await getServerConsoleClientContext())

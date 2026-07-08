@@ -8,6 +8,7 @@ const mockReplace = vi.fn()
 let mockAppContextState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
+  isCurrentWorkspaceOwner: true,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 let mockIsCurrentWorkspaceOwner = true
@@ -27,6 +28,12 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+
 // Mock external api panel context
 const mockSetShowExternalApiPanel = vi.fn()
 vi.mock('@/context/external-api-panel-context', () => ({
@@ -35,6 +42,12 @@ vi.mock('@/context/external-api-panel-context', () => ({
     setShowExternalApiPanel: mockSetShowExternalApiPanel,
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
@@ -132,6 +145,7 @@ describe('List', () => {
     mockAppContextState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
+      isCurrentWorkspaceOwner: true,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
     mockIsCurrentWorkspaceOwner = true
@@ -170,6 +184,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
 
@@ -282,6 +297,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -303,6 +319,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: [],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -367,6 +384,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: false,
           isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: false,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))
@@ -417,6 +435,12 @@ describe('List', () => {
     })
 
     it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
       vi.doMock('@/context/app-context', () => ({
         useAppContext: () => ({
           currentWorkspace: { role: 'admin' },
@@ -425,6 +449,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: true,
           workspacePermissionKeys: ['dataset.create_and_management'],
         }),
       }))
@@ -452,6 +477,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: true,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))
@@ -481,6 +507,12 @@ describe('List', () => {
     })
 
     it('should not show include all checkbox when not workspace owner', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+        workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+      }
       vi.doMock('@/context/app-context', () => ({
         useAppContext: () => ({
           currentWorkspace: { role: 'editor' },
@@ -489,6 +521,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: false,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))

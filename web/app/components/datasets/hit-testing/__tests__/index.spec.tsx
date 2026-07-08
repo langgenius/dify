@@ -83,6 +83,12 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+
 const mockRecordsRefetch = vi.fn()
 const mockHitTestingMutateAsync = vi.fn()
 const mockExternalHitTestingMutateAsync = vi.fn()
@@ -100,6 +106,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     isLoading: false,
   })),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/knowledge/use-hit-testing', () => ({
   useHitTesting: vi.fn(() => ({
