@@ -346,6 +346,9 @@ class _AgentProcessRecorder:
             tool=tool_name,
             tool_input_delta=_json_or_text(args_delta),
         )
+        self._remember_tool_thought(
+            index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
+        )
 
     def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
         self._close_thinking_segments()
@@ -363,6 +366,9 @@ class _AgentProcessRecorder:
             thought_id,
             tool=tool_name,
             tool_input=_json_or_text(part.get("args")),
+        )
+        self._remember_tool_thought(
+            index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
         )
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
@@ -1085,5 +1091,6 @@ class AgentAppRunner:
                 return text
             return json.dumps(output, ensure_ascii=False)
         return json.dumps(output, ensure_ascii=False)
+
 
 __all__ = ["AgentAppRunner", "publish_message_end", "publish_text_answer", "publish_text_delta"]

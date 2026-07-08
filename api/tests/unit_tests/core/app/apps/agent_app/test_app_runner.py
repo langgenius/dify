@@ -858,6 +858,67 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 
+def test_tool_call_part_binds_late_call_id_to_delta_row(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_delta",
+                "index": 0,
+                "delta": {
+                    "part_delta_kind": "tool_call",
+                    "tool_name_delta": "knowledge_base_search",
+                    "args_delta": {"query": "browser"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "part_start",
+                "index": 0,
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "knowledge_base_search",
+                    "args": {"query": "browser"},
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "knowledge_base_search",
+                    "content": "Knowledge base search results: browser skill",
+                    "tool_call_id": "tool-call-1",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].tool == "knowledge_base_search"
+    assert rows[0].tool_input == '{"query": "browser"}'
+    assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
 def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
     fake_session = _FakeDbSession()
     monkeypatch.setattr(app_runner_module.db, "session", fake_session)
