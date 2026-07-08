@@ -365,12 +365,12 @@ class TestWorkflowEntryInit:
         supplied_filter = ResponseStreamFilter()
         entry = _build_minimal_workflow_entry(monkeypatch, response_stream_filter=supplied_filter)
 
-        assert entry.response_stream_filter is supplied_filter
+        assert entry._response_stream_filter is supplied_filter
 
     def test_workflow_entry_defaults_to_fresh_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         entry = _build_minimal_workflow_entry(monkeypatch, response_stream_filter=None)
 
-        assert isinstance(entry.response_stream_filter, ResponseStreamFilter)
+        assert isinstance(entry._response_stream_filter, ResponseStreamFilter)
 
 
 class TestWorkflowEntryRun:
@@ -378,7 +378,7 @@ class TestWorkflowEntryRun:
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
-        entry.response_stream_filter = ResponseStreamFilter()
+        entry._response_stream_filter = ResponseStreamFilter()
 
         assert list(entry.run()) == []
 
@@ -417,7 +417,7 @@ class TestWorkflowEntryRun:
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = sentinel.graph_engine
-        entry.response_stream_filter = sentinel.response_stream_filter
+        entry._response_stream_filter = sentinel.response_stream_filter
 
         with patch.object(
             workflow_entry,
@@ -433,7 +433,7 @@ class TestWorkflowEntryRun:
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
-        entry.response_stream_filter = ResponseStreamFilter()
+        entry._response_stream_filter = ResponseStreamFilter()
 
         events = list(entry.run())
 

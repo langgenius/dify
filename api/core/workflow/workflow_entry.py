@@ -206,7 +206,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
-        self.response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         execution_context = capture_current_context()
         graph_runtime_state.execution_context = execution_context
         self._child_engine_builder = _WorkflowChildEngineBuilder(tenant_id=tenant_id)
@@ -252,7 +252,7 @@ class WorkflowEntry:
 
         try:
             # Preserve Dify's response-stream semantics on top of Graphon 0.5.0.
-            generator = iter_dify_graph_engine_events(graph_engine, self.response_stream_filter)
+            generator = iter_dify_graph_engine_events(graph_engine, self._response_stream_filter)
             yield from generator
         except GenerateTaskStoppedError:
             pass
