@@ -251,7 +251,9 @@ class AnnotationListApi(Resource):
         """Create a new annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id, session=db.session())
+        annotation = AppAnnotationService.insert_app_annotation_directly(
+            insert_args, app_model.id, session=db.session()
+        )
         return dump_response(Annotation, annotation), HTTPStatus.CREATED
 
 

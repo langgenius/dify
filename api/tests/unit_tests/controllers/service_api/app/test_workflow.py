@@ -19,8 +19,6 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import Mock, patch
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest

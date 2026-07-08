@@ -209,7 +209,9 @@ class AppGetFeedbacksApi(Resource):
         Returns paginated list of all feedback submitted for messages in this app.
         """
         query_args = FeedbackListQuery.model_validate(request.args.to_dict())
-        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=query_args.page, limit=query_args.limit, session=db.session())
+        feedbacks = MessageService.get_all_messages_feedbacks(
+            app_model, page=query_args.page, limit=query_args.limit, session=db.session()
+        )
         return AppFeedbackListResponse(data=feedbacks).model_dump(mode="json")
 
 
