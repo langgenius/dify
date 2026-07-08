@@ -48,6 +48,8 @@ const TagInput = ({ items, onChange, disableAdd, disableRemove, customizedConfir
     })
   }, [items, onChange, t, required])
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.nativeEvent.isComposing)
+      return
     if (isSpecialMode && e.key === 'Enter')
       setValue(`${value}↵`)
     if (e.key === customizedConfirmKey) {
