@@ -440,6 +440,19 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     )
   }
 
+  async function restartCurrentChat() {
+    fireEvent.click(screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.preview.restart',
+    }))
+
+    const confirmDialog = await screen.findByRole('alertdialog', {
+      name: 'agentV2.agentDetail.configure.clearSessionConfirm.title',
+    })
+    expect(confirmDialog).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  }
+
   describe('Working Directory', () => {
     it('should show save-to-roster in the configure header menu without rendering the old action bar', async () => {
       renderWorkspace({
@@ -659,9 +672,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'build-chat' })).toHaveTextContent('build:inline-debug-conversation-1')
-      fireEvent.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.preview.restart',
-      }))
+      await restartCurrentChat()
 
       await waitFor(() => expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
         params: {
@@ -772,9 +783,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new'))
 
       fireEvent.click(screen.getByRole('button', { name: 'fail build conversation' }))
-      fireEvent.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.preview.restart',
-      }))
+      await restartCurrentChat()
 
       await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledWith({
         params: {
