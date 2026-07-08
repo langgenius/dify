@@ -7,7 +7,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
-import { atomWithPrefetchedQuery } from '@/utils/atom-with-prefetched-query'
+import { atomWithResolvedSuspenseQuery } from '@/utils/atom-with-prefetched-query'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
@@ -19,9 +19,9 @@ import {
   normalizeCurrentWorkspace,
 } from './app-context-normalizers'
 
-const accountProfileQueryAtom = atomWithPrefetchedQuery(() => userProfileQueryOptions())
+const accountProfileQueryAtom = atomWithResolvedSuspenseQuery(() => userProfileQueryOptions())
 
-const systemFeaturesQueryAtom = atomWithPrefetchedQuery(() => systemFeaturesQueryOptions())
+const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeaturesQueryOptions())
 
 const systemFeaturesAtom = atom((get) => {
   return get(systemFeaturesQueryAtom).data
