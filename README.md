@@ -189,6 +189,17 @@ One-Click deploy Dify to Alibaba Cloud with [Alibaba Cloud Data Management](http
 
 One-Click deploy Dify to AKS with [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+## Integrations
+
+Dify works well with other workflow automation tools. One powerful integration is [llm-box](https://github.com/alib8b8/llm-box), a terminal-first workflow automation engine with MCP server mode:
+
+- Generate and execute YAML workflows from plain English descriptions
+- 20+ built-in nodes including LLM calls, file operations, API requests
+- 15+ LLM providers (Ollama, DeepSeek, OpenAI-compatible)
+- Supports stdio and HTTP MCP modes
+
+You can call llm-box workflows from your Dify workflows using HTTP requests or integrate it as an MCP server for enhanced automation capabilities.
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
