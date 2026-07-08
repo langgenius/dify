@@ -228,7 +228,6 @@ const appContextValue: AppContextStateMockState = {
   },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 

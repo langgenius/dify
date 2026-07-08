@@ -119,10 +119,6 @@ export const datasetRbacEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).rbac_enabled
 })
 
-export const currentWorkspaceValidatingAtom = atom((get) => {
-  return get(currentWorkspaceQueryAtom).isFetching
-})
-
 const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(profileMetaAtom)
   const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>

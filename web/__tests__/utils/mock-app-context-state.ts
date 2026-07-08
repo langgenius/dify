@@ -20,7 +20,6 @@ export type AppContextStateMockState = {
   isCurrentWorkspaceEditor?: boolean
   isCurrentWorkspaceDatasetOperator?: boolean
   isLoadingCurrentWorkspace?: boolean
-  isValidatingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   langGeniusVersionInfo?: Partial<LangGeniusVersionResponse>
@@ -42,7 +41,6 @@ type AppContextStateAtomKind
     | 'isCurrentWorkspaceEditor'
     | 'isCurrentWorkspaceDatasetOperator'
     | 'currentWorkspaceLoading'
-    | 'currentWorkspaceValidating'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
     | 'langGeniusVersionInfo'
@@ -139,7 +137,6 @@ export const createAppContextStateAtomMock = async (
     isCurrentWorkspaceEditorAtom: createMockAtom('isCurrentWorkspaceEditor'),
     isCurrentWorkspaceDatasetOperatorAtom: createMockAtom('isCurrentWorkspaceDatasetOperator'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
-    currentWorkspaceValidatingAtom: createMockAtom('currentWorkspaceValidating'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
     langGeniusVersionInfoAtom: createMockAtom('langGeniusVersionInfo'),
@@ -205,9 +202,6 @@ export const createAppContextStateJotaiMock = async (
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
-
-      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceValidating')
-        return state.isValidatingCurrentWorkspace ?? false
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'workspacePermissionKeys')
         return state.workspacePermissionKeys ?? []

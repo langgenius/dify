@@ -116,7 +116,6 @@ const buildAppContext = (overrides: Partial<AppContextStateMockState> = {}): App
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
     workspacePermissionKeys: [],
   }
   return {

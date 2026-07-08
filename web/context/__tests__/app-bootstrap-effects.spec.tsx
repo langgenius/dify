@@ -14,7 +14,6 @@ import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
-  currentWorkspaceValidatingAtom,
   langGeniusVersionInfoAtom,
   refreshCurrentWorkspaceAtom,
   refreshUserProfileAtom,
@@ -175,7 +174,6 @@ function AppContextProbe() {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const isValidatingCurrentWorkspace = useAtomValue(currentWorkspaceValidatingAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
   const refreshCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
@@ -193,10 +191,6 @@ function AppContextProbe() {
       <span>
         workspace loading:
         {String(isLoadingCurrentWorkspace)}
-      </span>
-      <span>
-        workspace validating:
-        {String(isValidatingCurrentWorkspace)}
       </span>
       <span>
         user:
@@ -352,7 +346,6 @@ describe('AppBootstrapEffects', () => {
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(screen.getByText('workspace validating:false')).toBeInTheDocument()
       expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
@@ -401,14 +394,13 @@ describe('AppBootstrapEffects', () => {
       expect(screen.getByText('dataset operator:false')).toBeInTheDocument()
     })
 
-    it('should expose query loading and validating state', async () => {
+    it('should expose query loading state', async () => {
       mockPermissionKeysState.isPending = true
       mockCurrentWorkspaceQueryState.isPending = true
 
       renderBootstrapEffects()
 
       expect(await screen.findByText('workspace loading:true')).toBeInTheDocument()
-      expect(screen.getByText('workspace validating:true')).toBeInTheDocument()
       expect(screen.getByText('permission loading:true')).toBeInTheDocument()
     })
   })

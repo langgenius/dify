@@ -93,7 +93,6 @@ const createAppContextValue = (): AppContextStateMockState => ({
   mutateCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [],
 })
 

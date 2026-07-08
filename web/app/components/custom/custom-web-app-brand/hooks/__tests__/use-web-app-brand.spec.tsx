@@ -120,7 +120,6 @@ const createAppContextValue = (overrides: Partial<AppContextStateMockState> = {}
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo: initialLangGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
     ...restOverrides,
     currentWorkspace,
   }

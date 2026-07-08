@@ -167,7 +167,6 @@ const baseAppContextValue: AppContextStateMockState = {
     can_auto_update: false,
   },
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
     'workspace.role.manage',
