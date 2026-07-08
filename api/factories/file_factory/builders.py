@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from core.app.file_access import FileAccessControllerProtocol
 from core.db.session_factory import session_factory
+from core.file import remote_fetcher
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, helpers, standardize_file_type
 from models import ToolFile, UploadFile
@@ -227,7 +228,7 @@ def _build_from_local_file(
             file_type=file_type,
             transfer_method=transfer_method,
             remote_url=row.source_url,
-            reference=build_file_reference(record_id=str(row.id)),
+            reference=build_file_reference(record_id=row.id),
             size=row.size,
             storage_key=row.key,
         )
@@ -242,6 +243,11 @@ def _build_from_remote_url(
     access_controller: FileAccessControllerProtocol,
 ) -> File:
     upload_file_id = resolve_mapping_file_id(mapping, "upload_file_id")
+    url = mapping.get("url") or mapping.get("remote_url")
+    if not upload_file_id:
+        if isinstance(url, str):
+            upload_file_id = remote_fetcher.resolve_signed_upload_file_id(url)
+
     if upload_file_id:
         try:
             uuid.UUID(upload_file_id)
@@ -266,6 +272,7 @@ def _build_from_remote_url(
                 specified_type=mapping.get("type"),
                 strict_type_validation=strict_type_validation,
             )
+            remote_url = upload_file.source_url or (url if isinstance(url, str) else None)
 
             return File(
                 file_id=mapping.get("id"),
@@ -274,13 +281,12 @@ def _build_from_remote_url(
                 mime_type=upload_file.mime_type,
                 file_type=file_type,
                 transfer_method=transfer_method,
-                remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
-                reference=build_file_reference(record_id=str(upload_file.id)),
+                remote_url=remote_url or helpers.get_signed_file_url(upload_file_id=upload_file_id),
+                reference=build_file_reference(record_id=upload_file.id),
                 size=upload_file.size,
                 storage_key=upload_file.key,
             )
 
-    url = mapping.get("url") or mapping.get("remote_url")
     if not url:
         raise ValueError("Invalid file url")
 
@@ -340,7 +346,7 @@ def _build_from_tool_file(
             file_type=file_type,
             transfer_method=transfer_method,
             remote_url=tool_file.original_url,
-            reference=build_file_reference(record_id=str(tool_file.id)),
+            reference=build_file_reference(record_id=tool_file.id),
             extension=extension,
             mime_type=tool_file.mimetype,
             size=tool_file.size,
@@ -383,7 +389,7 @@ def _build_from_datasource_file(
             file_type=file_type,
             transfer_method=transfer_method,
             remote_url=datasource_file.source_url,
-            reference=build_file_reference(record_id=str(datasource_file.id)),
+            reference=build_file_reference(record_id=datasource_file.id),
             extension=extension,
             mime_type=datasource_file.mime_type,
             size=datasource_file.size,
