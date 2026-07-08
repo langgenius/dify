@@ -310,11 +310,6 @@
       "count": 1
     }
   },
-  "web/app/account/oauth/authorize/layout.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/account/oauth/authorize/page.tsx": {
     "ts/no-explicit-any": {
       "count": 1
