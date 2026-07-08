@@ -26,7 +26,16 @@ type ResolvedAtomWithSuspenseQueryResult<TData, TError = DefaultError> = Awaited
 >
 
 /**
- * Mirrors atomWithQuery for query data that must already be prefetched/hydrated.
+ * Creates an atomWithQuery-compatible atom for data that is required at read time.
+ *
+ * Use this only when the same query has been prefetched or hydrated before any
+ * consumer reads the atom. It preserves the full query result shape, but narrows
+ * `data` to a non-undefined value after a runtime invariant check.
+ *
+ * This helper does not fetch, wait, suspend, or provide fallback data. If the
+ * cache is missing, the QueryClient is recreated, the query key changes, or the
+ * query legitimately returns undefined, reading the atom throws. Use plain
+ * atomWithQuery for normal loading states.
  */
 export function atomWithPrefetchedQuery<
   TQueryFnData = unknown,
@@ -80,7 +89,16 @@ export function atomWithPrefetchedQuery(
 }
 
 /**
- * Mirrors atomWithSuspenseQuery for suspense query data that must already be resolved.
+ * Creates an atomWithSuspenseQuery-compatible atom for data that is already resolved.
+ *
+ * Use this when a suspense query atom is read from another atom after an outer
+ * boundary or bootstrap step has already resolved it. The parameters match
+ * atomWithSuspenseQuery, while the returned atom exposes only the resolved query
+ * result instead of `QueryResult | Promise<QueryResult>`.
+ *
+ * This helper intentionally does not await the promise or create an async
+ * derived atom. If the suspense query is still pending, reading the atom throws
+ * to make the broken "already resolved" invariant explicit.
  */
 export function atomWithResolvedSuspenseQuery<
   TQueryFnData = unknown,
