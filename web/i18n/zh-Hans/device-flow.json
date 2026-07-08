@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "无法验证该验证码",
   "errorRateLimited.body": "请稍等片刻后重试。",
   "errorRateLimited.title": "尝试次数过多",
+  "errorSso.backToLoginOptions": "← 返回登录选项",
+  "errorSso.title": "登录未能完成",
   "ssoError.default": "单点登录未能完成，请重试。",
   "ssoError.emailBelongsToDifyAccount": "此身份已关联 Dify 账户，请改用“使用 Dify 账户登录”。",
   "success.goToConsole": "前往 Dify 控制台 →",

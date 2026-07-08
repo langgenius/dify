@@ -4,14 +4,6 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import DatasetDetailTop from '../dataset-detail-top'
 
-const mockBack = vi.fn()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    back: mockBack,
-  }),
-}))
-
 vi.mock('../toggle-button', () => ({
   default: ({ expand, handleToggle, icon }: { expand: boolean, handleToggle: () => void, icon?: ReactNode }) => (
     <button type="button" data-testid="toggle-button" data-expand={expand} data-has-icon={Boolean(icon)} onClick={handleToggle}>
@@ -41,14 +33,15 @@ describe('DatasetDetailTop', () => {
     vi.clearAllMocks()
   })
 
-  it('links the home icon to home and labels the breadcrumb as datasets', () => {
+  it('links the combined home control to home and labels the breadcrumb as datasets', () => {
     renderWithGotoAnythingStore(<DatasetDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'common.menus.datasets' })).toHaveAttribute('href', '/datasets')
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 
-  it('keeps the back button and quick search actions', () => {
+  it('keeps the quick search action', () => {
     renderWithGotoAnythingStore(
       <>
         <DatasetDetailTop />
@@ -57,10 +50,8 @@ describe('DatasetDetailTop', () => {
     )
     expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(mockBack).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
   })
 

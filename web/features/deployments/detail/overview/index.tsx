@@ -9,7 +9,11 @@ import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status
 import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './access-summary/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './environment-status/environment-strip'
 import { ReleaseHero, ReleaseHeroSkeleton } from './release-summary/release-hero'
-import { deploymentOverviewQueryAtom } from './state'
+import {
+  deploymentOverviewAtom,
+  deploymentOverviewIsErrorAtom,
+  deploymentOverviewIsLoadingAtom,
+} from './state'
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -63,13 +67,14 @@ function OverviewLoadingSkeleton() {
 
 export function DeploymentOverview() {
   const { t } = useTranslation('deployments')
-  const overviewQuery = useAtomValue(deploymentOverviewQueryAtom)
-  const overview = overviewQuery.data
+  const overview = useAtomValue(deploymentOverviewAtom)
+  const isLoading = useAtomValue(deploymentOverviewIsLoadingAtom)
+  const isError = useAtomValue(deploymentOverviewIsErrorAtom)
 
-  if (overviewQuery.isLoading)
+  if (isLoading)
     return <OverviewLoadingSkeleton />
 
-  if (overviewQuery.isError) {
+  if (isError) {
     return (
       <OverviewLayout>
         <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>

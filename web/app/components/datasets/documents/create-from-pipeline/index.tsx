@@ -5,11 +5,16 @@ import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
@@ -40,9 +45,9 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
   const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,

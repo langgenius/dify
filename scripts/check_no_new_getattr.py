@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Block net-new getattr() usage in changed Python hunks."""
+"""Block net-new getattr() usage in staged changes or against an explicit base revision."""
 
 from __future__ import annotations
 
@@ -58,8 +58,16 @@ class Violation:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("pre-commit", "ci"), required=True)
-    parser.add_argument("--merge-target", default="main")
+    diff_source_group = parser.add_mutually_exclusive_group(required=True)
+    diff_source_group.add_argument(
+        "--staged",
+        action="store_true",
+        help="Inspect staged changes against HEAD, for pre-commit style usage.",
+    )
+    diff_source_group.add_argument(
+        "--base-rev",
+        help="Inspect changes between the provided git revision and HEAD.",
+    )
     return parser.parse_args()
 
 
@@ -87,15 +95,14 @@ def git_output(*args: str, allow_missing: bool = False) -> str:
 
 
 def collect_diff_text(args: argparse.Namespace) -> str:
-    if args.mode == "pre-commit":
+    if args.staged:
         return git_output("diff", "--cached", "--unified=0", "--diff-filter=AM", "--no-ext-diff")
-    merge_base = git_output("merge-base", args.merge_target, "HEAD").strip()
     return git_output(
         "diff",
         "--unified=0",
         "--diff-filter=AM",
         "--no-ext-diff",
-        f"{merge_base}..HEAD",
+        f"{args.base_rev}..HEAD",
     )
 
 
@@ -140,15 +147,14 @@ def is_python_source_path(path: str) -> bool:
 
 
 def load_file_versions(path: str, args: argparse.Namespace) -> tuple[str, str]:
-    if args.mode == "pre-commit":
+    if args.staged:
         return (
             git_output("show", f"HEAD:{path}", allow_missing=True),
             git_output("show", f":{path}"),
         )
 
-    merge_base = git_output("merge-base", args.merge_target, "HEAD").strip()
     return (
-        git_output("show", f"{merge_base}:{path}", allow_missing=True),
+        git_output("show", f"{args.base_rev}:{path}", allow_missing=True),
         git_output("show", f"HEAD:{path}"),
     )
 

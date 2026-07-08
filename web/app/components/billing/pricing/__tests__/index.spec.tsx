@@ -2,13 +2,13 @@ import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../type'
 import Pricing from '../index'
 
 let mockLanguage: string | null = 'en'
+let mockAppCtx: Record<string, unknown> = {}
 
 vi.mock('../plans/self-hosted-plan-item/list', () => ({
   default: ({ plan }: { plan: string }) => (
@@ -28,8 +28,18 @@ vi.mock('@/next/link', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: () => mockAppCtx,
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -53,10 +63,10 @@ describe('Pricing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en'
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppCtx = {
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['billing.manage'],
-    })
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,
@@ -79,10 +89,10 @@ describe('Pricing', () => {
     })
 
     it('should default to yearly billing for education accounts', () => {
-      ;(useAppContext as Mock).mockReturnValue({
+      mockAppCtx = {
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.manage'],
-      })
+      }
       ;(useProviderContext as Mock).mockReturnValue({
         plan: {
           type: Plan.sandbox,
@@ -99,10 +109,10 @@ describe('Pricing', () => {
     })
 
     it('should not default to yearly billing when billing manage permission is missing', () => {
-      ;(useAppContext as Mock).mockReturnValue({
+      mockAppCtx = {
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
-      })
+      }
       ;(useProviderContext as Mock).mockReturnValue({
         plan: {
           type: Plan.sandbox,

@@ -6,12 +6,13 @@ import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import {
@@ -79,8 +80,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
     currentUserId,
     resourceMaintainer: appInfo.maintainer,

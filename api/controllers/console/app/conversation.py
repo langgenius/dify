@@ -41,6 +41,7 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.account import Account
 from models.model import App, AppMode
@@ -156,7 +157,7 @@ class CompletionConversationApi(Resource):
 
         query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, page=args.page, per_page=args.limit)
 
         return dump_response(ConversationPaginationResponse, conversations)
 
@@ -199,7 +200,7 @@ class CompletionConversationDetailApi(Resource):
         conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -310,7 +311,7 @@ class ChatConversationApi(Resource):
             case _:
                 query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, page=args.page, per_page=args.limit)
 
         return dump_response(ConversationWithSummaryPaginationResponse, conversations)
 
@@ -353,7 +354,7 @@ class ChatConversationDetailApi(Resource):
         conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

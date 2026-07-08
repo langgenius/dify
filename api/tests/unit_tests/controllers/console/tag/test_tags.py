@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.tag.tags as module
@@ -22,7 +22,7 @@ from services.tag_service import UpdateTagPayload
 
 class SessionMatcher:
     def __eq__(self, other):
-        return isinstance(other, Session | scoped_session)
+        return isinstance(other, Session)
 
 
 def unwrap(func):
@@ -131,7 +131,7 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with(SessionMatcher(), "snippet", "tenant-1", None)
+        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None, session=SessionMatcher())
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 
@@ -224,7 +224,7 @@ class TestTagUpdateDeleteApi:
         update_payload, tag_id, session = update_tags_mock.call_args.args
         assert update_payload == UpdateTagPayload(name="updated")
         assert tag_id == "tag-1"
-        assert session == module.db.session
+        assert session == SessionMatcher()
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -250,7 +250,7 @@ class TestTagUpdateDeleteApi:
         ):
             result, status = method(api, "tag-1")
 
-        delete_mock.assert_called_once_with("tag-1", module.db.session)
+        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
         assert status == 204
 
     def test_delete_snippet_tag_checks_type_in_current_tenant(self, app: Flask, admin_user):
@@ -278,7 +278,7 @@ class TestTagUpdateDeleteApi:
             scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
             resource_required=False,
         )
-        delete_mock.assert_called_once_with("tag-1", module.db.session)
+        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
         assert result == ""
         assert status == 204
 

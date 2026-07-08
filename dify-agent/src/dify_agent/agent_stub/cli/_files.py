@@ -10,13 +10,14 @@ from typing import ClassVar, Literal, cast
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
-from dify_agent.agent_stub.client._agent_stub import (
+from dify_agent.agent_stub.client import (
+    AgentStubTransferError,
+    AgentStubValidationError,
     download_file_bytes_from_signed_url_sync,
     request_agent_stub_file_download_sync,
     request_agent_stub_file_upload_sync,
     upload_file_to_signed_url_sync,
 )
-from dify_agent.agent_stub.client._errors import AgentStubTransferError, AgentStubValidationError
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileMapping, is_canonical_dify_file_reference
 
 

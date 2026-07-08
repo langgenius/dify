@@ -20,6 +20,7 @@ import {
   atomWithQuery,
   queryClientAtom,
 } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
 import { normalizeAppPagination } from '@/service/use-apps'
@@ -268,6 +269,18 @@ export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
       && isDeploymentDslImportEnabled,
     ),
   })
+})
+
+const createReleaseSourceAppsDataAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.data)
+export const createReleaseSourceAppsErrorAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.error)
+export const createReleaseSourceAppsFetchNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.fetchNextPage)
+export const createReleaseSourceAppsHasNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.hasNextPage)
+export const createReleaseSourceAppsIsFetchingAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isFetching)
+export const createReleaseSourceAppsIsFetchingNextPageAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isFetchingNextPage)
+export const createReleaseSourceAppsIsLoadingAtom = selectAtom(createReleaseSourceAppsQueryAtom, query => query.isLoading)
+
+export const createReleaseSourceAppsAtom = atom((get) => {
+  return get(createReleaseSourceAppsDataAtom)?.pages.flatMap(page => page.data) ?? []
 })
 
 export const createReleaseDslContentAtom = atom((get) => {

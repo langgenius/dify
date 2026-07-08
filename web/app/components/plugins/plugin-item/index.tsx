@@ -11,12 +11,13 @@ import {
   RiLoginCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
@@ -69,7 +70,7 @@ const PluginItem: FC<Props> = ({
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
 
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
@@ -110,7 +111,7 @@ const PluginItem: FC<Props> = ({
         setCurrentPluginID(plugin.plugin_id)
       }}
     >
-      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
+      <div className={cn('relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
         {/* Header */}
         <div className="flex">
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">

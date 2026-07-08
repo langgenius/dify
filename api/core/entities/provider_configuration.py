@@ -1188,7 +1188,17 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                fallback_stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                )
+                credential_record = session.execute(fallback_stmt).scalar_one_or_none()
+                if not credential_record:
+                    raise ValueError("Credential record not found.")
+
+                model = credential_record.model_name
+                model_type = ModelType(credential_record.model_type)
 
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,

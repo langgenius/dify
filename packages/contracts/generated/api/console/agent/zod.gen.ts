@@ -186,6 +186,14 @@ export const zAgentPublishPayload = z.object({
 })
 
 /**
+ * SandboxInfoResponse
+ */
+export const zSandboxInfoResponse = z.object({
+  session_id: z.string(),
+  workspace_cwd: z.string(),
+})
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -202,6 +210,13 @@ export const zSandboxReadResponse = z.object({
 export const zAgentSandboxUploadPayload = z.object({
   conversation_id: z.string().min(1),
   path: z.string().min(1),
+})
+
+/**
+ * SandboxUploadResponse
+ */
+export const zSandboxUploadResponse = z.object({
+  url: z.string(),
 })
 
 /**
@@ -228,7 +243,7 @@ export const zAgentAppCreatePayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().min(1),
-  role: z.string().min(1).max(255),
+  role: z.string().max(255).nullish(),
 })
 
 /**
@@ -241,7 +256,7 @@ export const zAgentAppUpdatePayload = z.object({
   icon_type: zIconType.nullish(),
   max_active_requests: z.int().nullish(),
   name: z.string().min(1),
-  role: z.string().min(1).max(255),
+  role: z.string().max(255).nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
 })
 
@@ -858,22 +873,6 @@ export const zSandboxListResponse = z.object({
 })
 
 /**
- * SandboxToolFileResponse
- */
-export const zSandboxToolFileResponse = z.object({
-  reference: z.string(),
-  transfer_method: z.literal('tool_file').optional().default('tool_file'),
-})
-
-/**
- * SandboxUploadResponse
- */
-export const zSandboxUploadResponse = z.object({
-  file: zSandboxToolFileResponse,
-  path: z.string(),
-})
-
-/**
  * SkillManifest
  *
  * Validated metadata extracted from a Skill package.
@@ -1320,6 +1319,27 @@ export const zAgentComposerDifyToolCandidateResponse = z.object({
 })
 
 /**
+ * AgentSuggestedQuestionsAfterAnswerModelConfig
+ *
+ * Legacy Chat App model config used only for follow-up question generation.
+ */
+export const zAgentSuggestedQuestionsAfterAnswerModelConfig = z.object({
+  completion_params: z.record(z.string(), z.unknown()).nullish(),
+  mode: z.string().max(64).nullish(),
+  name: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * AgentSuggestedQuestionsAfterAnswerFeatureConfig
+ */
+export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
+  enabled: z.boolean().optional().default(false),
+  model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
  * SimpleAccount
  */
 export const zSimpleAccount = z.object({
@@ -1752,7 +1772,7 @@ export const zAgentSecretRefConfig = z.object({
   provider_credential_id: z.string().max(255).nullish(),
   ref: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
-  value: z.string().max(255).nullish(),
+  value: z.string().nullish(),
   variable: z.string().max(255).nullish(),
 })
 
@@ -1879,6 +1899,24 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
   type: z.string().nullish(),
 })
 
+/**
+ * AgentAppFeaturesPayload
+ *
+ * Presentation features configurable on an Agent App.
+ *
+ * All fields are optional; an omitted field is reset to its disabled/empty
+ * default (the config form sends the full desired feature state on save).
+ */
+export const zAgentAppFeaturesPayload = z.object({
+  opening_statement: z.string().nullish(),
+  retriever_resource: zAgentFeatureToggleConfig.nullish(),
+  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  speech_to_text: zAgentFeatureToggleConfig.nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
+  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
+})
+
 export const zJsonValue2 = z.unknown()
 
 /**
@@ -1891,6 +1929,54 @@ export const zHumanInputFormSubmissionData = z.object({
   node_title: z.string(),
   rendered_content: z.string(),
   submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * AgentFileUploadImageFeatureConfig
+ */
+export const zAgentFileUploadImageFeatureConfig = z.object({
+  enabled: z.boolean().optional().default(true),
+})
+
+/**
+ * AgentFileUploadFeatureConfig
+ */
+export const zAgentFileUploadFeatureConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  enabled: z.boolean().optional().default(true),
+  image: zAgentFileUploadImageFeatureConfig.optional(),
+  number_limits: z.int().optional().default(3),
+})
+
+/**
+ * AgentSoulAppFeaturesConfig
+ */
+export const zAgentSoulAppFeaturesConfig = z.object({
+  file_upload: zAgentFileUploadFeatureConfig.optional(),
+  opening_statement: z.string().nullish(),
+  retriever_resource: zAgentFeatureToggleConfig.nullish(),
+  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+  speech_to_text: zAgentFeatureToggleConfig.nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
+  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
 })
 
 /**
@@ -1933,46 +2019,6 @@ export const zAgentSoulModelConfig = z.object({
   model_provider: z.string().min(1).max(255),
   model_settings: zAgentSoulModelSettings.optional(),
   plugin_id: z.string().min(1).max(255),
-})
-
-/**
- * AgentSuggestedQuestionsAfterAnswerFeatureConfig
- */
-export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-  model: zAgentSoulModelConfig.nullish(),
-  prompt: z.string().nullish(),
-})
-
-/**
- * AgentAppFeaturesPayload
- *
- * Presentation features configurable on an Agent App.
- *
- * All fields are optional; an omitted field is reset to its disabled/empty
- * default (the config form sends the full desired feature state on save).
- */
-export const zAgentAppFeaturesPayload = z.object({
-  opening_statement: z.string().nullish(),
-  retriever_resource: zAgentFeatureToggleConfig.nullish(),
-  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
-  speech_to_text: zAgentFeatureToggleConfig.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
-  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
-})
-
-/**
- * AgentSoulAppFeaturesConfig
- */
-export const zAgentSoulAppFeaturesConfig = z.object({
-  opening_statement: z.string().nullish(),
-  retriever_resource: zAgentFeatureToggleConfig.nullish(),
-  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
-  speech_to_text: zAgentFeatureToggleConfig.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
-  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
 })
 
 /**
@@ -2163,6 +2209,29 @@ export const zUserActionConfig = z.object({
 })
 
 /**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
  * AgentKnowledgeModelConfig
  */
 export const zAgentKnowledgeModelConfig = z.object({
@@ -2184,8 +2253,9 @@ export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query']
  *
  * Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
  * legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
- * set owns its own query policy, so ``user_query`` must carry an explicit
- * ``value`` while ``generated_query`` leaves that value empty.
+ * set owns its own query policy. Mode-dependent completeness, such as
+ * requiring ``value`` for ``user_query``, is enforced by composer publish
+ * validation so draft saves can persist partially configured knowledge sets.
  */
 export const zAgentKnowledgeQueryConfig = z.object({
   mode: zAgentKnowledgeQueryMode,
@@ -2215,8 +2285,9 @@ export const zAgentKnowledgeWeightedScoreConfig = z.object({
  * Per-set retrieval policy for Agent v2 knowledge retrieval.
  *
  * Retrieval settings now live on each knowledge set instead of one shared
- * flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
- * ``single`` retrieval with a required model config.
+ * flat config. Mode-dependent completeness, such as requiring ``top_k`` for
+ * ``multiple`` or a model for ``single``, is enforced by composer publish
+ * validation so draft saves can persist partially configured knowledge sets.
  */
 export const zAgentKnowledgeRetrievalConfig = z.object({
   mode: z.enum(['multiple', 'single']),
@@ -2227,44 +2298,6 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
   score_threshold: z.number().gte(0).lte(1).nullish(),
   top_k: z.int().gte(1).nullish(),
   weights: zAgentKnowledgeWeightedScoreConfig.nullish(),
-})
-
-/**
- * FileType
- */
-export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
-
-/**
- * FileTransferMethod
- */
-export const zFileTransferMethod = z.enum([
-  'datasource_file',
-  'local_file',
-  'remote_url',
-  'tool_file',
-])
-
-/**
- * FileInputConfig
- */
-export const zFileInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  output_variable_name: z.string(),
-  type: z.literal('file').optional().default('file'),
-})
-
-/**
- * FileListInputConfig
- */
-export const zFileListInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  number_limits: z.int().gte(0).optional().default(0),
-  output_variable_name: z.string(),
-  type: z.literal('file-list').optional().default('file-list'),
 })
 
 /**
@@ -2311,6 +2344,8 @@ export const zAgentKnowledgeMetadataConditions = z.object({
  * The Python attribute uses ``metadata_model_config`` for clarity because the
  * model belongs to metadata filtering specifically, while the external API and
  * generated schema keep the historical ``model_config`` field name via alias.
+ * Mode-dependent completeness is enforced by composer publish validation so
+ * draft saves can persist partially configured metadata filters.
  */
 export const zAgentKnowledgeMetadataFilteringConfig = z.object({
   conditions: zAgentKnowledgeMetadataConditions.nullish(),
@@ -3364,6 +3399,19 @@ export const zGetAgentByAgentIdReferencingWorkflowsPath = z.object({
  * Referencing workflows listed successfully
  */
 export const zGetAgentByAgentIdReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
+
+export const zGetAgentByAgentIdSandboxPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdSandboxQuery = z.object({
+  conversation_id: z.string().min(1),
+})
+
+/**
+ * Sandbox information returned
+ */
+export const zGetAgentByAgentIdSandboxResponse = zSandboxInfoResponse
 
 export const zGetAgentByAgentIdSandboxFilesPath = z.object({
   agent_id: z.uuid(),

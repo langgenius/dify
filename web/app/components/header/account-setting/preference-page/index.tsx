@@ -2,10 +2,11 @@
 import type { Locale } from '@/i18n-config'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { refreshUserProfileAtom, userProfileAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
@@ -19,7 +20,7 @@ type SelectOption = {
 }
 
 type TimezoneOption = {
-  value: string | number
+  value: string
   name: string
 }
 
@@ -35,7 +36,8 @@ const isThemeOption = (value: string): value is ThemeOption => {
 
 export default function PreferencePage() {
   const locale = useLocale()
-  const { userProfile, mutateUserProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -77,7 +79,7 @@ export default function PreferencePage() {
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      mutateUserProfile()
+      refreshUserProfile()
     }
     catch (e) {
       toast.error((e as Error).message)
@@ -119,7 +121,7 @@ export default function PreferencePage() {
           value={selectedLanguage?.value ?? null}
           disabled={editing}
           onValueChange={(nextValue) => {
-            if (!nextValue)
+            if (nextValue == null)
               return
             const nextItem = languageOptions.find(item => item.value === nextValue)
             if (nextItem)
@@ -142,12 +144,12 @@ export default function PreferencePage() {
       <div className="mb-6">
         <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
         <Select
-          value={selectedTimezone ? String(selectedTimezone.value) : null}
+          value={selectedTimezone?.value ?? null}
           disabled={editing}
           onValueChange={(nextValue) => {
             if (!nextValue)
               return
-            const nextItem = timezones.find(item => String(item.value) === nextValue)
+            const nextItem = timezones.find(item => item.value === nextValue)
             if (nextItem)
               handleSelectTimezone(nextItem)
           }}
@@ -157,7 +159,7 @@ export default function PreferencePage() {
           </SelectTrigger>
           <SelectContent>
             {timezones.map(item => (
-              <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>

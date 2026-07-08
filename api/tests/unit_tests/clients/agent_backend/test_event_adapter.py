@@ -1,6 +1,7 @@
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
+    AgentRunUsage,
     DeferredToolCallPayload,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
@@ -59,7 +60,11 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
         RunSucceededEvent(
             id="3-0",
             run_id="run-1",
-            data=RunSucceededEventData(output={"summary": "done"}, session_snapshot=snapshot),
+            data=RunSucceededEventData(
+                output={"summary": "done"},
+                session_snapshot=snapshot,
+                usage=AgentRunUsage(prompt_tokens=2, completion_tokens=3),
+            ),
         )
     )
 
@@ -69,6 +74,7 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
             source_event_id="3-0",
             output={"summary": "done"},
             session_snapshot=snapshot,
+            usage={"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5},
         )
     ]
 

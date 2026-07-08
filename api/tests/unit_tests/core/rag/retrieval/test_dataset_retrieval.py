@@ -95,6 +95,16 @@ def _metadata_condition() -> AppMetadataFilteringCondition:
     return AppMetadataFilteringCondition(logical_operator="and", conditions=[])
 
 
+@contextmanager
+def _patched_retriever_session():
+    session = MagicMock()
+    session_ctx = MagicMock()
+    session_ctx.__enter__.return_value = session
+    session_ctx.__exit__.return_value = None
+    with patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session", return_value=session_ctx):
+        yield session
+
+
 def create_side_effect_for_search(documents: list[Document]):
     """
     Create a side effect function for mocking search methods.
@@ -1682,7 +1692,15 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            session,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1694,23 +1712,24 @@ class TestRetrievalService:
         all_documents = []
 
         # Act - Call with dataset_count = 1
-        dataset_retrieval._multiple_retrieve_thread(
-            flask_app=mock_flask_app,
-            available_datasets=[mock_dataset],
-            metadata_condition=None,
-            metadata_filter_document_ids=None,
-            all_documents=all_documents,
-            tenant_id=tenant_id,
-            reranking_enable=True,
-            reranking_mode="reranking_model",
-            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
-            weights=None,
-            top_k=5,
-            score_threshold=0.5,
-            query="test query",
-            attachment_id=None,
-            dataset_count=1,  # Single dataset - should skip second reranking
-        )
+        with _patched_retriever_session():
+            dataset_retrieval._multiple_retrieve_thread(
+                flask_app=mock_flask_app,
+                available_datasets=[mock_dataset],
+                metadata_condition=None,
+                metadata_filter_document_ids=None,
+                all_documents=all_documents,
+                tenant_id=tenant_id,
+                reranking_enable=True,
+                reranking_mode="reranking_model",
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+                weights=None,
+                top_k=5,
+                score_threshold=0.5,
+                query="test query",
+                attachment_id=None,
+                dataset_count=1,  # Single dataset - should skip second reranking
+            )
 
         # Assert
         # DataPostProcessor should NOT be called (second reranking skipped)
@@ -1757,7 +1776,15 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            session,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1793,23 +1820,24 @@ class TestRetrievalService:
         mock_dataset2.provider = "dify"
 
         # Act - Call with dataset_count = 2
-        dataset_retrieval._multiple_retrieve_thread(
-            flask_app=mock_flask_app,
-            available_datasets=[mock_dataset, mock_dataset2],
-            metadata_condition=None,
-            metadata_filter_document_ids=None,
-            all_documents=all_documents,
-            tenant_id=tenant_id,
-            reranking_enable=True,
-            reranking_mode="reranking_model",
-            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
-            weights=None,
-            top_k=5,
-            score_threshold=0.5,
-            query="test query",
-            attachment_id=None,
-            dataset_count=2,  # Multiple datasets - should perform second reranking
-        )
+        with _patched_retriever_session():
+            dataset_retrieval._multiple_retrieve_thread(
+                flask_app=mock_flask_app,
+                available_datasets=[mock_dataset, mock_dataset2],
+                metadata_condition=None,
+                metadata_filter_document_ids=None,
+                all_documents=all_documents,
+                tenant_id=tenant_id,
+                reranking_enable=True,
+                reranking_mode="reranking_model",
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+                weights=None,
+                top_k=5,
+                score_threshold=0.5,
+                query="test query",
+                attachment_id=None,
+                dataset_count=2,  # Multiple datasets - should perform second reranking
+            )
 
         # Assert
         # DataPostProcessor SHOULD be called (second reranking performed)
@@ -1867,7 +1895,15 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            session,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1889,23 +1925,24 @@ class TestRetrievalService:
         all_documents = []
 
         # Act - Call with dataset_count = 1
-        dataset_retrieval._multiple_retrieve_thread(
-            flask_app=mock_flask_app,
-            available_datasets=[mock_dataset],
-            metadata_condition=None,
-            metadata_filter_document_ids=None,
-            all_documents=all_documents,
-            tenant_id=tenant_id,
-            reranking_enable=True,  # Reranking enabled but should be skipped for single dataset
-            reranking_mode="reranking_model",
-            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
-            weights=None,
-            top_k=5,
-            score_threshold=0.5,
-            query="test query",
-            attachment_id=None,
-            dataset_count=1,
-        )
+        with _patched_retriever_session():
+            dataset_retrieval._multiple_retrieve_thread(
+                flask_app=mock_flask_app,
+                available_datasets=[mock_dataset],
+                metadata_condition=None,
+                metadata_filter_document_ids=None,
+                all_documents=all_documents,
+                tenant_id=tenant_id,
+                reranking_enable=True,  # Reranking enabled but should be skipped for single dataset
+                reranking_mode="reranking_model",
+                reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+                weights=None,
+                top_k=5,
+                score_threshold=0.5,
+                query="test query",
+                attachment_id=None,
+                dataset_count=1,
+            )
 
         # Assert
         # DataPostProcessor should NOT be called
@@ -3720,7 +3757,15 @@ class TestKnowledgeRetrievalRegression:
         )
 
         def fake_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            session,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
         ):
             all_documents.append(document)
 
@@ -3744,32 +3789,35 @@ class TestKnowledgeRetrievalRegression:
         thread_exceptions: list[Exception] = []
 
         def target():
-            with patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever):
-                with patch(
+            with (
+                patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever),
+                patch(
                     "core.rag.retrieval.dataset_retrieval.DataPostProcessor",
                     ContextRequiredPostProcessor,
-                ):
-                    dataset_retrieval._multiple_retrieve_thread(
-                        flask_app=flask_app,
-                        available_datasets=[mock_dataset, secondary_dataset],
-                        metadata_condition=None,
-                        metadata_filter_document_ids=None,
-                        all_documents=all_documents,
-                        tenant_id=tenant_id,
-                        reranking_enable=True,
-                        reranking_mode="reranking_model",
-                        reranking_model={
-                            "reranking_provider_name": "cohere",
-                            "reranking_model_name": "rerank-v2",
-                        },
-                        weights=None,
-                        top_k=3,
-                        score_threshold=0.0,
-                        query="test query",
-                        attachment_id=None,
-                        dataset_count=2,  # force reranking branch
-                        thread_exceptions=thread_exceptions,  # ✅ key
-                    )
+                ),
+                _patched_retriever_session(),
+            ):
+                dataset_retrieval._multiple_retrieve_thread(
+                    flask_app=flask_app,
+                    available_datasets=[mock_dataset, secondary_dataset],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=all_documents,
+                    tenant_id=tenant_id,
+                    reranking_enable=True,
+                    reranking_mode="reranking_model",
+                    reranking_model={
+                        "reranking_provider_name": "cohere",
+                        "reranking_model_name": "rerank-v2",
+                    },
+                    weights=None,
+                    top_k=3,
+                    score_threshold=0.0,
+                    query="test query",
+                    attachment_id=None,
+                    dataset_count=2,  # force reranking branch
+                    thread_exceptions=thread_exceptions,
+                )
 
         t = threading.Thread(target=target)
         t.start()
@@ -3780,6 +3828,53 @@ class TestKnowledgeRetrievalRegression:
 
         # Current buggy code should record an exception (not raise it)
         assert not thread_exceptions, thread_exceptions
+
+    def test_run_retriever_thread_provides_session_to_retriever(self):
+        dataset_retrieval = DatasetRetrieval()
+        all_documents: list[Document] = []
+
+        with _patched_retriever_session() as session:
+            with patch.object(dataset_retrieval, "_retriever") as mock_retriever:
+                dataset_retrieval._run_retriever_thread(
+                    flask_app=_FakeFlaskApp(),
+                    dataset_id="dataset-1",
+                    query="test query",
+                    top_k=3,
+                    all_documents=all_documents,
+                    document_ids_filter=None,
+                    metadata_condition=None,
+                    attachment_ids=None,
+                    cancel_event=None,
+                    thread_exceptions=[],
+                )
+
+        mock_retriever.assert_called_once()
+        assert mock_retriever.call_args.kwargs["session"] is session
+
+    def test_run_retriever_thread_records_retriever_exception(self):
+        dataset_retrieval = DatasetRetrieval()
+        all_documents: list[Document] = []
+        cancel_event = threading.Event()
+        thread_exceptions: list[Exception] = []
+        expected_error = RuntimeError("retrieval failed")
+
+        with _patched_retriever_session():
+            with patch.object(dataset_retrieval, "_retriever", side_effect=expected_error):
+                dataset_retrieval._run_retriever_thread(
+                    flask_app=_FakeFlaskApp(),
+                    dataset_id="dataset-1",
+                    query="test query",
+                    top_k=3,
+                    all_documents=all_documents,
+                    document_ids_filter=None,
+                    metadata_condition=None,
+                    attachment_ids=None,
+                    cancel_event=cancel_event,
+                    thread_exceptions=thread_exceptions,
+                )
+
+        assert cancel_event.is_set()
+        assert thread_exceptions == [expected_error]
 
 
 class _FakeFlaskApp:

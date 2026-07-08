@@ -5,13 +5,13 @@ import {
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
 } from '../../agent-v2/support/preflight/access'
+import { skipMissingAgentBackendRuntime } from '../../agent-v2/support/preflight/agent-backend'
 import {
   skipMissingPreseededAgent,
   skipMissingPreseededAgentDriveSkill,
-  skipMissingPreseededAgentFileTreeFixture,
-  skipMissingPreseededAgentFlatFileFixtureConfiguration,
   skipMissingPreseededDualRetrievalAgentConfiguration,
   skipMissingPreseededFullConfigAgentCoreConfiguration,
+  skipMissingPreseededOAuthToolAgentConfiguration,
   skipMissingPreseededToolStatesAgentConfiguration,
   skipMissingPreseededWorkflow,
 } from '../../agent-v2/support/preflight/agents'
@@ -21,6 +21,7 @@ import {
   skipMissingReadyPreseededDataset,
 } from '../../agent-v2/support/preflight/datasets'
 import {
+  skipMissingAgentBuilderAgentDecisionChatModel,
   skipMissingAgentBuilderBrokenChatModel,
   skipMissingAgentBuilderStableChatModel,
 } from '../../agent-v2/support/preflight/models'
@@ -34,12 +35,26 @@ Given('the Agent Builder stable chat model is available', async function (this: 
   this.agentBuilder.preflight.stableModel = stableModel
 })
 
+Given('the Agent Builder agent-decision chat model is available', async function (this: DifyWorld) {
+  const agentDecisionModel = await skipMissingAgentBuilderAgentDecisionChatModel(this)
+  if (agentDecisionModel === 'skipped')
+    return agentDecisionModel
+
+  this.agentBuilder.preflight.agentDecisionModel = agentDecisionModel
+})
+
 Given('the Agent Builder broken chat model is available', async function (this: DifyWorld) {
   const brokenModel = await skipMissingAgentBuilderBrokenChatModel(this)
   if (brokenModel === 'skipped')
     return brokenModel
 
   this.agentBuilder.preflight.brokenModel = brokenModel
+})
+
+Given('the Agent v2 runtime backend is available', async function (this: DifyWorld) {
+  const runtimeBackend = await skipMissingAgentBackendRuntime(this)
+  if (runtimeBackend === 'skipped')
+    return runtimeBackend
 })
 
 Given(
@@ -143,6 +158,18 @@ Given(
 )
 
 Given(
+  'the Agent Builder preseeded Agent {string} includes an OAuth2 tool credential',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededOAuthToolAgentConfiguration(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilder.preflight.preseededResources[`${agentName} / OAuth2 tool credential`]
+      = resource
+  },
+)
+
+Given(
   'the Agent Builder preseeded Agent {string} includes the dual retrieval fixture configuration',
   async function (this: DifyWorld, agentName: string) {
     const resource = await skipMissingPreseededDualRetrievalAgentConfiguration(this, agentName)
@@ -150,29 +177,6 @@ Given(
       return resource
 
     this.agentBuilder.preflight.preseededResources[`${agentName} / dual retrieval fixture configuration`]
-      = resource
-  },
-)
-
-Given(
-  'the Agent Builder preseeded Agent {string} includes the file tree fixture files',
-  async function (this: DifyWorld, agentName: string) {
-    const resource = await skipMissingPreseededAgentFileTreeFixture(this, agentName)
-    if (resource === 'skipped')
-      return resource
-
-    this.agentBuilder.preflight.preseededResources[`${agentName} / file tree fixture`] = resource
-  },
-)
-
-Given(
-  'the Agent Builder preseeded Agent {string} includes the current flat file fixture configuration',
-  async function (this: DifyWorld, agentName: string) {
-    const resource = await skipMissingPreseededAgentFlatFileFixtureConfiguration(this, agentName)
-    if (resource === 'skipped')
-      return resource
-
-    this.agentBuilder.preflight.preseededResources[`${agentName} / flat file fixture configuration`]
       = resource
   },
 )

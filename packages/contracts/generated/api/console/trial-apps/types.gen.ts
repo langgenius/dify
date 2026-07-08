@@ -46,8 +46,6 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -115,7 +113,7 @@ export type AudioBinaryResponse = Blob | File
 export type TrialWorkflowResponse = {
   conversation_variables?: Array<JsonObject2>
   created_at?: number | null
-  created_by?: TrialWorkflowAccount | null
+  created_by?: TrialSimpleAccount | null
   environment_variables?: Array<JsonObject2>
   features?: JsonObject2
   graph: JsonObject2
@@ -126,7 +124,7 @@ export type TrialWorkflowResponse = {
   rag_pipeline_variables?: Array<JsonObject2>
   tool_published?: boolean | null
   updated_at?: number | null
-  updated_by?: TrialWorkflowAccount | null
+  updated_by?: TrialSimpleAccount | null
   version?: string | null
 }
 
@@ -220,17 +218,6 @@ export type TrialWorkflowPartialResponse = {
   updated_by?: string | null
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type TrialDatasetResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -259,7 +246,7 @@ export type JsonObject2 = {
   [key: string]: unknown
 }
 
-export type TrialWorkflowAccount = {
+export type TrialSimpleAccount = {
   email?: string | null
   id: string
   name?: string | null
@@ -277,8 +264,6 @@ export type TrialAppModel = {
   name: string
   provider: string
 }
-
-export type GeneratedAppResponseWritable = JsonValue
 
 export type SiteWritable = {
   chat_color_theme?: string | null
@@ -339,7 +324,9 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponse
@@ -355,7 +342,9 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponse
@@ -472,7 +461,9 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponse

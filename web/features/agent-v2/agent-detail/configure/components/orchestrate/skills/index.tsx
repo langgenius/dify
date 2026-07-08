@@ -6,7 +6,11 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import {
+  agentComposerSkillsAtom,
+  removeAgentSkillAtom,
+  upsertAgentSkillAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
@@ -25,7 +29,8 @@ export function AgentSkills() {
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
   const skills = useAtomValue(agentComposerSkillsAtom)
-  const setSkills = useSetAtom(agentComposerSkillsAtom)
+  const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
+  const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
   const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.config.skills.byName.delete.mutationOptions())
   const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.config.skills.byName.delete.mutationOptions())
 
@@ -36,13 +41,10 @@ export function AgentSkills() {
   useRegisterAgentOrchestrateAddAction('skills', handleOpenUpload)
 
   const handleUploaded = useCallback((skill: AgentSkill) => {
-    setSkills(skills => [
-      ...skills.filter(item => item.id !== skill.id),
-      skill,
-    ])
+    upsertAgentSkill(skill)
     promptAddCallbackRef.current?.(skill)
     promptAddCallbackRef.current = undefined
-  }, [setSkills])
+  }, [upsertAgentSkill])
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
     if (!open)
@@ -56,7 +58,7 @@ export function AgentSkills() {
       return
 
     const onSuccess = () => {
-      setSkills(skills => skills.filter(item => item.id !== skillId))
+      removeAgentSkill(skillId)
     }
     if (apiContext.workflow) {
       deleteAppSkill({
@@ -83,7 +85,7 @@ export function AgentSkills() {
         version_id: apiContext.versionId,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentSkill, deleteAppSkill, setSkills, skills])
+  }, [apiContext, deleteAgentSkill, deleteAppSkill, removeAgentSkill, skills])
 
   return (
     <>

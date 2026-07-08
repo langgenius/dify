@@ -101,6 +101,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
                 callbacks=[],
+                request_metadata={"app_id": self.app_config.app_id},
             )
 
             tool_calls: list[tuple[str, str, dict[str, Any]]] = []

@@ -46,7 +46,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
-from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
+from services.agent.prompt_mentions import expand_prompt_mentions
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -124,17 +124,14 @@ class AgentAppRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        config_layer_config = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(
-                agent_soul,
-                agent_id=context.agent_id,
-                config_version_id=context.agent_config_snapshot_id,
-                config_version_kind=context.agent_config_version_kind,
-            )
-            append_runtime_warnings(metadata, config_warnings)
-            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent_id,
+            config_version_id=context.agent_config_snapshot_id,
+            config_version_kind=context.agent_config_version_kind,
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_agent_app(

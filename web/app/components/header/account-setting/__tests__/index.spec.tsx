@@ -31,6 +31,16 @@ vi.mock('@/context/app-context', async (importOriginal) => {
   }
 })
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -77,10 +87,14 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-  useProviderContext: vi.fn(),
-}))
+vi.mock('@/service/use-common', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-common')>()
+  return {
+    ...actual,
+    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
+    useProviderContext: vi.fn(),
+  }
+})
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()

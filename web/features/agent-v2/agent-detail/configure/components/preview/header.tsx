@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
@@ -14,7 +14,7 @@ function AgentModeTipSection({
 }: {
   iconClassName: string
   title: string
-  children: string
+  children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -27,6 +27,83 @@ function AgentModeTipSection({
   )
 }
 
+function ModeInfoTip({
+  children,
+  ariaLabel,
+}: {
+  children: ReactNode
+  ariaLabel: string
+}) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        aria-label={ariaLabel}
+        onClick={handleClick}
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      >
+        <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary hover:text-text-secondary" />
+      </PopoverTrigger>
+      <PopoverContent
+        placement="bottom"
+        sideOffset={2}
+        popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function PreviewModeItem({
+  previewEnabled,
+  disabledTip,
+  children,
+}: {
+  previewEnabled: boolean
+  disabledTip: string
+  children: ReactNode
+}) {
+  const item = (
+    <SegmentedControlItem<AgentConfigureRightPanelMode>
+      value="preview"
+      disabled={!previewEnabled}
+      className="uppercase"
+    >
+      {children}
+    </SegmentedControlItem>
+  )
+
+  if (previewEnabled)
+    return item
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        nativeButton={false}
+        aria-label={disabledTip}
+        render={<span className="inline-flex" />}
+      >
+        {item}
+      </PopoverTrigger>
+      <PopoverContent
+        placement="bottom"
+        sideOffset={6}
+        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+      >
+        {disabledTip}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function AgentPreviewHeader({
   mode,
   previewEnabled,
@@ -36,6 +113,7 @@ export function AgentPreviewHeader({
   onOpenWorkingDirectory,
   onRefresh,
   refreshDisabled,
+  showWorkingDirectoryAction = false,
   showChatFeaturesAction = true,
   trailingAction,
 }: {
@@ -47,6 +125,7 @@ export function AgentPreviewHeader({
   onOpenWorkingDirectory: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
+  showWorkingDirectoryAction?: boolean
   showChatFeaturesAction?: boolean
   trailingAction?: ReactNode
 }) {
@@ -56,8 +135,9 @@ export function AgentPreviewHeader({
   const buildTipBody = t('agentDetail.configure.rightPanel.buildTipBody')
   const previewLabel = t('agentDetail.configure.rightPanel.preview')
   const previewTipBody = t('agentDetail.configure.rightPanel.previewTipBody')
+  const previewDisabledTip = t('agentDetail.configure.rightPanel.previewDisabledTip')
   const learnMoreLabel = t('agentDetail.configure.rightPanel.learnMore')
-  const modeTip = `${buildLabel}. ${buildTipBody} ${previewLabel}. ${previewTipBody} ${learnMoreLabel}`
+  const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
 
   return (
     <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
@@ -75,42 +155,34 @@ export function AgentPreviewHeader({
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t('agentDetail.configure.rightPanel.build')}
           </SegmentedControlItem>
-          <SegmentedControlItem<AgentConfigureRightPanelMode>
-            value="preview"
-            disabled={!previewEnabled}
-            className="uppercase"
-          >
+          <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
             {t('agentDetail.configure.rightPanel.preview')}
-          </SegmentedControlItem>
+          </PreviewModeItem>
         </SegmentedControl>
-        <Infotip
-          aria-label={modeTip}
-          placement="bottom"
-          sideOffset={2}
-          className="size-5 rounded-md"
-          iconClassName="size-4 text-text-tertiary"
-          popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
-        >
+        <ModeInfoTip ariaLabel={modeTip}>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-3">
               <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-build" title={buildLabel}>
-                {buildTipBody}
+                <>
+                  {buildTipBody}
+                  {' '}
+                  <a
+                    href={docLink('/use-dify/build/new-agent/build#build-by-chatting')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="body-xs-regular text-text-accent hover:underline"
+                  >
+                    {learnMoreLabel}
+                  </a>
+                </>
               </AgentModeTipSection>
               <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-preview" title={previewLabel}>
                 {previewTipBody}
               </AgentModeTipSection>
             </div>
-            <a
-              href={docLink('/use-dify/build/agent')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="body-xs-regular text-text-accent hover:underline"
-            >
-              {learnMoreLabel}
-            </a>
           </div>
-        </Infotip>
+        </ModeInfoTip>
       </div>
       <div className="flex shrink-0 items-center">
         <div className="flex items-center gap-2">
@@ -123,14 +195,15 @@ export function AgentPreviewHeader({
           >
             <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
           </button>
-          {mode === 'build' && (
+          {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"
               onClick={onOpenWorkingDirectory}
-              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               aria-label={t('agentDetail.configure.workingDirectory.open')}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
+              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.workingDirectory.fileSystem')}</span>
             </button>
           )}
         </div>

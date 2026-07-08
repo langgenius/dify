@@ -19,6 +19,18 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   ApiKeyModal: vi.fn(({ onClose, onUpdate, onRemove, disabled, editValues }: { onClose: () => void, onUpdate: () => void, onRemove: () => void, disabled: boolean, editValues: Record<string, unknown> }) => (
     <div data-testid="mock-api-key-modal" data-disabled={disabled}>

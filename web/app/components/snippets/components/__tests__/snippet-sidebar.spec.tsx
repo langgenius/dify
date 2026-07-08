@@ -152,6 +152,19 @@ describe('SnippetSidebarContent', () => {
     expect(capturedVarListProps?.readonly).toBe(true)
   })
 
+  it('should render the orchestrate route menu item', () => {
+    render(
+      <SnippetSidebarContent
+        snippet={snippet}
+        fields={fields}
+        readonly={false}
+        onFieldsChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+  })
+
   it('should add a new input field from the config variable modal', () => {
     const onFieldsChange = vi.fn()
     render(

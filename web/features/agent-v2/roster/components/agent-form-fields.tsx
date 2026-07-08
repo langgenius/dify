@@ -28,6 +28,7 @@ export function AgentFormFields({
   role,
 }: AgentFormFieldsProps) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
 
   return (
     <div className="space-y-5 px-6 py-3">
@@ -80,34 +81,29 @@ export function AgentFormFields({
           <FieldRoot
             name="role"
             className="relative min-w-0 flex-1"
-            validate={(value) => {
-              if (typeof value === 'string' && value.length > 0 && !value.trim())
-                return t('roster.createForm.roleRequired')
-
-              return null
-            }}
           >
             <FieldLabel>
               {t('roster.createForm.roleLabel')}
+              <span className="ml-1 system-xs-regular text-text-tertiary">
+                {tCommon('label.optional')}
+              </span>
             </FieldLabel>
             <FieldControl
               autoComplete="off"
               maxLength={255}
               onValueChange={onRoleChange}
               placeholder={t('roster.createForm.rolePlaceholder')}
-              required
               value={role}
             />
-            <div className="absolute top-full left-0 mt-1">
-              <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
-              <FieldError match="customError" />
-            </div>
           </FieldRoot>
         </div>
       </div>
       <FieldRoot name="description">
         <FieldLabel>
           {t('roster.createForm.descriptionLabel')}
+          <span className="ml-1 system-xs-regular text-text-tertiary">
+            {tCommon('label.optional')}
+          </span>
         </FieldLabel>
         <Textarea
           autoComplete="off"
