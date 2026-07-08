@@ -31,7 +31,7 @@ const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOpti
 
 const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
 
-export const systemFeaturesAtom = atom((get): GetSystemFeaturesResponse => {
+const systemFeaturesAtom = atom((get): GetSystemFeaturesResponse => {
   const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
 
   return systemFeaturesQuery.data ?? defaultSystemFeatures
