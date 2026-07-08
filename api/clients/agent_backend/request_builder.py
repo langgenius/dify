@@ -129,7 +129,10 @@ def _wrap_build_draft_agent_soul_prompt(prompt: str | None) -> str:
     if not prompt_body:
         return _BUILD_DRAFT_AGENT_SOUL_PROMPT + "\n\nIntended task for later normal runs:\nNo task prompt was provided."
     fence = _markdown_backtick_fence(prompt_body)
-    return _BUILD_DRAFT_AGENT_SOUL_PROMPT + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
+    return (
+        _BUILD_DRAFT_AGENT_SOUL_PROMPT
+        + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
+    )
 
 
 def _agent_soul_prompt_for_layer(

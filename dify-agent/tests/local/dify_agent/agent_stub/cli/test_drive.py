@@ -646,14 +646,14 @@ def test_push_drive_from_environment_kind_skill_standardizes_skill_directory(
     uploaded_paths: list[str] = []
 
     def fake_upload(*, path: str) -> UploadedToolFileResource:
-            uploaded_paths.append(Path(path).name)
-            return UploadedToolFileResource(
-                mapping=AgentStubFileMapping(
-                    transfer_method="tool_file",
-                    reference=_reference(Path(path).name),
-                ),
-                tool_file_id=Path(path).name,
-            )
+        uploaded_paths.append(Path(path).name)
+        return UploadedToolFileResource(
+            mapping=AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference=_reference(Path(path).name),
+            ),
+            tool_file_id=Path(path).name,
+        )
 
     monkeypatch.setattr("dify_agent.agent_stub.cli._drive.upload_tool_file_resource_from_environment", fake_upload)
     monkeypatch.setattr(
