@@ -21876,6 +21876,12 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
 
+#### Tool
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
 #### ToolApiEntity
 
 | Name | Type | Description | Required |
@@ -21910,6 +21916,12 @@ Tool label
 | icon | string | The icon of the tool | Yes |
 | label | [I18nObject](#i18nobject) | The label of the tool | Yes |
 | name | string | The name of the tool | Yes |
+
+#### ToolLabelEnum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolLabelEnum | string |  |  |
 
 #### ToolLabelListResponse
 
@@ -22020,6 +22032,27 @@ removes TOOLS_SELECTOR from PluginParameterType
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderCredentialListResponse | array |  |  |
+
+#### ToolProviderEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
+| identity | [ToolProviderIdentity](#toolprovideridentity) |  | Yes |
+| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
+| plugin_id | string |  | No |
+
+#### ToolProviderIdentity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the tool | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| icon | string | The icon of the tool | Yes |
+| icon_dark | string | The dark icon of the tool | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
 
 #### ToolProviderListQuery
 
@@ -22335,12 +22368,6 @@ Enum class for tool provider
 | supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
 | tags | [ string ] | The tags of the trigger provider | No |
 
-#### TriggerProviderErrorResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | string |  | Yes |
-
 #### TriggerProviderEntity
 
 The configuration of a trigger provider
@@ -22351,6 +22378,12 @@ The configuration of a trigger provider
 | identity | [TriggerProviderIdentity](#triggerprovideridentity) |  | Yes |
 | subscription_constructor | [SubscriptionConstructor](#subscriptionconstructor) | The subscription constructor of the trigger provider | No |
 | subscription_schema | [ [ProviderConfig](#providerconfig) ] | The configuration schema stored in the subscription entity | No |
+
+#### TriggerProviderErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
 
 #### TriggerProviderIdentity
 

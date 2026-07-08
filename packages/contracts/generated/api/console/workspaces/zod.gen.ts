@@ -1361,6 +1361,22 @@ export const zI18nObject = z.object({
 })
 
 /**
+ * PluginParameterOption
+ */
+export const zPluginParameterOption = z.object({
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * PluginDynamicOptionsResponse
+ */
+export const zPluginDynamicOptionsResponse = z.object({
+  options: z.array(zPluginParameterOption),
+})
+
+/**
  * ToolLabel
  *
  * Tool label
