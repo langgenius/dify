@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { PopoverClose } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
@@ -13,10 +14,12 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type CardProps = {
   apiEnabled: boolean
+  onOpenSecretKeyModal: () => void
 }
 
 const Card = ({
   apiEnabled,
+  onOpenSecretKeyModal,
 }: CardProps) => {
   const { t } = useTranslation()
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
@@ -83,6 +86,20 @@ const Card = ({
       </div>
       <div className="h-px bg-divider-subtle"></div>
       <div className="p-1">
+        <PopoverClose
+          render={(
+            <button
+              type="button"
+              className="flex h-8 w-full items-center space-x-[7px] rounded-lg border-none bg-transparent px-2 text-left text-text-tertiary hover:bg-state-base-hover"
+              onClick={onOpenSecretKeyModal}
+            >
+              <span className="i-ri-key-2-line size-3.5 shrink-0" />
+              <div className="grow truncate system-sm-regular">
+                {t('serviceApi.card.apiKey', { ns: 'dataset' })}
+              </div>
+            </button>
+          )}
+        />
         <Link
           href={apiReferenceUrl}
           target="_blank"

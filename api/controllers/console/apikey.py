@@ -1,11 +1,13 @@
+from collections.abc import Iterable
 from datetime import datetime
+from typing import override
 from uuid import UUID
 
 import flask_restx
 from flask_restx import Resource
 from flask_restx._http import HTTPStatus
 from pydantic import field_validator
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -38,6 +40,9 @@ class ApiKeyItem(ResponseModel):
     id: str
     type: str
     token: str
+    # Set only for dataset keys bound to a single knowledge base; None means the
+    # key is workspace-scoped (app keys are always None).
+    dataset_id: str | None = None
     last_used_at: int | None = None
     created_at: int | None = None
 
@@ -52,6 +57,28 @@ class ApiKeyList(ResponseModel):
 
 
 register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
+
+
+def mask_api_token(token: str) -> str:
+    """Mask a secret token for list responses.
+
+    Reveal-once: the full secret is only returned by the create endpoint. List
+    endpoints expose just enough (prefix + last 4) to identify a key, never the
+    full value, so an existing key's secret cannot be retrieved after creation.
+    """
+    if len(token) <= 8:
+        return "***"
+    return f"{token[:5]}...{token[-4:]}"
+
+
+def build_masked_api_key_list(api_tokens: Iterable[ApiToken]) -> ApiKeyList:
+    """Build an ApiKeyList from ORM tokens with their secrets masked."""
+    items: list[ApiKeyItem] = []
+    for api_token in api_tokens:
+        item = ApiKeyItem.model_validate(api_token, from_attributes=True)
+        item.token = mask_api_token(item.token)
+        items.append(item)
+    return ApiKeyList(data=items)
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
@@ -87,7 +114,7 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return ApiKeyList.model_validate({"data": keys}, from_attributes=True)
+        return build_masked_api_key_list(keys)
 
     @edit_permission_required
     def post(self, resource_id: str, current_tenant_id: str) -> tuple[dict[str, object], int]:
@@ -224,17 +251,40 @@ class AppApiKeyResource(BaseApiKeyResource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
+    """Per-dataset API keys: keys created here are bound to a single dataset.
+
+    Binding is stored in ``ApiToken.dataset_id`` and enforced by
+    ``validate_dataset_token`` (controllers/service_api/wraps.py). Workspace-scoped
+    keys (NULL ``dataset_id``) are managed by ``DatasetApiKeyApi`` in
+    controllers/console/datasets/datasets.py.
+    """
+
     @console_ns.doc("get_dataset_api_keys")
-    @console_ns.doc(description="Get all API keys for a dataset")
+    @console_ns.doc(description="Get all API keys that can access a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
     def get(self, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
-        """Get all API keys for a dataset"""
+        """Get all API keys that can access a dataset"""
         return dump_response(ApiKeyList, self._get_api_key_list(str(resource_id), current_tenant_id))
 
+    @override
+    def _get_api_key_list(self, resource_id: str, current_tenant_id: str) -> ApiKeyList:
+        # Unlike the app list, this returns every key that can reach the dataset:
+        # keys bound to it plus the tenant's workspace-scoped (NULL dataset_id) keys,
+        # so the dataset page shows the full access picture rather than a subset.
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
+        keys = db.session.scalars(
+            select(ApiToken).where(
+                ApiToken.type == self.resource_type,
+                ApiToken.tenant_id == current_tenant_id,
+                or_(ApiToken.dataset_id == resource_id, ApiToken.dataset_id.is_(None)),
+            )
+        ).all()
+        return build_masked_api_key_list(keys)
+
     @console_ns.doc("create_dataset_api_key")
-    @console_ns.doc(description="Create a new API key for a dataset")
+    @console_ns.doc(description="Create a new API key bound to a single dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -242,13 +292,15 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
     def post(self, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
-        """Create a new API key for a dataset"""
+        """Create a new API key bound to a single dataset"""
         return dump_response(ApiKeyItem, self._create_api_key(str(resource_id), current_tenant_id)), 201
 
     resource_type = ApiTokenType.DATASET
     resource_model = Dataset
     resource_id_field = "dataset_id"
-    token_prefix = "ds-"
+    # Same prefix as workspace-scoped dataset keys (datasets.py); scope is carried
+    # by the dataset_id column, not the token text.
+    token_prefix = "dataset-"
 
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")

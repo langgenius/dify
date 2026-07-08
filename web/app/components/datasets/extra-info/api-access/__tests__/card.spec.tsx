@@ -1,3 +1,4 @@
+import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -32,6 +33,16 @@ vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
+const onOpenSecretKeyModal = vi.fn()
+
+// Card renders a PopoverClose, which needs an enclosing Popover root.
+const renderCard = (apiEnabled: boolean) =>
+  render(
+    <Popover open>
+      <Card apiEnabled={apiEnabled} onOpenSecretKeyModal={onOpenSecretKeyModal} />
+    </Popover>,
+  )
+
 describe('Card (API Access)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -43,33 +54,33 @@ describe('Card (API Access)', () => {
   // Rendering: verifies enabled/disabled states render correctly
   describe('Rendering', () => {
     it('should render without crashing when api is enabled', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       expect(screen.getByText(/serviceApi\.enabled/)).toBeInTheDocument()
     })
 
     it('should render without crashing when api is disabled', () => {
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
       expect(screen.getByText(/serviceApi\.disabled/)).toBeInTheDocument()
     })
 
     it('should render API access tip text', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       expect(screen.getByText(/appMenus\.apiAccessTip/)).toBeInTheDocument()
     })
 
     it('should render API reference link', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
     })
 
     it('should render API doc text in link', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       expect(screen.getByText(/apiInfo\.doc/)).toBeInTheDocument()
     })
 
     it('should open API reference link in new tab', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -79,13 +90,13 @@ describe('Card (API Access)', () => {
   // Props: tests enabled/disabled visual states
   describe('Props', () => {
     it('should show green indicator text when enabled', () => {
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
       const enabledText = screen.getByText(/serviceApi\.enabled/)
       expect(enabledText).toHaveClass('text-text-success')
     })
 
     it('should show warning text when disabled', () => {
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
       const disabledText = screen.getByText(/serviceApi\.disabled/)
       expect(disabledText).toHaveClass('text-text-warning')
     })
@@ -95,7 +106,7 @@ describe('Card (API Access)', () => {
   describe('User Interactions', () => {
     it('should call enableDatasetServiceApi when toggling on', async () => {
       mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
 
       const switchButton = screen.getByRole('switch')
       fireEvent.click(switchButton)
@@ -107,7 +118,7 @@ describe('Card (API Access)', () => {
 
     it('should call disableDatasetServiceApi when toggling off', async () => {
       mockDisableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
 
       const switchButton = screen.getByRole('switch')
       fireEvent.click(switchButton)
@@ -119,7 +130,7 @@ describe('Card (API Access)', () => {
 
     it('should call mutateDatasetRes on successful toggle', async () => {
       mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
 
       const switchButton = screen.getByRole('switch')
       fireEvent.click(switchButton)
@@ -131,7 +142,7 @@ describe('Card (API Access)', () => {
 
     it('should not call mutateDatasetRes when result is not success', async () => {
       mockEnableApi.mockResolvedValue({ result: 'fail' })
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
 
       const switchButton = screen.getByRole('switch')
       fireEvent.click(switchButton)
@@ -147,7 +158,7 @@ describe('Card (API Access)', () => {
   describe('Switch State', () => {
     it('should disable switch when dataset lacks edit ACL permission', () => {
       mockDatasetPermissionKeys = []
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).toHaveAttribute('aria-checked', 'true')
@@ -156,10 +167,24 @@ describe('Card (API Access)', () => {
 
     it('should enable switch when dataset has edit ACL permission', () => {
       mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
-      render(<Card apiEnabled={true} />)
+      renderCard(true)
 
       const switchButton = screen.getByRole('switch')
       expect(switchButton).not.toHaveAttribute('aria-disabled', 'true')
+    })
+  })
+
+  // API keys entry point
+  describe('API Keys Button', () => {
+    it('should render the API key action', () => {
+      renderCard(true)
+      expect(screen.getByText(/serviceApi\.card\.apiKey/)).toBeInTheDocument()
+    })
+
+    it('should call onOpenSecretKeyModal when the API key action is clicked', () => {
+      renderCard(true)
+      fireEvent.click(screen.getByText(/serviceApi\.card\.apiKey/))
+      expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -168,7 +193,7 @@ describe('Card (API Access)', () => {
     it('should handle undefined dataset id', async () => {
       mockDatasetId = undefined
       mockEnableApi.mockResolvedValue({ result: 'success' })
-      render(<Card apiEnabled={false} />)
+      renderCard(false)
 
       const switchButton = screen.getByRole('switch')
       fireEvent.click(switchButton)
