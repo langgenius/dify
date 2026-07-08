@@ -7,7 +7,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
-import { atomWithResolvedSuspenseQuery } from '@/utils/atom-with-prefetched-query'
+import { atomWithResolvedSuspenseQuery } from '@/utils/query-atoms'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
