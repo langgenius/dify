@@ -126,13 +126,13 @@ def test_factory_builds_shellctl_provider_from_settings() -> None:
     assert provider.token == ""
 
 
-def test_provider_create_opens_only_live_resource_and_close_closes_client() -> None:
+def test_provider_create_opens_only_live_resource_and_suspend_closes_client() -> None:
     client = FakeShellctlClient()
 
     async def scenario() -> None:
         resource = await _provider(client).create()
         assert client.run_calls == []
-        await resource.close()
+        await resource.suspend()
 
     asyncio.run(scenario())
     assert client.closed is True
@@ -198,7 +198,7 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
         interrupt_result = await resource.commands.interrupt("run-job", grace_seconds=1.5)
         tail_result = await resource.commands.tail("run-job")
         await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        await resource.close()
+        await resource.suspend()
 
         assert run_result == ShellCommandResult(
             job_id="run-job",

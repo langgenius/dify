@@ -227,11 +227,32 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
 
 @dataclass(slots=True)
 class ShellctlResource(ShellResourceProtocol):
+    """Live shellctl connection.
+
+    For shellctl there is no separate sandbox lifecycle: the shellctl server is a
+    long-running process that persists across runs. The ``sandbox_id`` is the
+    shellctl entrypoint URL, used as a stable identifier so the layer can
+    distinguish ``create()`` (first run) from ``attach()`` (subsequent runs).
+    Both ``suspend()`` and ``delete()`` simply close the HTTP client; the server
+    and its filesystem remain intact either way.
+    """
+
     client: ShellctlClientProtocol
     commands: ShellCommandProtocol
     files: ShellFileTransferProtocol
+    _sandbox_id: str | None = None
 
-    async def close(self) -> None:
+    @property
+    def sandbox_id(self) -> str | None:
+        return self._sandbox_id
+
+    async def suspend(self) -> None:
+        await self._close_client()
+
+    async def delete(self) -> None:
+        await self._close_client()
+
+    async def _close_client(self) -> None:
         try:
             await self.client.close()
         except RuntimeError as exc:
@@ -246,6 +267,12 @@ class ShellctlProvider(ShellProviderProtocol):
     client_factory: ShellctlClientFactory | None = None
 
     async def create(self) -> ShellctlResource:
+        return self._build_resource(sandbox_id=self.entrypoint)
+
+    async def attach(self, sandbox_id: str) -> ShellctlResource:
+        return self._build_resource(sandbox_id=sandbox_id)
+
+    def _build_resource(self, *, sandbox_id: str | None) -> ShellctlResource:
         client = (
             self.client_factory()
             if self.client_factory is not None
@@ -259,6 +286,7 @@ class ShellctlProvider(ShellProviderProtocol):
             client=client,
             commands=ShellctlCommands(client=client),
             files=ShellctlFileTransfer(client=client),
+            _sandbox_id=sandbox_id,
         )
 
 
