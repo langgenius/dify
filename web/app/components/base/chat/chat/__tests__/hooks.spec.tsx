@@ -1897,6 +1897,47 @@ describe('useChat', () => {
       expect(lastResponse!.more?.tokens_per_second).toBeUndefined()
     })
 
+    it('should handle completed conversation history when message log is missing', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [{
+          id: 'm-without-log',
+          answer: 'final answer',
+          agent_thoughts: [],
+          created_at: Date.now(),
+          inputs: {},
+          query: 'hi',
+        }],
+      })
+
+      const { result } = renderHook(() => useChat())
+      act(() => {
+        result.current.handleSend('test-url', { query: 'fetch test missing log' }, {
+          onGetConversationMessages,
+        })
+      })
+
+      await act(async () => {
+        callbacks.onData(' data', true, { messageId: 'm-without-log', conversationId: 'c-without-log' })
+        await callbacks.onCompleted()
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.content).toBe('final answer')
+      expect(lastResponse!.log).toEqual([{
+        role: 'assistant',
+        text: 'final answer',
+        files: [],
+      }])
+      expect(lastResponse!.more?.tokens).toBe(0)
+      expect(lastResponse!.more?.latency).toBe('0.00')
+      expect(lastResponse!.more?.tokens_per_second).toBeUndefined()
+    })
+
     it('should handle onCompleted using agent thought when thought matches answer', async () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -2004,7 +2045,7 @@ describe('useChat', () => {
       expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought appended')
     })
 
-    it('should append message chunks to answer content for new agent after agent thoughts', () => {
+    it('should preserve response part order for new agent when agent thoughts and messages interleave', () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
@@ -2027,13 +2068,22 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
-        callbacks.onData(' appended', false, { messageId: 'm-thought' })
+        callbacks.onData(' first answer', false, { event: 'agent_message', messageId: 'm-thought' })
+        callbacks.onData(' continued answer', false, { event: 'message', messageId: 'm-thought' })
+        callbacks.onThought({ id: 'th-2', thought: 'second thought' })
+        callbacks.onData(' second answer', false, { event: 'agent_message', messageId: 'm-thought' })
       })
 
       const lastResponse = result.current.chatList[result.current.chatList.length - 1]
-      expect(lastResponse!.content).toBe(' appended')
-      expect(lastResponse!.agent_thoughts).toHaveLength(1)
+      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.agent_thoughts).toHaveLength(2)
       expect(lastResponse!.agent_thoughts![0]!.thought).toBe('initial thought')
+      expect(lastResponse!.agent_response_parts).toEqual([
+        { type: 'thought', thought: expect.objectContaining({ id: 'th-1', thought: 'initial thought' }) },
+        { type: 'message', content: ' first answer continued answer' },
+        { type: 'thought', thought: expect.objectContaining({ id: 'th-2', thought: 'second thought' }) },
+        { type: 'message', content: ' second answer' },
+      ])
     })
   })
 

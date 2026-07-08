@@ -246,32 +246,84 @@ function AgentThoughtsProcessList({
 }) {
   return (
     <div className="mt-2 flex flex-col gap-1">
-      {item.agent_thoughts?.map((thought, index) => {
-        const tools = getToolProcesses(thought, responding)
+      {item.agent_thoughts?.map((thought, index) => (
+        <AgentThoughtProcessItem
+          key={thought.id || `${thought.message_id}-${thought.position}`}
+          thought={thought}
+          responding={responding}
+          defaultOpen={index === 0}
+        />
+      ))}
+    </div>
+  )
+}
+
+function AgentThoughtProcessItem({
+  thought,
+  responding,
+  defaultOpen,
+}: {
+  thought: ThoughtItem
+  responding?: boolean
+  defaultOpen?: boolean
+}) {
+  const tools = getToolProcesses(thought, responding)
+
+  return (
+    <div className="flex flex-col gap-1">
+      {thought.thought && (
+        <ThoughtProcess
+          thought={thought}
+          defaultOpen={defaultOpen}
+        />
+      )}
+      {tools.map(tool => (
+        <ToolProcessCard
+          key={`${thought.id}-${tool.name}`}
+          tool={tool}
+        />
+      ))}
+      {!!thought.message_files?.length && (
+        <FileList
+          className="px-2 py-1"
+          files={thought.message_files}
+          showDeleteAction={false}
+          showDownloadAction
+          canPreview
+        />
+      )}
+    </div>
+  )
+}
+
+function AgentResponsePartList({
+  item,
+  responding,
+}: {
+  item: ChatItem
+  responding?: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      {item.agent_response_parts?.map((part, index) => {
+        if (part.type === 'message') {
+          if (!part.content)
+            return null
+
+          return (
+            <div key={`message-${index}`} className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
+              <Markdown content={part.content} />
+            </div>
+          )
+        }
+
         return (
-          <div key={thought.id || `${thought.message_id}-${thought.position}`} className="flex flex-col gap-1">
-            {thought.thought && (
-              <ThoughtProcess
-                thought={thought}
-                defaultOpen={index === 0}
-              />
-            )}
-            {tools.map(tool => (
-              <ToolProcessCard
-                key={`${thought.id}-${tool.name}`}
-                tool={tool}
-              />
-            ))}
-            {!!thought.message_files?.length && (
-              <FileList
-                className="px-2 py-1"
-                files={thought.message_files}
-                showDeleteAction={false}
-                showDownloadAction
-                canPreview
-              />
-            )}
-          </div>
+          <AgentThoughtProcessItem
+            key={part.thought.id || `${part.thought.message_id}-${part.thought.position}-${index}`}
+            thought={part.thought}
+            responding={responding}
+            defaultOpen={index === 0}
+          />
         )
       })}
     </div>
@@ -352,16 +404,26 @@ export function AgentRosterResponseContent({
 
   return (
     <div className="flex w-full flex-col gap-1" data-testid="agent-roster-response-content">
-      {!!agent_thoughts?.length && (
-        <AgentThoughtsProcessGroup
+      {!!item.agent_response_parts?.length && (
+        <AgentResponsePartList
           item={item}
           responding={responding}
         />
       )}
-      {content && (
-        <div className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
-          <Markdown content={content} />
-        </div>
+      {!item.agent_response_parts?.length && (
+        <>
+          {!!agent_thoughts?.length && (
+            <AgentThoughtsProcessGroup
+              item={item}
+              responding={responding}
+            />
+          )}
+          {content && (
+            <div className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
+              <Markdown content={content} />
+            </div>
+          )}
+        </>
       )}
     </div>
   )

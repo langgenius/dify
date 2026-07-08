@@ -51,6 +51,16 @@ export type ThoughtItem = {
   message_files?: FileEntity[]
 }
 
+export type AgentResponsePart
+  = | {
+    type: 'thought'
+    thought: ThoughtItem
+  }
+  | {
+    type: 'message'
+    content: string
+  }
+
 export type CitationItem = {
   content: string
   data_source_type: string
@@ -113,6 +123,7 @@ export type IChatItem = {
   suggestedQuestions?: string[]
   log?: { role: string, text: string, files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
+  agent_response_parts?: AgentResponsePart[]
   // for LLM reasoning (chain-of-thought) in "separated" mode, keyed by LLM node id
   reasoningContent?: Record<string, string>
   reasoningFinished?: boolean

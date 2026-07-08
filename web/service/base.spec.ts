@@ -130,6 +130,7 @@ describe('handleStream', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalledWith('Hello world', true, {
+        event: 'message',
         conversationId: 'conv-123',
         taskId: 'task-456',
         messageId: 'msg-789',

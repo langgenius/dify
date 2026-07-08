@@ -80,6 +80,8 @@ const Answer: FC<AnswerProps> = ({
     humanInputFilledFormDataList,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
+  const hasAgentResponseParts = !!item.agent_response_parts?.length
+  const hasAgentContent = hasAgentThoughts || hasAgentResponseParts
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
   // Truthy only when there is real reasoning text. Rehydrated messages carry an empty
   // `{}` (the field is always persisted), and `!!{}` would otherwise be truthy.
@@ -190,7 +192,7 @@ const Answer: FC<AnswerProps> = ({
               className={cn('relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary')}
             >
               {
-                !responding && contentIsEmpty && !hasAgentThoughts && (
+                !responding && contentIsEmpty && !hasAgentContent && (
                   <Operation
                     hasWorkflowProcess={!!workflowProcess}
                     maxSize={containerWidth - humanInputFormContainerWidth - 4}
@@ -235,7 +237,7 @@ const Answer: FC<AnswerProps> = ({
                 && item.siblingCount > 1
                 && !responding
                 && contentIsEmpty
-                && !hasAgentThoughts
+                && !hasAgentContent
                 && (
                   <ContentSwitch
                     count={item.siblingCount}
@@ -251,7 +253,7 @@ const Answer: FC<AnswerProps> = ({
         )}
 
         {/* Block 2: Response Content (when human inputs exist) */}
-        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts || hasReasoning) && (
+        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentContent || hasReasoning) && (
           <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
@@ -281,19 +283,19 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
+                responding && contentIsEmpty && !hasAgentContent && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
                 )
               }
               {
-                !contentIsEmpty && !hasAgentThoughts && (
+                !contentIsEmpty && !hasAgentContent && (
                   <BasicContent item={item} />
                 )
               }
               {
-                hasAgentThoughts && (
+                hasAgentContent && (
                   agentContentNode
                 )
               }
@@ -391,19 +393,19 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
+                responding && contentIsEmpty && !hasAgentContent && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
                 )
               }
               {
-                !contentIsEmpty && !hasAgentThoughts && (
+                !contentIsEmpty && !hasAgentContent && (
                   <BasicContent item={item} />
                 )
               }
               {
-                hasAgentThoughts && (
+                hasAgentContent && (
                   agentContentNode
                 )
               }

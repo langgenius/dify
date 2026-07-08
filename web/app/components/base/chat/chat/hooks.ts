@@ -69,6 +69,43 @@ function mergeStreamingThought(currentThought: ThoughtItem, nextThought: Thought
   }
 }
 
+function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
+  if (!responseItem.agent_response_parts)
+    responseItem.agent_response_parts = []
+
+  const lastPart = responseItem.agent_response_parts.at(-1)
+  if (lastPart?.type === 'message') {
+    lastPart.content += message
+  }
+  else {
+    responseItem.agent_response_parts.push({
+      type: 'message',
+      content: message,
+    })
+  }
+}
+
+function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
+  if (!responseItem.agent_response_parts)
+    responseItem.agent_response_parts = []
+
+  const partIndex = responseItem.agent_response_parts.findIndex(part =>
+    part.type === 'thought' && part.thought.id === thought.id,
+  )
+  if (partIndex > -1) {
+    responseItem.agent_response_parts[partIndex] = {
+      type: 'thought',
+      thought,
+    }
+    return
+  }
+
+  responseItem.agent_response_parts.push({
+    type: 'thought',
+    thought,
+  })
+}
+
 export const useChat = (
   config?: ChatConfig,
   formSettings?: {
@@ -287,11 +324,14 @@ export const useChat = (
       getAbortController: (abortController) => {
         workflowEventsAbortControllerRef.current = abortController
       },
-      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
+      onData: (message: string, isFirstMessage: boolean, { event, conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
         updateChatTreeNode(messageId, (responseItem) => {
           const agentThoughts = responseItem.agent_thoughts ?? []
-          const shouldAppendToAnswer = options.isNewAgent || !agentThoughts.length
-          if (shouldAppendToAnswer) {
+          const isNewAgentMessage = options.isNewAgent && (event === 'agent_message' || event === 'message')
+          if (isNewAgentMessage) {
+            appendAgentResponseMessagePart(responseItem, message)
+          }
+          else if (!agentThoughts.length || options.isNewAgent) {
             responseItem.content = responseItem.content + message
           }
           else {
@@ -402,6 +442,10 @@ export const useChat = (
             else {
               responseItem.agent_thoughts.push(thought)
             }
+          }
+          if (options.isNewAgent) {
+            const currentThought = responseItem.agent_thoughts.find(item => item.id === thought.id) ?? thought
+            upsertAgentResponseThoughtPart(responseItem, currentThought)
           }
         })
       },
@@ -787,9 +831,12 @@ export const useChat = (
       getAbortController: (abortController) => {
         workflowEventsAbortControllerRef.current = abortController
       },
-      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        const shouldAppendToAnswer = options.isNewAgent || !isAgentMode
-        if (shouldAppendToAnswer) {
+      onData: (message: string, isFirstMessage: boolean, { event, conversationId: newConversationId, messageId, taskId }: any) => {
+        const isNewAgentMessage = options.isNewAgent && (event === 'agent_message' || event === 'message')
+        if (isNewAgentMessage) {
+          appendAgentResponseMessagePart(responseItem, message)
+        }
+        else if (!isAgentMode || options.isNewAgent) {
           responseItem.content = responseItem.content + message
         }
         else {
@@ -855,11 +902,15 @@ export const useChat = (
               return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
 
             const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
+            const messageLog = Array.isArray(newResponseItem.message) ? newResponseItem.message : []
+            const answerTokens = newResponseItem.answer_tokens ?? 0
+            const messageTokens = newResponseItem.message_tokens ?? 0
+            const providerResponseLatency = newResponseItem.provider_response_latency ?? 0
             updateChatTreeNode(responseItem.id, {
               content: isUseAgentThought ? '' : newResponseItem.answer,
               log: [
-                ...newResponseItem.message,
-                ...(newResponseItem.message.at(-1).role !== 'assistant'
+                ...messageLog,
+                ...(messageLog.at(-1)?.role !== 'assistant'
                   ? [
                       {
                         role: 'assistant',
@@ -871,9 +922,9 @@ export const useChat = (
               ],
               more: {
                 time: formatTime(newResponseItem.created_at, 'hh:mm A'),
-                tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
-                latency: newResponseItem.provider_response_latency.toFixed(2),
-                tokens_per_second: newResponseItem.provider_response_latency > 0 ? (newResponseItem.answer_tokens / newResponseItem.provider_response_latency).toFixed(2) : undefined,
+                tokens: answerTokens + messageTokens,
+                latency: providerResponseLatency.toFixed(2),
+                tokens_per_second: providerResponseLatency > 0 ? (answerTokens / providerResponseLatency).toFixed(2) : undefined,
               },
               // for agent log
               conversationId: conversationIdRef.current,
@@ -966,6 +1017,10 @@ export const useChat = (
           else {
             responseItem.agent_thoughts!.push(thought)
           }
+        }
+        if (options.isNewAgent) {
+          const currentThought = responseItem.agent_thoughts?.find(item => item.id === thought.id) ?? thought
+          upsertAgentResponseThoughtPart(responseItem, currentThought)
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,

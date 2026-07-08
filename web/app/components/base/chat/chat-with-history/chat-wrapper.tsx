@@ -18,6 +18,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
+  fetchChatList,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
@@ -207,12 +208,15 @@ const ChatWrapper = () => {
       getUrl('chat-messages', appSourceType, appId || ''),
       data,
       {
+        onGetConversationMessages: isNewAgent
+          ? conversationId => fetchChatList(conversationId, appSourceType, appId)
+          : undefined,
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       },
     )
-  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, appSourceType, appId, isHistoryConversation, handleNewConversationCompleted])
+  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, appSourceType, appId, isHistoryConversation, handleNewConversationCompleted, isNewAgent])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
