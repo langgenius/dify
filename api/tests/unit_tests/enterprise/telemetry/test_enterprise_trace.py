@@ -453,9 +453,8 @@ class TestTraceDispatcher:
 
 class TestWorkflowTrace:
     def test_emits_correct_span_attributes(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
-            info = make_workflow_info()
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info()
+        trace_handler._workflow_trace(info)
 
         mock_exporter.export_span.assert_called_once()
         span_call = mock_exporter.export_span.call_args
@@ -468,9 +467,8 @@ class TestWorkflowTrace:
         assert attrs["gen_ai.usage.total_tokens"] == 100
 
     def test_span_timing_passed_correctly(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info()
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info()
+        trace_handler._workflow_trace(info)
 
         span_call = mock_exporter.export_span.call_args
         assert span_call[1]["start_time"] == _T0
@@ -514,8 +512,7 @@ class TestWorkflowTrace:
         assert log_attrs["dify.workflow.outputs"].startswith("ref:workflow_run_id=")
 
     def test_increments_token_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._workflow_trace(make_workflow_info())
+        trace_handler._workflow_trace(make_workflow_info())
 
         token_calls = [
             c for c in mock_exporter.increment_counter.call_args_list if c[0][0] == EnterpriseTelemetryCounter.TOKENS
@@ -524,8 +521,7 @@ class TestWorkflowTrace:
         assert token_calls[0][0][1] == 100
 
     def test_increments_input_and_output_token_counters(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._workflow_trace(make_workflow_info())
+        trace_handler._workflow_trace(make_workflow_info())
 
         all_calls = mock_exporter.increment_counter.call_args_list
         counter_names = [c[0][0] for c in all_calls]
@@ -533,17 +529,15 @@ class TestWorkflowTrace:
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
     def test_no_input_token_counter_when_prompt_tokens_zero(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(prompt_tokens=0)
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info(prompt_tokens=0)
+        trace_handler._workflow_trace(info)
 
         all_calls = mock_exporter.increment_counter.call_args_list
         counter_names = [c[0][0] for c in all_calls]
         assert EnterpriseTelemetryCounter.INPUT_TOKENS not in counter_names
 
     def test_records_workflow_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._workflow_trace(make_workflow_info())
+        trace_handler._workflow_trace(make_workflow_info())
 
         mock_exporter.record_histogram.assert_called_once()
         hist_call = mock_exporter.record_histogram.call_args
@@ -553,25 +547,22 @@ class TestWorkflowTrace:
     def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(
         self, trace_handler: EnterpriseOtelTrace, mock_exporter
     ):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=7.3)
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=7.3)
+        trace_handler._workflow_trace(info)
 
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][1] == pytest.approx(7.3)
 
     def test_duration_defaults_to_zero_when_no_timing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=0)
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=0)
+        trace_handler._workflow_trace(info)
 
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][1] == pytest.approx(0.0)
 
     def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(error="Something went wrong", workflow_run_status="failed")
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info(error="Something went wrong", workflow_run_status="failed")
+        trace_handler._workflow_trace(info)
 
         error_calls = [
             c for c in mock_exporter.increment_counter.call_args_list if c[0][0] == EnterpriseTelemetryCounter.ERRORS
@@ -579,8 +570,7 @@ class TestWorkflowTrace:
         assert len(error_calls) == 1
 
     def test_no_error_counter_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._workflow_trace(make_workflow_info())
+        trace_handler._workflow_trace(make_workflow_info())
 
         error_calls = [
             c for c in mock_exporter.increment_counter.call_args_list if c[0][0] == EnterpriseTelemetryCounter.ERRORS
@@ -588,20 +578,19 @@ class TestWorkflowTrace:
         assert len(error_calls) == 0
 
     def test_parent_trace_context_injected_into_span_attrs(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(
-                metadata={
-                    "app_id": "app-001",
-                    "tenant_id": "tenant-abc",
-                    "parent_trace_context": {
-                        "trace_id": "outer-trace",
-                        "parent_node_execution_id": "outer-ne-001",
-                        "parent_workflow_run_id": "outer-run-001",
-                        "parent_app_id": "outer-app-001",
-                    },
-                }
-            )
-            trace_handler._workflow_trace(info)
+        info = make_workflow_info(
+            metadata={
+                "app_id": "app-001",
+                "tenant_id": "tenant-abc",
+                "parent_trace_context": {
+                    "trace_id": "outer-trace",
+                    "parent_node_execution_id": "outer-ne-001",
+                    "parent_workflow_run_id": "outer-run-001",
+                    "parent_app_id": "outer-app-001",
+                },
+            }
+        )
+        trace_handler._workflow_trace(info)
 
         attrs = mock_exporter.export_span.call_args[0][1]
         assert attrs["dify.parent.trace_id"] == "outer-trace"
@@ -617,15 +606,13 @@ class TestWorkflowTrace:
 
 class TestNodeExecutionTrace:
     def test_emits_span_with_node_execution_span_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info())
+        trace_handler._node_execution_trace(make_node_info())
 
         span_call = mock_exporter.export_span.call_args
         assert span_call[0][0] == EnterpriseTelemetrySpan.NODE_EXECUTION
 
     def test_span_contains_core_node_attributes(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info())
+        trace_handler._node_execution_trace(make_node_info())
 
         attrs = mock_exporter.export_span.call_args[0][1]
         assert attrs["dify.node.execution_id"] == "ne-001"
@@ -636,8 +623,7 @@ class TestNodeExecutionTrace:
         assert attrs["gen_ai.provider.name"] == "openai"
 
     def test_increments_token_counters_when_tokens_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info())
+        trace_handler._node_execution_trace(make_node_info())
 
         counter_names = [c[0][0] for c in mock_exporter.increment_counter.call_args_list]
         assert EnterpriseTelemetryCounter.TOKENS in counter_names
@@ -645,24 +631,21 @@ class TestNodeExecutionTrace:
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
     def test_no_token_counters_when_total_tokens_zero(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info(total_tokens=0))
+        trace_handler._node_execution_trace(make_node_info(total_tokens=0))
 
         counter_names = [c[0][0] for c in mock_exporter.increment_counter.call_args_list]
         assert EnterpriseTelemetryCounter.TOKENS not in counter_names
         assert EnterpriseTelemetryCounter.INPUT_TOKENS not in counter_names
 
     def test_records_node_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info())
+        trace_handler._node_execution_trace(make_node_info())
 
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.NODE_DURATION
         assert hist_call[0][1] == pytest.approx(2.5)
 
     def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            trace_handler._node_execution_trace(make_node_info(error="Node failed", status="failed"))
+        trace_handler._node_execution_trace(make_node_info(error="Node failed", status="failed"))
 
         error_calls = [
             c for c in mock_exporter.increment_counter.call_args_list if c[0][0] == EnterpriseTelemetryCounter.ERRORS
@@ -679,16 +662,15 @@ class TestNodeExecutionTrace:
     def test_plugin_name_added_to_duration_labels_for_tool_node(
         self, trace_handler: EnterpriseOtelTrace, mock_exporter
     ):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_node_info(
-                node_type="tool",
-                metadata={
-                    "app_id": "app-001",
-                    "tenant_id": "tenant-abc",
-                    "plugin_name": "my-plugin",
-                },
-            )
-            trace_handler._node_execution_trace(info)
+        info = make_node_info(
+            node_type="tool",
+            metadata={
+                "app_id": "app-001",
+                "tenant_id": "tenant-abc",
+                "plugin_name": "my-plugin",
+            },
+        )
+        trace_handler._node_execution_trace(info)
 
         hist_call = mock_exporter.record_histogram.call_args
         duration_labels = hist_call[0][2]
