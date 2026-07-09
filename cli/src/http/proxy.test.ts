@@ -52,4 +52,28 @@ describe('proxyDispatcher', () => {
     expect(proxyDispatcher()).toBe(first)
     await first?.close()
   })
+
+  it('builds a plain Agent with TLS verification disabled when insecure is set and no proxy env', async () => {
+    const { proxyDispatcher } = await import('./proxy.js')
+    const d = proxyDispatcher({ insecure: true })
+    expect(d?.constructor.name).toBe('Agent')
+    await d?.close()
+  })
+
+  it('builds an EnvHttpProxyAgent with TLS verification disabled when insecure and a proxy are both set', async () => {
+    process.env.HTTP_PROXY = 'http://127.0.0.1:8888'
+    const { proxyDispatcher } = await import('./proxy.js')
+    const d = proxyDispatcher({ insecure: true })
+    expect(d?.constructor.name).toBe('EnvHttpProxyAgent')
+    await d?.close()
+  })
+
+  it('re-resolves when the insecure flag changes for the same call site', async () => {
+    const { proxyDispatcher } = await import('./proxy.js')
+    const secure = proxyDispatcher({ insecure: false })
+    expect(secure).toBeUndefined()
+    const insecure = proxyDispatcher({ insecure: true })
+    expect(insecure?.constructor.name).toBe('Agent')
+    await insecure?.close()
+  })
 })

@@ -8,11 +8,17 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock components
 vi.mock('../authorized', () => ({
@@ -37,7 +43,12 @@ vi.mock('../authorized', () => ({
       data-hide-add-action={String(!!hideAddAction)}
       data-trigger-only-open-modal={String(!!triggerOnlyOpenModal)}
     >
-      <div data-testid="trigger-container" onClick={() => onItemClick?.(items[0]!.credentials[0])}>
+      <div
+        role="presentation"
+        data-testid="trigger-container"
+        onClick={() => onItemClick?.(items[0]!.credentials[0])}
+        onKeyDown={() => undefined}
+      >
         {renderTrigger()}
       </div>
     </div>

@@ -46,12 +46,6 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     permission: mockReferenceSetting().permission,

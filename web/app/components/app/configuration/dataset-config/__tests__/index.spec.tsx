@@ -37,14 +37,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   })),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((fn: any) => fn({
-    userProfile: {
-      id: 'user-123',
-    },
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
     workspacePermissionKeys: [],
-  })),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/utils/permission', () => ({
   DatasetACLPermission: {

@@ -47,7 +47,7 @@ export class MembersClient {
     memberId: string,
     payload: MemberRoleUpdatePayload,
   ): Promise<MemberActionResponse> {
-    return this.orpc.workspaces.byWorkspaceId.members.byMemberId.role.put({
+    return this.orpc.workspaces.byWorkspaceId.members.byMemberId.patch({
       params: { workspace_id: workspaceId, member_id: memberId },
       body: payload,
     })

@@ -282,10 +282,13 @@ Then('I should be on the Agent v2 configure page', async function (this: DifyWor
 
 Then('I should see the Agent v2 configure workspace', async function (this: DifyWorld) {
   const page = this.getPage()
+  const agentName = this.lastCreatedAgentName
+  if (!agentName)
+    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
-  await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
+  await expect(page.getByText(agentName, { exact: true })).toBeVisible()
 })
 
 Then(

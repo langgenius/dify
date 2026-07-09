@@ -11,6 +11,25 @@ const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
 const mockUseCollaboration = vi.fn()
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'User',
+    email: 'user@example.com',
+    avatar: '',
+    avatar_url: '',
+  },
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),

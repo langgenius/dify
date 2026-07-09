@@ -16,12 +16,14 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T>(selector: (value: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
-  }),
-}))
+  }))
+})
 
 const createDefaultMockDataset = (): DataSet => ({
   id: 'dataset-1',
@@ -103,6 +105,12 @@ vi.mock('@/context/dataset-detail', () => ({
     return selector(state)
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock services
 vi.mock('@/service/datasets', () => ({

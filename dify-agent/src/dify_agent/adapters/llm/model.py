@@ -334,7 +334,7 @@ def _map_model_response_to_prompt_message(
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    for part in message.parts:
+    for index, part in enumerate(message.parts):
         if isinstance(part, TextPart):
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
@@ -346,7 +346,7 @@ def _map_model_response_to_prompt_message(
         elif isinstance(part, ToolCallPart):
             tool_calls.append(
                 AssistantPromptMessage.ToolCall(
-                    id=part.tool_call_id or f"tool-call-{part.tool_name}",
+                    id=part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
                     type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                         name=part.tool_name,

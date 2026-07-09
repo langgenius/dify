@@ -1,6 +1,7 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useEffect,
@@ -13,7 +14,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -71,8 +72,8 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const appDetail = useAppStore(state => state.appDetail)!
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail.maintainer,
@@ -118,9 +119,10 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     }
-    catch (error: any) {
-      if (error && error.json && !error.bodyUsed && appDetail) {
-        error.json().then((err: any) => {
+    catch (error: unknown) {
+      const responseError = error as { bodyUsed?: boolean, json?: () => Promise<{ code?: string }> }
+      if (responseError.json && !responseError.bodyUsed && appDetail) {
+        responseError.json().then((err) => {
           if (err.code === 'draft_workflow_not_exist') {
             const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
             const initialGraph = {
@@ -187,7 +189,7 @@ export const useWorkflowInit = () => {
           if (!acc[block.type])
             acc[block.type] = { ...block.config }
           return acc
-        }, {} as Record<string, any>),
+        }, {} as Record<string, unknown>),
       })
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
       const graph = publishedWorkflow?.graph

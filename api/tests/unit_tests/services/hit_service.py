@@ -186,7 +186,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
             )
 
             # Assert
@@ -234,7 +234,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
             )
 
             # Assert
@@ -292,7 +292,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
             )
 
             # Assert
@@ -337,7 +337,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
             )
 
             # Assert
@@ -380,7 +380,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
             )
 
             # Assert
@@ -438,7 +438,12 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                dataset,
+                query,
+                account,
+                external_retrieval_model,
+                metadata_filtering_conditions,
+                session=mock_db_session,
             )
 
             # Assert
@@ -469,7 +474,7 @@ class TestHitTestingServiceExternalRetrieve:
 
         # Act
         result = HitTestingService.external_retrieve(
-            mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+            dataset, query, account, external_retrieval_model, metadata_filtering_conditions, session=mock_db_session
         )
 
         # Assert
@@ -504,7 +509,12 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                dataset,
+                query,
+                account,
+                external_retrieval_model,
+                metadata_filtering_conditions,
+                session=mock_db_session,
             )
 
             # Assert
@@ -538,7 +548,12 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                dataset,
+                query,
+                account,
+                external_retrieval_model,
+                metadata_filtering_conditions,
+                session=mock_db_session,
             )
 
             # Assert
@@ -579,7 +594,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.compact_retrieve_response(MagicMock(), query, documents)
+            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
 
             # Assert
             assert result["query"]["content"] == query
@@ -605,7 +620,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.compact_retrieve_response(MagicMock(), query, documents)
+            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
 
             # Assert
             assert result["query"]["content"] == query

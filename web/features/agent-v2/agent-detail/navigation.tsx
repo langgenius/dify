@@ -20,6 +20,7 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
+import { AgentDetailSidebarActions } from './sidebar-actions'
 
 type AgentDetailTopProps = {
   expand?: boolean
@@ -214,13 +215,16 @@ export function AgentDetailSection({
               />
             </span>
           </div>
-          <div className={cn('flex h-10 min-w-0 flex-1 flex-col justify-center', !expand && 'hidden')}>
-            <div className="truncate system-md-semibold text-text-secondary">
-              {agent?.name ?? t('agentDetail.title')}
+          <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <div className="truncate system-md-semibold text-text-secondary">
+                {agent?.name ?? t('agentDetail.title')}
+              </div>
+              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+                {agent?.role ?? t('agentDetail.type')}
+              </div>
             </div>
-            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-              {agent?.role ?? t('agentDetail.type')}
-            </div>
+            {agent && expand && <AgentDetailSidebarActions agent={agent} />}
           </div>
         </div>
       </div>

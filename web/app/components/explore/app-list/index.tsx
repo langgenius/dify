@@ -10,6 +10,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -32,7 +33,7 @@ import {
   useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
@@ -117,7 +118,8 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )
@@ -145,7 +147,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
   // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
   const stepByStepTourActions = useStepByStepTourStateActions()
-  const currentWorkspaceId = currentWorkspace.id
   const trackHomeTourCompleted = useCallback((state: StepByStepTourPersistentState) => {
     trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.taskCompleted, {
       ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),

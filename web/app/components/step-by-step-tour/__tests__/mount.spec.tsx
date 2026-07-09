@@ -3,7 +3,8 @@ import type {
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
 import type { StepByStepTourAccountState, StepByStepTourUiState } from '../types'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
+import type { ICurrentWorkspace } from '@/models/common'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -20,7 +21,7 @@ import {
   StepByStepTourTestUiStateHydrator,
 } from './test-utils'
 
-type WorkspaceRole = NonNullable<AppContextValue['currentWorkspace']>['role']
+type WorkspaceRole = ICurrentWorkspace['role']
 
 const mockRouterPush = vi.fn()
 let mockPathname = '/apps'
@@ -344,8 +345,10 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     currentWorkspace: {
       id: 'workspace-1',
       name: 'Solar Studio',
@@ -360,8 +363,14 @@ vi.mock('@/context/app-context', () => ({
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  } satisfies Partial<AppContextValue>),
-}))
+  } satisfies AppContextStateMockState))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 type TestRect = {
   height: number

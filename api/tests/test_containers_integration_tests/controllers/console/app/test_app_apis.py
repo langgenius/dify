@@ -500,7 +500,11 @@ class TestWorkflowDraftVariableEndpoints:
         api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
         method = unwrap(api.get)
 
-        monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
+        monkeypatch.setattr(
+            workflow_draft_variable_module,
+            "db",
+            SimpleNamespace(engine=MagicMock(), session=MagicMock()),
+        )
 
         class DummySessionCtx:
             def __enter__(self):

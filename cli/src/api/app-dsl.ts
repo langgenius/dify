@@ -33,7 +33,7 @@ export class AppDslClient {
   }
 
   async exportDsl(appId: string, query?: ExportQuery): Promise<string> {
-    const resp = await this.orpc.apps.byAppId.export.get({
+    const resp = await this.orpc.apps.byAppId.dsl.get({
       params: { app_id: appId },
       query: query !== undefined
         ? {
@@ -52,7 +52,7 @@ export class AppDslClient {
   }
 
   async checkDependencies(appId: string): Promise<CheckDependenciesResult> {
-    return this.orpc.apps.byAppId.checkDependencies.get({
+    return this.orpc.apps.byAppId.dependencies.check.get({
       params: { app_id: appId },
     })
   }

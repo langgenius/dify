@@ -8,11 +8,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { useSetEducationExpiredHasNoticed, useSetEducationReverifyHasNoticed, useSetEducationReverifyPrevExpireAt } from '@/app/education-apply/storage'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom, userProfileAtom } from '@/context/app-context-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
@@ -37,7 +38,8 @@ export default function AppSelector({
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { t } = useTranslation()
-  const { userProfile, langGeniusVersionInfo } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
   const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
   const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()

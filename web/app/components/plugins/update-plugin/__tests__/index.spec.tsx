@@ -22,9 +22,6 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock app context for useGetIcon
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({ id: 'test-workspace-id' }),
-}))
 
 // Mock hooks/use-timestamp
 vi.mock('@/hooks/use-timestamp', () => ({

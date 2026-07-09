@@ -5,11 +5,14 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import {
+  datasetRbacEnabledAtom,
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -36,10 +39,9 @@ const OperationsDropdown = ({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourOpen,
   })
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isRbacEnabled = systemFeatures.rbac_enabled
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset.maintainer,

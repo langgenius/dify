@@ -25,6 +25,12 @@ const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
 let mockIsRbacEnabled = true
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [] as string[],
+  },
+}))
 
 const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -115,12 +121,15 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
@@ -242,7 +251,7 @@ describe('MenuItem', () => {
       const handleClick = vi.fn()
 
       render(
-        <div onClick={parentClick}>
+        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
           <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
         </div>,
       )

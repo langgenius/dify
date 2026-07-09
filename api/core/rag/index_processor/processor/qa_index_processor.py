@@ -173,10 +173,10 @@ class QAIndexProcessor(BaseIndexProcessor):
                     ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                        SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=segment_ids)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=None)
 
         vector = Vector(dataset)
         if node_ids:

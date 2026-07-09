@@ -5,11 +5,12 @@ import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -31,8 +32,8 @@ export function StarredAppCard({
   stepByStepTourCardHighlightPart,
 }: StarredAppCardProps) {
   const { t } = useTranslation()
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
   const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)

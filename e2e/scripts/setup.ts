@@ -32,14 +32,17 @@ const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
 const apiHost = '127.0.0.1'
 const apiPort = 5001
 const agentBackendHost = '127.0.0.1'
+const agentBackendBindHost = '0.0.0.0'
 const agentBackendPort = Number(process.env.E2E_AGENT_BACKEND_PORT || 5050)
 const shellctlHost = '127.0.0.1'
 const shellctlPort = Number(process.env.E2E_SHELLCTL_PORT || 5004)
 const shellctlContainerName = process.env.E2E_SHELLCTL_CONTAINER_NAME || 'dify-agent-e2e-shellctl'
 const shellctlImage = process.env.E2E_SHELLCTL_IMAGE || 'dify-agent-local-sandbox:e2e'
 const shellctlUrl = `http://${shellctlHost}:${shellctlPort}`
+const agentStubApiBaseUrl = `http://host.docker.internal:${agentBackendPort}/agent-stub`
 const defaultPluginDaemonKey = 'lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi'
 const defaultInnerApiKeyForPlugin = 'QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1'
+const defaultAgentServerSecretKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY'
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -104,6 +107,12 @@ const getAgentBackendEnvironment = async () => {
       || apiEnv.INNER_API_KEY_FOR_PLUGIN
       || defaultInnerApiKeyForPlugin,
     DIFY_AGENT_INNER_API_URL: process.env.DIFY_AGENT_INNER_API_URL || `http://${apiHost}:${apiPort}`,
+    DIFY_AGENT_SERVER_SECRET_KEY:
+      process.env.DIFY_AGENT_SERVER_SECRET_KEY
+      || defaultAgentServerSecretKey,
+    DIFY_AGENT_STUB_API_BASE_URL:
+      process.env.DIFY_AGENT_STUB_API_BASE_URL
+      || agentStubApiBaseUrl,
     DIFY_AGENT_PLUGIN_DAEMON_API_KEY:
       process.env.DIFY_AGENT_PLUGIN_DAEMON_API_KEY
       || process.env.PLUGIN_DAEMON_KEY
@@ -358,7 +367,7 @@ export const startAgentBackend = async () => {
       'uvicorn',
       'dify_agent.server.app:app',
       '--host',
-      agentBackendHost,
+      agentBackendBindHost,
       '--port',
       String(agentBackendPort),
     ],
@@ -420,6 +429,7 @@ export const startShellctlSandbox = async () => {
       '--rm',
       '--name',
       shellctlContainerName,
+      ...(process.platform === 'linux' ? ['--add-host', 'host.docker.internal:host-gateway'] : []),
       '-p',
       `${shellctlHost}:${shellctlPort}:5004`,
       ...(process.env.E2E_SHELLCTL_AUTH_TOKEN

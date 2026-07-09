@@ -7,6 +7,7 @@ import {
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
 } from 'react'
@@ -15,7 +16,7 @@ import { useStore as useReactFlowStore } from 'reactflow'
 import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
 import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
@@ -235,7 +236,7 @@ export function SelectionContextmenu({
 }) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore(s => s.contextMenuTarget?.type === 'selection')
 

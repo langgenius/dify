@@ -15,6 +15,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/storage'
@@ -34,7 +35,7 @@ import {
   useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceIdAtom, isCurrentWorkspaceOwnerAtom, langGeniusVersionInfoAtom } from '@/context/app-context-state'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -79,7 +80,9 @@ const HelpMenu = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { langGeniusVersionInfo, isCurrentWorkspaceOwner, currentWorkspace } = useAppContext()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
@@ -92,7 +95,6 @@ const HelpMenu = ({
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
-  const currentWorkspaceId = currentWorkspace.id
   const stepByStepTourEnabled = getStepByStepTourEnabledForCurrentWorkspace(
     stepByStepTourAccountState,
     currentWorkspaceId,

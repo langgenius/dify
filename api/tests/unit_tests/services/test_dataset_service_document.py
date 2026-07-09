@@ -1183,7 +1183,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = 12
 
-            result = DocumentService.get_tenant_documents_count(mock_db.session)
+            result = DocumentService.get_tenant_documents_count(session=mock_db.session)
 
         assert result == 12
 

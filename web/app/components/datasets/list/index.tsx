@@ -1,6 +1,7 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 
 // Libraries
 import { useEffect, useState } from 'react'
@@ -10,7 +11,10 @@ import {
   useStepByStepTourAccountStateValue,
 } from '@/app/components/step-by-step-tour/storage'
 import { getStepByStepTourGuides, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
+import {
+  isCurrentWorkspaceOwnerAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -27,7 +31,7 @@ import DatasetListHeader from './header'
 const List = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { isCurrentWorkspaceOwner } = useAppContext()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -53,7 +57,7 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.

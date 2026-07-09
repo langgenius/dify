@@ -61,6 +61,7 @@ export default function InviteSettingsPage() {
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
   const locale = useLocale()
   const [name, setName] = useState('')
+  const [isActivating, setIsActivating] = useState(false)
   const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
@@ -93,6 +94,7 @@ export default function InviteSettingsPage() {
         toast.error(t('enterYourName', { ns: 'login' }))
         return
       }
+      setIsActivating(true)
       const body = requiresAccountSetup
         ? {
             token,
@@ -118,8 +120,9 @@ export default function InviteSettingsPage() {
     }
     catch {
       recheck()
+      setIsActivating(false)
     }
-  }, [language, name, queryClient, recheck, requiresAccountSetup, searchParams, timezone, token, router, t])
+  }, [isActivating, language, name, queryClient, recheck, requiresAccountSetup, searchParams, timezone, token, router, t])
 
   if (!checkRes)
     return <Loading />
@@ -228,6 +231,8 @@ export default function InviteSettingsPage() {
             variant="primary"
             className="w-full"
             onClick={handleActivate}
+            loading={isActivating}
+            disabled={isActivating}
           >
             {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
           </Button>
