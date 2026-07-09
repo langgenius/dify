@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,8 +10,7 @@ import { Plan } from '@/app/components/billing/type'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
-  userProfilePlaceholder,
-} from '@/context/app-context'
+} from '@/context/app-context-defaults'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
@@ -53,19 +52,21 @@ vi.mock('@/context/provider-context', () => ({
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: mockUseAppContext,
-  }
-})
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
+
+const testUserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
 
 const createProviderContext = ({
   enableBilling = false,
@@ -83,8 +84,8 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (): AppContextValue => ({
-  userProfile: userProfilePlaceholder,
+const createAppContextValue = (): AppContextStateMockState => ({
+  userProfile: testUserProfile,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
     ...initialWorkspaceInfo,
@@ -99,9 +100,7 @@ const createAppContextValue = (): AppContextValue => ({
   isCurrentWorkspaceDatasetOperator: false,
   mutateCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
-  useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [],
 })
 

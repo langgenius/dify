@@ -307,10 +307,6 @@ const { mockUseAppContext } = vi.hoisted(() => ({
 
 mockUseAppContext.mockReturnValue(mockAppContext)
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
-
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
   opening: { enabled: boolean, opening_statement: string, suggested_questions: string[] }

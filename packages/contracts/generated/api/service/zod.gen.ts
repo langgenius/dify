@@ -6,7 +6,7 @@ import * as z from 'zod'
  * Annotation
  */
 export const zAnnotation = z.object({
-  content: z.string().nullish(),
+  answer: z.string().nullish(),
   created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
@@ -22,12 +22,20 @@ export const zAnnotationCreatePayload = z.object({
 })
 
 /**
+ * AnnotationJobStatusDetailResponse
+ */
+export const zAnnotationJobStatusDetailResponse = z.object({
+  error_msg: z.string().optional().default(''),
+  job_id: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+})
+
+/**
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  error_msg: z.string().nullish(),
   job_id: z.string(),
-  job_status: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
 })
 
 /**
@@ -761,34 +769,36 @@ export const zDocumentMetadataResponse = z.object({
  * DocumentDetailResponse
  */
 export const zDocumentDetailResponse = z.object({
-  archived: z.boolean().nullish(),
-  average_segment_length: z.number().nullish(),
+  archived: z.boolean().optional(),
+  average_segment_length: z.union([z.int(), z.number()]).optional(),
   completed_at: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule: z.record(z.string(), z.unknown()).nullish(),
+  created_at: z.int().optional(),
+  created_by: z.string().optional(),
+  created_from: z.string().optional(),
+  data_source_info: z.record(z.string(), z.unknown()).optional(),
+  data_source_type: z.string().optional(),
+  dataset_process_rule: z.record(z.string(), z.unknown()).optional(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
   disabled_by: z.string().nullish(),
   display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
+  doc_form: z.string().optional(),
   doc_language: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).nullish(),
+  doc_metadata: z
+    .union([z.array(zDocumentMetadataResponse), z.record(z.string(), z.unknown())])
+    .nullish(),
   doc_type: z.string().nullish(),
-  document_process_rule: z.record(z.string(), z.unknown()).nullish(),
-  enabled: z.boolean().nullish(),
+  document_process_rule: z.record(z.string(), z.unknown()).optional(),
+  enabled: z.boolean().optional(),
   error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  hit_count: z.int().optional(),
   id: z.string(),
   indexing_latency: z.number().nullish(),
-  indexing_status: z.string().nullish(),
-  name: z.string().nullish(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  segment_count: z.int().nullish(),
+  indexing_status: z.string().optional(),
+  name: z.string().optional(),
+  need_summary: z.boolean().optional(),
+  position: z.int().optional(),
+  segment_count: z.int().optional(),
   summary_index_status: z.string().nullish(),
   tokens: z.int().nullish(),
   updated_at: z.int().nullish(),
@@ -1129,6 +1139,7 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -2353,7 +2364,8 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
 /**
  * Successfully retrieved task status.
  */
-export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse = zAnnotationJobStatusResponse
+export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse
+  = zAnnotationJobStatusDetailResponse
 
 export const zGetAppsAnnotationsQuery = z.object({
   keyword: z.string().optional().default(''),
@@ -2411,7 +2423,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
+export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2432,7 +2444,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2758,7 +2770,7 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
 })
 
 /**
- * Document updated successfully
+ * Document updated successfully.
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse = zDocumentAndBatchResponse
 

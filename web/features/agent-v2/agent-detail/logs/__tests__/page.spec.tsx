@@ -301,11 +301,16 @@ describe('AgentLogsPage', () => {
         expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
           sources: ['webapp:webapp-app-id'],
         }))
+        expect(mocks.logsQueryFn).toHaveBeenCalledTimes(2)
       })
 
       expect(screen.getByText('Previous conversation')).toBeInTheDocument()
 
       resolveNextLogs(emptyLogsResponse)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Previous conversation')).not.toBeInTheDocument()
+      })
     })
 
     it('should open chatbot-style log detail drawer with generated messages contract when a row is clicked', async () => {

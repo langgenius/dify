@@ -1,21 +1,15 @@
 'use client'
 
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { DefinedQueryObserverResult } from '@tanstack/react-query'
-import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import { atom } from 'jotai'
-import { atomWithQuery, atomWithSuspenseQuery, queryClientAtom } from 'jotai-tanstack-query'
+import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
-import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
+import { atomWithResolvedSuspenseQuery } from '@/utils/query-atoms'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
-  userProfilePlaceholder,
 } from './app-context-defaults'
 import {
   emptyWorkspacePermissionKeys,
@@ -24,22 +18,16 @@ import {
   normalizeCurrentWorkspace,
 } from './app-context-normalizers'
 
-type SuspenseQueryResult<T> = Omit<DefinedQueryObserverResult<T>, 'isPlaceholderData'>
+const accountProfileQueryAtom = atomWithResolvedSuspenseQuery(() => userProfileQueryOptions())
 
-const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOptions())
+const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeaturesQueryOptions())
 
-const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
-
-const systemFeaturesAtom = atom((get): GetSystemFeaturesResponse => {
-  const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
-
-  return systemFeaturesQuery.data ?? defaultSystemFeatures
+const systemFeaturesAtom = atom((get) => {
+  return get(systemFeaturesQueryAtom).data
 })
 
-export const userProfileAtom = atom((get): GetAccountProfileResponse => {
-  const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
-
-  return accountProfileQuery.data?.profile || userProfilePlaceholder
+export const userProfileAtom = atom((get) => {
+  return get(accountProfileQueryAtom).data.profile
 })
 
 export const userProfileIdAtom = atom((get) => {
@@ -51,12 +39,7 @@ export const userProfileEmailAtom = atom((get) => {
 })
 
 const profileMetaAtom = atom((get) => {
-  const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
-
-  return accountProfileQuery.data?.meta ?? {
-    currentVersion: null,
-    currentEnv: null,
-  }
+  return get(accountProfileQueryAtom).data.meta
 })
 
 const currentWorkspaceQueryAtom = atomWithQuery(() => {
@@ -119,16 +102,19 @@ export const datasetRbacEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).rbac_enabled
 })
 
-export const currentWorkspaceValidatingAtom = atom((get) => {
-  return get(currentWorkspaceQueryAtom).isFetching
-})
-
 const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(profileMetaAtom)
-  const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
-  const enabled = Boolean(meta.currentVersion && !systemFeaturesQuery.data?.branding.enabled)
+  const systemFeaturesQuery = get(systemFeaturesQueryAtom)
+  const enabled = Boolean(meta.currentVersion && !systemFeaturesQuery.data.branding.enabled)
 
-  return langGeniusVersionQueryOptions(meta.currentVersion, enabled)
+  return consoleQuery.version.get.queryOptions({
+    input: {
+      query: {
+        current_version: meta.currentVersion ?? '',
+      },
+    },
+    enabled,
+  })
 })
 
 export const langGeniusVersionInfoAtom = atom((get) => {

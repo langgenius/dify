@@ -15,11 +15,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-  useSelector: (selector: (state: AppContextMock) => unknown) => selector(mockUseAppContext()),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 

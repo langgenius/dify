@@ -7,6 +7,12 @@ import * as React from 'react'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
+const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => false))
+
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
+}))
+
 vi.mock('@/app/components/app/app-publisher/features-wrapper', () => ({
   default: () => <div data-testid="app-publisher" />,
 }))
@@ -254,6 +260,7 @@ const createViewModel = (overrides: Partial<ConfigurationViewModel> = {}): Confi
 describe('ConfigurationView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsAgentV2Enabled.mockReturnValue(false)
   })
 
   it('should render a loading state before configuration data is ready', () => {
@@ -279,5 +286,32 @@ describe('ConfigurationView', () => {
     fireEvent.click(screen.getByRole('button', { name: /operation.cancel/i }))
 
     expect(setShowUseGPT4Confirm).toHaveBeenCalledWith(false)
+  })
+
+  it('should show the legacy Agent badge for legacy Agent apps when Agent v2 is enabled', async () => {
+    mockIsAgentV2Enabled.mockReturnValue(true)
+    const contextValue = createContextValue()
+    contextValue.mode = AppModeEnum.AGENT_CHAT
+
+    render(<ConfigurationView {...createViewModel({ contextValue })} />)
+
+    const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.description' })
+    expect(badge).toHaveTextContent('appDebug.legacyAgentBadge.label')
+
+    fireEvent.click(badge)
+
+    expect(await screen.findByText('appDebug.legacyAgentBadge.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('should not show the legacy Agent badge when Agent v2 is disabled', () => {
+    const contextValue = createContextValue()
+    contextValue.mode = AppModeEnum.AGENT_CHAT
+
+    render(<ConfigurationView {...createViewModel({ contextValue })} />)
+
+    expect(screen.queryByText('appDebug.legacyAgentBadge.label')).not.toBeInTheDocument()
   })
 })

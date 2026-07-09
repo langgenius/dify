@@ -46,14 +46,6 @@ vi.mock('@/app/components/app/store', () => ({
     selector(appStoreState),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T>(selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T): T =>
-    selector({
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: ['app.create_and_management'],
-    }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

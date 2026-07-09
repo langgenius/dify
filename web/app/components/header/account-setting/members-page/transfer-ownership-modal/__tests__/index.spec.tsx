@@ -1,4 +1,4 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,13 +11,10 @@ const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
@@ -56,7 +53,7 @@ describe('TransferOwnershipModal', () => {
     const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 

@@ -6,25 +6,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(() => ({
-    userProfile: {
-      id: '8b18e24b-1ac8-4262-aa5c-e9aa95c76846',
-      name: 'test',
-      avatar: null,
-      avatar_url: null,
-      email: 'test@dify.ai',
-      is_password_set: false,
-      interface_language: 'zh-Hans',
-      interface_theme: 'light',
-      timezone: 'Asia/Shanghai',
-      last_login_at: 1744188761,
-      last_login_ip: '127.0.0.1',
-      created_at: 1728444483,
-    },
-  })),
-}))
-
 const createEmptyQueryWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {

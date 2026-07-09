@@ -181,4 +181,23 @@ describe('AgentOutputVariables', () => {
       }],
     }])
   })
+
+  it('should reject editing an output name with dots', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const outputs: DeclaredOutputConfig[] = [{
+      name: 'summary',
+      type: 'string',
+      required: true,
+    }]
+
+    render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
+
+    await expandOutputVars(user)
+    await user.click(getEditButton('summary'))
+    await confirmEditorName(user, 'report.summary')
+
+    expect(screen.getByText('workflow.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

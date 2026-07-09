@@ -1,9 +1,7 @@
-import type { AppContextValue } from '@/context/app-context'
 import type { Role } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { useRoleGroups } from '../hooks'
 import PermissionsPage from '../index'
@@ -18,12 +16,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: AppContextValue) => unknown) => selector({
-    workspacePermissionKeys: mocks.workspacePermissionKeys,
-  } as AppContextValue)),
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -143,9 +135,6 @@ describe('PermissionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.workspacePermissionKeys = []
-    vi.mocked(useAppContextSelector).mockImplementation((selector: (state: AppContextValue) => unknown) => selector({
-      workspacePermissionKeys: mocks.workspacePermissionKeys,
-    } as AppContextValue))
     vi.mocked(useRoleGroups).mockReturnValue({
       roleGroups: [{
         id: 'global_custom',

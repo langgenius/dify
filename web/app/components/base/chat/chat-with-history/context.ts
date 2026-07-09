@@ -1,6 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
+import type { ChatProps } from '../chat'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   Callback,
@@ -60,6 +61,8 @@ export type ChatWithHistoryContextValue = {
     name?: string
     avatar_url?: string
   }
+  isNewAgent?: boolean
+  renderAgentContent?: ChatProps['renderAgentContent']
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -95,5 +98,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
   initUserVariables: {},
+  isNewAgent: false,
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

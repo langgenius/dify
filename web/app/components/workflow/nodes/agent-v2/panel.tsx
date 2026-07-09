@@ -62,7 +62,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-60 w-[400px]"
+      className="fixed z-50 w-[400px]"
       style={{
         left: position.left,
         top: position.top,
@@ -106,6 +106,7 @@ export function AgentV2Panel({
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const [isSaveToRosterDialogOpen, setIsSaveToRosterDialogOpen] = useState(false)
   const [editingOutputFromTask, setEditingOutputFromTask] = useState<{ name: string, outputType: AgentOutputTypeOptionValue, position: { left: number, top: number }, requestKey: number } | null>(null)
+  const [isOutputVariablesCollapsed, setIsOutputVariablesCollapsed] = useState(true)
   const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
@@ -401,6 +402,7 @@ export function AgentV2Panel({
   }, [createInlineAgentBinding, handleInlineAgentBindingCreated, id, inlineAgentQuery, isCreatingInlineAgent, isInlineAgentPending, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
+    setIsOutputVariablesCollapsed(false)
     const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
     let nextAgentTask = agentTask
     let nextOutputs = outputs
@@ -457,6 +459,7 @@ export function AgentV2Panel({
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const handleEditTaskOutput = useCallback((name: string, outputType: AgentOutputTypeOptionValue) => {
+    setIsOutputVariablesCollapsed(false)
     const panelRect = drawerPortalContainerRef.current?.getBoundingClientRect()
     const editorWidth = 400
     const gap = 24
@@ -557,7 +560,9 @@ export function AgentV2Panel({
         <AgentAdvancedSettings />
         <div>
           <AgentOutputVariables
+            collapsed={isOutputVariablesCollapsed}
             outputs={declaredOutputs}
+            onCollapse={setIsOutputVariablesCollapsed}
             onChange={handleDeclaredOutputsChange}
           />
         </div>

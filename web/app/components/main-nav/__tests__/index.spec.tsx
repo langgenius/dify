@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { IWorkspace } from '@/models/common'
+import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -30,7 +30,7 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoist
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
 const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextValue | undefined,
+  current: undefined as AppContextStateMockState | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -190,7 +190,7 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
-const appContextValue: AppContextValue = {
+const appContextValue: AppContextStateMockState = {
   userProfile: {
     id: 'user-1',
     name: 'Evan Z',
@@ -226,10 +226,8 @@ const appContextValue: AppContextValue = {
     version: '1.0.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
@@ -247,7 +245,7 @@ const renderMainNav = (
   const queryClient = createTestQueryClient()
   const currentAppContext = mockAppContextState.current ?? appContextValue
   mockAppContextState.current = currentAppContext
-  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
+  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace as ICurrentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,

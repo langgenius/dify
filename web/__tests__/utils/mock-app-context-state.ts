@@ -1,4 +1,5 @@
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
+import type { ICurrentWorkspace } from '@/models/common'
 
 const APP_CONTEXT_STATE_ATOM_KIND = Symbol('app-context-state-atom-kind')
 
@@ -11,10 +12,10 @@ export type AppContextStateMockState = {
     avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?: {
+  currentWorkspace?: ({
     id?: string
     name?: string
-  } | null
+  } & Partial<ICurrentWorkspace>) | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
   isCurrentWorkspaceEditor?: boolean
@@ -22,9 +23,11 @@ export type AppContextStateMockState = {
   isLoadingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
-  langGeniusVersionInfo?: Partial<LangGeniusVersionResponse>
+  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
   refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
+  mutateUserProfile?: () => void
+  mutateCurrentWorkspace?: () => void
 }
 
 type AppContextStateAtomKind
@@ -66,7 +69,15 @@ const defaultUserProfile = {
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
   name: 'Workspace',
-}
+  plan: '',
+  status: '',
+  created_at: 0,
+  role: 'owner',
+  providers: [],
+  trial_credits: 0,
+  trial_credits_used: 0,
+  next_credit_reset_date: 0,
+} satisfies ICurrentWorkspace
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
@@ -75,8 +86,12 @@ const defaultLangGeniusVersionInfo = {
   version: '',
   release_date: '',
   release_notes: '',
+  features: {
+    can_replace_logo: false,
+    model_load_balancing_enabled: false,
+  },
   can_auto_update: false,
-} satisfies LangGeniusVersionResponse
+} satisfies LangGeniusVersionInfo
 
 let appContextStateMockRegistry: AppContextStateMockRegistry | undefined
 
@@ -95,12 +110,12 @@ const getUserProfile = (state: AppContextStateMockState) => ({
   ...state.userProfile,
 })
 
-const getCurrentWorkspace = (state: AppContextStateMockState) => ({
+const getCurrentWorkspace = (state: AppContextStateMockState): ICurrentWorkspace => ({
   ...defaultCurrentWorkspace,
   ...state.currentWorkspace,
 })
 
-const getLangGeniusVersionInfo = (state: AppContextStateMockState): LangGeniusVersionResponse => ({
+const getLangGeniusVersionInfo = (state: AppContextStateMockState): LangGeniusVersionInfo => ({
   ...defaultLangGeniusVersionInfo,
   ...state.langGeniusVersionInfo,
 })

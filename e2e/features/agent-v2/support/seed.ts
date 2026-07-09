@@ -7,8 +7,8 @@ import type {
   KnowledgeConfig,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
+  AvailableModelListResponse,
   ModelProviderListResponse,
-  ProviderWithModelsDataResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
 import type { UploadedConsoleFile } from './agent-drive'
@@ -139,7 +139,7 @@ const findChatModel = async (config: StableModel, title: string) => {
   try {
     const response = await ctx.get(`/console/api/workspaces/current/models/model-types/${config.type}`)
     await expectApiResponseOK(response, `Check ${title}`)
-    const body = (await response.json()) as ProviderWithModelsDataResponse
+    const body = (await response.json()) as AvailableModelListResponse
     const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
       item =>

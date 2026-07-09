@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -97,7 +98,15 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 
     return (
       <div>
-        <div role="textbox" aria-label={String(props.placeholder)} />
+        <div
+          role="textbox"
+          aria-controls={props['aria-controls']}
+          aria-haspopup={props['aria-haspopup']}
+          aria-label={String(props.placeholder)}
+          tabIndex={0}
+        >
+          {String(props.value ?? '')}
+        </div>
         {props.children}
       </div>
     )
@@ -235,9 +244,20 @@ const renderAgentPromptEditor = (
   }
 }
 
+const syncSlashMenuFromEditor = (textbox = screen.getByRole('textbox')) => {
+  fireEvent.keyDown(textbox, { key: '/' })
+  fireEvent.keyUp(textbox, { key: '/' })
+}
+
+const openSlashMenuFromEditor = async (textbox = screen.getByRole('textbox')) => {
+  syncSlashMenuFromEditor(textbox)
+  return screen.findByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })
+}
+
 describe('AgentPromptEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.getSelection()?.removeAllRanges()
     mockConfigFiles.current = []
     mockLexical.selection = null
     mockLexical.rootChildren = []
@@ -404,7 +424,7 @@ describe('AgentPromptEditor', () => {
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
   describe('Slash Commands', () => {
     it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Review these tenders')
+      const { store, rerenderWithValue, container } = renderAgentPromptEditor('Review these tenders')
 
       expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
         disableBracePicker: true,
@@ -414,8 +434,9 @@ describe('AgentPromptEditor', () => {
         }),
       }))
 
-      expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })).toBe(true)
       rerenderWithValue('Review these tenders/')
+      await openSlashMenuFromEditor()
+      expect(container).toContainElement(screen.getByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i }))
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
@@ -427,6 +448,149 @@ describe('AgentPromptEditor', () => {
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })
+    })
+
+    it('should support keyboard navigation and selection in the slash menu', async () => {
+      const user = userEvent.setup()
+      const { store } = renderAgentPromptEditor('Review these tenders/')
+      const textbox = screen.getByRole('textbox')
+
+      textbox.focus()
+      await openSlashMenuFromEditor(textbox)
+
+      const skillsCategory = screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })
+      const filesCategory = screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(textbox).toHaveAttribute('aria-controls', 'agent-configure-prompt-slash-menu')
+        expect(textbox).toHaveAttribute('aria-haspopup', 'dialog')
+      })
+
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(skillsCategory).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(filesCategory).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowRight}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowLeft}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowUp}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowRight}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+
+      await user.keyboard('{ArrowDown}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /Playwright/i })).toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{Enter}')
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })).not.toBeInTheDocument()
+      })
+    })
+
+    it('should keep editor focus when selecting slash menu items with a pointer', async () => {
+      const user = userEvent.setup()
+      const { store } = renderAgentPromptEditor('Review these tenders/')
+      const textbox = screen.getByRole('textbox')
+
+      textbox.focus()
+      await openSlashMenuFromEditor(textbox)
+
+      await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /Playwright/i })).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByRole('button', { name: /Playwright/i }))
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close the slash menu with Escape and restore focus to the editor', async () => {
+      renderAgentPromptEditor('Review/')
+      const textbox = screen.getByRole('textbox')
+
+      textbox.focus()
+      await openSlashMenuFromEditor(textbox)
+
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+      })
+
+      fireEvent.keyDown(textbox, { key: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })).not.toBeInTheDocument()
+      })
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
+      })
+    })
+
+    it('should keep focus in the editor and position the menu from the typed slash', async () => {
+      const getClientRectsSpy = vi.spyOn(Range.prototype, 'getClientRects').mockImplementation(function (this: Range) {
+        const rect = this.collapsed
+          ? DOMRect.fromRect({ x: 480, y: 76, width: 0, height: 18 })
+          : DOMRect.fromRect({ x: 82, y: 76, width: 8, height: 18 })
+        return [rect] as unknown as DOMRectList
+      })
+      const getBoundingClientRectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => (
+        DOMRect.fromRect({ x: 10, y: 50, width: 500, height: 240 })
+      ))
+
+      try {
+        renderAgentPromptEditor('Review/')
+        const textbox = screen.getByRole('textbox')
+        const textNode = textbox.firstChild
+        expect(textNode).not.toBeNull()
+
+        const range = document.createRange()
+        range.setStart(textNode!, 'Review/'.length)
+        range.setEnd(textNode!, 'Review/'.length)
+        const selection = window.getSelection()
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+
+        textbox.focus()
+        const slashMenu = await openSlashMenuFromEditor(textbox)
+        expect(textbox).toHaveFocus()
+        expect(slashMenu).toHaveStyle({
+          left: '80px',
+          top: '48px',
+        })
+      }
+      finally {
+        window.getSelection()?.removeAllRanges()
+        getClientRectsSpy.mockRestore()
+        getBoundingClientRectSpy.mockRestore()
+      }
     })
 
     it('should replace the slash at the current lexical selection instead of appending', async () => {
@@ -447,8 +611,15 @@ describe('AgentPromptEditor', () => {
         },
       }
       const { store } = renderAgentPromptEditor('Review / now')
+      const textbox = screen.getByRole('textbox')
+      const range = document.createRange()
+      range.setStart(textbox.firstChild!, 'Review /'.length)
+      range.setEnd(textbox.firstChild!, 'Review /'.length)
+      window.getSelection()?.removeAllRanges()
+      window.getSelection()?.addRange(range)
+      textbox.focus()
 
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      await openSlashMenuFromEditor(textbox)
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
@@ -473,7 +644,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
-      const onSelect = vi.fn()
+      const onInsertToken = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
         { key: 'files' as const, label: 'Files', icon: 'i-ri-file-line' },
@@ -487,17 +658,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -505,17 +676,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', configName: 'Guide.md' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -523,17 +694,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -541,24 +712,24 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.toolTabs\.cli/i })).not.toBeInTheDocument()
     })
 
-    it('should append available provider tool references and add missing tools to the configuration', () => {
+    it('should append available provider tool references and add missing tools to the configuration', async () => {
       const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
       const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      await openSlashMenuFromEditor()
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
       const providerButton = screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i })
       const providerIcon = Array.from(providerButton.querySelectorAll<HTMLElement>('[style]'))
@@ -582,7 +753,7 @@ describe('AgentPromptEditor', () => {
       ])
 
       rerenderWithValue('Research/')
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      await openSlashMenuFromEditor()
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
       fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i }))
 
@@ -601,7 +772,7 @@ describe('AgentPromptEditor', () => {
     it('should close slash menu when slash is deleted or the user clicks outside', async () => {
       const { rerenderWithValue } = renderAgentPromptEditor('Review/')
 
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      await openSlashMenuFromEditor()
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
       rerenderWithValue('Review')
@@ -612,7 +783,7 @@ describe('AgentPromptEditor', () => {
       })
 
       rerenderWithValue('Review/')
-      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      await openSlashMenuFromEditor()
       expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
 
       fireEvent.pointerDown(document.body)
@@ -620,6 +791,27 @@ describe('AgentPromptEditor', () => {
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toBeInTheDocument()
       })
+    })
+
+    it('should close the slash menu when focus moves outside the prompt editor', async () => {
+      const outsideButton = document.createElement('button')
+      document.body.append(outsideButton)
+
+      try {
+        renderAgentPromptEditor('Review/')
+
+        await openSlashMenuFromEditor()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
+
+        fireEvent.focusIn(outsideButton)
+
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })).not.toBeInTheDocument()
+        })
+      }
+      finally {
+        outsideButton.remove()
+      }
     })
 
     it('should reopen slash menu when the cursor is positioned after slash', async () => {

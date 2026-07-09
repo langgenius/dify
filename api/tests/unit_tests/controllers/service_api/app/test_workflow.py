@@ -13,15 +13,17 @@ Focus on:
 - Service method interfaces
 """
 
+import json
 import sys
 import uuid
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
@@ -35,31 +37,175 @@ from controllers.service_api.app.workflow import (
     WorkflowRunByIdApi,
     WorkflowRunDetailApi,
     WorkflowRunPayload,
+    WorkflowRunResponse,
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.enums import WorkflowExecutionStatus
-from models.model import App, AppMode
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_app_service import WorkflowAppService
+from services.workflow_app_service import LogView, LogViewDetails, WorkflowAppService
 
 
-def _make_mock_workflow_run(run_id: str = "run-1"):
-    run = Mock()
-    run.id = run_id
-    run.workflow_id = "wf-1"
-    run.status = WorkflowExecutionStatus.SUCCEEDED
-    run.inputs = {"input": "value"}
-    run.outputs_dict = {"output": "value"}
-    run.error = None
-    run.total_steps = 1
-    run.total_tokens = 10
-    run.created_at = datetime(2026, 1, 1, tzinfo=UTC)
-    run.finished_at = datetime(2026, 1, 1, tzinfo=UTC)
-    run.elapsed_time = 0.1
-    return run
+def _default_workflow_inputs() -> dict[str, object]:
+    return {"input": "value"}
+
+
+def _default_log_details() -> LogViewDetails:
+    return {"trigger_metadata": {"node": "answer", "latency": 1.25}}
+
+
+class _DbSessionStub:
+    def get(self, *args: object, **kwargs: object) -> None:
+        return None
+
+
+@dataclass
+class _DbStub:
+    engine: object = field(default_factory=object)
+    session: _DbSessionStub = field(default_factory=_DbSessionStub)
+
+
+@dataclass
+class _WorkflowRunRepositoryStub:
+    run: WorkflowRun | None
+
+    def get_workflow_run_by_id(self, *, tenant_id: str, app_id: str, run_id: str) -> WorkflowRun | None:
+        return self.run if tenant_id and app_id and run_id else None
+
+    def get_workflow_run_by_id_without_tenant(self, *, run_id: str) -> WorkflowRun | None:
+        return self.run if run_id else None
+
+
+class _BeginStub:
+    def __enter__(self) -> object:
+        return object()
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        return False
+
+
+class _SessionMakerStub:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    def begin(self) -> _BeginStub:
+        return _BeginStub()
+
+
+def _make_workflow_run(
+    run_id: str = "run-1",
+    *,
+    workflow_id: str = "wf-1",
+    inputs: dict[str, object] | None = None,
+    outputs: dict[str, object] | None = None,
+    created_at: datetime | None = None,
+    finished_at: datetime | None = None,
+) -> WorkflowRun:
+    return WorkflowRun(
+        id=run_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id=workflow_id,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="2026-01-01",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        inputs=json.dumps(inputs if inputs is not None else _default_workflow_inputs()),
+        outputs=json.dumps(outputs if outputs is not None else {"output": "value"}),
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0.1,
+        total_tokens=10,
+        total_steps=1,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="end-user-1",
+        created_at=created_at or datetime(2026, 1, 1, tzinfo=UTC),
+        finished_at=finished_at or datetime(2026, 1, 1, tzinfo=UTC),
+        exceptions_count=0,
+    )
+
+
+def _make_workflow_app_log() -> WorkflowAppLog:
+    log = WorkflowAppLog(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="wf-1",
+        workflow_run_id="log-run-1",
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+    log.id = "app-log-1"
+    log.created_at = datetime(2026, 1, 1, 1, 0, 3, tzinfo=UTC)
+    return log
+
+
+def _make_workflow_log_page() -> dict[str, object]:
+    return {
+        "page": 1,
+        "limit": 20,
+        "total": 1,
+        "has_more": False,
+        "data": [LogView(_make_workflow_app_log(), _default_log_details())],
+    }
+
+
+def _make_app_model(
+    *,
+    app_id: str = "app-1",
+    tenant_id: str = "tenant-1",
+    mode: AppMode = AppMode.WORKFLOW,
+) -> App:
+    app = App()
+    app.id = app_id
+    app.tenant_id = tenant_id
+    app.mode = mode
+    return app
+
+
+def _make_end_user(user_id: str = "end-user-1") -> EndUser:
+    end_user = EndUser()
+    end_user.id = user_id
+    return end_user
+
+
+def _expected_workflow_log_pagination_payload() -> dict[str, object]:
+    return {
+        "page": 1,
+        "limit": 20,
+        "total": 1,
+        "has_more": False,
+        "data": [
+            {
+                "id": "app-log-1",
+                "workflow_run": {
+                    "id": "log-run-1",
+                    "version": "2026-01-01",
+                    "status": "succeeded",
+                    "triggered_from": "app-run",
+                    "error": None,
+                    "elapsed_time": 0.1,
+                    "total_tokens": 10,
+                    "total_steps": 1,
+                    "created_at": 1767229200,
+                    "finished_at": 1767229202,
+                    "exceptions_count": 0,
+                },
+                "details": {"trigger_metadata": {"node": "answer", "latency": 1.25}},
+                "created_from": "service-api",
+                "created_by_role": "account",
+                "created_by_account": None,
+                "created_by_end_user": None,
+                "created_at": 1767229203,
+            }
+        ],
+    }
 
 
 class TestWorkflowRunPayload:
@@ -108,6 +254,7 @@ class TestWorkflowRunPayload:
             {"type": "audio", "url": "http://example.com/audio.mp3"},
         ]
         payload = WorkflowRunPayload(inputs={}, files=files)
+        assert payload.files is not None
         assert len(payload.files) == 3
 
 
@@ -179,6 +326,29 @@ class TestWorkflowLogQuery:
         assert query.created_at__after == "2024-01-01T00:00:00Z"
 
 
+class TestWorkflowRunResponse:
+    def test_validates_workflow_run_object_shape_and_clears_paused_outputs(self):
+        run = _make_workflow_run(run_id="run-paused")
+        run.status = WorkflowExecutionStatus.PAUSED
+        run.outputs = json.dumps({"should": "not leak"})
+
+        result = WorkflowRunResponse.model_validate(run, from_attributes=True).model_dump(mode="json")
+
+        assert result == {
+            "id": "run-paused",
+            "workflow_id": "wf-1",
+            "status": "paused",
+            "inputs": '{"input": "value"}',
+            "outputs": {},
+            "error": None,
+            "total_steps": 1,
+            "total_tokens": 10,
+            "created_at": 1767225600,
+            "finished_at": 1767225600,
+            "elapsed_time": 0.1,
+        }
+
+
 class TestWorkflowAppService:
     """Test WorkflowAppService interface."""
 
@@ -195,17 +365,13 @@ class TestWorkflowAppService:
     @patch.object(WorkflowAppService, "get_paginate_workflow_app_logs")
     def test_get_paginate_workflow_app_logs_returns_pagination(self, mock_get_logs):
         """Test get_paginate_workflow_app_logs returns paginated result."""
-        mock_pagination = Mock()
-        mock_pagination.data = []
-        mock_pagination.page = 1
-        mock_pagination.limit = 20
-        mock_pagination.total = 0
-        mock_get_logs.return_value = mock_pagination
+        pagination = _make_workflow_log_page()
+        mock_get_logs.return_value = pagination
 
         service = WorkflowAppService()
         result = service.get_paginate_workflow_app_logs(
             session=Mock(),
-            app_model=Mock(spec=App),
+            app_model=_make_app_model(),
             keyword=None,
             status=None,
             created_at_before=None,
@@ -216,8 +382,7 @@ class TestWorkflowAppService:
             created_by_account=None,
         )
 
-        assert result.page == 1
-        assert result.limit == 20
+        assert result == pagination
 
 
 class TestWorkflowExecutionStatus:
@@ -248,10 +413,10 @@ class TestAppGenerateServiceWorkflow:
         mock_generate.return_value = {"result": "success"}
 
         result = AppGenerateService.generate(
-            app_model=Mock(spec=App),
-            user=Mock(),
+            app_model=_make_app_model(),
+            user=_make_end_user(),
             args={"inputs": {"key": "value"}, "workflow_id": "workflow_123"},
-            invoke_from=Mock(),
+            invoke_from=InvokeFrom.SERVICE_API,
             session=MagicMock(),
             streaming=False,
         )
@@ -266,10 +431,10 @@ class TestAppGenerateServiceWorkflow:
 
         with pytest.raises(WorkflowNotFoundError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App),
-                user=Mock(),
+                app_model=_make_app_model(),
+                user=_make_end_user(),
                 args={"workflow_id": "invalid_id"},
-                invoke_from=Mock(),
+                invoke_from=InvokeFrom.SERVICE_API,
                 session=MagicMock(),
                 streaming=False,
             )
@@ -281,10 +446,10 @@ class TestAppGenerateServiceWorkflow:
 
         with pytest.raises(IsDraftWorkflowError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App),
-                user=Mock(),
+                app_model=_make_app_model(),
+                user=_make_end_user(),
                 args={"workflow_id": "draft_workflow"},
-                invoke_from=Mock(),
+                invoke_from=InvokeFrom.SERVICE_API,
                 session=MagicMock(),
                 streaming=False,
             )
@@ -296,10 +461,10 @@ class TestAppGenerateServiceWorkflow:
         mock_generate.return_value = mock_stream
 
         result = AppGenerateService.generate(
-            app_model=Mock(spec=App),
-            user=Mock(),
+            app_model=_make_app_model(),
+            user=_make_end_user(),
             args={"inputs": {}, "response_mode": "streaming"},
-            invoke_from=Mock(),
+            invoke_from=InvokeFrom.SERVICE_API,
             session=MagicMock(),
             streaming=True,
         )
@@ -335,37 +500,33 @@ class TestWorkflowRunRepository:
     @patch("repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository")
     def test_workflow_run_repository_get_by_id(self, mock_factory):
         """Test workflow run repository get_workflow_run_by_id method."""
-        mock_repo = Mock()
-        mock_run = Mock()
-        mock_run.id = str(uuid.uuid4())
-        mock_run.status = "succeeded"
-        mock_repo.get_workflow_run_by_id.return_value = mock_run
-        mock_factory.return_value = mock_repo
+        run = _make_workflow_run(run_id=str(uuid.uuid4()))
+        mock_factory.return_value = _WorkflowRunRepositoryStub(run=run)
 
         from repositories.factory import DifyAPIRepositoryFactory
 
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(Mock())
+        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessionmaker())
 
         result = repo.get_workflow_run_by_id(tenant_id="tenant_123", app_id="app_456", run_id="run_789")
 
-        assert result.status == "succeeded"
+        assert result == run
 
 
 class TestWorkflowRunDetailApi:
     def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunDetailApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = _make_app_model(mode=AppMode.CHAT)
 
         with app.test_request_context("/workflows/run/1", method="GET"):
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, workflow_run_id="run")
 
     def test_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        run = _make_mock_workflow_run(run_id="run")
-        repo = SimpleNamespace(get_workflow_run_by_id=lambda **_kwargs: run)
+        run = _make_workflow_run(run_id="run")
+        repo = _WorkflowRunRepositoryStub(run=run)
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        monkeypatch.setattr(workflow_module, "db", _DbStub())
         monkeypatch.setattr(
             DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
@@ -374,7 +535,7 @@ class TestWorkflowRunDetailApi:
 
         api = WorkflowRunDetailApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW, tenant_id="t1", id="a1")
+        app_model = _make_app_model(app_id="a1", tenant_id="t1")
 
         result = handler(api, app_model=app_model, workflow_run_id="run")
         assert result["id"] == "run"
@@ -386,8 +547,8 @@ class TestWorkflowRunApi:
     def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _make_app_model(mode=AppMode.CHAT)
+        end_user = _make_end_user()
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
@@ -402,8 +563,8 @@ class TestWorkflowRunApi:
 
         api = WorkflowRunApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace()
+        app_model = _make_app_model()
+        end_user = _make_end_user()
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(InvokeRateLimitHttpError):
@@ -420,8 +581,8 @@ class TestWorkflowRunByIdApi:
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace()
+        app_model = _make_app_model()
+        end_user = _make_end_user()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
@@ -436,8 +597,8 @@ class TestWorkflowRunByIdApi:
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace()
+        app_model = _make_app_model()
+        end_user = _make_end_user()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(BadRequest):
@@ -448,8 +609,8 @@ class TestWorkflowTaskStopApi:
     def test_wrong_mode(self, app: Flask) -> None:
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _make_app_model(mode=AppMode.CHAT)
+        end_user = _make_end_user()
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
             with pytest.raises(NotWorkflowAppError):
@@ -463,8 +624,8 @@ class TestWorkflowTaskStopApi:
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
-        end_user = SimpleNamespace(id="u1")
+        app_model = _make_app_model()
+        end_user = _make_end_user(user_id="u1")
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
             response = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
@@ -476,37 +637,36 @@ class TestWorkflowTaskStopApi:
 
 class TestWorkflowAppLogApi:
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        class _BeginStub:
-            def __enter__(self):
-                return SimpleNamespace()
-
-            def __exit__(self, exc_type, exc, tb):
-                return False
-
-        class _SessionMakerStub:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def begin(self):
-                return _BeginStub()
-
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        workflow_model_module = sys.modules["models.workflow"]
+        monkeypatch.setattr(workflow_module, "db", _DbStub())
+        monkeypatch.setattr(workflow_model_module, "db", _DbStub())
         monkeypatch.setattr(workflow_module, "sessionmaker", _SessionMakerStub)
         monkeypatch.setattr(
             WorkflowAppService,
             "get_paginate_workflow_app_logs",
-            lambda *_args, **_kwargs: {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []},
+            lambda *_args, **_kwargs: _make_workflow_log_page(),
+        )
+        monkeypatch.setattr(
+            DifyAPIRepositoryFactory,
+            "create_api_workflow_run_repository",
+            lambda *_args, **_kwargs: _WorkflowRunRepositoryStub(
+                run=_make_workflow_run(
+                    run_id="log-run-1",
+                    created_at=datetime(2026, 1, 1, 1, tzinfo=UTC),
+                    finished_at=datetime(2026, 1, 1, 1, 0, 2, tzinfo=UTC),
+                )
+            ),
         )
 
         api = WorkflowAppLogApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="a1")
+        app_model = _make_app_model(app_id="a1")
 
         with app.test_request_context("/workflows/logs", method="GET"):
             response = handler(api, app_model=app_model)
 
-        assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        assert response == _expected_workflow_log_pagination_payload()
 
 
 # =============================================================================
@@ -520,12 +680,8 @@ class TestWorkflowAppLogApi:
 
 
 @pytest.fixture
-def mock_workflow_app():
-    app = Mock(spec=App)
-    app.id = str(uuid.uuid4())
-    app.tenant_id = str(uuid.uuid4())
-    app.mode = AppMode.WORKFLOW
-    return app
+def workflow_app() -> App:
+    return _make_app_model(app_id=str(uuid.uuid4()), tenant_id=str(uuid.uuid4()))
 
 
 class TestWorkflowRunDetailApiGet:
@@ -542,38 +698,46 @@ class TestWorkflowRunDetailApiGet:
         mock_db,
         mock_repo_factory,
         app: Flask,
-        mock_workflow_app,
+        workflow_app: App,
     ):
         """Test successful workflow run detail retrieval."""
-        mock_run = _make_mock_workflow_run(run_id="run-1")
-        mock_repo = Mock()
-        mock_repo.get_workflow_run_by_id.return_value = mock_run
-        mock_repo_factory.create_api_workflow_run_repository.return_value = mock_repo
+        run = _make_workflow_run(run_id="run-1")
+        mock_repo_factory.create_api_workflow_run_repository.return_value = _WorkflowRunRepositoryStub(run=run)
 
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
         with app.test_request_context(
-            f"/workflows/run/{mock_run.id}",
+            f"/workflows/run/{run.id}",
             method="GET",
         ):
             api = WorkflowRunDetailApi()
-            result = unwrap(api.get)(api, app_model=mock_workflow_app, workflow_run_id=mock_run.id)
+            result = unwrap(api.get)(api, app_model=workflow_app, workflow_run_id=run.id)
 
-        assert result["id"] == mock_run.id
-        assert result["status"] == "succeeded"
+        assert result == {
+            "id": "run-1",
+            "workflow_id": "wf-1",
+            "status": "succeeded",
+            "inputs": '{"input": "value"}',
+            "outputs": {"output": "value"},
+            "error": None,
+            "total_steps": 1,
+            "total_tokens": 10,
+            "created_at": 1767225600,
+            "finished_at": 1767225600,
+            "elapsed_time": 0.1,
+        }
 
     @patch("controllers.service_api.app.workflow.db")
     def test_get_workflow_run_wrong_app_mode(self, mock_db, app: Flask):
         """Test NotWorkflowAppError when app mode is not workflow or advanced_chat."""
         from controllers.service_api.app.workflow import WorkflowRunDetailApi
 
-        mock_app = Mock(spec=App)
-        mock_app.mode = AppMode.CHAT.value
+        app_model = _make_app_model(mode=AppMode.CHAT)
 
         with app.test_request_context("/workflows/run/run-1", method="GET"):
             api = WorkflowRunDetailApi()
             with pytest.raises(NotWorkflowAppError):
-                unwrap(api.get)(api, app_model=mock_app, workflow_run_id="run-1")
+                unwrap(api.get)(api, app_model=app_model, workflow_run_id="run-1")
 
 
 class TestWorkflowTaskStopApiPost:
@@ -589,7 +753,7 @@ class TestWorkflowTaskStopApiPost:
         mock_queue_mgr,
         mock_graph_mgr,
         app: Flask,
-        mock_workflow_app,
+        workflow_app: App,
     ):
         """Test successful workflow task stop."""
         from controllers.service_api.app.workflow import WorkflowTaskStopApi
@@ -598,8 +762,8 @@ class TestWorkflowTaskStopApiPost:
             api = WorkflowTaskStopApi()
             result = unwrap(api.post)(
                 api,
-                app_model=mock_workflow_app,
-                end_user=Mock(),
+                app_model=workflow_app,
+                end_user=_make_end_user(),
                 task_id="task-1",
             )
 
@@ -612,13 +776,12 @@ class TestWorkflowTaskStopApiPost:
         """Test NotWorkflowAppError when app mode is not workflow."""
         from controllers.service_api.app.workflow import WorkflowTaskStopApi
 
-        mock_app = Mock(spec=App)
-        mock_app.mode = AppMode.COMPLETION.value
+        app_model = _make_app_model(mode=AppMode.COMPLETION)
 
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
             with pytest.raises(NotWorkflowAppError):
-                unwrap(api.post)(api, app_model=mock_app, end_user=Mock(), task_id="task-1")
+                unwrap(api.post)(api, app_model=app_model, end_user=_make_end_user(), task_id="task-1")
 
 
 class TestWorkflowAppLogApiGet:
@@ -634,27 +797,23 @@ class TestWorkflowAppLogApiGet:
         mock_db,
         mock_wf_svc_cls,
         app: Flask,
-        mock_workflow_app,
+        workflow_app: App,
     ):
         """Test successful workflow log retrieval."""
-        mock_pagination = Mock()
-        mock_pagination.page = 1
-        mock_pagination.limit = 20
-        mock_pagination.total = 0
-        mock_pagination.has_more = False
-        mock_pagination.data = []
         mock_svc_instance = Mock()
-        mock_svc_instance.get_paginate_workflow_app_logs.return_value = mock_pagination
+        mock_svc_instance.get_paginate_workflow_app_logs.return_value = _make_workflow_log_page()
         mock_wf_svc_cls.return_value = mock_svc_instance
+        mock_repo = _WorkflowRunRepositoryStub(
+            run=_make_workflow_run(
+                run_id="log-run-1",
+                created_at=datetime(2026, 1, 1, 1, tzinfo=UTC),
+                finished_at=datetime(2026, 1, 1, 1, 0, 2, tzinfo=UTC),
+            )
+        )
 
         # Mock sessionmaker(...).begin() context manager
-        mock_session = Mock()
-        mock_db.engine = Mock()
-        mock_begin = Mock()
-        mock_begin.__enter__ = Mock(return_value=mock_session)
-        mock_begin.__exit__ = Mock(return_value=False)
-        mock_session_factory = Mock()
-        mock_session_factory.begin.return_value = mock_begin
+        mock_db.engine = object()
+        mock_db.session.get.return_value = None
 
         from controllers.service_api.app.workflow import WorkflowAppLogApi
 
@@ -662,8 +821,15 @@ class TestWorkflowAppLogApiGet:
             "/workflows/logs?page=1&limit=20",
             method="GET",
         ):
-            with patch("controllers.service_api.app.workflow.sessionmaker", return_value=mock_session_factory):
+            with (
+                patch("controllers.service_api.app.workflow.sessionmaker", _SessionMakerStub),
+                patch("models.workflow.db", _DbStub()),
+                patch(
+                    "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                    return_value=mock_repo,
+                ),
+            ):
                 api = WorkflowAppLogApi()
-                result = unwrap(api.get)(api, app_model=mock_workflow_app)
+                result = unwrap(api.get)(api, app_model=workflow_app)
 
-        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        assert result == _expected_workflow_log_pagination_payload()

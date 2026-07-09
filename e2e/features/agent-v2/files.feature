@@ -60,19 +60,3 @@ Feature: Agent v2 files
     And I drop multiple Agent v2 files into the Files upload dialog
     Then the Agent v2 Files upload dialog should reject the multiple-file drop
     And I should not see the dropped Agent v2 files in the Files section
-
-  @files-limits @feature-gated
-  Scenario: Agent v2 total file count limits are enforced
-    Given I am signed in as the default E2E admin
-    And Agent v2 total file count limits are available
-    And a basic configured Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    Then Agent v2 total file count limits should be available
-
-  @files-limits @feature-gated
-  Scenario: Leaving during Agent v2 file upload keeps a recoverable state
-    Given I am signed in as the default E2E admin
-    And Agent v2 in-progress file upload recovery is available
-    And a basic configured Agent v2 test agent has been created via API
-    When I open the Agent v2 configure page
-    Then Agent v2 in-progress file upload recovery should be available

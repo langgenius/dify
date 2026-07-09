@@ -78,6 +78,11 @@ export type ChatProps = {
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
+  renderAgentContent?: (props: {
+    item: ChatItem
+    responding?: boolean
+    content?: string
+  }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
@@ -130,6 +135,7 @@ const Chat: FC<ChatProps> = ({
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
+  renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -204,6 +210,7 @@ const Chat: FC<ChatProps> = ({
                       noChatInput={noChatInput}
                       switchSibling={switchSibling}
                       hideAvatar={hideAvatar}
+                      renderAgentContent={renderAgentContent}
                       onHumanInputFormSubmit={onHumanInputFormSubmit}
                     />
                   )

@@ -1183,7 +1183,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 17
+      "count": 12
     }
   },
   "web/app/components/base/chat/chat/log/index.tsx": {
@@ -6908,11 +6908,6 @@
   "web/models/share.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/scripts/component-analyzer.js": {
-    "regexp/no-unused-capturing-group": {
-      "count": 6
     }
   },
   "web/service/__tests__/base.spec.ts": {
