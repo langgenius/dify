@@ -35,7 +35,12 @@ import {
   useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
-import { currentWorkspaceIdAtom, isCurrentWorkspaceOwnerAtom, langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import {
+  currentWorkspaceIdAtom,
+  currentWorkspaceLoadingAtom,
+  isCurrentWorkspaceOwnerAtom,
+  langGeniusVersionInfoAtom,
+} from '@/context/app-context-state'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -83,6 +88,7 @@ const HelpMenu = ({
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
@@ -95,12 +101,16 @@ const HelpMenu = ({
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
+  const canToggleStepByStepTour = Boolean(currentWorkspaceId) && !isLoadingCurrentWorkspace
   const stepByStepTourEnabled = getStepByStepTourEnabledForCurrentWorkspace(
     stepByStepTourAccountState,
     currentWorkspaceId,
   )
 
   const handleStepByStepTourCheckedChange = (checked: boolean) => {
+    if (!canToggleStepByStepTour)
+      return
+
     setSkipRecoveryVisible(false)
     const wasSkipped = stepByStepTourAccountState.skipped
     const trackVisibilityToggled = (state: StepByStepTourPersistentState) => {
@@ -189,6 +199,7 @@ const HelpMenu = ({
                   checked={stepByStepTourEnabled}
                   closeOnClick={false}
                   className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
                 >
                   <span aria-hidden className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary" />

@@ -839,6 +839,33 @@ describe('MainNav', () => {
       .toHaveAttribute('aria-checked', 'false')
   })
 
+  it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
+
+    fireEvent.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
+        body: { action: 'enable_current_workspace' },
+      })
+      expect(mockStepByStepTour.observedState?.manuallyEnabledWorkspaceIds).toEqual(['workspace-1'])
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    expect(await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }))
+      .toHaveAttribute('aria-checked', 'true')
+  })
+
   it('hides Step-by-step Tour switch when the feature is disabled', async () => {
     renderMainNav({
       enable_learn_app: true,
