@@ -22,8 +22,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -740,7 +740,7 @@ export default function SkillsPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
             tabIndex={-1}
             className="overscroll-contain"
@@ -764,7 +764,7 @@ export default function SkillsPage() {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
     </div>
   )

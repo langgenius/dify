@@ -194,7 +194,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": self._config_version_payload(target),
-            "items": [self._serialize_skill_item(skill) for skill in target.agent_soul.config_skills],
+            "items": self._skill_items_for_target(target),
         }
 
     def list_files(
