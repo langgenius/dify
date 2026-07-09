@@ -697,9 +697,9 @@ export const zCreateSnippetPayload = z.object({
 })
 
 /**
- * SnippetAccountResponse
+ * SimpleAccountResponse
  */
-export const zSnippetAccountResponse = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -726,7 +726,7 @@ export const zSnippetType = z.enum(['group', 'node'])
  */
 export const zSnippetResponse = z.object({
   created_at: z.int(),
-  created_by: zSnippetAccountResponse.nullable(),
+  created_by: zSimpleAccountResponse.nullable(),
   description: z.string().nullable(),
   graph: z.record(z.string(), z.unknown()),
   icon_info: z.record(z.string(), z.unknown()).nullable(),
@@ -737,7 +737,7 @@ export const zSnippetResponse = z.object({
   tags: z.array(zSnippetTagResponse),
   type: zSnippetType,
   updated_at: z.int(),
-  updated_by: zSnippetAccountResponse.nullable(),
+  updated_by: zSimpleAccountResponse.nullable(),
   use_count: z.int(),
   version: z.int(),
 })
