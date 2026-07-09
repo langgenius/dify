@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "لا يوجد إذن للوصول إلى هذا المورد",
   "noUserInputNode": "عقدة إدخال المستخدم مفقودة",
   "notPublishedYet": "التطبيق لم ينشر بعد",
-  "openInExplore": "فتح في الاستكشاف",
+  "openInExplore": "فتح Web App في الشريط الجانبي",
   "publishApp.notSet": "لم يتم تعيينه",
   "publishApp.notSetDesc": "حاليا لا يمكن لأحد الوصول إلى تطبيق الويب. الرجاء تعيين الأذونات.",
   "publishApp.title": "من يمكنه الوصول إلى تطبيق الويب",

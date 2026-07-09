@@ -33,11 +33,32 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({
-    setQueryData: mockSetQueryData,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      setQueryData: mockSetQueryData,
+    }),
+  }
+})
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: mockAppState.appDetail.permission_keys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {

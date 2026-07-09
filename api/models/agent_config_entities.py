@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validat
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
 from core.workflow.file_reference import is_canonical_file_reference
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
 
 
 class AgentKnowledgeQueryMode(StrEnum):
@@ -314,20 +314,15 @@ class AgentKnowledgeQueryConfig(BaseModel):
 
     Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
     legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
-    set owns its own query policy, so ``user_query`` must carry an explicit
-    ``value`` while ``generated_query`` leaves that value empty.
+    set owns its own query policy. Mode-dependent completeness, such as
+    requiring ``value`` for ``user_query``, is enforced by composer publish
+    validation so draft saves can persist partially configured knowledge sets.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     mode: AgentKnowledgeQueryMode
     value: str | None = None
-
-    @model_validator(mode="after")
-    def validate_query(self) -> Self:
-        if self.mode == AgentKnowledgeQueryMode.USER_QUERY and not (self.value or "").strip():
-            raise ValueError("knowledge query.value is required for user_query mode")
-        return self
 
 
 class AgentKnowledgeModelConfig(BaseModel):
@@ -356,8 +351,9 @@ class AgentKnowledgeRetrievalConfig(BaseModel):
     """Per-set retrieval policy for Agent v2 knowledge retrieval.
 
     Retrieval settings now live on each knowledge set instead of one shared
-    flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
-    ``single`` retrieval with a required model config.
+    flat config. Mode-dependent completeness, such as requiring ``top_k`` for
+    ``multiple`` or a model for ``single``, is enforced by composer publish
+    validation so draft saves can persist partially configured knowledge sets.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -370,14 +366,6 @@ class AgentKnowledgeRetrievalConfig(BaseModel):
     reranking_model: AgentKnowledgeRerankingModelConfig | None = None
     weights: AgentKnowledgeWeightedScoreConfig | None = None
     model: AgentKnowledgeModelConfig | None = None
-
-    @model_validator(mode="after")
-    def validate_mode_fields(self) -> Self:
-        if self.mode == "multiple" and self.top_k is None:
-            raise ValueError("knowledge retrieval.top_k is required for multiple mode")
-        if self.mode == "single" and self.model is None:
-            raise ValueError("knowledge retrieval.model is required for single mode")
-        return self
 
 
 class AgentKnowledgeMetadataCondition(BaseModel):
@@ -401,6 +389,8 @@ class AgentKnowledgeMetadataFilteringConfig(BaseModel):
     The Python attribute uses ``metadata_model_config`` for clarity because the
     model belongs to metadata filtering specifically, while the external API and
     generated schema keep the historical ``model_config`` field name via alias.
+    Mode-dependent completeness is enforced by composer publish validation so
+    draft saves can persist partially configured metadata filters.
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -409,14 +399,6 @@ class AgentKnowledgeMetadataFilteringConfig(BaseModel):
     # Internal name is explicit; wire format remains ``model_config``.
     metadata_model_config: AgentKnowledgeModelConfig | None = Field(default=None, alias="model_config")
     conditions: AgentKnowledgeMetadataConditions | None = None
-
-    @model_validator(mode="after")
-    def validate_mode_fields(self) -> Self:
-        if self.mode == "automatic" and self.metadata_model_config is None:
-            raise ValueError("metadata_filtering.model_config is required for automatic mode")
-        if self.mode == "manual" and (self.conditions is None or not self.conditions.conditions):
-            raise ValueError("metadata_filtering.conditions is required for manual mode")
-        return self
 
 
 class AgentKnowledgeSetConfig(BaseModel):
@@ -547,6 +529,23 @@ class AgentSensitiveWordAvoidanceFeatureConfig(AgentFeatureToggleConfig):
     config: AgentModerationProviderConfig | None = None
 
 
+class AgentFileUploadImageFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+
+
+class AgentFileUploadFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+    allowed_file_extensions: list[str] = Field(default_factory=lambda: ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"])
+    allowed_file_types: list[FileType] = Field(
+        default_factory=lambda: [FileType.DOCUMENT, FileType.IMAGE, FileType.AUDIO, FileType.VIDEO]
+    )
+    allowed_file_upload_methods: list[FileTransferMethod] = Field(
+        default_factory=lambda: [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]
+    )
+    image: AgentFileUploadImageFeatureConfig = Field(default_factory=AgentFileUploadImageFeatureConfig)
+    number_limits: int = 3
+
+
 class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     opening_statement: str | None = None
     suggested_questions: list[str] | None = None
@@ -555,6 +554,7 @@ class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     text_to_speech: AgentTextToSpeechFeatureConfig | None = None
     retriever_resource: AgentFeatureToggleConfig | None = None
     sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
+    file_upload: AgentFileUploadFeatureConfig = Field(default_factory=AgentFileUploadFeatureConfig)
 
 
 class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):

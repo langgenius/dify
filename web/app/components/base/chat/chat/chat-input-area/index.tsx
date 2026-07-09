@@ -4,8 +4,8 @@ import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
@@ -49,6 +49,7 @@ type ChatInputAreaProps = {
   sendButtonLoading?: boolean
   footerNotice?: ReactNode
   footerNoticeTooltip?: ReactNode
+  autoFocus?: boolean
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -57,7 +58,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, footerNoticeTooltip, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, footerNoticeTooltip, autoFocus = true, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -187,7 +188,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
                 placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 // Existing chat behavior focuses the composer as soon as it opens.
                 // eslint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
+                autoFocus={autoFocus}
                 minRows={1}
                 value={query}
                 onChange={e => handleQueryChange(e.target.value)}
@@ -211,25 +212,32 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
+            <span aria-hidden className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
+            <div className="body-xs-medium text-text-accent">{footerNotice}</div>
             {shouldShowFooterNoticeTooltip && (
-              <Tooltip>
-                <TooltipTrigger
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  delay={300}
+                  closeDelay={200}
                   render={(
                     <button
                       type="button"
-                      className="flex size-5 items-center justify-center rounded-md text-text-accent hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg"
+                      className="ml-auto flex size-5 items-center justify-center rounded-md system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg"
                       aria-label={typeof footerNoticeTooltip === 'string' ? footerNoticeTooltip : undefined}
                     >
-                      <span aria-hidden className="i-ri-information-line size-3.5 shrink-0" />
+                      <span aria-hidden className="i-ri-question-line size-3.5 shrink-0" />
                     </button>
                   )}
                 />
-                <TooltipContent className="max-w-80">
+                <PopoverContent
+                  placement="top"
+                  popupClassName="max-w-80 rounded-md border-0 px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary"
+                >
                   {footerNoticeTooltip}
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
-            <div className="body-xs-medium text-text-accent">{footerNotice}</div>
           </div>
         </div>
       )}

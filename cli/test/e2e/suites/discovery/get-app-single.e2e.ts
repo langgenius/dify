@@ -3,7 +3,7 @@
  *
  * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Discovery/Single App Query (22 cases)
  *
- * Note: difyctl get app <id> queries a single app via GET /apps/<id>/describe?fields=info.
+ * Note: difyctl get app <id> queries a single app via GET /apps/<id>?fields=info.
  * The response is returned in list-envelope format {page,limit,total,data:[...]}.
  */
 

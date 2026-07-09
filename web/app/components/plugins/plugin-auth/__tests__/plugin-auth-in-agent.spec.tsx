@@ -37,18 +37,20 @@ vi.mock('@/service/use-tools', () => ({
 
 const mockIsCurrentWorkspaceManager = vi.fn()
 const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  // Item renders useAppContextWithSelector(state => state.userProfile) for the
-  // borrowed-row heuristic. Provide a minimal stub so the selector runs.
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-    }),
-}))
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),

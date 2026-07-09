@@ -14,8 +14,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
@@ -150,9 +149,8 @@ function SearchMethodRadioCard({
         readonly && 'cursor-not-allowed',
       )}
     >
-      <RadioRoot<RetrievalSearchMethodEnum>
+      <RadioItem<RetrievalSearchMethodEnum>
         value={option.id}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         disabled={readonly}
@@ -186,7 +184,7 @@ function SearchMethodRadioCard({
               )
             : null}
         </div>
-      </RadioRoot>
+      </RadioItem>
       {!!(children && isActive) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-3">
           <div className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg" />
@@ -206,9 +204,8 @@ function HybridSearchModeRadioCard({
 }) {
   return (
     <FieldItem>
-      <RadioRoot<HybridSearchModeEnum>
+      <RadioItem<HybridSearchModeEnum>
         value={option.id}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         disabled={readonly}
@@ -230,7 +227,7 @@ function HybridSearchModeRadioCard({
           </div>
           <RadioControl className="mt-0.5" aria-hidden="true" />
         </div>
-      </RadioRoot>
+      </RadioItem>
     </FieldItem>
   )
 }

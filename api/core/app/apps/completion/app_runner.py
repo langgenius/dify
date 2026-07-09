@@ -193,6 +193,7 @@ class CompletionAppRunner(AppRunner):
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
+            request_metadata={"app_id": app_config.app_id},
         )
 
         # handle invoke result

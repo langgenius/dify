@@ -1,5 +1,6 @@
 import inspect
-from unittest.mock import MagicMock, PropertyMock, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -7,6 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.console import console_ns
+from controllers.console.datasets import external as external_module
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.external import (
     BedrockRetrievalApi,
@@ -142,7 +144,7 @@ class TestExternalApiUseCheckApi:
 
         assert status == 200
         assert response == {"is_using": True, "count": 2}
-        mock_use_check.assert_called_once_with(session, "api-id", "tenant-1")
+        mock_use_check.assert_called_once_with("api-id", "tenant-1", session=ANY)
 
 
 class TestExternalDatasetCreateApi:
@@ -186,6 +188,7 @@ class TestExternalDatasetCreateApi:
                 "create_external_dataset",
                 return_value=dataset,
             ),
+            patch.object(external_module, "db", SimpleNamespace(session=lambda: MagicMock())),
         ):
             _, status = method(api, MagicMock(), "tenant-1", current_user)
 

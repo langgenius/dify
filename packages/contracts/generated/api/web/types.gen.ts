@@ -18,6 +18,7 @@ export type AccessTokenResultResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -420,6 +421,10 @@ export type Parameters = {
   system_parameters: SystemParameters
   text_to_speech: JsonObject
   user_input_form: Array<JsonObject>
+}
+
+export type PassportAccessTokenResponse = {
+  access_token: string
 }
 
 export type PassportQuery = {
@@ -1282,7 +1287,7 @@ export type GetPassportErrors = {
 }
 
 export type GetPassportResponses = {
-  200: AccessTokenData
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]

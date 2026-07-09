@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "このリソースにアクセスする権限がありません",
   "noUserInputNode": "ユーザー入力ノードが見つかりません",
   "notPublishedYet": "アプリはまだ公開されていません",
-  "openInExplore": "\"探索\" で開く",
+  "openInExplore": "左側のWeb Appを開く",
   "publishApp.notSet": "未設定",
   "publishApp.notSetDesc": "現在この Web アプリには誰もアクセスできません。権限を設定してください。",
   "publishApp.title": "Web アプリへのアクセス権",

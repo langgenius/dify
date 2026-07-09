@@ -363,6 +363,7 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -497,6 +498,13 @@ export const zMessageListQuery = z.object({
  */
 export const zMessageMoreLikeThisQuery = z.object({
   response_mode: z.enum(['blocking', 'streaming']),
+})
+
+/**
+ * PassportAccessTokenResponse
+ */
+export const zPassportAccessTokenResponse = z.object({
+  access_token: z.string(),
 })
 
 /**
@@ -1179,7 +1187,7 @@ export const zGetPassportQuery = z.object({
 /**
  * Passport retrieved successfully
  */
-export const zGetPassportResponse = zAccessTokenData
+export const zGetPassportResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

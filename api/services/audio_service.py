@@ -6,7 +6,7 @@ from typing import cast
 
 from flask import Response, stream_with_context
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AudioService:
     @staticmethod
-    def _get_message_by_ref(session: Session | scoped_session, message_ref: MessageRef) -> Message | None:
+    def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
         stmt = select(Message).where(Message.id == message_ref.message_id, Message.app_id == message_ref.app_id)
         if message_ref.end_user_id is not None:
             stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
@@ -89,7 +89,7 @@ class AudioService:
         cls,
         app_model: App,
         *,
-        session: Session | scoped_session,
+        session: Session,
         text: str | None = None,
         voice: str | None = None,
         end_user: str | None = None,

@@ -18,8 +18,6 @@ import { AccessMode } from '@/models/access-control'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
-let mockIsCurrentWorkspaceEditor = true
-let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
@@ -47,19 +45,23 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
     isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -266,8 +268,6 @@ const clickCreateMenuItem = (label: string) => {
 describe('Create App Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
-    mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
@@ -292,7 +292,6 @@ describe('Create App Flow', () => {
     })
 
     it('should render disabled the create menu when user lacks app creation permission', () => {
-      mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       renderList()
 

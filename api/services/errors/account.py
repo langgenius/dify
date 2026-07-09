@@ -17,6 +17,14 @@ class AccountPasswordError(BaseServiceError):
     pass
 
 
+class RefreshTokenNotFoundError(BaseServiceError):
+    pass
+
+
+class RefreshTokenAccountNotFoundError(BaseServiceError):
+    pass
+
+
 class AccountNotLinkTenantError(BaseServiceError):
     pass
 

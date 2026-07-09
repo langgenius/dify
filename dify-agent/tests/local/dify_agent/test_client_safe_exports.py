@@ -71,6 +71,7 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         agent_stub_client_module = importlib.import_module("dify_agent.agent_stub.client")
         agent_stub_protocol_module = importlib.import_module("dify_agent.agent_stub.protocol")
         agent_stub_cli_main_module = importlib.import_module("dify_agent.agent_stub.cli.main")
+        agent_stub_shell_env_module = importlib.import_module("dify_agent.agent_stub.shell_env")
         shell_module = importlib.import_module("dify_agent.layers.shell")
         drive_module = importlib.import_module("dify_agent.layers.drive")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
@@ -89,8 +90,11 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert protocol_module.RunComposition is not None
         assert protocol_module.RunLayerSpec is not None
         assert agent_stub_client_module.connect_agent_stub_sync is not None
+        assert agent_stub_client_module.request_agent_stub_config_manifest_sync is not None
+        assert agent_stub_client_module.request_agent_stub_drive_manifest_sync is not None
         assert agent_stub_protocol_module.AgentStubConnectRequest is not None
         assert agent_stub_cli_main_module.main is not None
+        assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
         assert drive_module.DifyDriveLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None

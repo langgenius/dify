@@ -18,6 +18,13 @@ const stableT = (key: string, options?: { ns?: string }) => (
 )
 
 let mentionInputProps: MentionInputProps | null = null
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    avatar_url: 'avatar',
+  },
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -25,15 +32,15 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      avatar_url: 'avatar',
-    },
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,

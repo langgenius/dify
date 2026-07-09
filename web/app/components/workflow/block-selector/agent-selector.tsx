@@ -66,6 +66,7 @@ export function AgentSelectorContent({
         },
       },
     }),
+    staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
   const actionOptions: AgentSelectorActionOption[] = onStartFromScratch

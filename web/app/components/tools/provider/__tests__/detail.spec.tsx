@@ -12,17 +12,22 @@ vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))
 
-const mockIsCurrentWorkspaceManager = vi.fn(() => true)
 const mockAppContextState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'credential.use', 'credential.create', 'credential.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }),
+
+vi.mock('@/context/app-context-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 const mockSetShowModelModal = vi.fn()

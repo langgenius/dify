@@ -1,4 +1,3 @@
-/* eslint-disable react/no-context-provider -- use-context-selector contexts require .Provider in tests. */
 import type { ReactNode } from 'react'
 import type { EmailConfig, FormInputItem, ParagraphFormInput, SelectFormInput } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
@@ -12,7 +11,6 @@ import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provide
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppContext, initialLangGeniusVersionInfo, initialWorkspaceInfo, userProfilePlaceholder } from '@/context/app-context'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -20,6 +18,28 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: vi.fn(),
   },
 }))
+
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    email: 'owner@example.com',
+    name: 'Owner',
+  },
+  currentWorkspace: {
+    id: 'workspace-1',
+    name: 'Product Team',
+  },
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 type RecordedRequest = {
   url: string
@@ -44,59 +64,9 @@ const renderWithProviders = (ui: ReactNode) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AppContext.Provider
-        value={{
-          userProfile: {
-            ...userProfilePlaceholder,
-            id: 'user-1',
-            email: 'owner@example.com',
-            name: 'Owner',
-          },
-          currentWorkspace: {
-            ...initialWorkspaceInfo,
-            id: 'workspace-1',
-            name: 'Product Team',
-          },
-          isCurrentWorkspaceManager: true,
-          isCurrentWorkspaceOwner: true,
-          isCurrentWorkspaceEditor: true,
-          isCurrentWorkspaceDatasetOperator: true,
-          mutateUserProfile: vi.fn(),
-          mutateCurrentWorkspace: vi.fn(),
-          langGeniusVersionInfo: initialLangGeniusVersionInfo,
-          useSelector: selector => selector({
-            userProfile: {
-              ...userProfilePlaceholder,
-              id: 'user-1',
-              email: 'owner@example.com',
-              name: 'Owner',
-            },
-            currentWorkspace: {
-              ...initialWorkspaceInfo,
-              id: 'workspace-1',
-              name: 'Product Team',
-            },
-            isCurrentWorkspaceManager: true,
-            isCurrentWorkspaceOwner: true,
-            isCurrentWorkspaceEditor: true,
-            isCurrentWorkspaceDatasetOperator: true,
-            mutateUserProfile: vi.fn(),
-            mutateCurrentWorkspace: vi.fn(),
-            langGeniusVersionInfo: initialLangGeniusVersionInfo,
-            useSelector: vi.fn(),
-            isLoadingCurrentWorkspace: false,
-            isValidatingCurrentWorkspace: false,
-            workspacePermissionKeys: [],
-          }),
-          isLoadingCurrentWorkspace: false,
-          isValidatingCurrentWorkspace: false,
-          workspacePermissionKeys: [],
-        }}
-      >
-        <HooksStoreContext.Provider value={hooksStore}>
-          {ui}
-        </HooksStoreContext.Provider>
-      </AppContext.Provider>
+      <HooksStoreContext.Provider value={hooksStore}>
+        {ui}
+      </HooksStoreContext.Provider>
     </QueryClientProvider>,
   )
 }

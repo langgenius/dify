@@ -150,8 +150,9 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
-    def __init__(self, model_instance: ModelInstance) -> None:
+    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
         self._model_instance = model_instance
+        self._request_metadata = request_metadata
 
     @property
     @override
@@ -230,6 +231,7 @@ class DifyPreparedLLM(LLMProtocol):
             tools=list(tools or []),
             stop=list(stop or []),
             stream=stream,
+            request_metadata=self._request_metadata,
         )
 
     @overload
@@ -283,10 +285,10 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
-    def __init__(self, model_instance: ModelInstance) -> None:
+    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
         from core.plugin.impl.model_runtime import PluginModelRuntime
 
-        super().__init__(model_instance)
+        super().__init__(model_instance, request_metadata=request_metadata)
         model_type_instance = model_instance.model_type_instance
         if not isinstance(model_type_instance, LargeLanguageModel):
             raise TypeError("Polling wrapper requires a large-language-model instance.")

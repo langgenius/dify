@@ -330,44 +330,6 @@ async function expectAgentTaskOutputReference(
     await expect(page.getByText(unexpectedName, { exact: true })).toHaveCount(0)
 }
 
-async function skipStandaloneOutputVariables(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Standalone Agent Output Variables are not available: output variables currently belong to Workflow Agent v2 nodes.',
-    {
-      owner: 'product',
-      remediation: 'Expose standalone Agent Output Variables or keep this scenario excluded until the product path exists.',
-    },
-  )
-}
-
-Given('Agent v2 standalone Output Variables are available', async function (this: DifyWorld) {
-  return skipStandaloneOutputVariables(this)
-})
-
-Then('Agent v2 standalone Output Variables should be available', async function (this: DifyWorld) {
-  return skipStandaloneOutputVariables(this)
-})
-
-async function skipWorkflowOutputRetryStrategy(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 workflow Output Variables retry strategy is not available in the current editor UI.',
-    {
-      owner: 'product',
-      remediation: 'Expose user-visible retry strategy controls before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 workflow output retry strategy is available', async function (this: DifyWorld) {
-  return skipWorkflowOutputRetryStrategy(this)
-})
-
-Then('Agent v2 workflow output retry strategy should be available', async function (this: DifyWorld) {
-  return skipWorkflowOutputRetryStrategy(this)
-})
-
 async function skipWorkflowTaskOutputReferenceDeletionConsistency(world: DifyWorld) {
   return skipBlockedPrecondition(
     world,
@@ -392,22 +354,3 @@ Then(
     return skipWorkflowTaskOutputReferenceDeletionConsistency(this)
   },
 )
-
-async function skipWorkflowOutputRetryCountValidation(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 workflow Output Variables retry count validation is not reachable because retry strategy controls are not available in the current editor UI.',
-    {
-      owner: 'product',
-      remediation: 'Expose retry count controls and validation states before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 workflow output retry count validation is available', async function (this: DifyWorld) {
-  return skipWorkflowOutputRetryCountValidation(this)
-})
-
-Then('Agent v2 workflow output retry count validation should be available', async function (this: DifyWorld) {
-  return skipWorkflowOutputRetryCountValidation(this)
-})

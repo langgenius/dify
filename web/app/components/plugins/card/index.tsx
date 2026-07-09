@@ -1,9 +1,10 @@
 'use client'
 import type { Plugin } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from '#i18n'
-import { useSelector } from '@/context/app-context'
+import { currentWorkspaceIdAtom } from '@/context/app-context-state'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -61,7 +62,7 @@ const Card = ({
   const locale = useGetLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
-  const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
   const badges = payload.badges ?? []
   const { theme } = useTheme()

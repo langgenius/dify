@@ -237,6 +237,16 @@ export function useAgentConfigureSync({
       return
 
     const draft = store.get(agentComposerDraftAtom)
+    const configSnapshot = formStateToAgentSoulConfig({
+      baseConfig: baseConfigRef.current,
+      formState: draft,
+      currentModel: currentModelRef.current,
+    })
+    if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
+      toast.error(tCommon('modelProvider.selectModel'))
+      return
+    }
+
     const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
     if (!knowledgeValidation.isValid) {
       toast.error(getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ?? tCommon('api.actionFailed'))
@@ -247,11 +257,6 @@ export function useAgentConfigureSync({
     setIsPublishInFlight(true)
     try {
       debouncedSaveDraft.cancel?.()
-      const configSnapshot = formStateToAgentSoulConfig({
-        baseConfig: baseConfigRef.current,
-        formState: draft,
-        currentModel: currentModelRef.current,
-      })
       const saved = await saveComposer({
         configSnapshot,
         draftBaseline: draft,

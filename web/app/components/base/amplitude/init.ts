@@ -1,12 +1,12 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
+import { AMPLITUDE_API_KEY } from '@/config'
 
 export type AmplitudeInitializationOptions = {
   sessionReplaySampleRate?: number
 }
 
-let isAmplitudeInitialized = false
+// let isAmplitudeInitialized = false
 
 // Map URL pathname to English page name for consistent Amplitude tracking
 const getEnglishPageName = (pathname: string): string => {
@@ -49,10 +49,10 @@ const createPageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 export const ensureAmplitudeInitialized = ({
   sessionReplaySampleRate = 0.5,
 }: AmplitudeInitializationOptions = {}) => {
-  if (!isAmplitudeEnabled || isAmplitudeInitialized)
-    return
+  // if (!isAmplitudeEnabled || isAmplitudeInitialized)
+  //   return
 
-  isAmplitudeInitialized = true
+  // isAmplitudeInitialized = true
 
   try {
     amplitude.init(AMPLITUDE_API_KEY, {
@@ -71,7 +71,7 @@ export const ensureAmplitudeInitialized = ({
     }))
   }
   catch (error) {
-    isAmplitudeInitialized = false
+    console.error(error)
     throw error
   }
 }

@@ -93,7 +93,7 @@ class AgentAppFeatureConfigResource(Resource):
             app_model=app_model,
             account=current_user,
             config=args.model_dump(exclude_none=True),
-            session=db.session,
+            session=db.session(),
         )
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)

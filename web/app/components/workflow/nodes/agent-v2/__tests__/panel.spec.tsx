@@ -13,6 +13,7 @@ const {
   mockHandleNodeDataUpdateWithSyncDraft,
   mockInsertNodes,
   mockOrchestratePanelContentProps,
+  mockOutputVarsProps,
   mockPromptEditorProps,
   mockCopyFromRosterMutate,
   mockCopyFromRosterState,
@@ -36,6 +37,10 @@ const {
     nodeId: string
     open: boolean
   }>,
+  mockOutputVarsProps: [] as Array<{
+    collapsed?: boolean
+    onCollapse?: (collapsed: boolean) => void
+  }>,
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockCopyFromRosterMutate: vi.fn(),
   mockCopyFromRosterState: {
@@ -56,7 +61,19 @@ const {
 
 vi.mock('../../_base/components/output-vars', () => ({
   __esModule: true,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  default: ({
+    children,
+    collapsed,
+    onCollapse,
+  }: {
+    children: ReactNode
+    collapsed?: boolean
+    onCollapse?: (collapsed: boolean) => void
+  }) => {
+    mockOutputVarsProps.push({ collapsed, onCollapse })
+
+    return <div>{children}</div>
+  },
   VarItem: ({ name, type, description }: { name: string, type: string, description?: string }) => (
     <div>{`${name}:${type}:${description || ''}`}</div>
   ),
@@ -307,6 +324,7 @@ describe('agent/panel', () => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
     mockOrchestratePanelContentProps.length = 0
+    mockOutputVarsProps.length = 0
     mockStoreState.appId = 'app-1'
     mockStoreState.openInlineAgentPanelNodeId = undefined
     mockCopyFromRosterState.isPending = false
@@ -1054,8 +1072,31 @@ describe('agent/panel', () => {
       mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('summary', 'string')
     })
 
+    expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(false)
     expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('summary')
+  })
+
+  it('expands output variables when an agent task output token changes declared outputs', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(true)
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([{
+        name: 'summary',
+        type: 'string',
+        required: false,
+      }], 'Generate [§output:summary:summary§]')
+    })
+
+    expect(mockOutputVarsProps.at(-1)?.collapsed).toBe(false)
   })
 
   it('opens the output variable editor for a prompt token missing from declared outputs', () => {

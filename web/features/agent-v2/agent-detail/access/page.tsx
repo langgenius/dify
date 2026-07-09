@@ -71,7 +71,7 @@ export function AgentAccessPage({
               </p>
             </div>
 
-            <WorkflowReferencesTable agentId={agentId} />
+            <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
           </section>
         </div>
       </ScrollArea>

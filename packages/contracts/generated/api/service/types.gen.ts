@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -567,7 +568,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -3196,7 +3197,9 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse

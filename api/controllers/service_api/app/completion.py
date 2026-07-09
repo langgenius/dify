@@ -15,6 +15,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -31,6 +32,7 @@ from controllers.service_api.schema import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -248,6 +250,8 @@ class CompletionApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -403,6 +407,8 @@ class ChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

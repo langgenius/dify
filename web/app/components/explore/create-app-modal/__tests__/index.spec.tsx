@@ -44,13 +44,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { email: 'test@example.com' },
-    langGeniusVersionInfo: { current_version: '0.0.0' },
-  }),
-}))
-
 const createPlanInfo = (buildApps: number): UsagePlanInfo => ({
   vectorSpace: 0,
   buildApps,

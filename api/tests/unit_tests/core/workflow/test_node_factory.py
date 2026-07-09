@@ -723,6 +723,7 @@ class TestDifyNodeFactoryCreateNode:
         wrap_model.assert_called_once_with(
             node_data=node_data,
             model_instance=sentinel.model_instance,
+            request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
 

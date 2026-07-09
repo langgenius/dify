@@ -33,6 +33,7 @@ type AgentConfigurePublishBarProps = {
   draftSavedAt?: number
   isPublishing?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  workflowReferencesEnabled?: boolean
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
@@ -90,6 +91,7 @@ export function AgentConfigurePublishBar({
   draftSavedAt,
   isPublishing = false,
   selectedVersionSnapshot,
+  workflowReferencesEnabled = true,
   onPublish,
   onExitVersions,
   onOpenVersions,
@@ -128,11 +130,9 @@ export function AgentConfigurePublishBar({
         agent_id: agentId,
       },
     },
+    enabled: workflowReferencesEnabled && publishIsAvailable && !selectedVersionSnapshot,
   })
-  const workflowReferencesQuery = useQuery({
-    ...workflowReferencesQueryOptions,
-    enabled: publishIsAvailable && !selectedVersionSnapshot,
-  })
+  const workflowReferencesQuery = useQuery(workflowReferencesQueryOptions)
   const restoreVersionMutation = useMutation(consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions())
   const canPublish = publishIsAvailable
 
@@ -195,7 +195,9 @@ export function AgentConfigurePublishBar({
     }
 
     const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
-    const references = (cachedReferences ?? workflowReferencesQuery.data ?? await queryClient.ensureQueryData(workflowReferencesQueryOptions))?.data ?? []
+    const references = workflowReferencesEnabled
+      ? (cachedReferences ?? workflowReferencesQuery.data ?? await queryClient.ensureQueryData(workflowReferencesQueryOptions))?.data ?? []
+      : []
 
     if (references.length > 0) {
       setPublishBarMode({ status: 'confirmingImpact', references })

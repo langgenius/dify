@@ -42,7 +42,9 @@ class TestRagPipelineServiceGetPipeline:
         yield
         db_session_with_containers.rollback()
 
-    def _make_service(self, flask_app_with_containers: Flask) -> RagPipelineService:
+    def _make_service(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> RagPipelineService:
         with (
             patch(
                 "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
@@ -54,7 +56,7 @@ class TestRagPipelineServiceGetPipeline:
             ),
         ):
             session_factory = sessionmaker(bind=flask_app_with_containers.extensions["sqlalchemy"].engine)
-            return RagPipelineService(session_maker=session_factory)
+            return RagPipelineService(db_session_with_containers, session_maker=session_factory)
 
     def _create_pipeline(self, db_session: Session, tenant_id: str, created_by: str) -> Pipeline:
         pipeline = Pipeline(
@@ -85,7 +87,7 @@ class TestRagPipelineServiceGetPipeline:
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """get_pipeline raises ValueError when dataset does not exist."""
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="Dataset not found"):
             service.get_pipeline(tenant_id=str(uuid4()), dataset_id=str(uuid4()))
@@ -99,10 +101,10 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=None)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="Pipeline not found"):
-            service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id, session=db_session_with_containers)
+            service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
     def test_get_pipeline_returns_pipeline_when_found(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -115,9 +117,9 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=pipeline.id)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
-        result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id, session=db_session_with_containers)
+        result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
         assert result.id == pipeline.id
 
@@ -185,7 +187,9 @@ class TestUpdateCustomizedPipelineTemplate:
             icon_info=IconInfo(icon="📄"),
         )
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
-            RagPipelineService.update_customized_pipeline_template(str(uuid4()), info, account, tenant_id)
+            RagPipelineService.update_customized_pipeline_template(
+                str(uuid4()), info, account, tenant_id, session=db_session_with_containers
+            )
 
     def test_update_template_raises_on_duplicate_name(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -264,4 +268,6 @@ class TestDeleteCustomizedPipelineTemplate:
         tenant_id = str(uuid4())
 
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
-            RagPipelineService.delete_customized_pipeline_template(str(uuid4()), tenant_id)
+            RagPipelineService.delete_customized_pipeline_template(
+                str(uuid4()), tenant_id, session=db_session_with_containers
+            )

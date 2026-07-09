@@ -1,10 +1,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
@@ -22,8 +26,8 @@ const Card = ({
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 

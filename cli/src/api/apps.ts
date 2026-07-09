@@ -37,7 +37,7 @@ export class AppsClient implements AppReader {
   }
 
   async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
-    return this.orpc.apps.byAppId.describe.get({
+    return this.orpc.apps.byAppId.get({
       params: { app_id: appId },
       query: {
         fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,
