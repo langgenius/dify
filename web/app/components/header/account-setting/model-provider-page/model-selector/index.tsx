@@ -33,6 +33,7 @@ type ModelSelectorProps = {
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
   onOpenMarketplace?: () => void
+  onOpenProviderSettings?: () => void
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
@@ -52,6 +53,7 @@ function ModelSelector({
   hideProviderSettingsFooter,
   onConfigureEmptyState,
   onOpenMarketplace,
+  onOpenProviderSettings,
   providerSettingsSource,
   showModelMeta,
   modelPredicate,
@@ -180,6 +182,7 @@ function ModelSelector({
           modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onOpenMarketplace={onOpenMarketplace}
+          onOpenProviderSettings={onOpenProviderSettings}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />
