@@ -27,6 +27,7 @@ from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
@@ -57,6 +58,14 @@ from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_re
 from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
@@ -70,6 +79,22 @@ class _DefaultSessionScopeSnapshotId:
 
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+
+_AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
+    "InvokeAuthorizationError": InvokeAuthorizationError,
+    "InvokeBadRequestError": InvokeBadRequestError,
+    "CredentialsValidateFailedError": InvokeBadRequestError,
+    "InvokeConnectionError": InvokeConnectionError,
+    "InvokeRateLimitError": InvokeRateLimitError,
+    "InvokeServerUnavailableError": InvokeServerUnavailableError,
+}
+
+
+def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
+    err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+    if err_cls is not None:
+        return err_cls(event.error)
+    return AgentBackendError(event.error or "Agent backend run did not complete successfully.")
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -652,8 +677,9 @@ class AgentAppRunner:
             return
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
-            error = getattr(terminal, "error", None) or "Agent backend run did not complete successfully."
-            raise AgentBackendError(str(error))
+            if isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                raise _agent_backend_failure_to_exception(terminal)
+            raise AgentBackendError("Agent backend run did not complete successfully.")
 
         answer = self._terminal_output_to_answer(terminal.output)
         try:
