@@ -40,7 +40,7 @@ def _build_generate_entity(app_config, file_upload_config=None):
 
 
 def test_workflow_runner_direct_outputs_on_input_moderation() -> None:
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    runner = CompletionWorkflowRunner()
     app_record = MagicMock(id="app1", tenant_id="tenant")
     app_generate_entity = _build_generate_entity(_build_app_config())
     queue_manager = MagicMock()
@@ -61,7 +61,7 @@ def test_workflow_runner_direct_outputs_on_input_moderation() -> None:
 
 
 def test_workflow_runner_uses_low_image_detail_default() -> None:
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    runner = CompletionWorkflowRunner()
     app_generate_entity = _build_generate_entity(_build_app_config(), file_upload_config=None)
 
     assert runner._resolve_image_detail_config(app_generate_entity) == ImagePromptMessageContent.DETAIL.LOW

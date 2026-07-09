@@ -18,56 +18,52 @@ class RuntimeCompletionWorkflow:
     graph_dict: WorkflowGraph
 
 
-class RuntimeCompletionWorkflowBuilder:
+def build_runtime_completion_workflow(
+    *,
+    app_model: App,
+    app_config: CompletionAppConfig,
+    session: Session,
+    workflow_converter: WorkflowConverter | None = None,
+) -> RuntimeCompletionWorkflow:
     """Build the transient WorkflowEntry graph used by Completion execution."""
+    converter = workflow_converter or WorkflowConverter()
+    graph, _ = converter.build_graph_from_app_config(
+        app_model=app_model,
+        app_config=app_config,
+        target_app_mode=AppMode.WORKFLOW,
+        session=session,
+    )
+    _route_external_data_query_to_sys_query(graph)
+    return RuntimeCompletionWorkflow(
+        workflow_id=f"completion-runtime-{uuid4()}",
+        root_node_id="start",
+        graph_dict=graph,
+    )
 
-    def __init__(self, workflow_converter: WorkflowConverter | None = None) -> None:
-        self._workflow_converter = workflow_converter or WorkflowConverter()
 
-    def build(
-        self,
-        *,
-        app_model: App,
-        app_config: CompletionAppConfig,
-        session: Session,
-    ) -> RuntimeCompletionWorkflow:
-        graph, _ = self._workflow_converter.build_graph_from_app_config(
-            app_model=app_model,
-            app_config=app_config,
-            target_app_mode=AppMode.WORKFLOW,
-            session=session,
-        )
-        self._route_external_data_query_to_sys_query(graph)
-        return RuntimeCompletionWorkflow(
-            workflow_id=f"completion-runtime-{uuid4()}",
-            root_node_id="start",
-            graph_dict=graph,
-        )
+def _route_external_data_query_to_sys_query(graph: WorkflowGraph) -> None:
+    """Preserve Completion API-based variable behavior in the runtime graph."""
+    for node in graph["nodes"]:
+        data = node.get("data", {})
+        if data.get("type") != BuiltinNodeTypes.HTTP_REQUEST:
+            continue
 
-    @staticmethod
-    def _route_external_data_query_to_sys_query(graph: WorkflowGraph) -> None:
-        """Preserve Completion API-based variable behavior in the runtime graph."""
-        for node in graph["nodes"]:
-            data = node.get("data", {})
-            if data.get("type") != BuiltinNodeTypes.HTTP_REQUEST:
-                continue
+        body = data.get("body")
+        if not isinstance(body, dict) or body.get("type") != "json":
+            continue
 
-            body = data.get("body")
-            if not isinstance(body, dict) or body.get("type") != "json":
-                continue
+        raw_body_data = body.get("data")
+        if not isinstance(raw_body_data, str):
+            continue
 
-            raw_body_data = body.get("data")
-            if not isinstance(raw_body_data, str):
-                continue
+        try:
+            body_data: dict[str, Any] = json.loads(raw_body_data)
+        except json.JSONDecodeError:
+            continue
 
-            try:
-                body_data: dict[str, Any] = json.loads(raw_body_data)
-            except json.JSONDecodeError:
-                continue
+        params = body_data.get("params")
+        if not isinstance(params, dict) or params.get("query") != "":
+            continue
 
-            params = body_data.get("params")
-            if not isinstance(params, dict) or params.get("query") != "":
-                continue
-
-            params["query"] = "{{#sys.query#}}"
-            body["data"] = json.dumps(body_data)
+        params["query"] = "{{#sys.query#}}"
+        body["data"] = json.dumps(body_data)

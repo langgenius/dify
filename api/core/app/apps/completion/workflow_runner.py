@@ -10,23 +10,20 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.apps.completion.graph_event_adapter import CompletionGraphEventAdapter
-from core.app.apps.completion.runtime_workflow_builder import RuntimeCompletionWorkflowBuilder
+from core.app.apps.completion.runtime_workflow_builder import build_runtime_completion_workflow
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow_app_runner import init_graph
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, UserFrom
-from core.entities import DEFAULT_PLUGIN_ID
 from core.moderation.base import ModerationError
 from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_hosting_provider import hosting_configuration
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import App, Message
-from models.provider import ProviderType
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,12 +34,7 @@ class ModeratedCompletionInputs:
 
 
 class CompletionWorkflowRunner(AppRunner):
-    """Run Completion through a transient WorkflowEntry graph."""
-
-    _runtime_workflow_builder: RuntimeCompletionWorkflowBuilder
-
-    def __init__(self, runtime_workflow_builder: RuntimeCompletionWorkflowBuilder | None = None) -> None:
-        self._runtime_workflow_builder = runtime_workflow_builder or RuntimeCompletionWorkflowBuilder()
+    """Run a transient WorkflowEntry graph while the legacy task pipeline owns persistence."""
 
     def run(
         self,
@@ -52,7 +44,7 @@ class CompletionWorkflowRunner(AppRunner):
         session: Session,
     ) -> None:
         app_config = cast(CompletionAppConfig, application_generate_entity.app_config)
-        app_record = self._get_app(app_config.app_id, session=session)
+        app_record = self._get_app(app_id=app_config.app_id, tenant_id=app_config.tenant_id, session=session)
 
         moderation_result = self._run_input_moderation(
             app_record=app_record,
@@ -63,7 +55,7 @@ class CompletionWorkflowRunner(AppRunner):
         if moderation_result.stopped:
             return
 
-        runtime_workflow = self._runtime_workflow_builder.build(
+        runtime_workflow = build_runtime_completion_workflow(
             app_model=app_record,
             app_config=app_config,
             session=session,
@@ -78,12 +70,17 @@ class CompletionWorkflowRunner(AppRunner):
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
         user_from = self._resolve_user_from(application_generate_entity)
-        extra_context: dict[str, Any] = {}
-        if self._should_check_hosting_moderation(application_generate_entity):
-            extra_context[DIFY_BEFORE_LLM_INVOKE_KEY] = self._build_hosting_moderation_hook(
+        adapter = CompletionGraphEventAdapter(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+        )
+        extra_context = {
+            DIFY_BEFORE_LLM_INVOKE_KEY: self._build_before_llm_invoke_hook(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
+                adapter=adapter,
             )
+        }
 
         graph = init_graph(
             app_id=app_config.app_id,
@@ -116,17 +113,14 @@ class CompletionWorkflowRunner(AppRunner):
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
         )
-        adapter = CompletionGraphEventAdapter(
-            application_generate_entity=application_generate_entity,
-            queue_manager=queue_manager,
-        )
+        # Do not hold a database connection during graph execution or provider streaming.
         session.commit()
         session.close()
         for event in workflow_entry.run():
             adapter.handle_event(event)
 
-    def _get_app(self, app_id: str, *, session: Session) -> App:
-        app_record = session.scalar(select(App).where(App.id == app_id))
+    def _get_app(self, *, app_id: str, tenant_id: str, session: Session) -> App:
+        app_record = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
         if not app_record:
             raise ValueError("App not found")
         return app_record
@@ -175,13 +169,18 @@ class CompletionWorkflowRunner(AppRunner):
 
         return ModeratedCompletionInputs(stopped=False, inputs=inputs, query=query)
 
-    def _build_hosting_moderation_hook(
+    def _build_before_llm_invoke_hook(
         self,
         *,
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
-    ) -> Callable[[Sequence[PromptMessage]], None]:
-        def check(prompt_messages: Sequence[PromptMessage]) -> None:
+        adapter: CompletionGraphEventAdapter,
+    ) -> Callable[[Sequence[PromptMessage], Mapping[str, Any]], Mapping[str, Any]]:
+        def check(
+            prompt_messages: Sequence[PromptMessage],
+            model_parameters: Mapping[str, Any],
+        ) -> Mapping[str, Any]:
+            adapter.set_prompt_messages(prompt_messages)
             if self.check_hosting_moderation(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -189,29 +188,15 @@ class CompletionWorkflowRunner(AppRunner):
             ):
                 raise GenerateTaskStoppedError()
 
+            adjusted_parameters = dict(model_parameters)
+            self.recalc_llm_max_tokens(
+                model_config=application_generate_entity.model_conf,
+                prompt_messages=list(prompt_messages),
+                model_parameters=adjusted_parameters,
+            )
+            return adjusted_parameters
+
         return check
-
-    def _should_check_hosting_moderation(self, application_generate_entity: CompletionAppGenerateEntity) -> bool:
-        moderation_config = hosting_configuration.moderation_config
-        openai_provider_name = f"{DEFAULT_PLUGIN_ID}/openai/openai"
-        hosting_provider = hosting_configuration.provider_map.get(openai_provider_name)
-        if not (
-            moderation_config
-            and moderation_config.enabled is True
-            and hosting_provider
-            and hosting_provider.enabled is True
-            and hosting_provider.credentials is not None
-        ):
-            return False
-
-        model_config = application_generate_entity.model_conf
-        provider_model_bundle = getattr(model_config, "provider_model_bundle", None)
-        configuration = getattr(provider_model_bundle, "configuration", None)
-        using_provider_type = getattr(configuration, "using_provider_type", None)
-        return (
-            using_provider_type == ProviderType.SYSTEM
-            and getattr(model_config, "provider", None) in moderation_config.providers
-        )
 
     def _build_variable_pool(
         self,
@@ -232,7 +217,7 @@ class CompletionWorkflowRunner(AppRunner):
             workflow_execution_id=application_generate_entity.task_id,
             timestamp=int(time.time()),
             query=query,
-            conversation_id=getattr(message, "conversation_id", None),
+            conversation_id=message.conversation_id,
         )
         add_variables_to_pool(
             variable_pool,

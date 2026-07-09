@@ -376,18 +376,26 @@ class TestCompletionAppGenerator:
         create_session.return_value = session_context
         mocker.patch.object(module.db, "session")
 
-        mocker.patch.object(generator, "_get_message", return_value=MagicMock())
+        message = MagicMock()
+        mocker.patch.object(generator, "_get_message", return_value=message)
 
         runner_instance = MagicMock()
         runner_instance.run.side_effect = error
         mocker.patch.object(module, "CompletionWorkflowRunner", return_value=runner_instance)
 
         queue_manager = MagicMock()
+        application_generate_entity = MagicMock()
         generator._generate_worker(
             flask_app=flask_app,
-            application_generate_entity=MagicMock(),
+            application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             message_id="msg",
         )
 
+        runner_instance.run.assert_called_once_with(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            message=message,
+            session=session,
+        )
         assert queue_manager.publish_error.called is should_publish

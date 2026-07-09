@@ -10,7 +10,6 @@ from core.moderation.base import ModerationError
 from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import AppMode
-from models.provider import ProviderType
 
 
 def _entity() -> SimpleNamespace:
@@ -43,7 +42,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
         root_node_id="start",
         graph_dict={"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []},
     )
-    builder = MagicMock(build=MagicMock(return_value=runtime_workflow))
+    build_runtime_workflow = MagicMock(return_value=runtime_workflow)
     graph = MagicMock()
     adapter = MagicMock()
     workflow_entry = MagicMock()
@@ -67,6 +66,7 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     add_node_inputs_to_pool = MagicMock()
 
     monkeypatch.setattr(module, "init_graph", init_graph)
+    monkeypatch.setattr(module, "build_runtime_completion_workflow", build_runtime_workflow)
     monkeypatch.setattr(module, "WorkflowEntry", workflow_entry_class)
     monkeypatch.setattr(module, "CompletionGraphEventAdapter", adapter_class)
     monkeypatch.setattr(module, "RedisChannel", MagicMock())
@@ -76,12 +76,11 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     monkeypatch.setattr(module, "add_variables_to_pool", add_variables_to_pool)
     monkeypatch.setattr(module, "add_node_inputs_to_pool", add_node_inputs_to_pool)
 
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=builder)
+    runner = CompletionWorkflowRunner()
     monkeypatch.setattr(runner, "_get_app", MagicMock(return_value=app))
-    hosting_hook = MagicMock()
-    build_hosting_hook = MagicMock(return_value=hosting_hook)
-    monkeypatch.setattr(runner, "_should_check_hosting_moderation", MagicMock(return_value=True))
-    monkeypatch.setattr(runner, "_build_hosting_moderation_hook", build_hosting_hook)
+    before_llm_invoke_hook = MagicMock()
+    build_before_llm_invoke_hook = MagicMock(return_value=before_llm_invoke_hook)
+    monkeypatch.setattr(runner, "_build_before_llm_invoke_hook", build_before_llm_invoke_hook)
     monkeypatch.setattr(
         runner,
         "_run_input_moderation",
@@ -95,7 +94,11 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
         session=session,
     )
 
-    builder.build.assert_called_once_with(app_model=app, app_config=entity.app_config, session=session)
+    build_runtime_workflow.assert_called_once_with(
+        app_model=app,
+        app_config=entity.app_config,
+        session=session,
+    )
     assert lifecycle_events == ["commit", "close", "run"]
     add_node_inputs_to_pool.assert_called_once()
     assert add_node_inputs_to_pool.call_args.kwargs["node_id"] == "start"
@@ -107,16 +110,17 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     assert workflow_entry_class.call_args.kwargs["workflow_id"] == "completion-runtime-1"
     assert workflow_entry_class.call_args.kwargs["user_from"] == UserFrom.END_USER
     assert workflow_entry_class.call_args.kwargs["call_depth"] == 2
-    build_hosting_hook.assert_called_once_with(
+    build_before_llm_invoke_hook.assert_called_once_with(
         application_generate_entity=entity,
         queue_manager=queue_manager,
+        adapter=adapter,
     )
     init_graph.assert_called_once()
     assert init_graph.call_args.kwargs["app_id"] == "app"
     assert init_graph.call_args.kwargs["graph_config"] == runtime_workflow.graph_dict
     assert init_graph.call_args.kwargs["root_node_id"] == "start"
     assert init_graph.call_args.kwargs["call_depth"] == 2
-    assert init_graph.call_args.kwargs["extra_context"][DIFY_BEFORE_LLM_INVOKE_KEY] is hosting_hook
+    assert init_graph.call_args.kwargs["extra_context"][DIFY_BEFORE_LLM_INVOKE_KEY] is before_llm_invoke_hook
     workflow_entry.graph_engine.layer.assert_not_called()
     adapter_class.assert_called_once_with(application_generate_entity=entity, queue_manager=queue_manager)
     adapter.handle_event.assert_called_once_with("event")
@@ -125,8 +129,12 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
 def test_runner_returns_when_input_moderation_stops(monkeypatch) -> None:
     app = SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION)
     entity = _entity()
-    builder = MagicMock()
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=builder)
+    build_runtime_workflow = MagicMock()
+    runner = CompletionWorkflowRunner()
+    monkeypatch.setattr(
+        "core.app.apps.completion.workflow_runner.build_runtime_completion_workflow",
+        build_runtime_workflow,
+    )
     monkeypatch.setattr(runner, "_get_app", MagicMock(return_value=app))
     monkeypatch.setattr(
         runner,
@@ -138,33 +146,32 @@ def test_runner_returns_when_input_moderation_stops(monkeypatch) -> None:
         application_generate_entity=entity,
         queue_manager=MagicMock(),
         message=SimpleNamespace(id="message"),
+        session=MagicMock(),
     )
 
-    builder.build.assert_not_called()
+    build_runtime_workflow.assert_not_called()
 
 
-def test_runner_get_app_raises_when_record_is_missing(monkeypatch) -> None:
-    from core.app.apps.completion import workflow_runner as module
-
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
-    monkeypatch.setattr(module.db.session, "scalar", MagicMock(return_value=None))
+def test_runner_get_app_raises_when_record_is_missing() -> None:
+    runner = CompletionWorkflowRunner()
+    session = MagicMock()
+    session.scalar.return_value = None
 
     with pytest.raises(ValueError, match="App not found"):
-        runner._get_app("missing-app")
+        runner._get_app(app_id="missing-app", tenant_id="tenant", session=session)
 
 
-def test_runner_get_app_returns_record(monkeypatch) -> None:
-    from core.app.apps.completion import workflow_runner as module
-
+def test_runner_get_app_returns_record() -> None:
     app = SimpleNamespace(id="app")
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
-    monkeypatch.setattr(module.db.session, "scalar", MagicMock(return_value=app))
+    runner = CompletionWorkflowRunner()
+    session = MagicMock()
+    session.scalar.return_value = app
 
-    assert runner._get_app("app") is app
+    assert runner._get_app(app_id="app", tenant_id="tenant", session=session) is app
 
 
 def test_runner_direct_outputs_on_input_moderation() -> None:
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    runner = CompletionWorkflowRunner()
     app_record = SimpleNamespace(id="app", tenant_id="tenant")
     entity = _entity()
     message = SimpleNamespace(id="message")
@@ -187,7 +194,7 @@ def test_runner_direct_outputs_on_input_moderation() -> None:
 
 
 def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    runner = CompletionWorkflowRunner()
     app_record = SimpleNamespace(id="app", tenant_id="tenant")
     entity = _entity()
     message = SimpleNamespace(id="message")
@@ -204,20 +211,23 @@ def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
     assert result == ModeratedCompletionInputs(stopped=False, inputs={"name": "Grace"}, query="moderated query")
 
 
-def test_runner_hosting_moderation_hook_uses_final_prompt() -> None:
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+def test_runner_before_llm_invoke_hook_captures_and_moderates_final_prompt() -> None:
+    runner = CompletionWorkflowRunner()
     entity = _entity()
     queue_manager = MagicMock()
+    adapter = MagicMock()
     runner.check_hosting_moderation = MagicMock(return_value=True)
 
-    hook = runner._build_hosting_moderation_hook(
+    hook = runner._build_before_llm_invoke_hook(
         application_generate_entity=entity,
         queue_manager=queue_manager,
+        adapter=adapter,
     )
 
     with pytest.raises(GenerateTaskStoppedError):
-        hook(["final prompt"])
+        hook(["final prompt"], {"max_tokens": 128})
 
+    adapter.set_prompt_messages.assert_called_once_with(["final prompt"])
     runner.check_hosting_moderation.assert_called_once_with(
         application_generate_entity=entity,
         queue_manager=queue_manager,
@@ -225,48 +235,31 @@ def test_runner_hosting_moderation_hook_uses_final_prompt() -> None:
     )
 
 
-def test_runner_should_not_check_hosting_moderation_when_config_is_disabled(monkeypatch) -> None:
-    from core.app.apps.completion import workflow_runner as module
-
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
-    monkeypatch.setattr(
-        module,
-        "hosting_configuration",
-        SimpleNamespace(
-            moderation_config=SimpleNamespace(enabled=False),
-            provider_map={},
-        ),
-    )
-
-    assert runner._should_check_hosting_moderation(_entity()) is False
-
-
-def test_runner_should_check_hosting_moderation_for_system_provider(monkeypatch) -> None:
-    from core.app.apps.completion import workflow_runner as module
-
+def test_runner_before_llm_invoke_hook_recalculates_graph_model_parameters() -> None:
+    runner = CompletionWorkflowRunner()
     entity = _entity()
-    entity.model_conf = SimpleNamespace(
-        provider="openai",
-        provider_model_bundle=SimpleNamespace(
-            configuration=SimpleNamespace(using_provider_type=ProviderType.SYSTEM),
-        ),
-    )
-    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
-    monkeypatch.setattr(
-        module,
-        "hosting_configuration",
-        SimpleNamespace(
-            moderation_config=SimpleNamespace(enabled=True, providers=["openai"]),
-            provider_map={
-                f"{module.DEFAULT_PLUGIN_ID}/openai/openai": SimpleNamespace(
-                    enabled=True,
-                    credentials={"api_key": "secret"},
-                )
-            },
-        ),
+    queue_manager = MagicMock()
+    adapter = MagicMock()
+    runner.check_hosting_moderation = MagicMock(return_value=False)
+
+    def recalc(*, model_parameters, **kwargs) -> None:
+        model_parameters["max_tokens"] = 64
+
+    runner.recalc_llm_max_tokens = MagicMock(side_effect=recalc)
+    hook = runner._build_before_llm_invoke_hook(
+        application_generate_entity=entity,
+        queue_manager=queue_manager,
+        adapter=adapter,
     )
 
-    assert runner._should_check_hosting_moderation(entity) is True
+    result = hook(["final prompt"], {"max_tokens": 128, "temperature": 0.2})
+
+    assert result == {"max_tokens": 64, "temperature": 0.2}
+    runner.recalc_llm_max_tokens.assert_called_once_with(
+        model_config=entity.model_conf,
+        prompt_messages=["final prompt"],
+        model_parameters=result,
+    )
 
 
 def test_runner_resolves_account_user_from() -> None:
