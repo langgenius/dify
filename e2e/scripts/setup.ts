@@ -32,6 +32,7 @@ const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
 const apiHost = '127.0.0.1'
 const apiPort = 5001
 const agentBackendHost = '127.0.0.1'
+const agentBackendBindHost = '0.0.0.0'
 const agentBackendPort = Number(process.env.E2E_AGENT_BACKEND_PORT || 5050)
 const shellctlHost = '127.0.0.1'
 const shellctlPort = Number(process.env.E2E_SHELLCTL_PORT || 5004)
@@ -366,7 +367,7 @@ export const startAgentBackend = async () => {
       'uvicorn',
       'dify_agent.server.app:app',
       '--host',
-      agentBackendHost,
+      agentBackendBindHost,
       '--port',
       String(agentBackendPort),
     ],
