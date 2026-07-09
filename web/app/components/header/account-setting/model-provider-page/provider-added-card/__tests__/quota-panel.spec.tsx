@@ -7,6 +7,7 @@ import QuotaPanel from '../quota-panel'
 let mockWorkspaceData: {
   trial_credits: number
   trial_credits_used: number
+  trial_credits_exhausted_at?: number
   next_credit_reset_date: number
 } | undefined = {
   trial_credits: 100,
@@ -34,13 +35,18 @@ vi.mock('@/app/components/base/icons/src/public/llm', () => {
 
 vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => {
-    const totalCredits = mockWorkspaceData?.trial_credits ?? 0
-    const credits = Math.max(totalCredits - (mockWorkspaceData?.trial_credits_used ?? 0), 0)
+    const totalCredits = Math.max(mockWorkspaceData?.trial_credits ?? 0, 0)
+    const rawUsedCredits = mockWorkspaceData?.trial_credits_used ?? 0
+    const normalizedUsedCredits = Math.max(rawUsedCredits, 0)
+    const usedCredits = Math.min(normalizedUsedCredits, totalCredits)
+    const credits = Math.max(totalCredits - usedCredits, 0)
     return {
       credits,
+      usedCredits,
       totalCredits,
       isExhausted: credits <= 0,
       isLoading: mockWorkspaceIsPending && !mockWorkspaceData,
+      exhaustedAt: mockWorkspaceData?.trial_credits_exhausted_at,
       nextCreditResetDate: mockWorkspaceData?.next_credit_reset_date,
     }
   },
@@ -66,7 +72,8 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-inst
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
-    formatTime: () => '2024-12-31',
+    formatTime: () => 'Dec 31',
+    formatMonthDay: () => 'Dec 31',
   }),
 }))
 
@@ -108,7 +115,7 @@ describe('QuotaPanel', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
-  it('should show remaining credits and reset date', () => {
+  it('should show used credits, total credits, and reset date', () => {
     renderQuotaPanel(
       <QuotaPanel
         providers={mockProviders}
@@ -116,7 +123,12 @@ describe('QuotaPanel', () => {
     )
 
     expect(screen.getByText(/modelProvider\.quota/)).toBeInTheDocument()
-    expect(screen.getByText('70')).toBeInTheDocument()
+    expect(screen.getByText('30')).toBeInTheDocument()
+    expect(screen.getByText('/')).toHaveClass('font-normal', 'text-text-tertiary')
+    expect(screen.getByText('/')).not.toHaveClass('system-xl-semibold')
+    expect(screen.getByText('100')).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider\.used/)).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.ranOutDate/)).not.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.resetDate/)).toBeInTheDocument()
   })
 
@@ -126,19 +138,26 @@ describe('QuotaPanel', () => {
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.getByText('70')).toBeInTheDocument()
+    expect(screen.getByText('30')).toBeInTheDocument()
   })
 
-  it('should floor credits at zero when usage is higher than quota', () => {
+  it('should keep usage display within quota when usage is higher than quota', () => {
     mockWorkspaceData = {
       trial_credits: 10,
       trial_credits_used: 999,
+      trial_credits_exhausted_at: 1733011200,
       next_credit_reset_date: 0,
     }
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
-    expect(screen.getByText(/modelProvider\.card\.quotaExhausted/)).toBeInTheDocument()
+    const usageNumbers = screen.getAllByText('10')
+    expect(usageNumbers).toHaveLength(2)
+    usageNumbers.forEach(number => expect(number).toHaveClass('text-text-destructive'))
+    expect(screen.getByText(/modelProvider\.used/)).toHaveClass('text-text-destructive')
+    expect(screen.getByText(/modelProvider\.ranOutDate/)).toBeInTheDocument()
+    expect(screen.getByText('/')).toHaveClass('font-normal', 'text-text-tertiary')
+    expect(screen.getByText('/')).not.toHaveClass('system-xl-semibold', 'text-text-destructive')
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 

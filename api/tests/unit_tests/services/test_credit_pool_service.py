@@ -265,13 +265,20 @@ def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
         patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
         patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
     ):
-        quota_get_balance.return_value = {"quota": 1000, "usage": 250, "available": 750, "reserved": 0}
+        quota_get_balance.return_value = {
+            "quota": 1000,
+            "usage": 250,
+            "available": 750,
+            "reserved": 0,
+            "exhausted_at": 1748908800,
+        }
 
         pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=ProviderQuotaType.PAID)
 
     assert isinstance(pool, CreditPoolBalance)
     assert pool.quota_limit == 1000
     assert pool.quota_used == 250
+    assert pool.exhausted_at == 1748908800
     assert pool.remaining_credits == 750
     quota_get_balance.assert_called_once_with(
         tenant_id=tenant_id,

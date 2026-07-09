@@ -413,11 +413,17 @@ class TestBillingServiceSubscriptionInfo:
     def test_quota_get_balance_uses_quota_request(self):
         tenant_id = "tenant-123"
         with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
-            mock_send_quota_request.return_value = {"quota": "200", "usage": "6", "available": "194", "reserved": "0"}
+            mock_send_quota_request.return_value = {
+                "quota": "200",
+                "usage": "6",
+                "available": "194",
+                "reserved": "0",
+                "exhausted_at": "1748908800",
+            }
 
             result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
 
-        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0}
+        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0, "exhausted_at": 1748908800}
         mock_send_quota_request.assert_called_once_with(
             "GET",
             "/quota/balance",

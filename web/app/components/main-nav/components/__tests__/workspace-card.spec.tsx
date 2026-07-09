@@ -105,6 +105,7 @@ const currentWorkspaceValue: ICurrentWorkspace = {
   providers: [],
   trial_credits: 10000,
   trial_credits_used: 2500,
+  trial_credits_exhausted_at: 0,
   next_credit_reset_date: 0,
 }
 

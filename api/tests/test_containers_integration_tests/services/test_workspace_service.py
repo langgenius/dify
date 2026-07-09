@@ -720,7 +720,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         paid_pool = MagicMock(quota_limit=500, quota_used=500)
-        trial_pool = MagicMock(quota_limit=100, quota_used=10)
+        trial_pool = MagicMock(quota_limit=100, quota_used=100, exhausted_at=1748908800)
 
         with (
             patch("services.workspace_service.current_user", account),
@@ -730,7 +730,8 @@ class TestWorkspaceService:
 
         assert result is not None
         assert result["trial_credits"] == 100
-        assert result["trial_credits_used"] == 10
+        assert result["trial_credits_used"] == 100
+        assert result["trial_credits_exhausted_at"] == 1748908800
 
     def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_none(
         self, db_session_with_containers: Session, mock_external_service_dependencies

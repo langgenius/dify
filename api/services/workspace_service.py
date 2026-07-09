@@ -1,3 +1,5 @@
+from typing import Protocol
+
 from flask_login import current_user
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,6 +9,24 @@ from enums.cloud_plan import CloudPlan
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
+
+
+class _CreditPoolLike(Protocol):
+    quota_limit: int
+    quota_used: int
+
+
+def _set_credit_pool_info(tenant_info: dict[str, object], pool: _CreditPoolLike) -> None:
+    tenant_info["trial_credits"] = pool.quota_limit
+    tenant_info["trial_credits_used"] = pool.quota_used
+    exhausted_at = getattr(pool, "exhausted_at", None)
+    if (
+        isinstance(exhausted_at, int)
+        and exhausted_at > 0
+        and pool.quota_limit > 0
+        and pool.quota_used >= pool.quota_limit
+    ):
+        tenant_info["trial_credits_exhausted_at"] = exhausted_at
 
 
 class WorkspaceService:
@@ -63,12 +83,10 @@ class WorkspaceService:
                 and paid_pool is not None
                 and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
             ):
-                tenant_info["trial_credits"] = paid_pool.quota_limit
-                tenant_info["trial_credits_used"] = paid_pool.quota_used
+                _set_credit_pool_info(tenant_info, paid_pool)
             else:
                 trial_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial", session=session)
                 if trial_pool:
-                    tenant_info["trial_credits"] = trial_pool.quota_limit
-                    tenant_info["trial_credits_used"] = trial_pool.quota_used
+                    _set_credit_pool_info(tenant_info, trial_pool)
 
         return tenant_info

@@ -623,6 +623,7 @@ export const zTenantInfoResponse = z.object({
   role: z.string().nullish(),
   status: z.string().nullish(),
   trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
   trial_credits_used: z.int().nullish(),
   trial_end_reason: z.string().nullish(),
 })
