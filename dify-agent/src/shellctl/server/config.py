@@ -65,6 +65,8 @@ class ShellctlConfig:
     poll_interval_seconds: float = 0.05
     pipe_monitor_interval_seconds: float = 1.0
     pipe_ready_timeout_seconds: float = 10.0
+    tmux_command_timeout_seconds: float = 15.0
+    tmux_session_start_timeout_seconds: float = 90.0
     sqlite_busy_timeout_ms: int = DEFAULT_SQLITE_BUSY_TIMEOUT_MS
     sanitize_pty_command: tuple[str, ...] = ("shellctl-sanitize-pty",)
     runner_exit_command: tuple[str, ...] = ("shellctl-runner-exit",)

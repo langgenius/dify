@@ -6,10 +6,10 @@ import type {
   ChatRequestPayloadWithUser,
   PostChatMessagesResponse,
 } from '@dify/contracts/api/service/types.gen'
-import type { APIResponse } from '@playwright/test'
-import { request } from '@playwright/test'
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
 import { getTestAgent } from './agent'
+
+const SERVICE_API_STREAM_TIMEOUT_MS = 120_000
 
 export type AgentServiceApiChatResult = {
   body: PostChatMessagesResponse | unknown
@@ -22,12 +22,13 @@ type ServiceApiSseEvent = {
   event?: string
 }
 
-async function parseServiceApiChatResponse(response: APIResponse) {
-  const contentType = response.headers()['content-type'] ?? ''
-  const text = await response.text().catch(() => '')
+async function parseServiceApiChatResponse(response: Response) {
+  const contentType = response.headers.get('content-type') ?? ''
 
   if (contentType.includes('text/event-stream'))
-    return parseServiceApiSseText(text)
+    return parseServiceApiSseStream(response)
+
+  const text = await response.text().catch(() => '')
 
   if (contentType.includes('application/json')) {
     try {
@@ -44,6 +45,36 @@ async function parseServiceApiChatResponse(response: APIResponse) {
   catch {
     return { message: text }
   }
+}
+
+async function parseServiceApiSseStream(response: Response) {
+  if (!response.body)
+    return parseServiceApiSseText(await response.text().catch(() => ''))
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let raw = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done)
+        break
+
+      raw += decoder.decode(value, { stream: true })
+      const parsed = parseServiceApiSseText(raw)
+      if (parsed.events.some(isTerminalServiceApiEvent)) {
+        await reader.cancel().catch(() => {})
+        return parsed
+      }
+    }
+  }
+  finally {
+    reader.releaseLock()
+  }
+
+  raw += decoder.decode()
+  return parseServiceApiSseText(raw)
 }
 
 function parseServiceApiSseText(text: string) {
@@ -93,6 +124,24 @@ function parseServiceApiSseText(text: string) {
     events,
     raw: text,
   }
+}
+
+function isTerminalServiceApiEvent(event: ServiceApiSseEvent) {
+  if (event.event === 'message_end' || event.event === 'workflow_finished' || event.event === 'error')
+    return true
+
+  const data = event.data
+  return Boolean(
+    data
+    && typeof data === 'object'
+    && !Array.isArray(data)
+    && 'event' in data
+    && (
+      data.event === 'message_end'
+      || data.event === 'workflow_finished'
+      || data.event === 'error'
+    ),
+  )
 }
 
 export async function setAgentSiteAccessAndGetURL(
@@ -152,7 +201,6 @@ export async function sendAgentServiceApiChatMessage({
   query?: string
   serviceApiBaseURL: string
 }): Promise<AgentServiceApiChatResult> {
-  const ctx = await request.newContext()
   const body = {
     inputs: {},
     query,
@@ -160,22 +208,28 @@ export async function sendAgentServiceApiChatMessage({
     user: 'e2e-agent-access-point',
   } satisfies ChatRequestPayloadWithUser
 
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), SERVICE_API_STREAM_TIMEOUT_MS)
+
   try {
-    const response = await ctx.post(`${serviceApiBaseURL.replace(/\/$/, '')}/chat-messages`, {
-      data: body,
+    const response = await fetch(`${serviceApiBaseURL.replace(/\/$/, '')}/chat-messages`, {
+      body: JSON.stringify(body),
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
+      method: 'POST',
+      signal: controller.signal,
     })
     const responseBody = await parseServiceApiChatResponse(response)
 
     return {
       body: responseBody as PostChatMessagesResponse | unknown,
-      ok: response.ok(),
-      status: response.status(),
+      ok: response.ok,
+      status: response.status,
     }
   }
   finally {
-    await ctx.dispose()
+    clearTimeout(timeout)
   }
 }

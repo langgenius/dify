@@ -60,6 +60,7 @@ class _HasErrorCode(Protocol):
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
+_INTERNAL_COMMAND_TIMEOUT_SECONDS = 90.0
 _WORKSPACE_ROOT = "~/workspace"
 _WORKSPACE_DIR_NAME = "workspace"
 _WORKSPACE_COLLISION_EXIT_CODE = 17
@@ -559,7 +560,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             script,
             cwd=cwd,
             env=self._build_shell_command_env(include_agent_stub_env=False),
-            timeout=DEFAULT_TIMEOUT_SECONDS,
+            timeout=_INTERNAL_COMMAND_TIMEOUT_SECONDS,
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
         )
 

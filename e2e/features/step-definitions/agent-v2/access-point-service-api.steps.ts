@@ -9,6 +9,8 @@ import {
 import { agentBuilderExpectedTokens, agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
+const SERVICE_API_RUNTIME_STEP_TIMEOUT_MS = 130_000
+
 async function enableAgentApiAccessWithKey(world: DifyWorld) {
   const agentId = getCurrentAgentId(world)
   const apiAccess = await setAgentApiAccess(agentId, true)
@@ -172,34 +174,42 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   this.agentBuilder.accessPoint.apiReferencePage = undefined
 })
 
-When('I send the Agent v2 Backend service API minimal request', async function (this: DifyWorld) {
-  const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
-  const apiKey = this.agentBuilder.accessPoint.generatedApiKey
-  if (!serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
-  if (!apiKey)
-    throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
+When(
+  'I send the Agent v2 Backend service API minimal request',
+  { timeout: SERVICE_API_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
+    const apiKey = this.agentBuilder.accessPoint.generatedApiKey
+    if (!serviceApiBaseURL)
+      throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+    if (!apiKey)
+      throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
 
-  this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
-    apiKey,
-    serviceApiBaseURL,
-  })
-})
+    this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
+      apiKey,
+      serviceApiBaseURL,
+    })
+  },
+)
 
-When('I send the Agent v2 Backend service API knowledge request', async function (this: DifyWorld) {
-  const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
-  const apiKey = this.agentBuilder.accessPoint.generatedApiKey
-  if (!serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
-  if (!apiKey)
-    throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
+When(
+  'I send the Agent v2 Backend service API knowledge request',
+  { timeout: SERVICE_API_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
+    const apiKey = this.agentBuilder.accessPoint.generatedApiKey
+    if (!serviceApiBaseURL)
+      throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+    if (!apiKey)
+      throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
 
-  this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
-    apiKey,
-    query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
-    serviceApiBaseURL,
-  })
-})
+    this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
+      apiKey,
+      query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
+      serviceApiBaseURL,
+    })
+  },
+)
 
 const stringifyServiceApiBody = (body: unknown) => {
   try {

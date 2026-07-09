@@ -319,6 +319,12 @@ def test_shell_layer_create_allocates_workspace_and_bootstraps(monkeypatch: pyte
     assert layer.runtime_state.session_id == "abc12ff"
     assert layer.runtime_state.workspace_cwd == "~/workspace/abc12ff"
     assert [call.job_id for call in provider.resource.commands.delete_calls] == ["mkdir-job", "bootstrap-job"]
+    assert [call.timeout for call in provider.resource.commands.run_calls] == pytest.approx(
+        [
+            shell_layer_module._INTERNAL_COMMAND_TIMEOUT_SECONDS,
+            shell_layer_module._INTERNAL_COMMAND_TIMEOUT_SECONDS,
+        ]
+    )
 
 
 def test_shell_layer_uses_agent_specific_home_and_workspace_cwd(

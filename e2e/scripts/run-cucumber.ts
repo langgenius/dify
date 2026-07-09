@@ -68,6 +68,87 @@ const readLogTail = async (logFilePath: string) => {
     .join('\n')
 }
 
+const getShellctlAuthHeaders = () => {
+  const token = process.env.E2E_SHELLCTL_AUTH_TOKEN || process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN
+
+  return token ? { Authorization: `Bearer ${token}` } : undefined
+}
+
+type ShellctlJobResult = {
+  done?: boolean
+  exit_code?: number | null
+  job_id?: string
+  offset?: number
+  output?: string
+  status?: string
+}
+
+const prewarmShellctlSandbox = async (shellctlURL: string) => {
+  const marker = 'shellctl-e2e-ready'
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 210_000)
+  const deadline = Date.now() + 180_000
+  let output = ''
+  let latestBody: ShellctlJobResult | undefined
+
+  try {
+    const response = await fetch(`${shellctlURL}/v1/jobs/run`, {
+      body: JSON.stringify({
+        idle_flush_seconds: 0.2,
+        output_limit: 4096,
+        script: `printf '${marker}'`,
+        timeout: 180,
+      }),
+      headers: {
+        ...getShellctlAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      signal: controller.signal,
+    })
+    latestBody = await response.json().catch(() => undefined) as ShellctlJobResult | undefined
+    output += latestBody?.output ?? ''
+
+    if (!response.ok)
+      throw new Error(`Shellctl sandbox prewarm failed: ${response.status} ${JSON.stringify(latestBody)}`)
+
+    while (latestBody?.job_id && !latestBody.done && Date.now() < deadline) {
+      const waitResponse = await fetch(`${shellctlURL}/v1/jobs/${latestBody.job_id}/wait`, {
+        body: JSON.stringify({
+          idle_flush_seconds: 0.2,
+          offset: latestBody.offset ?? output.length,
+          output_limit: 4096,
+          timeout: Math.min(30, Math.max(1, Math.ceil((deadline - Date.now()) / 1000))),
+        }),
+        headers: {
+          ...getShellctlAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        signal: controller.signal,
+      })
+      latestBody = await waitResponse.json().catch(() => undefined) as ShellctlJobResult | undefined
+      output += latestBody?.output ?? ''
+
+      if (!waitResponse.ok)
+        throw new Error(`Shellctl sandbox prewarm wait failed: ${waitResponse.status} ${JSON.stringify(latestBody)}`)
+    }
+
+    if (
+      !latestBody?.done
+      || latestBody.exit_code !== 0
+      || !output.includes(marker)
+    ) {
+      throw new Error(
+        `Shellctl sandbox prewarm failed: ${JSON.stringify(latestBody)} output=${JSON.stringify(output)}`,
+      )
+    }
+  }
+  finally {
+    clearTimeout(timeout)
+  }
+}
+
 const waitForUnexpectedProcessExit = async (
   managedProcess: ManagedProcess,
   shouldIgnoreExit: () => boolean,
@@ -196,17 +277,20 @@ const main = async () => {
       let waitingForShellctl = true
       try {
         const shellctlPort = process.env.E2E_SHELLCTL_PORT || '5004'
+        const shellctlURL = `http://127.0.0.1:${shellctlPort}`
         await Promise.race([
-          waitForUrl(`http://127.0.0.1:${shellctlPort}/openapi.json`, 180_000, 1_000),
+          waitForUrl(`${shellctlURL}/openapi.json`, 180_000, 1_000),
           waitForUnexpectedProcessExit(shellctlProcess, () => !waitingForShellctl),
         ])
+        await prewarmShellctlSandbox(shellctlURL)
       }
       catch (error) {
         if (error instanceof Error && error.message.includes('exited before becoming ready'))
           throw error
 
+        const detail = error instanceof Error ? error.message : String(error)
         throw new Error(
-          `Shellctl sandbox did not become ready. See ${shellctlProcess.logFilePath}.`,
+          `Shellctl sandbox did not become ready or prewarm successfully: ${detail}. See ${shellctlProcess.logFilePath}.`,
         )
       }
       finally {

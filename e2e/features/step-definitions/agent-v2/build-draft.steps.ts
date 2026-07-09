@@ -34,6 +34,7 @@ import {
 } from './configure-helpers'
 
 const BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS = 180_000
+const BUILD_DRAFT_CHAT_RESPONSE_TIMEOUT_MS = 150_000
 const BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS = 30_000
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 const BUILD_NOTE_MARKER = 'E2E_BUILD_DRAFT_PASS'
@@ -161,7 +162,7 @@ When(
     const chatResponsePromise = page.waitForResponse(response => (
       response.request().method() === 'POST'
       && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/chat-messages`)
-    ))
+    ), { timeout: BUILD_DRAFT_CHAT_RESPONSE_TIMEOUT_MS })
 
     await page.getByRole('button', { name: 'Start build' }).click()
     expect((await checkoutResponsePromise).ok()).toBe(true)

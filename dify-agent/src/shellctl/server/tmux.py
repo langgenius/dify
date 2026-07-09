@@ -124,20 +124,31 @@ class TmuxController:
                 str(cwd),
             ]
         )
-        result = await self._run_tmux(
-            "-f",
-            "/dev/null",
-            "new-session",
-            "-d",
-            "-s",
-            job_session_name(job_id),
-            "-x",
-            str(terminal.cols),
-            "-y",
-            str(terminal.rows),
-            runner_command,
-            check=False,
-        )
+        session_name = job_session_name(job_id)
+        try:
+            result = await self._run_tmux(
+                "-f",
+                "/dev/null",
+                "new-session",
+                "-d",
+                "-s",
+                session_name,
+                "-x",
+                str(terminal.cols),
+                "-y",
+                str(terminal.rows),
+                runner_command,
+                check=False,
+                timeout_seconds=self._config.tmux_session_start_timeout_seconds,
+            )
+        except ShellctlServerError as exc:
+            if exc.code == "tmux_timeout":
+                session_probe = await self._session_exists_after_start_timeout(session_name)
+                if session_probe is True:
+                    return
+                message = f"{exc.message}; session_probe={self._format_optional_probe(session_probe)}"
+                raise ShellctlServerError(exc.status_code, exc.code, message) from exc
+            raise
         if result.returncode != 0:
             raise ShellctlServerError(
                 500,
@@ -299,19 +310,36 @@ class TmuxController:
             check=False,
         )
 
-    async def _run_tmux(self, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
-        env = dict(os.environ)
-        env.pop("TMUX", None)
+    async def _run_tmux(
+        self,
+        *args: str,
+        check: bool = True,
+        timeout_seconds: float | None = None,
+    ) -> subprocess.CompletedProcess[bytes]:
+        command = ["tmux", "-S", str(self._config.tmux_socket), *args]
+        effective_timeout = (
+            timeout_seconds if timeout_seconds is not None else self._config.tmux_command_timeout_seconds
+        )
         try:
-            result = await anyio.run_process(
-                ["tmux", "-S", str(self._config.tmux_socket), *args],
-                env=env,
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
+            with anyio.fail_after(effective_timeout):
+                result = await anyio.run_process(
+                    command,
+                    env=self._tmux_env(),
+                    check=False,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    start_new_session=True,
+                )
         except FileNotFoundError as exc:
             raise ShellctlServerError(500, "tmux_not_installed", "tmux executable was not found") from exc
+        except TimeoutError as exc:
+            message = f"tmux command timed out after {effective_timeout:.3f}s: {self._shell_join(command)}"
+            raise ShellctlServerError(
+                504,
+                "tmux_timeout",
+                message,
+            ) from exc
         if check and result.returncode != 0:
             raise ShellctlServerError(
                 500,
@@ -320,9 +348,47 @@ class TmuxController:
             )
         return result
 
+    async def _session_exists_after_start_timeout(self, session_name: str) -> bool | None:
+        try:
+            with anyio.fail_after(min(5.0, self._config.tmux_command_timeout_seconds)):
+                result = await anyio.run_process(
+                    [
+                        "tmux",
+                        "-S",
+                        str(self._config.tmux_socket),
+                        "list-sessions",
+                        "-F",
+                        "#{session_name}",
+                    ],
+                    env=self._tmux_env(),
+                    check=False,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    start_new_session=True,
+                )
+        except (FileNotFoundError, TimeoutError):
+            return None
+        if result.returncode != 0:
+            return None
+        output = result.stdout.decode("utf-8", errors="replace")
+        return session_name in {line.strip() for line in output.splitlines() if line.strip()}
+
+    @staticmethod
+    def _format_optional_probe(probe: bool | None) -> str:
+        if probe is None:
+            return "unavailable"
+        return "found" if probe else "missing"
+
     @staticmethod
     def _shell_join(parts: tuple[str, ...] | list[str]) -> str:
         return " ".join(shlex.quote(part) for part in parts)
+
+    @staticmethod
+    def _tmux_env() -> dict[str, str]:
+        env = dict(os.environ)
+        env.pop("TMUX", None)
+        return env
 
 
 def _tmux_target_missing(stderr: str) -> bool:

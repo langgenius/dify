@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import shlex
 import shutil
 import stat
@@ -72,6 +73,9 @@ from shellctl.shared.schemas import (
     TerminateJobRequest,
     WaitJobRequest,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class ShellctlService:
@@ -273,6 +277,7 @@ class ShellctlService:
                 require_exit_code_null=True,
             )
         except Exception as exc:
+            logger.warning("shellctl job %s failed during startup: %s", job_id, exc, exc_info=True)
             await self._transition_status(
                 job_id,
                 allowed_from={

@@ -12,6 +12,8 @@ import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
 import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers'
 
+const TOOL_RUNTIME_STEP_TIMEOUT_MS = 180_000
+
 const getToolsSection = (world: DifyWorld) =>
   world.getPage().getByRole('region', { name: 'Tools' })
 
@@ -271,24 +273,28 @@ Then(
   },
 )
 
-When('I send the Agent v2 Backend service API JSON Replace request', async function (this: DifyWorld) {
-  const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
-  const apiKey = this.agentBuilder.accessPoint.generatedApiKey
-  if (!serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
-  if (!apiKey)
-    throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
+When(
+  'I send the Agent v2 Backend service API JSON Replace request',
+  { timeout: TOOL_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
+    const apiKey = this.agentBuilder.accessPoint.generatedApiKey
+    if (!serviceApiBaseURL)
+      throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+    if (!apiKey)
+      throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
 
-  this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
-    apiKey,
-    query: [
-      'Verify JSON Replace now.',
-      `Replace ${agentBuilderExpectedTokens.jsonToolBefore} with ${agentBuilderExpectedTokens.jsonToolAfter}.`,
-      `Return the JSON result and include ${agentBuilderExpectedTokens.jsonToolAfter}.`,
-    ].join(' '),
-    serviceApiBaseURL,
-  })
-})
+    this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
+      apiKey,
+      query: [
+        'Verify JSON Replace now.',
+        `Replace ${agentBuilderExpectedTokens.jsonToolBefore} with ${agentBuilderExpectedTokens.jsonToolAfter}.`,
+        `Return the JSON result and include ${agentBuilderExpectedTokens.jsonToolAfter}.`,
+      ].join(' '),
+      serviceApiBaseURL,
+    })
+  },
+)
 
 Then(
   'the Agent v2 Backend service API response should include the JSON Replace E2E marker',

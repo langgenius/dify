@@ -1583,8 +1583,134 @@ def test_shellctl_config_defaults_to_lightweight_sanitize_entrypoint(
     config = ShellctlConfig(state_dir=tmp_path / "state", runtime_dir=tmp_path / "run")
 
     assert config.pipe_ready_timeout_seconds == 10.0
+    assert config.tmux_command_timeout_seconds == 15.0
+    assert config.tmux_session_start_timeout_seconds == 90.0
     assert config.sanitize_pty_command == ("shellctl-sanitize-pty",)
     assert config.runner_exit_command == ("shellctl-runner-exit",)
+
+
+@pytest.mark.anyio
+async def test_tmux_command_timeout_returns_structured_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def slow_run_process(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del args, kwargs
+        await anyio.sleep(1)
+        return subprocess.CompletedProcess(["tmux"], 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(anyio, "run_process", slow_run_process)
+    controller = TmuxController(
+        ShellctlConfig(
+            state_dir=tmp_path / "state",
+            runtime_dir=tmp_path / "run",
+            tmux_command_timeout_seconds=0.01,
+        )
+    )
+
+    with pytest.raises(ShellctlServerError) as exc_info:
+        await controller.list_sessions()
+
+    assert exc_info.value.status_code == 504
+    assert exc_info.value.code == "tmux_timeout"
+    assert "tmux command timed out after 0.010s" in exc_info.value.message
+    assert "list-sessions" in exc_info.value.message
+
+
+@pytest.mark.anyio
+async def test_tmux_commands_do_not_inherit_process_stdin_or_session(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    async def fake_run_process(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del args
+        captured_kwargs.update(kwargs)
+        return subprocess.CompletedProcess(["tmux"], 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(anyio, "run_process", fake_run_process)
+    controller = TmuxController(
+        ShellctlConfig(
+            state_dir=tmp_path / "state",
+            runtime_dir=tmp_path / "run",
+        )
+    )
+
+    await controller.start_server()
+
+    assert captured_kwargs["stdin"] == subprocess.DEVNULL
+    assert captured_kwargs["start_new_session"] is True
+
+
+@pytest.mark.anyio
+async def test_tmux_session_start_uses_dedicated_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def slow_run_process(*args: object, **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        del args, kwargs
+        await anyio.sleep(1)
+        return subprocess.CompletedProcess(["tmux"], 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(anyio, "run_process", slow_run_process)
+    controller = TmuxController(
+        ShellctlConfig(
+            state_dir=tmp_path / "state",
+            runtime_dir=tmp_path / "run",
+            tmux_command_timeout_seconds=30.0,
+            tmux_session_start_timeout_seconds=0.01,
+        )
+    )
+
+    with pytest.raises(ShellctlServerError) as exc_info:
+        await controller.create_job_session(
+            job_id="job-timeout",
+            job_dir=tmp_path / "job-timeout",
+            cwd=tmp_path,
+            terminal=TerminalSize(cols=120, rows=80),
+        )
+
+    assert exc_info.value.status_code == 504
+    assert exc_info.value.code == "tmux_timeout"
+    assert "tmux command timed out after 0.010s" in exc_info.value.message
+    assert "new-session" in exc_info.value.message
+
+
+@pytest.mark.anyio
+async def test_tmux_session_start_timeout_succeeds_when_session_was_created(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_name = job_session_name("job-timeout")
+
+    async def fake_run_process(
+        command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[bytes]:
+        del kwargs
+        if "new-session" in command:
+            await anyio.sleep(1)
+            return subprocess.CompletedProcess(command, 0, stdout=b"", stderr=b"")
+        if "list-sessions" in command:
+            return subprocess.CompletedProcess(command, 0, stdout=f"{session_name}\n".encode(), stderr=b"")
+        return subprocess.CompletedProcess(command, 1, stdout=b"", stderr=b"unexpected command")
+
+    monkeypatch.setattr(anyio, "run_process", fake_run_process)
+    controller = TmuxController(
+        ShellctlConfig(
+            state_dir=tmp_path / "state",
+            runtime_dir=tmp_path / "run",
+            tmux_session_start_timeout_seconds=0.01,
+        )
+    )
+
+    await controller.create_job_session(
+        job_id="job-timeout",
+        job_dir=tmp_path / "job-timeout",
+        cwd=tmp_path,
+        terminal=TerminalSize(cols=120, rows=80),
+    )
 
 
 def test_pipe_command_finalizer_commits_runner_exit_after_drain(tmp_path: Path) -> None:

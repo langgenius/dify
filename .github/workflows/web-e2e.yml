@@ -96,6 +96,15 @@ jobs:
           vp run e2e:external:prepare
           vp run e2e:external
 
+      - name: Print E2E log tails
+        if: ${{ failure() && inputs.run-external-runtime }}
+        run: |
+          while IFS= read -r log_file; do
+            echo "::group::${log_file}"
+            tail -n 200 "${log_file}"
+            echo "::endgroup::"
+          done < <(find e2e/.logs -type f | sort)
+
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -111,5 +120,5 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-logs
-          path: e2e/.logs
+          path: e2e/.logs/**
           retention-days: 7
