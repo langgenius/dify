@@ -4,12 +4,17 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AvatarUrlResponse = {
+  avatar_url: string
+}
+
 export type AccountAvatarPayload = {
   avatar: string
 }
 
-export type Account = {
+export type AccountResponse = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -29,8 +34,17 @@ export type ChangeEmailSendPayload = {
   token?: string | null
 }
 
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
 export type CheckEmailUniquePayload = {
   email: string
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type ChangeEmailResetPayload = {
@@ -41,6 +55,12 @@ export type ChangeEmailResetPayload = {
 export type ChangeEmailValidityPayload = {
   code: string
   email: string
+  token: string
+}
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
   token: string
 }
 
@@ -116,6 +136,20 @@ export type AccountIntegrateResponse = {
   provider: string
 }
 
+export type AccountResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
+}
+
 export type GetAccountAvatarData = {
   body?: never
   path?: never
@@ -126,9 +160,7 @@ export type GetAccountAvatarData = {
 }
 
 export type GetAccountAvatarResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AvatarUrlResponse
 }
 
 export type GetAccountAvatarResponse = GetAccountAvatarResponses[keyof GetAccountAvatarResponses]
@@ -141,7 +173,7 @@ export type PostAccountAvatarData = {
 }
 
 export type PostAccountAvatarResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountAvatarResponse = PostAccountAvatarResponses[keyof PostAccountAvatarResponses]
@@ -154,9 +186,7 @@ export type PostAccountChangeEmailData = {
 }
 
 export type PostAccountChangeEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostAccountChangeEmailResponse
@@ -170,9 +200,7 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueResponse
@@ -186,7 +214,7 @@ export type PostAccountChangeEmailResetData = {
 }
 
 export type PostAccountChangeEmailResetResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountChangeEmailResetResponse
@@ -200,9 +228,7 @@ export type PostAccountChangeEmailValidityData = {
 }
 
 export type PostAccountChangeEmailValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostAccountChangeEmailValidityResponse
@@ -216,9 +242,7 @@ export type PostAccountDeleteData = {
 }
 
 export type PostAccountDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountDeleteResponse = PostAccountDeleteResponses[keyof PostAccountDeleteResponses]
@@ -231,9 +255,7 @@ export type PostAccountDeleteFeedbackData = {
 }
 
 export type PostAccountDeleteFeedbackResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountDeleteFeedbackResponse
@@ -247,9 +269,7 @@ export type GetAccountDeleteVerifyData = {
 }
 
 export type GetAccountDeleteVerifyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type GetAccountDeleteVerifyResponse
@@ -325,9 +345,7 @@ export type PostAccountInitData = {
 }
 
 export type PostAccountInitResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAccountInitResponse = PostAccountInitResponses[keyof PostAccountInitResponses]
@@ -354,7 +372,7 @@ export type PostAccountInterfaceLanguageData = {
 }
 
 export type PostAccountInterfaceLanguageResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountInterfaceLanguageResponse
@@ -368,7 +386,7 @@ export type PostAccountInterfaceThemeData = {
 }
 
 export type PostAccountInterfaceThemeResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountInterfaceThemeResponse
@@ -382,7 +400,7 @@ export type PostAccountNameData = {
 }
 
 export type PostAccountNameResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountNameResponse = PostAccountNameResponses[keyof PostAccountNameResponses]
@@ -395,7 +413,7 @@ export type PostAccountPasswordData = {
 }
 
 export type PostAccountPasswordResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountPasswordResponse
@@ -409,7 +427,7 @@ export type GetAccountProfileData = {
 }
 
 export type GetAccountProfileResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
@@ -422,7 +440,7 @@ export type PostAccountTimezoneData = {
 }
 
 export type PostAccountTimezoneResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountTimezoneResponse

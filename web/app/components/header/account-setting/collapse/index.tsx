@@ -34,8 +34,8 @@ const Collapse = ({
         {title}
         {
           open
-            ? <ChevronDownIcon className="h-3 w-3 text-components-button-tertiary-text" aria-hidden="true" />
-            : <ChevronRightIcon className="h-3 w-3 text-components-button-tertiary-text" aria-hidden="true" />
+            ? <ChevronDownIcon className="size-3 text-components-button-tertiary-text" aria-hidden="true" />
+            : <ChevronRightIcon className="size-3 text-components-button-tertiary-text" aria-hidden="true" />
         }
       </button>
       {

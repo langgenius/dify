@@ -1,7 +1,7 @@
 import base64
 import logging
 import pickle
-from typing import Any, cast
+from typing import Any, cast, override
 
 import numpy as np
 from sqlalchemy import select
@@ -25,6 +25,7 @@ class CacheEmbedding(Embeddings):
     def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
         # use doc embedding cache or store if not exists
@@ -106,6 +107,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
@@ -189,6 +191,7 @@ class CacheEmbedding(Embeddings):
 
         return multimodel_embeddings
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
@@ -232,6 +235,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists

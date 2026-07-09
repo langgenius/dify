@@ -1,137 +1,119 @@
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-// index.spec.tsx
 import { describe, expect, it, vi } from 'vitest'
 import RadioCard from '../index'
 
-describe('RadioCard', () => {
-  it('renders icon, title and description', () => {
-    render(
+type ExampleMode = 'standard' | 'advanced'
+
+function RadioCardTypeExamples() {
+  return (
+    <RadioGroup<ExampleMode> value="standard" onValueChange={() => {}}>
+      <RadioCard<ExampleMode>
+        value="advanced"
+        icon={<span>i</span>}
+        title="Advanced"
+        description="Typed option"
+      />
+      {/* @ts-expect-error RadioCard values should stay within the selected RadioGroup value type */}
+      <RadioCard<ExampleMode> value="invalid" icon={<span>i</span>} title="Invalid" description="Invalid option" />
+    </RadioGroup>
+  )
+}
+
+void RadioCardTypeExamples
+
+function renderSelectableCard({
+  selected = false,
+  onValueChange = vi.fn(),
+}: {
+  selected?: boolean
+  onValueChange?: (value: string) => void
+} = {}) {
+  render(
+    <RadioGroup
+      aria-label="Options"
+      value={selected ? 'card' : undefined}
+      onValueChange={onValueChange}
+    >
       <RadioCard
+        value="card"
         icon={<span data-testid="icon">ICON</span>}
         title="Card Title"
         description="Some description"
-      />,
-    )
+        chosenConfig={<div>Config</div>}
+      />
+    </RadioGroup>,
+  )
+
+  return {
+    radio: screen.getByRole('radio', { name: /Card Title/ }),
+    onValueChange,
+  }
+}
+
+describe('RadioCard', () => {
+  it('should render selectable card content and expose radio semantics', () => {
+    const { radio } = renderSelectableCard()
 
     expect(screen.getByTestId('icon')).toBeInTheDocument()
     expect(screen.getByText('Card Title')).toBeInTheDocument()
     expect(screen.getByText('Some description')).toBeInTheDocument()
+    expect(radio).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('calls onChosen when clicked', async () => {
+  it('should emit RadioGroup value change when selected', async () => {
     const user = userEvent.setup()
-    const onChosen = vi.fn()
+    const onValueChange = vi.fn()
+    const { radio } = renderSelectableCard({ onValueChange })
 
+    await user.click(radio)
+
+    expect(onValueChange).toHaveBeenCalledWith('card', expect.any(Object))
+  })
+
+  it('should show selected styles and configuration when checked', () => {
+    const { radio } = renderSelectableCard({ selected: true })
+
+    expect(radio).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Config')).toBeInTheDocument()
+    expect(radio.parentElement).toHaveClass('has-[[data-checked]]:border-[1.5px]')
+    expect(radio.parentElement).toHaveClass('has-[[data-checked]]:bg-components-option-card-option-selected-bg')
+  })
+
+  it('should apply custom className to the card root and config wrapper', () => {
     render(
-      <RadioCard
-        icon={<span>i</span>}
-        title="Clickable"
-        description="desc"
-        onChosen={onChosen}
-      />,
+      <RadioGroup aria-label="Options" value="card">
+        <RadioCard
+          value="card"
+          icon={<span>i</span>}
+          title="Custom"
+          description="desc"
+          className="my-root-class"
+          chosenConfig={<div>cfg</div>}
+          chosenConfigWrapClassName="my-config-wrap"
+        />
+      </RadioGroup>,
     )
 
-    await user.click(screen.getByRole('button', { name: /Clickable/ }))
-    expect(onChosen).toHaveBeenCalledTimes(1)
+    const radio = screen.getByRole('radio', { name: /Custom/ })
+    expect(radio.parentElement).toHaveClass('my-root-class')
+    expect(screen.getByText('cfg').parentElement).toHaveClass('my-config-wrap')
   })
 
-  it('hides radio element when noRadio is true and still shows chosen-config area (wrapper)', () => {
-    const { container } = render(
+  it('should render noRadio card as static content without radio role', () => {
+    render(
       <RadioCard
+        noRadio
         icon={<span>i</span>}
         title="No Radio"
         description="desc"
-        noRadio
+        chosenConfig={<div>Static config</div>}
       />,
     )
 
-    const radioWrapper = container.querySelector('.absolute.right-3.top-3')
-    expect(radioWrapper).toBeNull()
-
-    // chosen-config area should appear because noRadio true triggers the block
-    const chosenArea = container.querySelector('.mt-2')
-    expect(chosenArea).toBeTruthy()
-  })
-
-  it('shows radio checked styles when isChosen and shows chosenConfig', () => {
-    const { container } = render(
-      <RadioCard
-        icon={<span>i</span>}
-        title="Chosen"
-        description="desc"
-        isChosen
-        chosenConfig={<div data-testid="chosen-config">config</div>}
-      />,
-    )
-
-    // radio absolute wrapper exists
-    const radioWrapper = container.querySelector('.absolute.right-3.top-3')
-    expect(radioWrapper).toBeTruthy()
-
-    // inner circle div should have checked fragment in class list
-    const inner = radioWrapper?.querySelector('div')
-    expect(inner).toBeTruthy()
-    expect(inner?.className).toContain('border-components-radio-border-checked')
-
-    // chosenConfig rendered
-    expect(screen.getByTestId('chosen-config')).toBeInTheDocument()
-  })
-
-  it('applies custom className to root and merges chosenConfigWrapClassName', () => {
-    const { container } = render(
-      <RadioCard
-        icon={<span>i</span>}
-        title="Custom"
-        description="desc"
-        className="my-root-class"
-        isChosen
-        chosenConfig={<div>cfg</div>}
-        chosenConfigWrapClassName="my-config-wrap"
-      />,
-    )
-
-    const root = container.firstChild as HTMLElement
-    expect(root).toBeTruthy()
-    expect(root.className).toContain('my-root-class')
-    expect(root.className).toContain('border-[1.5px]')
-    expect(root.className).toContain('bg-components-option-card-option-selected-bg')
-
-    const chosenWrap = container.querySelector('.mt-2 .my-config-wrap')
-    expect(chosenWrap).toBeTruthy()
-    expect(chosenWrap?.textContent).toBe('cfg')
-  })
-
-  it('does not render radio when noRadio true and still allows clicking on whole card', async () => {
-    const user = userEvent.setup()
-    const onChosen = vi.fn()
-
-    const { container } = render(
-      <RadioCard
-        icon={<span>i</span>}
-        title="ClickNoRadio"
-        description="desc"
-        noRadio
-        onChosen={onChosen}
-      />,
-    )
-
-    // click title should trigger onChosen
-    await user.click(screen.getByRole('button', { name: /ClickNoRadio/ }))
-    expect(onChosen).toHaveBeenCalledTimes(1)
-
-    // radio area should be absent
-    expect(container.querySelector('.absolute.right-3.top-3')).toBeNull()
-  })
-
-  it('memo export renders correctly', () => {
-    render(
-      <RadioCard
-        icon={<span>i</span>}
-        title="Memo"
-        description="desc"
-      />,
-    )
-    expect(screen.getByText('Memo')).toBeInTheDocument()
+    expect(screen.getByText('No Radio')).toBeInTheDocument()
+    expect(screen.getByText('Static config')).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 })

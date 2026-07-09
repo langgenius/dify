@@ -5,8 +5,10 @@ import type { InputVar, PromptItem, Var, Variable } from '@/app/components/workf
 import { noop } from 'es-toolkit/function'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import { useIsChatMode } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
 import { EditionType } from '../../types'
@@ -15,6 +17,10 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { findVariableWhenOnLLMVision } from '../utils'
 
 const i18nPrefix = 'nodes.llm'
+const isSystemInputVar = (item: InputVar) => {
+  return typeof item.variable === 'string' && item.variable.startsWith('#sys.')
+}
+
 type Params = {
   id: string
   payload: LLMNodeType
@@ -37,6 +43,8 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
   const isChatMode = useIsChatMode()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const isSnippetFlow = flowType === FlowType.snippet
 
   const contexts = runInputData['#context#']
   const setContexts = useCallback((newContexts: string[]) => {
@@ -85,19 +93,27 @@ const useSingleRunFormParams = ({
 
   const allVarStrArr = (() => {
     const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).filter(item => item.edition_type !== EditionType.jinja2).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
-    if (isChatMode && isChatModel && !!inputs.memory) {
+    if (!isSnippetFlow && isChatMode && isChatModel && !!inputs.memory)
       arr.push('{{#sys.query#}}')
+
+    if (isChatMode && isChatModel && !!inputs.memory)
       arr.push(inputs.memory.query_prompt_template)
-    }
 
     return arr
   })()
   const varInputs = (() => {
     const vars = getVarInputs(allVarStrArr) || []
-    if (isShowVars)
-      return [...vars, ...(toVarInputs ? (toVarInputs(inputs.prompt_config?.jinja2_variables || [])) : [])]
+    const filteredVars = isSnippetFlow
+      ? vars.filter(item => !isSystemInputVar(item))
+      : vars
+    if (isShowVars) {
+      const jinjaVars = toVarInputs ? (toVarInputs(inputs.prompt_config?.jinja2_variables || [])) : []
+      return isSnippetFlow
+        ? [...filteredVars, ...jinjaVars.filter(item => !isSystemInputVar(item))]
+        : [...filteredVars, ...jinjaVars]
+    }
 
-    return vars
+    return filteredVars
   })()
 
   const inputVarValues = (() => {

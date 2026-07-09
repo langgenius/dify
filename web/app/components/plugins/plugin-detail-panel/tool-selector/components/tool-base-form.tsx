@@ -4,8 +4,8 @@ import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { ReadmeEntrance } from '../../../readme-panel/entrance'
 import ToolTrigger from './tool-trigger'
@@ -23,7 +23,7 @@ type ToolBaseFormProps = {
   onPanelShowStateChange?: (state: boolean) => void
   onSelectTool: (tool: ToolDefaultValue) => void
   onSelectMultipleTool: (tools: ToolDefaultValue[]) => void
-  onDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  onDescriptionChange: (value: string) => void
 }
 
 const ToolBaseForm: FC<ToolBaseFormProps> = ({
@@ -85,9 +85,10 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
         </div>
         <Textarea
           className="resize-none"
+          aria-label={t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}
           placeholder={t('detailPanel.toolSelector.descriptionPlaceholder', { ns: 'plugin' })}
           value={value?.extra?.description || ''}
-          onChange={onDescriptionChange}
+          onValueChange={onDescriptionChange}
           disabled={!value?.provider_name}
         />
       </div>

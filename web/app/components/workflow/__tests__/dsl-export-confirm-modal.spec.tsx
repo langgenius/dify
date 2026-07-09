@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { expectLoadingButton } from '@/test/button'
 import DSLExportConfirmModal from '../dsl-export-confirm-modal'
 
 const envList = [
@@ -125,7 +126,7 @@ describe('DSLExportConfirmModal', () => {
 
     const firstClick = user.click(confirmButton)
     await waitFor(() => {
-      expect(confirmButton).toBeDisabled()
+      expectLoadingButton(confirmButton)
       expect(confirmButton).toHaveTextContent('common.operation.exporting')
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     })

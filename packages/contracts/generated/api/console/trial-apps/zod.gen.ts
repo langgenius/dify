@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AudioTranscriptResponse
+ */
+export const zAudioTranscriptResponse = z.object({
+  text: z.string(),
+})
+
+/**
  * ChatRequest
  */
 export const zChatRequest = z.object({
@@ -26,6 +33,34 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * SuggestedQuestionsResponse
+ */
+export const zSuggestedQuestionsResponse = z.object({
+  data: z.array(z.string()),
+})
+
+/**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * TextToSpeechRequest
  */
 export const zTextToSpeechRequest = z.object({
@@ -36,6 +71,11 @@ export const zTextToSpeechRequest = z.object({
 })
 
 /**
+ * AudioBinaryResponse
+ */
+export const zAudioBinaryResponse = z.custom<Blob | File>()
+
+/**
  * WorkflowRunRequest
  */
 export const zWorkflowRunRequest = z.object({
@@ -43,28 +83,293 @@ export const zWorkflowRunRequest = z.object({
   inputs: z.record(z.string(), z.unknown()),
 })
 
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * TrialDeletedToolResponse
+ */
+export const zTrialDeletedToolResponse = z.object({
+  provider_id: z.string(),
+  tool_name: z.string(),
+  type: z.string(),
+})
+
+export const zTrialIconType = z.enum(['emoji', 'image', 'link'])
+
+export const zTrialAppMode = z.enum([
+  'advanced-chat',
+  'agent-chat',
+  'chat',
+  'completion',
+  'workflow',
+])
+
+/**
+ * TrialSiteResponse
+ */
+export const zTrialSiteResponse = z.object({
+  access_token: z.string().nullish(),
+  app_base_url: z.string().nullish(),
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean().nullish(),
+  code: z.string().nullish(),
+  copyright: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  customize_domain: z.string().nullish(),
+  customize_token_strategy: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * TrialTagResponse
+ */
+export const zTrialTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * TrialWorkflowPartialResponse
+ */
+export const zTrialWorkflowPartialResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * TrialDatasetResponse
+ */
+export const zTrialDatasetResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  data_source_type: z.string().nullish(),
+  description: z.string().nullish(),
+  id: z.string(),
+  indexing_technique: z.string().nullish(),
+  name: z.string(),
+  permission: z.string().nullish(),
+  permission_keys: z.array(z.string()).optional(),
+})
+
+/**
+ * TrialDatasetListResponse
+ */
+export const zTrialDatasetListResponse = z.object({
+  data: z.array(zTrialDatasetResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+export const zJsonObject = z.record(z.string(), z.unknown())
+
+/**
+ * SystemParameters
+ */
+export const zSystemParameters = z.object({
+  audio_file_size_limit: z.int(),
+  file_size_limit: z.int(),
+  image_file_size_limit: z.int(),
+  video_file_size_limit: z.int(),
+  workflow_file_upload_limit: z.int(),
+})
+
+/**
+ * Parameters
+ */
+export const zParameters = z.object({
+  annotation_reply: zJsonObject,
+  file_upload: zJsonObject,
+  more_like_this: zJsonObject,
+  opening_statement: z.string().nullish(),
+  retriever_resource: zJsonObject,
+  sensitive_word_avoidance: zJsonObject,
+  speech_to_text: zJsonObject,
+  suggested_questions: z.array(z.string()),
+  suggested_questions_after_answer: zJsonObject,
+  system_parameters: zSystemParameters,
+  text_to_speech: zJsonObject,
+  user_input_form: z.array(zJsonObject),
+})
+
+export const zJsonObject2 = z.record(z.string(), z.unknown())
+
+/**
+ * TrialSimpleAccount
+ */
+export const zTrialSimpleAccount = z.object({
+  email: z.string().nullish(),
+  id: z.string(),
+  name: z.string().nullish(),
+})
+
+/**
+ * TrialWorkflowResponse
+ */
+export const zTrialWorkflowResponse = z.object({
+  conversation_variables: z.array(zJsonObject2).optional(),
+  created_at: z.int().nullish(),
+  created_by: zTrialSimpleAccount.nullish(),
+  environment_variables: z.array(zJsonObject2).optional(),
+  features: zJsonObject2.optional(),
+  graph: zJsonObject2,
+  hash: z.string().nullish(),
+  id: z.string(),
+  marked_comment: z.string().nullish(),
+  marked_name: z.string().nullish(),
+  rag_pipeline_variables: z.array(zJsonObject2).optional(),
+  tool_published: z.boolean().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: zTrialSimpleAccount.nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * TrialAppAgentMode
+ */
+export const zTrialAppAgentMode = z.object({
+  enabled: z.boolean().nullish(),
+  strategy: z.string().nullish(),
+  tools: z.array(zJsonObject2).optional(),
+})
+
+/**
+ * TrialAppModel
+ */
+export const zTrialAppModel = z.object({
+  completion_params: zJsonObject2.optional(),
+  mode: z.string().nullish(),
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * TrialAppModelConfigResponse
+ */
+export const zTrialAppModelConfigResponse = z.object({
+  agent_mode: zTrialAppAgentMode.nullish(),
+  annotation_reply: zJsonObject2.nullish(),
+  chat_prompt_config: zJsonObject2.nullish(),
+  completion_prompt_config: zJsonObject2.nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  dataset_configs: zJsonObject2.nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: z.array(zJsonObject2).optional(),
+  file_upload: zJsonObject2.nullish(),
+  model: zTrialAppModel.nullish(),
+  more_like_this: zJsonObject2.nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: zJsonObject2.nullish(),
+  sensitive_word_avoidance: zJsonObject2.nullish(),
+  speech_to_text: zJsonObject2.nullish(),
+  suggested_questions: z.array(z.string()).optional(),
+  suggested_questions_after_answer: zJsonObject2.nullish(),
+  text_to_speech: zJsonObject2.nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  user_input_form: z.array(zJsonObject2).optional(),
+})
+
+/**
+ * TrialAppDetailResponse
+ */
+export const zTrialAppDetailResponse = z.object({
+  access_mode: z.string().nullish(),
+  api_base_url: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  deleted_tools: z.array(zTrialDeletedToolResponse).optional(),
+  description: z.string().nullish(),
+  enable_api: z.boolean(),
+  enable_site: z.boolean(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
+  id: z.string(),
+  max_active_requests: z.int().nullish(),
+  mode: zTrialAppMode,
+  model_config: zTrialAppModelConfigResponse.nullish(),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  site: zTrialSiteResponse,
+  tags: z.array(zTrialTagResponse).optional(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zTrialWorkflowPartialResponse.nullish(),
+})
+
+/**
+ * Site
+ */
+export const zSiteWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
 export const zGetTrialAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdResponse = zTrialAppDetailResponse
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdAudioToTextResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdAudioToTextResponse = zAudioTranscriptResponse
 
 export const zPostTrialAppsByAppIdChatMessagesBody = zChatRequest
 
 export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -75,7 +380,7 @@ export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
 export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -84,69 +389,73 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
+  ids: z.array(z.string()).optional(),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdDatasetsResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetListResponse
 
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  app_id: z.string(),
-  message_id: z.string(),
+  app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
+  = zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdParametersResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdParametersResponse = zParameters
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdSiteResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdSiteResponse = zSite
 
 export const zPostTrialAppsByAppIdTextToAudioBody = zTextToSpeechRequest
 
 export const zPostTrialAppsByAppIdTextToAudioPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdTextToAudioResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdWorkflowsResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflowResponse
 
 export const zPostTrialAppsByAppIdWorkflowsRunBody = zWorkflowRunRequest
 
 export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -155,14 +464,11 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse = zSimpleResultResponse

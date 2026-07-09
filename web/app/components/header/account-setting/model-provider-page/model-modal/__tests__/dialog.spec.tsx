@@ -77,12 +77,6 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-  }),
-}))
-
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: Record<string, string>) => value[mockLanguage] || value.en_US,
 }))

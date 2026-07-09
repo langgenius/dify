@@ -10,11 +10,11 @@ import Field from '../base/field'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: CrawlOptions
   onChange: (payload: CrawlOptions) => void
-}
+}>
 
 const Options: FC<Props> = ({
   className = '',
@@ -38,7 +38,6 @@ const Options: FC<Props> = ({
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
-        testId="crawl-sub-pages"
       />
       <div className="flex justify-between space-x-4">
         <Field
@@ -80,7 +79,6 @@ const Options: FC<Props> = ({
         isChecked={payload.only_main_content}
         onChange={handleChange('only_main_content')}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
-        testId="only-main-content"
       />
     </div>
   )

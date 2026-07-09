@@ -7,13 +7,13 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
-}
+}>
 
 const VariableTrigger = ({
   open,
@@ -37,7 +37,7 @@ const VariableTrigger = ({
       <PopoverTrigger
         render={(
           <Button variant="primary">
-            <RiAddLine className="mr-1 h-4 w-4" />
+            <RiAddLine className="mr-1 size-4" />
             <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
           </Button>
         )}

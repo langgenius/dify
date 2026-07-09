@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,7 +21,7 @@ import {
 
 const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
   <DropdownMenuTrigger
-    render={<button type="button" className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover" />}
+    render={<button type="button" className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid" />}
   >
     {label}
   </DropdownMenuTrigger>
@@ -133,7 +133,7 @@ export const WithSubmenu: Story = {
 }
 
 const WithRadioItemsDemo = () => {
-  const [value, setValue] = useState('comfortable')
+  const [value, setValue] = React.useState('comfortable')
 
   return (
     <DropdownMenu>
@@ -163,9 +163,9 @@ export const WithRadioItems: Story = {
 }
 
 const WithCheckboxItemsDemo = () => {
-  const [showToolbar, setShowToolbar] = useState(true)
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [showStatusBar, setShowStatusBar] = useState(true)
+  const [showToolbar, setShowToolbar] = React.useState(true)
+  const [showSidebar, setShowSidebar] = React.useState(false)
+  const [showStatusBar, setShowStatusBar] = React.useState(true)
 
   return (
     <DropdownMenu>
@@ -252,8 +252,8 @@ export const WithLinkItems: Story = {
 }
 
 const ComplexDemo = () => {
-  const [sortOrder, setSortOrder] = useState('newest')
-  const [showArchived, setShowArchived] = useState(false)
+  const [sortOrder, setSortOrder] = React.useState('newest')
+  const [showArchived, setShowArchived] = React.useState(false)
 
   return (
     <DropdownMenu>

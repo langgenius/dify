@@ -94,10 +94,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       >
         <AlertDialogContent className="w-[432px]">
           <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+            <AlertDialogTitle className="text-lg/7 font-semibold text-text-primary">
               {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+            <AlertDialogDescription className="text-sm/5 text-text-secondary">
               {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
             </AlertDialogDescription>
           </div>
@@ -160,7 +160,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
         <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-          <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40"></div>
+          <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
             <AlertTriangle className="size-4 text-text-warning-secondary" />
           </div>

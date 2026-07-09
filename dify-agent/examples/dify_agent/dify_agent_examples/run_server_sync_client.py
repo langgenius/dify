@@ -10,12 +10,11 @@ assuming the original request was not accepted.
 
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
@@ -43,20 +42,69 @@ def main() -> None:
                             ),
                         ),
                         RunLayerSpec(
-                            name="plugin",
-                            type=DIFY_PLUGIN_LAYER_TYPE_ID,
-                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
+                            name="execution_context",
+                            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                            config=DifyExecutionContextLayerConfig(
+                                tenant_id=TENANT_ID,
+                                user_from="account",
+                                agent_mode="workflow_run",
+                                invoke_from="service-api",
+                            ),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
                             type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                            deps={"plugin": "plugin"},
+                            deps={"execution_context": "execution_context"},
                             config=DifyPluginLLMLayerConfig(
+                                plugin_id=PLUGIN_ID,
                                 model_provider=PLUGIN_PROVIDER,
                                 model=MODEL_NAME,
                                 credentials=MODEL_CREDENTIALS,
                             ),
                         ),
+                        # Minimal plugin-tools example. API callers should pass
+                        # prepared parameters + JSON schema instead of relying on
+                        # dify-agent to fetch and merge daemon declarations.
+                        # from dify_agent.layers.dify_plugin import (
+                        #     DifyPluginToolConfig,
+                        #     DifyPluginToolParameter,
+                        #     DifyPluginToolParameterForm,
+                        #     DifyPluginToolParameterType,
+                        #     DifyPluginToolsLayerConfig,
+                        # )
+                        # RunLayerSpec(
+                        #     name="tools",
+                        #     type="dify.plugin.tools",
+                        #     deps={"execution_context": "execution_context"},
+                        #     config=DifyPluginToolsLayerConfig(
+                        #         tools=[
+                        #             DifyPluginToolConfig(
+                        #                 plugin_id="langgenius/search",
+                        #                 provider="search",
+                        #                 tool_name="web_search",
+                        #                 credential_type="api-key",
+                        #                 credentials={"api_key": "replace-with-tool-key"},
+                        #                 runtime_parameters={"site": "docs.dify.ai"},
+                        #                 parameters=[
+                        #                     DifyPluginToolParameter(
+                        #                         name="query",
+                        #                         type=DifyPluginToolParameterType.STRING,
+                        #                         form=DifyPluginToolParameterForm.LLM,
+                        #                         required=True,
+                        #                         llm_description="Search query",
+                        #                     ),
+                        #                 ],
+                        #                 parameters_json_schema={
+                        #                     "type": "object",
+                        #                     "properties": {
+                        #                         "query": {"type": "string", "description": "Search query"}
+                        #                     },
+                        #                     "required": ["query"],
+                        #                 },
+                        #             )
+                        #         ]
+                        #     ),
+                        # ),
                     ],
                 ),
             )

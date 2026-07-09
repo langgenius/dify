@@ -3,17 +3,25 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, createDocumentResponse, FileItem } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useModalContextSelector } from '@/context/modal-context'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
+import { useRouter } from '@/next/navigation'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import StepOne from './step-one'
@@ -37,9 +45,22 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
-  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+  const router = useRouter()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
+  const canAddDocumentsToDataset = !datasetId || getDatasetACLCapabilities(datasetDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: datasetDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const shouldRedirectToDocuments = !!datasetId
+    && !!datasetDetail
+    && !isLoadingWorkspacePermissionKeys
+    && !canAddDocumentsToDataset
 
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
@@ -103,13 +124,21 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setStep(step + delta)
   }, [step, setStep])
 
+  useEffect(() => {
+    if (shouldRedirectToDocuments && datasetId)
+      router.replace(`/datasets/${datasetId}/documents`)
+  }, [datasetId, router, shouldRedirectToDocuments])
+
+  if ((!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments)
+    return <Loading type="app" />
+
   if (fetchingAuthedDataSourceListError)
     return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
-    <div className="flex flex-col overflow-hidden bg-components-panel-bg" style={{ height: 'calc(100vh - 56px)' }}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-components-panel-bg">
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
-      <div style={{ height: 'calc(100% - 52px)' }}>
+      <div className="min-h-0 flex-1">
         {
           isLoadingAuthedDataSourceList && (
             <Loading type="app" />
@@ -121,7 +150,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {step === 1 && (
                 <StepOne
                   authedDataSourceList={dataSourceList?.result || []}
-                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })}
+                  onSetting={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}
                   dataSourceTypeDisable={!!datasetDetail?.data_source_type}
@@ -145,7 +174,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {(step === 2 && (!datasetId || (datasetId && !!datasetDetail))) && (
                 <StepTwo
                   isAPIKeySet={!!embeddingsDefaultModel}
-                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onSetting={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                   indexingType={datasetDetail?.indexing_technique}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}
@@ -156,6 +185,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
                   websiteCrawlProvider={websiteCrawlProvider}
                   websiteCrawlJobId={websiteCrawlJobId}
                   onStepChange={changeStep}
+                  canCreateDocument={canAddDocumentsToDataset}
                   updateIndexingTypeCache={updateIndexingTypeCache}
                   updateRetrievalMethodCache={updateRetrievalMethodCache}
                   updateResultCache={updateResultCache}

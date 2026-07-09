@@ -52,6 +52,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                 try:
                     if features.billing.enabled:
                         vector_space = features.vector_space
+                        assert vector_space is not None
                         if 0 < vector_space.limit <= vector_space.size:
                             raise ValueError(
                                 "Your total number of documents plus the number of uploads have over the limit of "
@@ -100,8 +101,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     session.commit()
 
                     if dataset.runtime_mode == "rag_pipeline":
-                        rag_pipeline_service = RagPipelineService()
-                        rag_pipeline_service.retry_error_document(dataset, document, user)
+                        with session_factory.create_session() as rag_session:
+                            rag_pipeline_service = RagPipelineService(rag_session)
+                            rag_pipeline_service.retry_error_document(dataset, document, user)
                     else:
                         indexing_runner = IndexingRunner()
                         indexing_runner.run([document])

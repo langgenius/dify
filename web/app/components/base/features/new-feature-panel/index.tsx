@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
@@ -18,7 +19,7 @@ import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   isChatMode: boolean
   disabled: boolean
@@ -26,10 +27,15 @@ type Props = {
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
+  showModeration?: boolean
+  showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-}
+  title?: ReactNode
+  description?: ReactNode
+  drawerClassName?: string
+}>
 
 const NewFeaturePanel = ({
   show,
@@ -39,9 +45,14 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
+  showModeration = true,
+  showAnnotationReply = true,
   promptVariables,
   workflowVariables,
   onAutoAddPromptVariable,
+  title,
+  description,
+  drawerClassName,
 }: Props) => {
   const { t } = useTranslation()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
@@ -52,17 +63,18 @@ const NewFeaturePanel = ({
       show={show}
       onClose={onClose}
       inWorkflow={inWorkflow}
+      className={drawerClassName}
     >
       <div className="flex h-full grow flex-col">
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">{t('common.features', { ns: 'workflow' })}</div>
-            <div className="body-xs-regular text-text-tertiary">{t('common.featuresDescription', { ns: 'workflow' })}</div>
+            <div className="system-xl-semibold text-text-primary">{title ?? t('common.features', { ns: 'workflow' })}</div>
+            <div className="body-xs-regular text-text-tertiary">{description ?? t('common.featuresDescription', { ns: 'workflow' })}</div>
           </div>
           <DrawerCloseButton
             aria-label={t('operation.close', { ns: 'common' })}
-            className="h-8 w-8 p-2"
+            className="size-8 p-2"
           />
         </div>
         {/* list */}
@@ -93,8 +105,8 @@ const NewFeaturePanel = ({
           {isChatMode && (
             <Citation disabled={disabled} onChange={onChange} />
           )}
-          {(isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
-          {!inWorkflow && isChatMode && (
+          {showModeration && (isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
+          {showAnnotationReply && !inWorkflow && isChatMode && (
             <AnnotationReply disabled={disabled} onChange={onChange} />
           )}
         </div>

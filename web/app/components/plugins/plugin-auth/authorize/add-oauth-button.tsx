@@ -31,6 +31,11 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  renderTrigger?: (props: {
+    disabled?: boolean
+    isConfigured: boolean
+    onClick: () => void
+  }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
@@ -51,6 +56,7 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  renderTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
@@ -67,8 +73,8 @@ const AddOAuthButton = ({
   }, [oAuthData, data])
   const {
     schema = [],
-    is_oauth_custom_client_enabled,
-    is_system_oauth_params_exists,
+    is_oauth_custom_client_enabled = false,
+    is_system_oauth_params_exists = false,
     client_params = {},
     redirect_uri,
   } = mergedOAuthData
@@ -93,7 +99,7 @@ const AddOAuthButton = ({
       <div className="w-full">
         <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
           <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <span className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
+            <span className="i-ri-information-2-fill size-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
             <div className="mb-1.5 system-sm-regular">
@@ -109,7 +115,7 @@ const AddOAuthButton = ({
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <span className="i-ri-clipboard-line h-4 w-4" />
+                    <span className="i-ri-clipboard-line size-4" />
                   </ActionButton>
                 </div>
               )
@@ -186,12 +192,19 @@ const AddOAuthButton = ({
   return (
     <>
       {
-        isConfigured && (
+        renderTrigger?.({
+          disabled,
+          isConfigured,
+          onClick: isConfigured ? handleOAuth : openOAuthSettings,
+        })
+      }
+      {
+        !renderTrigger && isConfigured && (
           <div className={cn('flex w-full', className)}>
             <Button
               variant={buttonVariant}
               className={cn(
-                'h-8 min-w-0 flex-1 rounded-r-none px-0 py-0 hover:bg-components-button-primary-bg-hover',
+                'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
                 buttonLeftClassName,
               )}
               disabled={disabled}
@@ -199,7 +212,6 @@ const AddOAuthButton = ({
             >
               <div
                 className="truncate"
-                title={buttonText}
               >
                 {buttonText}
               </div>
@@ -226,7 +238,7 @@ const AddOAuthButton = ({
               variant={buttonVariant}
               aria-label={t('auth.oauthClientSettings', { ns: 'plugin' })}
               className={cn(
-                'h-8 w-8 shrink-0 rounded-l-none px-0 py-0 hover:bg-components-button-primary-bg-hover',
+                'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,
               )}
               disabled={disabled}
@@ -234,20 +246,20 @@ const AddOAuthButton = ({
                 openOAuthSettings()
               }}
             >
-              <span className="i-ri-equalizer-2-line h-4 w-4" aria-hidden="true" />
+              <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
             </Button>
           </div>
         )
       }
       {
-        !isConfigured && (
+        !renderTrigger && !isConfigured && (
           <Button
             variant={buttonVariant}
             onClick={openOAuthSettings}
             disabled={disabled}
             className="w-full"
           >
-            <span className="mr-0.5 i-ri-equalizer-2-line h-4 w-4" />
+            <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
             {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )

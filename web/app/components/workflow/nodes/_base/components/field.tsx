@@ -8,7 +8,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: ReactNode
   tooltip?: ReactNode
@@ -19,7 +19,7 @@ type Props = {
   inline?: boolean
   required?: boolean
   warningDot?: boolean
-}
+}>
 
 const getTextFromNode = (node: ReactNode): string | undefined => {
   if (typeof node === 'string' || typeof node === 'number')
@@ -58,7 +58,7 @@ const Field: FC<Props> = ({
         <div className="flex h-6 items-center">
           <div className={cn('relative', isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
             {warningDot && (
-              <span className="absolute top-1/2 -left-[9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
             )}
             {title}
             {' '}
@@ -73,7 +73,7 @@ const Field: FC<Props> = ({
         <div className="flex">
           {!!operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className="h-4 w-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className="size-4 cursor-pointer text-text-tertiary transition-transform" style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>

@@ -4,6 +4,7 @@ import sys
 import types
 from collections import UserDict
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,6 +69,7 @@ def _build_fake_qdrant_modules():
             self.text = text
 
     class _Distance(UserDict):
+        @override
         def __getitem__(self, key):
             return key
 

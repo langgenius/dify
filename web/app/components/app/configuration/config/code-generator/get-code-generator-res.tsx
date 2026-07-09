@@ -30,6 +30,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
+import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from '../automatic/idea-output'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 import ResPlaceholder from '../automatic/res-placeholder'
@@ -39,6 +40,16 @@ import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
 
 const i18nPrefix = 'generate'
+const defaultCompletionParams = {
+  temperature: 0.7,
+  max_tokens: 0,
+  top_p: 0,
+  echo: false,
+  stop: [],
+  presence_penalty: 0,
+  frequency_penalty: 0,
+}
+
 type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
@@ -63,22 +74,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   },
 ) => {
   const { t } = useTranslation()
-  const defaultCompletionParams = {
-    temperature: 0.7,
-    max_tokens: 0,
-    top_p: 0,
-    echo: false,
-    stop: [],
-    presence_penalty: 0,
-    frequency_penalty: 0,
-  }
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
+  const [storedModel, setStoredModel] = useAutoGenModel()
+  const [model, setModel] = React.useState<Model>(storedModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode as unknown as ModelModeType,
     completion_params: defaultCompletionParams,
   })
   const {
@@ -122,8 +122,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
@@ -131,8 +131,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const onGenerate = async () => {
     if (!isValid())
@@ -172,15 +172,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
+      if (storedModel) {
         setModel({
-          ...localModel,
+          ...storedModel,
           completion_params: {
             ...defaultCompletionParams,
-            ...localModel.completion_params,
+            ...storedModel.completion_params,
           },
         })
       }
@@ -192,7 +189,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         }))
       }
     }
-  }, [defaultModel])
+  }, [defaultModel, storedModel])
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
@@ -209,9 +206,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           onClose()
       }}
     >
-      <DialogContent className="max-h-none w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
 
-        <div className="relative flex h-[680px] flex-wrap">
+        <div className="relative flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
@@ -254,7 +251,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="h-4 w-4" />
+                  <Generator className="size-4" />
                   <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
                 </Button>
               </div>

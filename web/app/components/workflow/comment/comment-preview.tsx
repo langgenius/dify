@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -47,12 +47,12 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
         <div className="flex min-w-0 items-center gap-2">
           <div className="truncate system-sm-medium text-text-primary">{authorName}</div>
           <div className="shrink-0 system-2xs-regular text-text-tertiary">
-            {formatTimeFromNow(comment.updated_at * 1000)}
+            {formatTimeFromNow((comment.updated_at ?? comment.created_at ?? 0) * 1000)}
           </div>
         </div>
       </div>
 
-      <div className="system-sm-regular break-words text-text-secondary">{comment.content}</div>
+      <div className="system-sm-regular wrap-break-word text-text-secondary">{comment.content}</div>
     </div>
   )
 }

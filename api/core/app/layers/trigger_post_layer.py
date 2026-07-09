@@ -1,13 +1,19 @@
 import logging
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, override
 
 from pydantic import TypeAdapter
 
 from core.db.session_factory import session_factory
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent, GraphRunPausedEvent, GraphRunSucceededEvent
+from graphon.graph_events import (
+    GraphEngineEvent,
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPausedEvent,
+    GraphRunSucceededEvent,
+)
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
@@ -23,6 +29,7 @@ class TriggerPostLayer(GraphEngineLayer):
     _STATUS_MAP: ClassVar[dict[type[GraphEngineEvent], WorkflowTriggerStatus]] = {
         GraphRunSucceededEvent: WorkflowTriggerStatus.SUCCEEDED,
         GraphRunFailedEvent: WorkflowTriggerStatus.FAILED,
+        GraphRunAbortedEvent: WorkflowTriggerStatus.FAILED,
         GraphRunPausedEvent: WorkflowTriggerStatus.PAUSED,
     }
 
@@ -37,9 +44,11 @@ class TriggerPostLayer(GraphEngineLayer):
         self.start_time = start_time
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
 
+    @override
     def on_graph_start(self):
         pass
 
+    @override
     def on_event(self, event: GraphEngineEvent):
         """
         Update trigger log with success or failure.
@@ -71,6 +80,8 @@ class TriggerPostLayer(GraphEngineLayer):
                 trigger_log.status = self._STATUS_MAP[type(event)]
                 trigger_log.workflow_run_id = workflow_run_id
                 trigger_log.outputs = TypeAdapter(dict[str, Any]).dump_json(outputs).decode()
+                if isinstance(event, GraphRunAbortedEvent):
+                    trigger_log.error = event.reason or "Workflow execution aborted"
 
                 if trigger_log.elapsed_time is None:
                     trigger_log.elapsed_time = elapsed_time
@@ -82,5 +93,6 @@ class TriggerPostLayer(GraphEngineLayer):
                 repo.update(trigger_log)
                 session.commit()
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         pass

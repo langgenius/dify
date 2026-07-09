@@ -121,7 +121,7 @@ describe('Preview', () => {
       const { container } = render(<Preview appId="test-app-id" appDetail={appDetail} />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('h-full', 'w-full')
+      expect(wrapper).toHaveClass('size-full')
     })
   })
 })

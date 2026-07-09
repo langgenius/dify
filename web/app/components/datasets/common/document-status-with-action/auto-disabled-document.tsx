@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { useAutoDisabledDocuments, useDocumentEnable, useInvalidDisabledDocument } from '@/service/knowledge/use-document'
 import StatusWithAction from './status-with-action'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
-}
+}>
 
 const AutoDisabledDocument: FC<Props> = ({
   datasetId,

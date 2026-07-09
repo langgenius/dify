@@ -3,7 +3,30 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppInfoDetailPanel from '../app-info-detail-panel'
+
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.create_and_management'] as string[],
+}))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys.value
+    },
+  },
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('../../../base/app-icon', () => ({
   default: ({ size, icon }: { size: string, icon: string }) => (
@@ -66,6 +89,12 @@ vi.mock('../app-operations', () => ({
   ),
 }))
 
+const defaultAppPermissionKeys = [
+  AppACLPermission.Edit,
+  AppACLPermission.ImportExportDSL,
+  AppACLPermission.Delete,
+]
+
 const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
   id: 'app-1',
   name: 'Test App',
@@ -76,6 +105,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
   icon_url: '',
   description: 'A test description',
   use_icon_as_answer_icon: false,
+  permission_keys: defaultAppPermissionKeys,
   ...overrides,
 } as App & Partial<AppSSO>)
 
@@ -90,6 +120,7 @@ describe('AppInfoDetailPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -167,6 +198,14 @@ describe('AppInfoDetailPanel', () => {
       expect(defaultProps.openModal).toHaveBeenCalledWith('duplicate')
     })
 
+    it('should hide duplicate operation when app.create_and_management permission is missing', () => {
+      mockWorkspacePermissionKeys.value = []
+
+      render(<AppInfoDetailPanel {...defaultProps} />)
+
+      expect(screen.queryByTestId('op-duplicate')).not.toBeInTheDocument()
+    })
+
     it('should call exportCheck when export is clicked', async () => {
       const user = userEvent.setup()
       render(<AppInfoDetailPanel {...defaultProps} />)
@@ -214,6 +253,19 @@ describe('AppInfoDetailPanel', () => {
 
     it('should not show import DSL for chat mode', () => {
       render(<AppInfoDetailPanel {...defaultProps} />)
+      expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
+    })
+
+    it('should not show import DSL when import/export DSL permission is missing', () => {
+      render(
+        <AppInfoDetailPanel
+          {...defaultProps}
+          appDetail={createAppDetail({
+            mode: AppModeEnum.WORKFLOW,
+            permission_keys: [AppACLPermission.Edit],
+          })}
+        />,
+      )
       expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
     })
 

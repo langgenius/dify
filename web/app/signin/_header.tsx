@@ -2,10 +2,10 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import Divider from '@/app/components/base/divider'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import dynamic from '@/next/dynamic'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import LocaleMenu from './_locale-menu'
 
 // Avoid rendering the logo and theme selector on the server

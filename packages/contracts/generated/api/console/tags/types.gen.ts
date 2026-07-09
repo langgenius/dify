@@ -4,6 +4,13 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type TagListResponse = Array<TagResponse>
+
+export type TagBasePayload = {
+  name: string
+  type: TagType
+}
+
 export type TagResponse = {
   binding_count?: string | null
   id: string
@@ -11,25 +18,24 @@ export type TagResponse = {
   type?: string | null
 }
 
-export type TagBasePayload = {
+export type TagUpdateRequestPayload = {
   name: string
-  type: TagType
 }
 
-export type TagType = 'app' | 'knowledge'
+export type TagType = 'app' | 'knowledge' | 'snippet'
 
 export type GetTagsData = {
   body?: never
   path?: never
   query?: {
     keyword?: string
-    type?: string
+    type?: '' | 'app' | 'knowledge' | 'snippet'
   }
   url: '/tags'
 }
 
 export type GetTagsResponses = {
-  200: Array<TagResponse>
+  200: TagListResponse
 }
 
 export type GetTagsResponse = GetTagsResponses[keyof GetTagsResponses]
@@ -42,9 +48,7 @@ export type PostTagsData = {
 }
 
 export type PostTagsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TagResponse
 }
 
 export type PostTagsResponse = PostTagsResponses[keyof PostTagsResponses]
@@ -59,15 +63,13 @@ export type DeleteTagsByTagIdData = {
 }
 
 export type DeleteTagsByTagIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteTagsByTagIdResponse = DeleteTagsByTagIdResponses[keyof DeleteTagsByTagIdResponses]
 
 export type PatchTagsByTagIdData = {
-  body: TagBasePayload
+  body: TagUpdateRequestPayload
   path: {
     tag_id: string
   }
@@ -76,9 +78,7 @@ export type PatchTagsByTagIdData = {
 }
 
 export type PatchTagsByTagIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TagResponse
 }
 
 export type PatchTagsByTagIdResponse = PatchTagsByTagIdResponses[keyof PatchTagsByTagIdResponses]

@@ -14,10 +14,10 @@ import FollowUpSettingModal from '@/app/components/base/features/new-feature-pan
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const FollowUp = ({
   disabled,
@@ -75,7 +75,7 @@ const FollowUp = ({
       <FeatureCard
         icon={(
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-            <VirtualAssistant className="h-4 w-4 text-text-primary-on-surface" />
+            <VirtualAssistant className="size-4 text-text-primary-on-surface" />
           </div>
         )}
         title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
@@ -100,7 +100,7 @@ const FollowUp = ({
               )}
               {isHovering && (
                 <Button className="w-full" onClick={handleOpenSettingModal} disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                  <RiEqualizer2Line className="mr-1 size-4" />
                   {t('operation.settings', { ns: 'common' })}
                 </Button>
               )}

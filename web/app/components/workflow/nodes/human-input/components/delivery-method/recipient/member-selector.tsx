@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
 import type { Member } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
@@ -18,12 +17,12 @@ import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   value: Recipient[]
   email: string
   onSelect: (value: string) => void
   list: Member[]
-}
+}>
 
 const MemberSelector: FC<Props> = ({
   value,
@@ -45,10 +44,10 @@ const MemberSelector: FC<Props> = ({
       <PopoverTrigger
         render={(
           <Button
-            className={cn('w-full justify-between', open && 'bg-state-accent-hover')}
+            className="w-full justify-between data-popup-open:bg-state-accent-hover"
             variant="ghost-accent"
           >
-            <RiContactsBookLine className="mr-1 h-4 w-4" />
+            <RiContactsBookLine className="mr-1 size-4" />
             <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
           </Button>
         )}

@@ -42,7 +42,7 @@ const ParamConfigContent: FC = () => {
 
   return (
     <div>
-      <div className="text-base leading-6 font-semibold text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
+      <div className="text-base/6 font-semibold text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
       <div className="space-y-6 pt-3">
         <div>
           <div className="mb-2 flex items-center space-x-1">

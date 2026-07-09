@@ -41,11 +41,17 @@ vi.mock('@/utils/format', () => ({
   formatNumber: (num: number) => num.toLocaleString(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (value: { currentWorkspace: { id: string } }) => string) => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     currentWorkspace: { id: 'workspace-123' },
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/utils/mcp', () => ({
   shouldUseMcpIcon: (src: unknown) => typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
@@ -460,6 +466,14 @@ describe('Card', () => {
       const plugin = createMockPlugin()
       // @ts-expect-error - Testing undefined badges
       plugin.badges = undefined
+
+      render(<Card payload={plugin} />)
+
+      expect(screen.queryByTestId('partner-badge')).not.toBeInTheDocument()
+    })
+
+    it('should handle null badges from the marketplace API', () => {
+      const plugin = createMockPlugin({ badges: null })
 
       render(<Card payload={plugin} />)
 

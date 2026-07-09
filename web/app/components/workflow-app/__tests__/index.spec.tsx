@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
 const mockSetTriggerStatuses = vi.fn()
@@ -17,6 +18,8 @@ let appStoreState: {
   appDetail?: {
     id: string
     mode: string
+    maintainer?: string
+    permission_keys?: string[]
   }
 }
 
@@ -38,6 +41,10 @@ let appContextState: {
   currentWorkspace: {
     id?: string
   }
+  userProfile: {
+    id: string
+  }
+  workspacePermissionKeys: string[]
 }
 
 let appTriggersState: {
@@ -77,9 +84,22 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => appContextState,
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isLoadingCurrentWorkspace: appContextState.isLoadingCurrentWorkspace,
+    currentWorkspace: appContextState.currentWorkspace,
+    userProfile: appContextState.userProfile,
+    workspacePermissionKeys: appContextState.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => ({
@@ -185,6 +205,7 @@ describe('WorkflowApp', () => {
       appDetail: {
         id: 'app-1',
         mode: 'workflow',
+        permission_keys: [AppACLPermission.TestAndRun],
       },
     }
     workflowInitState = {
@@ -206,6 +227,8 @@ describe('WorkflowApp', () => {
     appContextState = {
       isLoadingCurrentWorkspace: false,
       currentWorkspace: { id: 'workspace-1' },
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
     }
     appTriggersState = {}
     searchParamsValue = null
@@ -287,6 +310,27 @@ describe('WorkflowApp', () => {
 
   it('should skip replay lookups when replayRunId is missing', () => {
     render(<WorkflowApp />)
+
+    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
+    expect(mockFetchRunDetail).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
+  it('should skip replay lookups when test/run permission is missing', async () => {
+    searchParamsValue = 'run-1'
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.ViewLayout],
+      },
+    }
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    })
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
     expect(mockFetchRunDetail).not.toHaveBeenCalled()

@@ -75,8 +75,3 @@ export const ensureAmplitudeInitialized = ({
     throw error
   }
 }
-
-// Only used by unit tests to reset module-scoped initialization state.
-export const resetAmplitudeInitializationForTests = () => {
-  isAmplitudeInitialized = false
-}

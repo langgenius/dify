@@ -1,6 +1,5 @@
-// import { useAppContext } from '@/context/app-context'
 // import { Button } from '@langgenius/dify-ui/button'
-// import Indicator from '@/app/components/header/indicator'
+// import { StatusDot } from '@langgenius/dify-ui/status-dot'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
 // import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import type { PluginDetail } from '@/app/components/plugins/types'
@@ -10,15 +9,14 @@ import { useTranslation } from 'react-i18next'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import { useDataSourceList } from '@/service/use-pipeline'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
 const ActionList = ({
   detail,
 }: Props) => {
   const { t } = useTranslation()
-  // const { isCurrentWorkspaceManager } = useAppContext()
   // const providerBriefInfo = detail.declaration.datasource?.identity
   // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
   const { data: dataSourceList } = useDataSourceList(true)
@@ -60,7 +58,7 @@ const ActionList = ({
               onClick={() => setShowSettingAuth(true)}
               disabled={!isCurrentWorkspaceManager}
             >
-              <Indicator className='mr-2' color={'green'} />
+              <StatusDot className='mr-2' status={'success'} />
               {t('tools.auth.authorized')}
             </Button>
           )} */}

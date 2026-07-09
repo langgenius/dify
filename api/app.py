@@ -55,7 +55,7 @@ else:
 
 if __name__ == "__main__":
     from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler  # type: ignore[reportMissingTypeStubs]
+    from geventwebsocket.handler import WebSocketHandler
 
     log_startup_banner(HOST, PORT)
     server = pywsgi.WSGIServer((HOST, PORT), socketio_app, handler_class=WebSocketHandler)

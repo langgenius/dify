@@ -31,7 +31,7 @@ const Footer: FC<DatePickerFooterProps> = ({
                       system-xs-medium text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           onClick={handleClickTimePicker}
         >
-          <RiTimeLine className="h-3.5 w-3.5" />
+          <RiTimeLine className="size-3.5" />
           {view === ViewType.date && <span>{displayTime}</span>}
           {view === ViewType.time && <span>{t('operation.pickDate', { ns: 'time' })}</span>}
         </button>

@@ -1,19 +1,16 @@
 'use client'
 
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import {
-  RiArrowDownSLine,
-  RiCloseCircleFill,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '../../hooks'
 
 type TagsFilterProps = {
@@ -29,12 +26,6 @@ const TagsFilter = ({
   const [searchText, setSearchText] = useState('')
   const { tags: options, getTagLabel } = useTags()
   const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
-  const handleCheck = (id: string) => {
-    if (value.includes(id))
-      onChange(value.filter(tag => tag !== id))
-    else
-      onChange([...value, id])
-  }
   const selectedTagsLength = value.length
 
   return (
@@ -48,7 +39,7 @@ const TagsFilter = ({
           <div className={cn(
             'flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary select-none hover:bg-state-base-hover-alt',
             selectedTagsLength && 'text-text-secondary',
-            open && 'bg-state-base-hover',
+            'data-popup-open:bg-state-base-hover',
           )}
           >
             <div className={cn(
@@ -56,7 +47,7 @@ const TagsFilter = ({
             )}
             >
               {
-                !selectedTagsLength && t('allTags', { ns: 'pluginTags' })
+                !selectedTagsLength && t('tag.tags', { ns: 'common' })
               }
               {
                 !!selectedTagsLength && value.map(val => getTagLabel(val)).slice(0, 2).join(',')
@@ -72,8 +63,9 @@ const TagsFilter = ({
             </div>
             {
               !!selectedTagsLength && (
-                <RiCloseCircleFill
-                  className="h-4 w-4 cursor-pointer text-text-quaternary"
+                <span
+                  aria-hidden
+                  className="i-ri-close-circle-fill size-4 cursor-pointer text-text-quaternary"
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange([])
@@ -83,7 +75,7 @@ const TagsFilter = ({
             }
             {
               !selectedTagsLength && (
-                <RiArrowDownSLine className="h-4 w-4" />
+                <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
               )
             }
           </div>
@@ -96,32 +88,35 @@ const TagsFilter = ({
       >
         <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
+            <SearchInput
               value={searchText}
-              onChange={e => setSearchText(e.target.value)}
+              onValueChange={setSearchText}
               placeholder={t('searchTags', { ns: 'pluginTags' })}
             />
           </div>
-          <div className="max-h-[448px] overflow-y-auto p-1">
+          <CheckboxGroup
+            aria-label={t('allTags', { ns: 'pluginTags' })}
+            value={value}
+            onValueChange={nextValue => onChange(nextValue)}
+            className="max-h-[448px] overflow-y-auto p-1"
+          >
             {
               filteredOptions.map(option => (
-                <div
+                <label
                   key={option.name}
                   className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
-                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className="mr-1"
-                    checked={value.includes(option.name)}
+                    value={option.name}
                   />
                   <div className="px-1 system-sm-medium text-text-secondary">
                     {option.label}
                   </div>
-                </div>
+                </label>
               ))
             }
-          </div>
+          </CheckboxGroup>
         </div>
       </PopoverContent>
     </Popover>

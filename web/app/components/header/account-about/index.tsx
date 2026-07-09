@@ -1,5 +1,5 @@
 'use client'
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
@@ -9,11 +9,11 @@ import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { IS_CE_EDITION } from '@/config'
 
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type IAccountSettingProps = {
-  langGeniusVersionInfo: LangGeniusVersionResponse
+  langGeniusVersionInfo: LangGeniusVersionInfo
   onCancel: () => void
 }
 
@@ -38,11 +38,11 @@ export default function AccountAbout({
         <div className="relative">
           <button
             type="button"
-            className="absolute top-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="absolute top-0 right-0 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onCancel}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           <div className="flex flex-col items-center gap-4 py-8">
             {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo

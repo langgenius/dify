@@ -6,12 +6,11 @@ from datetime import timedelta
 
 import pytest
 
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     ParagraphInputConfig,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import (
-    FormInputType,
+from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
 )
 from libs.datetime_utils import naive_utc_now
@@ -50,7 +49,7 @@ class TestFormService:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="input", default=None)],
+            "inputs": [ParagraphInputConfig(output_variable_name="input")],
             "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
@@ -304,9 +303,7 @@ class TestFormValidation:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "Test form",
-            "inputs": [
-                ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="required_input", default=None)
-            ],
+            "inputs": [ParagraphInputConfig(output_variable_name="required_input")],
             "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,

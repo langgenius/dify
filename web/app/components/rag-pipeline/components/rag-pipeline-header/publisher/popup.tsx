@@ -10,9 +10,12 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
-import { useBoolean, useKeyPress } from 'ahooks'
+import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -20,9 +23,9 @@ import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
+import { IS_CLOUD_EDITION } from '@/config'
+import { userProfileIdAtom, workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/app-context-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -34,8 +37,9 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 type PopupProps = {
   onRequestClose?: () => void
   confirmVisible?: boolean
@@ -59,7 +63,11 @@ const Popup = ({
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(s => s.mutateDatasetRes)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
@@ -68,6 +76,12 @@ const Popup = ({
   const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(s => s.isAllowPublishAsCustomKnowledgePipelineTemplate)
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const apiReferenceUrl = useDatasetApiAccessUrl()
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const isAddDocumentsDisabled = !publishedAt || isLoadingWorkspacePermissionKeys || !canAddDocumentsToDataset
   const [localConfirmVisible, { setFalse: hideLocalConfirm, setTrue: showLocalConfirm }] = useBoolean(false)
   const confirmVisible = controlledConfirmVisible ?? localConfirmVisible
   const showConfirm = onShowConfirm ?? showLocalConfirm
@@ -133,19 +147,23 @@ const Popup = ({
         handleHideConfirm()
     }
   }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, handleHideConfirm])
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
+  useHotkey('Mod+Shift+P', (e) => {
     e.preventDefault()
     if (published)
       return
     handlePublish()
-  }, { exactMatch: true, useCapture: true })
+  })
   const goToAddDocuments = useCallback(() => {
+    if (isAddDocumentsDisabled)
+      return
+
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
-  }, [datasetId, push])
+  }, [datasetId, isAddDocumentsDisabled, push])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      setShowPricingModal()
+      if (IS_CLOUD_EDITION)
+        setShowPricingModal()
     }
     else {
       onShowPublishAsKnowledgePipelineModal?.()
@@ -181,36 +199,40 @@ const Popup = ({
             : (
                 <div className="flex gap-1">
                   <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
-                  <ShortcutsName keys={PUBLISH_SHORTCUT} bgColor="white" />
+                  <KbdGroup>
+                    {PUBLISH_SHORTCUT.map(key => (
+                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                    ))}
+                  </KbdGroup>
                 </div>
               )}
         </Button>
       </div>
       <div className="border-t-[0.5px] border-t-divider-regular p-4 pt-3">
-        <Button className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={goToAddDocuments} disabled={!publishedAt}>
+        <Button className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={goToAddDocuments} disabled={isAddDocumentsDisabled}>
           <div className="flex grow items-center">
-            <RiPlayCircleLine className="mr-2 h-4 w-4" />
+            <RiPlayCircleLine className="mr-2 size-4" />
             {t('common.goToAddDocuments', { ns: 'pipeline' })}
           </div>
-          <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
+          <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
         </Button>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" disabled={!publishedAt}>
             <div className="flex grow items-center">
-              <RiTerminalBoxLine className="mr-2 h-4 w-4" />
+              <RiTerminalBoxLine className="mr-2 size-4" />
               {t('common.accessAPIReference', { ns: 'workflow' })}
             </div>
-            <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
+            <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />
         <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={handleClickPublishAsKnowledgePipeline} disabled={!publishedAt || isPublishingAsCustomizedPipeline}>
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <RiHammerLine className="h-4 w-4 shrink-0" />
+            <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
-            {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
+            {IS_CLOUD_EDITION && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
                 <SparklesSoft aria-hidden="true" className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="p-0.5 system-2xs-medium">

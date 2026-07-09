@@ -5,8 +5,8 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
 type Props = {
-  status: string
-  children?: React.ReactNode
+  readonly status: string
+  readonly children?: React.ReactNode
 }
 
 const StatusContainer: FC<Props> = ({

@@ -23,6 +23,7 @@ import {
   useWorkflowInteractions,
 } from '../../hooks'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import ChatWrapper from './chat-wrapper'
 
@@ -54,11 +55,12 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
-      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+      setPanelWidthStorage(width)
     setPanelWidth(width)
-  }, [setPanelWidth])
+  }, [setPanelWidth, setPanelWidthStorage])
   const maxPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720
@@ -103,7 +105,7 @@ const DebugAndPreview = () => {
               <TooltipTrigger
                 render={(
                   <ActionButton onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 className="h-4 w-4" />
+                    <RefreshCcw01 className="size-4" />
                   </ActionButton>
                 )}
               />
@@ -117,7 +119,7 @@ const DebugAndPreview = () => {
                   <TooltipTrigger
                     render={(
                       <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className="h-4 w-4" />
+                        <RiEqualizer2Line className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -130,10 +132,10 @@ const DebugAndPreview = () => {
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <div
-              className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              className="flex size-6 cursor-pointer items-center justify-center"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+              <RiCloseLine className="size-4 text-text-tertiary" />
             </div>
           </div>
         </div>

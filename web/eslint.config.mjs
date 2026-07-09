@@ -6,15 +6,17 @@ import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
-import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+  WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
@@ -53,6 +55,10 @@ export default antfu(
     rules: {
       'react/no-unnecessary-use-prefix': 'off',
     },
+  },
+  {
+    files: [GLOB_TSX],
+    ...jsxA11y.flatConfigs.recommended,
   },
   {
     plugins: {
@@ -98,16 +104,6 @@ export default antfu(
   },
   storybook.configs['flat/recommended'],
   ...pluginQuery.configs['flat/recommended'],
-  // sonar
-  {
-    rules: {
-      // Manually pick rules that are actually useful and not slow.
-      // Or we can just drop the plugin entirely.
-    },
-    plugins: {
-      sonarjs: sonar,
-    },
-  },
   {
     files: [GLOB_TS, GLOB_TSX],
     ignores: GLOB_TESTS,
@@ -143,7 +139,6 @@ export default antfu(
   {
     files: ['i18n/**/*.json'],
     rules: {
-      'sonarjs/max-lines': 'off',
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 
@@ -161,6 +156,58 @@ export default antfu(
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
       }],
+    },
+  },
+  {
+    name: 'dify/service-base-restricted-imports',
+    files: ['service/**/*.ts', 'service/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+        patterns: [
+          ...WEB_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+        ],
+      }],
+    },
+  },
+  {
+    name: 'dify/restricted-local-storage-access',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      ...GLOB_TESTS,
+      'vitest.setup.ts',
+      'instrumentation-client.ts',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'localStorage',
+          message: 'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'localStorage',
+          message: 'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+        {
+          object: 'globalThis',
+          property: 'localStorage',
+          message: 'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
+          message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
+        },
+      ],
     },
   },
 )

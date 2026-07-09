@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoadedItem from '../loaded-item'
 
-const mockCheckbox = vi.fn()
 const mockCard = vi.fn()
 const mockVersion = vi.fn()
 const mockUsePluginInstallLimit = vi.fn()
@@ -12,21 +11,6 @@ const mockUsePluginInstallLimit = vi.fn()
 vi.mock('@/config', () => ({
   API_PREFIX: 'https://api.example.com',
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
-}))
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: (props: { checked: boolean, disabled: boolean, onCheck: () => void }) => {
-    mockCheckbox(props)
-    return (
-      <button
-        data-testid="checkbox"
-        disabled={props.disabled}
-        onClick={props.onCheck}
-      >
-        {String(props.checked)}
-      </button>
-    )
-  },
 }))
 
 vi.mock('../../../../card', () => ({
@@ -117,7 +101,7 @@ describe('LoadedItem', () => {
       />,
     )
 
-    expect(screen.getByTestId('checkbox')).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Loaded Plugin' })).toHaveAttribute('aria-disabled', 'true')
     expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({
       limitedInstall: true,
       payload: expect.objectContaining({
@@ -138,7 +122,7 @@ describe('LoadedItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('checkbox'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Loaded Plugin' }))
 
     expect(onCheckedChange).toHaveBeenCalledWith(payload)
   })

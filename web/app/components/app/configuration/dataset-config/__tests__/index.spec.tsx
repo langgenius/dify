@@ -8,7 +8,7 @@ import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/n
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
 
 // Mock external dependencies
@@ -37,16 +37,40 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   })),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((fn: any) => fn({
-    userProfile: {
-      id: 'user-123',
-    },
-  })),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/utils/permission', () => ({
-  hasEditPermissionForDataset: vi.fn(() => true),
+  DatasetACLPermission: {
+    Readonly: 'dataset.acl.readonly',
+    Edit: 'dataset.acl.edit',
+    Use: 'dataset.acl.use',
+  },
+  getDatasetACLCapabilities: vi.fn(() => ({
+    canReadonly: false,
+    canEdit: true,
+    canImportExportDSL: false,
+    canPipelineTest: false,
+    canDocumentDownload: false,
+    canRetrievalRecall: false,
+    canUse: true,
+    canDeleteFile: false,
+    canPipelineRelease: false,
+    canDelete: false,
+    canAccessConfig: false,
+  })),
 }))
 
 vi.mock('../../debug/hooks', () => ({
@@ -234,6 +258,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     indexing_technique: 'high_quality' as any,
     author_name: 'Test Author',
     created_by: 'user-123',
+    maintainer: 'user-123',
     updated_by: 'user-123',
     updated_at: Date.now(),
     app_count: 0,
@@ -306,6 +331,19 @@ const renderDatasetConfig = (contextOverrides: Partial<typeof mockConfigContext>
 describe('DatasetConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+      canReadonly: false,
+      canEdit: true,
+      canImportExportDSL: false,
+      canPipelineTest: false,
+      canDocumentDownload: false,
+      canRetrievalRecall: false,
+      canUse: true,
+      canDeleteFile: false,
+      canPipelineRelease: false,
+      canDelete: false,
+      canAccessConfig: false,
+    })
     mockConfigContext.dataSets = []
     mockConfigContext.setDataSets = vi.fn()
     mockConfigContext.setModelConfig = vi.fn()
@@ -437,6 +475,37 @@ describe('DatasetConfig', () => {
       })
 
       expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+    })
+
+    it('should disable dataset editing when ACL does not grant edit even if legacy dataset permission allows it', () => {
+      const dataset = createMockDataset({
+        permission: DatasetPermission.allTeamMembers,
+        permission_keys: [DatasetACLPermission.Use],
+      })
+      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+        canReadonly: false,
+        canEdit: false,
+        canImportExportDSL: false,
+        canPipelineTest: false,
+        canDocumentDownload: false,
+        canRetrievalRecall: false,
+        canUse: true,
+        canDeleteFile: false,
+        canPipelineRelease: false,
+        canDelete: false,
+        canAccessConfig: false,
+      })
+
+      renderDatasetConfig({
+        dataSets: [dataset],
+      })
+
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument()
+      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
+        currentUserId: 'user-123',
+        resourceMaintainer: dataset.maintainer,
+      }))
     })
   })
 
@@ -926,56 +995,6 @@ describe('DatasetConfig', () => {
           completion_params: { temperature: 0.3 },
         },
       }))
-    })
-  })
-
-  describe('Permission Handling', () => {
-    it('should hide edit options when user lacks permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'other-user',
-        permission: DatasetPermission.onlyMe,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      // The editable property should be false when no permission
-      // The editable property should be false when no permission
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
-    })
-
-    it('should show readonly state for non-editable datasets', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.allTeamMembers,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
-    })
-
-    it('should allow editing when user has partial member permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(true)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.partialMembers,
-        partial_member_list: ['user-123'],
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
   })
 

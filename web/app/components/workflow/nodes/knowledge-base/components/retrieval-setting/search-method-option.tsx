@@ -1,221 +1,355 @@
+import type { ReactNode } from 'react'
 import type {
   WeightedScore,
 } from '../../types'
 import type { RerankingModelSelectorProps } from './reranking-model-selector'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
+import type {
+  TopKFieldProps,
+  VisibleScoreThresholdFieldProps,
+} from './top-k-and-score-threshold'
 import type {
   HybridSearchModeOption,
   Option,
 } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Switch } from '@langgenius/dify-ui/switch'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import Badge from '@/app/components/base/badge'
+import {
+  OptionCardEffectBlue,
+  OptionCardEffectBlueLight,
+  OptionCardEffectOrange,
+  OptionCardEffectPurple,
+  OptionCardEffectTeal,
+} from '@/app/components/base/icons/src/public/knowledge'
 import { Infotip } from '@/app/components/base/infotip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
 } from '../../types'
-import OptionCard from '../option-card'
 import RerankingModelSelector from './reranking-model-selector'
-import TopKAndScoreThreshold from './top-k-and-score-threshold'
+import { TopKAndScoreThreshold } from './top-k-and-score-threshold'
 
-type SearchMethodOptionProps = {
-  readonly?: boolean
-  option: Option
-  hybridSearchModeOptions: HybridSearchModeOption[]
-  searchMethod?: RetrievalSearchMethodEnum
-  onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
-  hybridSearchMode?: HybridSearchModeEnum
-  onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
+type HybridSearchConfig = {
+  mode?: HybridSearchModeEnum
+  options: HybridSearchModeOption[]
+  onModeChange: (value: HybridSearchModeEnum) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
-  rerankingModelEnabled?: boolean
-  onRerankingModelEnabledChange?: (value: boolean) => void
+}
+
+type RerankingConfig = RerankingModelSelectorProps & {
+  enabled?: boolean
+  onEnabledChange: (value: boolean) => void
   showMultiModalTip?: boolean
-} & RerankingModelSelectorProps & TopKAndScoreThresholdProps
-const SearchMethodOption = ({
-  readonly,
-  option,
-  hybridSearchModeOptions,
-  searchMethod,
-  onRetrievalSearchMethodChange,
-  hybridSearchMode,
-  onHybridSearchModeChange,
-  weightedScore,
-  onWeightedScoreChange,
-  rerankingModelEnabled,
-  onRerankingModelEnabledChange,
-  rerankingModel,
-  onRerankingModelChange,
-  topK,
-  onTopKChange,
-  scoreThreshold,
-  onScoreThresholdChange,
-  isScoreThresholdEnabled,
-  onScoreThresholdEnabledChange,
-  showMultiModalTip = false,
-}: SearchMethodOptionProps) => {
-  const { t } = useTranslation()
-  const Icon = option.icon
-  const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
-  const isHybridSearchWeightedScoreMode = hybridSearchMode === HybridSearchModeEnum.WeightedScore
+}
 
-  const weightedScoreValue = useMemo(() => {
-    const sematicWeightedScore = weightedScore?.vector_setting.vector_weight ?? DEFAULT_WEIGHTED_SCORE.other.semantic
-    const keywordWeightedScore = weightedScore?.keyword_setting.keyword_weight ?? DEFAULT_WEIGHTED_SCORE.other.keyword
-    const mergedValue = [sematicWeightedScore, keywordWeightedScore]
+type RetrievalParametersConfig = {
+  topK: TopKFieldProps
+  scoreThreshold: VisibleScoreThresholdFieldProps
+}
 
-    return {
-      value: mergedValue,
-    }
-  }, [weightedScore])
+type SearchMethodRadioCardProps = {
+  option: Option
+  searchMethod?: RetrievalSearchMethodEnum
+  readonly?: boolean
+  isRecommended?: boolean
+  children?: ReactNode
+}
 
-  const icon = useCallback((isActive: boolean) => {
-    return (
-      <Icon
-        className={cn(
-          'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-purple-purple-600',
-          isActive && 'text-util-colors-purple-purple-600',
-        )}
-      />
-    )
-  }, [Icon])
+export type SearchMethodOptionProps = {
+  readonly?: boolean
+  option: Option
+  searchMethod?: RetrievalSearchMethodEnum
+  hybridSearch: HybridSearchConfig
+  reranking: RerankingConfig
+  retrievalParameters: RetrievalParametersConfig
+}
 
-  const hybridSearchModeWrapperClassName = useCallback((isActive: boolean) => {
-    return isActive ? 'border-[1.5px] bg-components-option-card-option-selected-bg' : ''
-  }, [])
+const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
+  'blue': <OptionCardEffectBlue />,
+  'blue-light': <OptionCardEffectBlueLight />,
+  'orange': <OptionCardEffectOrange />,
+  'purple': <OptionCardEffectPurple />,
+  'teal': <OptionCardEffectTeal />,
+}
 
-  const showRerankModelSelectorSwitch = useMemo(() => {
-    if (searchMethod === RetrievalSearchMethodEnum.semantic)
-      return true
+function getWeightedScoreValue(weightedScore?: WeightedScore) {
+  const semanticWeightedScore = weightedScore?.vector_setting.vector_weight ?? DEFAULT_WEIGHTED_SCORE.other.semantic
+  const keywordWeightedScore = weightedScore?.keyword_setting.keyword_weight ?? DEFAULT_WEIGHTED_SCORE.other.keyword
 
-    if (searchMethod === RetrievalSearchMethodEnum.fullText)
-      return true
+  return {
+    value: [semanticWeightedScore, keywordWeightedScore],
+  }
+}
 
-    return false
-  }, [searchMethod])
-  const showRerankModelSelector = useMemo(() => {
-    if (searchMethod === RetrievalSearchMethodEnum.semantic)
-      return true
+function shouldShowRerankModelSelectorSwitch(searchMethod?: RetrievalSearchMethodEnum) {
+  return searchMethod === RetrievalSearchMethodEnum.semantic || searchMethod === RetrievalSearchMethodEnum.fullText
+}
 
-    if (searchMethod === RetrievalSearchMethodEnum.fullText)
-      return true
+function shouldShowRerankModelSelector(searchMethod: RetrievalSearchMethodEnum | undefined, hybridSearchMode: HybridSearchModeEnum | undefined) {
+  if (shouldShowRerankModelSelectorSwitch(searchMethod))
+    return true
 
-    if (searchMethod === RetrievalSearchMethodEnum.hybrid && hybridSearchMode !== HybridSearchModeEnum.WeightedScore)
-      return true
+  return searchMethod === RetrievalSearchMethodEnum.hybrid && hybridSearchMode !== HybridSearchModeEnum.WeightedScore
+}
 
-    return false
-  }, [hybridSearchMode, searchMethod])
+function getSearchMethodEffect(effectColor: string | undefined, isActive: boolean) {
+  const effect = effectColor ? HEADER_EFFECT_MAP[effectColor] : undefined
+
+  if (!effect)
+    return null
 
   return (
-    <OptionCard
-      key={option.id}
-      id={option.id}
-      selectedId={searchMethod}
-      icon={icon}
-      title={option.title}
-      description={option.description}
-      effectColor={option.effectColor}
-      isRecommended={option.id === RetrievalSearchMethodEnum.hybrid}
-      onClick={onRetrievalSearchMethodChange}
-      readonly={readonly}
+    <div
+      className={cn(
+        'absolute -top-0.5 -left-0.5 hidden h-14 w-14 rounded-full',
+        'group-hover/search-method-radio:block',
+        isActive && 'block',
+      )}
     >
-      <div className="space-y-3">
-        {
-          isHybridSearch && (
-            <div className="space-y-1">
-              {
-                hybridSearchModeOptions.map(hybridOption => (
-                  <OptionCard
-                    key={hybridOption.id}
-                    id={hybridOption.id}
-                    selectedId={hybridSearchMode}
-                    enableHighlightBorder={false}
-                    enableRadio
-                    wrapperClassName={hybridSearchModeWrapperClassName}
-                    className="p-3"
-                    title={hybridOption.title}
-                    description={hybridOption.description}
-                    onClick={onHybridSearchModeChange}
-                    readonly={readonly}
-                  />
-                ))
-              }
-            </div>
-          )
-        }
-        {
-          isHybridSearch && isHybridSearchWeightedScoreMode && (
-            <WeightedScoreComponent
-              value={weightedScoreValue}
-              onChange={onWeightedScoreChange}
-              readonly={readonly}
-            />
-          )
-        }
-        {
-          showRerankModelSelector && (
-            <div>
-              {
-                showRerankModelSelectorSwitch && (
-                  <div className="mb-1 flex items-center system-sm-semibold text-text-secondary">
-                    <Switch
-                      className="mr-1"
-                      checked={rerankingModelEnabled ?? false}
-                      onCheckedChange={onRerankingModelEnabledChange}
-                      disabled={readonly}
-                    />
-                    {t('modelProvider.rerankModel.key', { ns: 'common' })}
-                    <Infotip
-                      aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                      className="ml-0.5 h-3.5 w-3.5 shrink-0"
-                      iconClassName="h-3.5 w-3.5"
-                    >
-                      {t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                    </Infotip>
-                  </div>
-                )
-              }
-              <RerankingModelSelector
-                rerankingModel={rerankingModel}
-                onRerankingModelChange={onRerankingModelChange}
-                readonly={readonly}
-              />
-              {showMultiModalTip && (
-                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                  <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40" />
-                  <div className="p-1">
-                    <AlertTriangle className="size-4 text-text-warning-secondary" />
-                  </div>
-                  <span className="system-xs-medium text-text-primary">
-                    {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
-                  </span>
-                </div>
-              )}
-            </div>
-          )
-        }
-        <TopKAndScoreThreshold
-          topK={topK}
-          onTopKChange={onTopKChange}
-          scoreThreshold={scoreThreshold}
-          onScoreThresholdChange={onScoreThresholdChange}
-          isScoreThresholdEnabled={isScoreThresholdEnabled}
-          onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
-          readonly={readonly}
-          hiddenScoreThreshold={searchMethod === RetrievalSearchMethodEnum.keywordSearch}
-        />
-      </div>
-    </OptionCard>
+      {effect}
+    </div>
   )
 }
 
-export default memo(SearchMethodOption)
+function renderSearchMethodIcon(Icon: Option['icon'], isActive: boolean) {
+  return (
+    <Icon
+      className={cn(
+        'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-purple-purple-600',
+        isActive && 'text-util-colors-purple-purple-600',
+      )}
+    />
+  )
+}
+
+function SearchMethodRadioCard({
+  option,
+  searchMethod,
+  readonly,
+  isRecommended,
+  children,
+}: SearchMethodRadioCardProps) {
+  const { t } = useTranslation()
+  const isActive = option.id === searchMethod
+  const Icon = option.icon
+
+  return (
+    <div
+      className={cn(
+        'group/search-method-radio overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
+        'has-data-checked:border-[1.5px] has-data-checked:border-components-option-card-option-selected-border',
+        !readonly && 'cursor-pointer hover:shadow-xs',
+        readonly && 'cursor-not-allowed',
+      )}
+    >
+      <RadioItem<RetrievalSearchMethodEnum>
+        value={option.id}
+        nativeButton
+        render={<button type="button" />}
+        disabled={readonly}
+        className={cn(
+          'relative flex w-full rounded-t-xl p-2 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          readonly ? 'cursor-not-allowed' : 'cursor-pointer',
+        )}
+      >
+        {getSearchMethodEffect(option.effectColor, isActive)}
+        <div className="mr-1 flex h-4.5 w-4.5 shrink-0 items-center justify-center">
+          {renderSearchMethodIcon(Icon, isActive)}
+        </div>
+        <div className="grow py-1 pt-px">
+          <div className="flex items-center">
+            <div className="flex grow items-center system-sm-medium text-text-secondary">
+              {option.title}
+              {isRecommended
+                ? (
+                    <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
+                      {t('stepTwo.recommend', { ns: 'datasetCreation' })}
+                    </Badge>
+                  )
+                : null}
+            </div>
+          </div>
+          {option.description
+            ? (
+                <div className="mt-1 system-xs-regular text-text-tertiary">
+                  {option.description}
+                </div>
+              )
+            : null}
+        </div>
+      </RadioItem>
+      {!!(children && isActive) && (
+        <div className="relative rounded-b-xl bg-components-panel-bg p-3">
+          <div className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg" />
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function HybridSearchModeRadioCard({
+  option,
+  readonly,
+}: {
+  option: HybridSearchModeOption
+  readonly?: boolean
+}) {
+  return (
+    <FieldItem>
+      <RadioItem<HybridSearchModeEnum>
+        value={option.id}
+        nativeButton
+        render={<button type="button" />}
+        disabled={readonly}
+        className={cn(
+          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden transition-colors',
+          'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
+          'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
+          readonly ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-xs',
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 grow">
+            <div className="system-sm-medium text-text-secondary">
+              {option.title}
+            </div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {option.description}
+            </div>
+          </div>
+          <RadioControl className="mt-0.5" aria-hidden="true" />
+        </div>
+      </RadioItem>
+    </FieldItem>
+  )
+}
+
+export function SearchMethodOption({
+  readonly,
+  option,
+  searchMethod,
+  hybridSearch,
+  reranking,
+  retrievalParameters,
+}: SearchMethodOptionProps) {
+  const { t } = useTranslation()
+  const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
+  const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
+  const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)
+  const showRerankModelSelector = shouldShowRerankModelSelector(option.id, hybridSearch.mode)
+  const rerankModelLabel = t('modelProvider.rerankModel.key', { ns: 'common' })
+  const rerankModelTip = t('modelProvider.rerankModel.tip', { ns: 'common' })
+  const scoreThresholdHidden = option.id === RetrievalSearchMethodEnum.keywordSearch
+  const config = (
+    <div className="space-y-3">
+      {isHybridSearch
+        ? (
+            <FieldRoot name="hybrid_search_mode" className="gap-0">
+              <FieldsetRoot
+                render={(
+                  <RadioGroup<HybridSearchModeEnum>
+                    value={hybridSearch.mode}
+                    onValueChange={value => hybridSearch.onModeChange(value)}
+                    disabled={readonly}
+                    className="flex-col items-stretch gap-1"
+                  />
+                )}
+              >
+                <FieldsetLegend className="sr-only">Hybrid search mode</FieldsetLegend>
+                {hybridSearch.options.map(hybridOption => (
+                  <HybridSearchModeRadioCard
+                    key={hybridOption.id}
+                    option={hybridOption}
+                    readonly={readonly}
+                  />
+                ))}
+              </FieldsetRoot>
+            </FieldRoot>
+          )
+        : null}
+      {isHybridSearch && isHybridSearchWeightedScoreMode
+        ? (
+            <WeightedScoreComponent
+              value={getWeightedScoreValue(hybridSearch.weightedScore)}
+              onChange={hybridSearch.onWeightedScoreChange}
+              readonly={readonly}
+            />
+          )
+        : null}
+      {showRerankModelSelector
+        ? (
+            <div>
+              {showRerankModelSelectorSwitch
+                ? (
+                    <FieldRoot name="reranking_model_enabled" className="mb-1 gap-0">
+                      <div className="flex items-center">
+                        <FieldLabel className="flex min-w-0 items-center py-0 system-sm-semibold text-text-secondary">
+                          <Switch
+                            className="mr-1"
+                            checked={reranking.enabled ?? false}
+                            onCheckedChange={reranking.onEnabledChange}
+                            disabled={readonly}
+                          />
+                          <span className="truncate">{rerankModelLabel}</span>
+                        </FieldLabel>
+                        <Infotip
+                          aria-label={rerankModelTip}
+                          className="ml-0.5 size-3.5 shrink-0"
+                          iconClassName="h-3.5 w-3.5"
+                        >
+                          {rerankModelTip}
+                        </Infotip>
+                      </div>
+                    </FieldRoot>
+                  )
+                : null}
+              <RerankingModelSelector
+                rerankingModel={reranking.rerankingModel}
+                onRerankingModelChange={reranking.onRerankingModelChange}
+                readonly={readonly}
+              />
+              {reranking.showMultiModalTip
+                ? (
+                    <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                      <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="p-1">
+                        <div className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
+                      </div>
+                      <span className="system-xs-medium text-text-primary">
+                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                      </span>
+                    </div>
+                  )
+                : null}
+            </div>
+          )
+        : null}
+      <TopKAndScoreThreshold
+        topK={retrievalParameters.topK}
+        scoreThreshold={scoreThresholdHidden ? { hidden: true } : retrievalParameters.scoreThreshold}
+        readonly={readonly}
+      />
+    </div>
+  )
+
+  return (
+    <FieldItem>
+      <SearchMethodRadioCard
+        option={option}
+        searchMethod={searchMethod}
+        isRecommended={option.id === RetrievalSearchMethodEnum.hybrid}
+        readonly={readonly}
+      >
+        {config}
+      </SearchMethodRadioCard>
+    </FieldItem>
+  )
+}

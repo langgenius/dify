@@ -1,9 +1,8 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
 import TransferOwnershipModal from '../index'
@@ -11,8 +10,19 @@ import TransferOwnershipModal from '../index'
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {} as Partial<AppContextStateMockState>,
+}))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context')
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/service/common')
 vi.mock('@/service/use-common')
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -40,10 +50,12 @@ describe('TransferOwnershipModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState
+    mockAppContextState.current = appContextValue
+    mockUseAppContext.mockReturnValue(appContextValue)
 
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: [] },

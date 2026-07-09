@@ -10,14 +10,14 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
-type Props = {
+type Props = Readonly<{
   provider: TriggerWithProvider
   payload: Event
   previewCardHandle: TriggerPluginActionPreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
-}
+}>
 
 export type TriggerPluginActionPreviewPayload = {
   provider: TriggerWithProvider
@@ -40,9 +40,14 @@ const TriggerPluginActionItem: FC<Props> = ({
   const language = useGetLanguage()
 
   const row = (
-    <div
+    <button
+      type="button"
+      disabled={disabled}
       key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      className={cn(
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-[21px] text-left focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
+      )}
       onClick={() => {
         if (disabled)
           return
@@ -76,7 +81,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       {isAdded && (
         <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
       )}
-    </div>
+    </button>
   )
 
   return (
@@ -114,7 +119,7 @@ export function TriggerPluginActionPreviewCard({
           type={BlockEnum.TriggerPlugin}
           toolIcon={payload.provider.icon}
         />
-        <div className="mb-1 text-sm leading-5 text-text-primary">{payload.payload.label[payload.language]}</div>
+        <div className="mb-1 text-sm/5 text-text-primary">{payload.payload.label[payload.language]}</div>
         <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
       </div>
     </PreviewCardContent>

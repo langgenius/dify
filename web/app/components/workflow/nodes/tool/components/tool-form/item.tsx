@@ -54,7 +54,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
   return parts
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -67,7 +67,7 @@ type Props = {
   onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: 'tool' | 'trigger'
-}
+}>
 
 const ToolFormItem: FC<Props> = ({
   readOnly,
@@ -124,7 +124,7 @@ const ToolFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="pb-0.5 body-xs-regular break-words text-text-tertiary">
+          <div className="pb-0.5 body-xs-regular wrap-break-word text-text-tertiary">
             {renderDescriptionWithLinks(tooltip[language] || tooltip.en_US)}
           </div>
         )}

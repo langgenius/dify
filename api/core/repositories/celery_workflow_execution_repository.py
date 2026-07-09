@@ -6,6 +6,7 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
+from typing import override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -60,14 +61,15 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
         # Store session factory for fallback operations
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
         # Extract tenant_id from user
         tenant_id = extract_tenant_id(user)
@@ -92,6 +94,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             self._triggered_from,
         )
 
+    @override
     def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution instance asynchronously using Celery.

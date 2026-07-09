@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.plugin.entities.plugin import PluginDependency, PluginInstallationSource
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 
 
@@ -44,7 +44,7 @@ class TestAnalyzeModelProviderDependency:
 
 
 class TestGetLeakedDependencies:
-    def _make_dependency(self, identifier: str, dep_type=PluginDependency.Type.Marketplace):
+    def _make_dependency(self, identifier: str, dep_type=PluginDependencyType.Marketplace):
         return PluginDependency(
             type=dep_type,
             value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=identifier),
@@ -110,7 +110,7 @@ class TestGenerateDependencies:
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
         assert len(result) == 1
-        assert result[0].type == PluginDependency.Type.Github
+        assert result[0].type == PluginDependencyType.Github
         assert result[0].value.repo == "org/repo"
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
@@ -120,7 +120,7 @@ class TestGenerateDependencies:
 
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
-        assert result[0].type == PluginDependency.Type.Marketplace
+        assert result[0].type == PluginDependencyType.Marketplace
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
     def test_package_source(self, mock_installer_cls):
@@ -129,7 +129,7 @@ class TestGenerateDependencies:
 
         result = DependenciesAnalysisService.generate_dependencies("t1", ["p1"])
 
-        assert result[0].type == PluginDependency.Type.Package
+        assert result[0].type == PluginDependencyType.Package
 
     @patch("services.plugin.dependencies_analysis.PluginInstaller")
     def test_remote_source_raises(self, mock_installer_cls):
@@ -169,4 +169,4 @@ class TestGenerateLatestDependencies:
         result = DependenciesAnalysisService.generate_latest_dependencies(["p1"])
 
         assert len(result) == 1
-        assert result[0].type == PluginDependency.Type.Marketplace
+        assert result[0].type == PluginDependencyType.Marketplace

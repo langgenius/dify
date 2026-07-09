@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/app/components/workflow/comment/types'
 import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -11,13 +11,14 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom, userProfileIdAtom } from '@/context/app-context-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { useStore } from '../store'
@@ -52,8 +53,7 @@ const ThreadMessage: FC<{
   className?: string
 }> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { userProfile } = useAppContext()
-  const currentUserId = userProfile?.id
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const isCurrentUser = authorId === currentUserId
   const userColor = isCurrentUser ? undefined : getUserColor(authorId)
 
@@ -125,7 +125,7 @@ const ThreadMessage: FC<{
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
       <div className="shrink-0">
-        <AvatarRoot size="sm" className={cn('h-8 w-8 rounded-full')}>
+        <AvatarRoot size="sm" className={cn('size-8 rounded-full')}>
           {avatarUrl && (
             <AvatarImage
               src={avatarUrl}
@@ -145,7 +145,7 @@ const ThreadMessage: FC<{
           <span className="system-sm-medium text-text-primary">{authorName}</span>
           <span className="system-2xs-regular text-text-tertiary">{formatTimeFromNow(createdAt * 1000)}</span>
         </div>
-        <div className="mt-1 system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
+        <div className="mt-1 system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
           {highlightedContent}
         </div>
       </div>
@@ -175,7 +175,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const appId = params.appId as string
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = userProfile.id
   const { t } = useTranslation()
   const [replyContent, setReplyContent] = useState('')
   const [editingCommentContent, setEditingCommentContent] = useState('')
@@ -369,7 +370,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
-  const isOwnComment = comment.created_by_account?.id === userProfile?.id
+  const isOwnComment = comment.created_by_account?.id === currentUserId
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
@@ -443,15 +444,15 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <button
                     type="button"
                     disabled={loading}
-                    className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                    className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onDelete}
                     aria-label={t('comments.aria.deleteComment', { ns: 'workflow' })}
                   >
-                    <RiDeleteBinLine className="h-4 w-4" />
+                    <RiDeleteBinLine className="size-4" />
                   </button>
                 )}
               />
-              <TooltipContent placement="top" className="!px-2 !py-1.5">
+              <TooltipContent placement="top" className="px-2! py-1.5!">
                 {t('comments.aria.deleteComment', { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
@@ -461,15 +462,15 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <button
                     type="button"
                     disabled={comment.resolved || loading}
-                    className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                    className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onResolve}
                     aria-label={t('comments.aria.resolveComment', { ns: 'workflow' })}
                   >
-                    {comment.resolved ? <RiCheckboxCircleFill className="h-4 w-4" /> : <RiCheckboxCircleLine className="h-4 w-4" />}
+                    {comment.resolved ? <RiCheckboxCircleFill className="size-4" /> : <RiCheckboxCircleLine className="size-4" />}
                   </button>
                 )}
               />
-              <TooltipContent placement="top" className="!px-2 !py-1.5">
+              <TooltipContent placement="top" className="px-2! py-1.5!">
                 {t('comments.aria.resolveComment', { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
@@ -480,15 +481,15 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <button
                     type="button"
                     disabled={!canGoPrev || loading}
-                    className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                    className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onPrev}
                     aria-label={t('comments.aria.previousComment', { ns: 'workflow' })}
                   >
-                    <RiArrowUpSLine className="h-4 w-4" />
+                    <RiArrowUpSLine className="size-4" />
                   </button>
                 )}
               />
-              <TooltipContent placement="top" className="!px-2 !py-1.5">
+              <TooltipContent placement="top" className="px-2! py-1.5!">
                 {t('comments.aria.previousComment', { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
@@ -498,25 +499,25 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <button
                     type="button"
                     disabled={!canGoNext || loading}
-                    className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
+                    className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onNext}
                     aria-label={t('comments.aria.nextComment', { ns: 'workflow' })}
                   >
-                    <RiArrowDownSLine className="h-4 w-4" />
+                    <RiArrowDownSLine className="size-4" />
                   </button>
                 )}
               />
-              <TooltipContent placement="top" className="!px-2 !py-1.5">
+              <TooltipContent placement="top" className="px-2! py-1.5!">
                 {t('comments.aria.nextComment', { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+              className="flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
               onClick={onClose}
               aria-label={t('comments.aria.closeComment', { ns: 'workflow' })}
             >
-              <RiCloseLine className="h-4 w-4" />
+              <RiCloseLine className="size-4" />
             </button>
           </div>
         </div>
@@ -537,10 +538,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   onOpenChange={open => setActiveReplyMenuId(open ? comment.id : null)}
                 >
                   <DropdownMenuTrigger
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                    className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                     aria-label={t('comments.aria.commentActions', { ns: 'workflow' })}
                   >
-                    <RiMoreFill className="h-4 w-4" />
+                    <RiMoreFill className="size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     placement="bottom-end"
@@ -568,7 +569,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         name={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                         avatar={comment.created_by_account?.avatar_url || null}
                         size="sm"
-                        className="h-8 w-8 rounded-full"
+                        className="size-8 rounded-full"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -594,7 +595,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     authorId={comment.created_by_account?.id || ''}
                     authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                     avatarUrl={comment.created_by_account?.avatar_url || null}
-                    createdAt={comment.created_at}
+                    createdAt={comment.created_at ?? comment.updated_at ?? 0}
                     content={comment.content}
                     mentionableNames={mentionableNames}
                   />
@@ -604,7 +605,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className="mt-2 space-y-3 pt-3">
               {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
-                const isOwnReply = reply.created_by_account?.id === userProfile?.id
+                const isOwnReply = reply.created_by_account?.id === currentUserId
                 return (
                   <div
                     key={reply.id}
@@ -627,10 +628,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           }}
                         >
                           <DropdownMenuTrigger
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                             aria-label={t('comments.aria.replyActions', { ns: 'workflow' })}
                           >
-                            <RiMoreFill className="h-4 w-4" />
+                            <RiMoreFill className="size-4" />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             placement="bottom-end"
@@ -692,7 +693,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                 name={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                                 avatar={reply.created_by_account?.avatar_url || null}
                                 size="sm"
-                                className="h-8 w-8 rounded-full"
+                                className="size-8 rounded-full"
                               />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -718,7 +719,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                             authorId={reply.created_by_account?.id || ''}
                             authorName={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                             avatarUrl={reply.created_by_account?.avatar_url || null}
-                            createdAt={reply.created_at}
+                            createdAt={reply.created_at ?? 0}
                             content={reply.content}
                             mentionableNames={mentionableNames}
                           />
@@ -741,7 +742,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 avatar={userProfile?.avatar_url || null}
                 name={userProfile?.name || t('you', { ns: 'common' })}
                 size="sm"
-                className="h-8 w-8"
+                className="size-8"
               />
               <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm">
                 <MentionInput

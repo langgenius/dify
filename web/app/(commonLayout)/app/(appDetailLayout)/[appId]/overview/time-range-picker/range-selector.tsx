@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiArrowDownSLine } from '@remixicon/react'
 import dayjs from 'dayjs'
@@ -18,11 +17,11 @@ type TimePeriodOption = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   isCustomRange: boolean
   ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParamsWithTimeRange) => void
-}
+}>
 
 const RangeSelector: FC<Props> = ({
   isCustomRange,
@@ -37,9 +36,9 @@ const RangeSelector: FC<Props> = ({
       name: t(`filter.period.${range.name}`, { ns: 'appLog' }),
     }))
   }, [ranges, t])
-  const [value, setValue] = useState('0')
+  const [value, setValue] = useState(0)
   const selectedItem = useMemo(() => {
-    return items.find(item => String(item.value) === value) ?? null
+    return items.find(item => item.value === value) ?? null
   }, [items, value])
 
   const handleSelectRange = useCallback((item: TimePeriodOption) => {
@@ -51,20 +50,20 @@ const RangeSelector: FC<Props> = ({
       period = { start: startOfToday, end: endOfToday }
     }
     else {
-      period = { start: today.subtract(item.value as number, 'day').startOf('day'), end: today.endOf('day') }
+      period = { start: today.subtract(item.value, 'day').startOf('day'), end: today.endOf('day') }
     }
     onSelect({ query: period!, name })
   }, [onSelect])
 
   return (
-    <Select
-      value={selectedItem ? String(selectedItem.value) : null}
+    <Select<number>
+      value={selectedItem?.value ?? null}
       open={open}
       onOpenChange={setOpen}
       onValueChange={(nextValue) => {
-        if (!nextValue)
+        if (nextValue == null)
           return
-        const nextItem = items.find(item => String(item.value) === nextValue)
+        const nextItem = items.find(item => item.value === nextValue)
         if (!nextItem)
           return
         setValue(nextValue)
@@ -74,14 +73,14 @@ const RangeSelector: FC<Props> = ({
       <SelectTrigger
         className="h-auto w-fit max-w-none border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
       >
-        <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3', open && 'bg-state-base-hover-alt')}>
+        <div className="flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
           <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : selectedItem?.name}</div>
-          <RiArrowDownSLine className={cn('size-4 text-text-quaternary', open && 'text-text-secondary')} />
+          <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
         </div>
       </SelectTrigger>
       <SelectContent className="translate-x-[-24px]" popupClassName="w-[200px]" listClassName="p-1">
         {items.map(item => (
-          <SelectItem key={item.value} value={String(item.value)} className="h-8 py-0 pr-2 pl-7 system-md-regular">
+          <SelectItem key={item.value} value={item.value} className="h-8 py-0 pr-2 pl-7 system-md-regular">
             <SelectItemText className="px-0">{item.name}</SelectItemText>
             <SelectItemIndicator className="absolute top-[8px] left-2 ml-0" />
           </SelectItem>

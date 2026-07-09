@@ -7,7 +7,7 @@ import type {
 } from '../types/collaboration'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 

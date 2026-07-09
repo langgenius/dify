@@ -2,11 +2,13 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -23,7 +25,7 @@ const STYLE_MAP = {
     icon: <Premium />,
     bg: 'bg-billing-plan-card-premium-bg opacity-10',
     noise: (
-      <div className="absolute -top-12 right-0 left-0 -z-10">
+      <div className="absolute inset-x-0 -top-12 -z-10">
         <PremiumNoise />
       </div>
     ),
@@ -32,7 +34,7 @@ const STYLE_MAP = {
     icon: <Enterprise />,
     bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
     noise: (
-      <div className="absolute -top-12 right-0 left-0 -z-10">
+      <div className="absolute inset-x-0 -top-12 -z-10">
         <EnterpriseNoise />
       </div>
     ),
@@ -51,11 +53,11 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleGetPayUrl = useCallback(() => {
-    // Only workspace manager can buy plan
-    if (!isCurrentWorkspaceManager) {
+    if (!canManageBilling) {
       toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
@@ -70,7 +72,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
 
     if (isEnterprisePlan)
       window.location.href = contactSalesUrl
-  }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
+  }, [canManageBilling, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">

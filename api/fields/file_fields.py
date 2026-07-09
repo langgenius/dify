@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import field_validator
+from pydantic import ConfigDict, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -23,6 +23,7 @@ class UploadConfig(ResponseModel):
 
 class FileResponse(ResponseModel):
     id: str
+    reference: str | None = None
     name: str
     size: int
     extension: str | None = None
@@ -49,6 +50,8 @@ class RemoteFileInfo(ResponseModel):
 
 
 class FileWithSignedUrl(ResponseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     id: str
     name: str
     size: int

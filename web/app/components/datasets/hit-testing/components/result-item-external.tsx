@@ -12,8 +12,8 @@ import ResultItemMeta from './result-item-meta'
 
 const i18nPrefix = ''
 type Props = {
-  payload: ExternalKnowledgeBaseHitTesting
-  positionId: number
+  readonly payload: ExternalKnowledgeBaseHitTesting
+  readonly positionId: number
 }
 
 const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
@@ -45,15 +45,15 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
               hideDetailModal()
           }}
         >
-          <DialogContent className="w-full min-w-[800px]! overflow-hidden! border-none text-left align-middle">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-[800px]! flex-col overflow-hidden! border-none text-left align-middle">
             <DialogCloseButton />
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
             </DialogTitle>
 
-            <div className="mt-4 flex-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
-              <div className={cn('mt-2 body-md-regular break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
+              <div className="mt-2 min-h-0 flex-1 overflow-y-auto body-md-regular break-all text-text-secondary">
                 {content}
               </div>
             </div>

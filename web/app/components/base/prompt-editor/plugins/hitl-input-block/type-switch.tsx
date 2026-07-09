@@ -5,11 +5,11 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   isVariable?: boolean
   onIsVariableChange?: (isVariable: boolean) => void
-}
+}>
 
 const TypeSwitch: FC<Props> = ({
   className,

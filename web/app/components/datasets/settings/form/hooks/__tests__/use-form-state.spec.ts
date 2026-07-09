@@ -3,6 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
 
@@ -15,9 +16,14 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => false, // isCurrentWorkspaceDatasetOperator
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }))
+})
 
 const createDefaultMockDataset = (): DataSet => ({
   id: 'dataset-1',
@@ -85,6 +91,7 @@ const createDefaultMockDataset = (): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
 })
 
 let mockDataset: DataSet = createDefaultMockDataset()
@@ -98,6 +105,12 @@ vi.mock('@/context/dataset-detail', () => ({
     return selector(state)
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock services
 vi.mock('@/service/datasets', () => ({
@@ -183,6 +196,17 @@ describe('useFormState', () => {
       expect(result.current.currentDataset).toBeDefined()
       expect(result.current.currentDataset?.id).toBe('dataset-1')
     })
+
+    it('should expose editability from dataset ACL permission keys without legacy role state', () => {
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      expect(result.current.canEditSettings).toBe(false)
+      expect('isCurrentWorkspaceDatasetOperator' in result.current).toBe(false)
+    })
   })
 
   describe('State Setters', () => {
@@ -258,7 +282,7 @@ describe('useFormState', () => {
       expect(result.current.showAppIconPicker).toBe(true)
     })
 
-    it('should select emoji icon and close picker', () => {
+    it('should select emoji icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -273,7 +297,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -282,7 +306,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should select image icon and close picker', () => {
+    it('should select image icon without owning picker close state', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -297,7 +321,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showAppIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'image',
         icon: 'file-123',
@@ -306,7 +330,7 @@ describe('useFormState', () => {
       })
     })
 
-    it('should restore previous icon when picker is closed', () => {
+    it('should close picker through open state setter without changing icon', () => {
       const { result } = renderHook(() => useFormState())
 
       act(() => {
@@ -322,15 +346,10 @@ describe('useFormState', () => {
       })
 
       act(() => {
-        result.current.handleOpenAppIconPicker()
-      })
-
-      act(() => {
-        result.current.handleCloseAppIconPicker()
+        result.current.setShowAppIconPicker(false)
       })
 
       expect(result.current.showAppIconPicker).toBe(false)
-      // After close, icon should be restored to the icon before opening
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -474,6 +493,21 @@ describe('useFormState', () => {
           permission: DatasetPermission.onlyMe,
         }),
       })
+    })
+
+    it('should not save when dataset only has readonly ACL permission', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
     })
 
     it('should show success toast on successful save', async () => {

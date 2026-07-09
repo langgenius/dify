@@ -58,9 +58,7 @@ export type DeleteApiBasedExtensionByIdData = {
 }
 
 export type DeleteApiBasedExtensionByIdResponses = {
-  204: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteApiBasedExtensionByIdResponse

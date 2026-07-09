@@ -24,9 +24,16 @@ const mockInvoices = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppCtx,
-}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
@@ -40,7 +47,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: () => mockInvoices(),
+      invoices: {
+        get: () => mockInvoices(),
+      },
     },
   },
 }))
@@ -60,6 +69,11 @@ vi.mock('@/next/navigation', () => ({
 const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     ...overrides,
   }
 }
@@ -276,8 +290,27 @@ describe('Cloud Plan Payment Flow', () => {
 
   // ─── 5. Permission Check ────────────────────────────────────────────────
   describe('Permission check', () => {
-    it('should show error toast when non-manager clicks upgrade button', async () => {
-      setupAppContext({ isCurrentWorkspaceManager: false })
+    it('should change plans when billing manage permission is granted without manager role', async () => {
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.manage'],
+      })
+      const user = userEvent.setup()
+      renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
+
+      const button = getPlanButton('billing.plansCommon.startBuilding')
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+      })
+    })
+
+    it('should show error toast when billing manage permission is missing for plan changes', async () => {
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.view', 'billing.subscription.manage'],
+      })
       const user = userEvent.setup()
       renderCloudPlanItem({ currentPlan: Plan.sandbox, plan: Plan.professional })
 
@@ -287,8 +320,41 @@ describe('Cloud Plan Payment Flow', () => {
       await waitFor(() => {
         expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       })
-      // Should not proceed with payment
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+    })
+
+    it('should open billing portal when subscription management permission is granted without manager role', async () => {
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
+      const user = userEvent.setup()
+      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
+
+      const button = getPlanButton('billing.plansCommon.currentPlan')
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(mockOpenAsyncWindow).toHaveBeenCalled()
+      })
+      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+    })
+
+    it('should show error toast when subscription management permission is missing for current paid plan', async () => {
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+      })
+      const user = userEvent.setup()
+      renderCloudPlanItem({ currentPlan: Plan.professional, plan: Plan.professional })
+
+      const button = getPlanButton('billing.plansCommon.currentPlan')
+      await user.click(button)
+
+      await waitFor(() => {
+        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
+      })
+      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
     })
   })
 })

@@ -17,7 +17,7 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
+  useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
 // Mock external context providers (these are external dependencies)
@@ -76,6 +76,12 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof ExternalKnow
     loading: false,
   }
   return render(<ExternalKnowledgeBaseCreate {...defaultProps} {...props} />)
+}
+
+const getVisibleText = (text: string) => {
+  const element = screen.getAllByText(text).find(element => !element.classList.contains('sr-only'))
+  expect(element).toBeDefined()
+  return element!
 }
 
 describe('ExternalKnowledgeBaseCreate', () => {
@@ -149,7 +155,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       const docLink = screen.getByText('dataset.connectHelper.helper4')
-      expect(docLink)!.toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/knowledge/connect-external-knowledge-base')
+      expect(docLink)!.toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/knowledge/connect-external-knowledge-base')
       expect(docLink)!.toHaveAttribute('target', '_blank')
       expect(docLink)!.toHaveAttribute('rel', 'noopener noreferrer')
     })
@@ -878,8 +884,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
       expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
       // Should show Top K and Score Threshold labels
       // Should show Top K and Score Threshold labels
-      expect(screen.getByText('appDebug.datasetConfig.top_k'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.datasetConfig.score_threshold'))!.toBeInTheDocument()
+      expect(getVisibleText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+      expect(getVisibleText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
     })
   })
 

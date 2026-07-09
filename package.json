@@ -2,7 +2,14 @@
   "name": "dify",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.1.1",
+  "packageManager": "pnpm@11.9.0",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^22.22.1",
+      "onFail": "download"
+    }
+  },
   "engines": {
     "node": "^22.22.1"
   },
@@ -17,11 +24,13 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
+    "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
     "eslint-plugin-no-barrel-files": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

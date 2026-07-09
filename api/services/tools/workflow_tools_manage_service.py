@@ -41,6 +41,7 @@ class WorkflowToolManageService:
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
         labels: list[str] | None = None,
+        import_id: str = "",
     ):
         # check if the name is unique
         existing_workflow_tool_provider: WorkflowToolProvider | None = None
@@ -92,7 +93,8 @@ class WorkflowToolManageService:
             privacy_policy=privacy_policy,
             version=workflow.version,
         )
-
+        if import_id:
+            workflow_tool_provider.id = import_id
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
@@ -10,7 +11,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import Checkbox from '../../../base/checkbox'
 import { Infotip } from '../../../base/infotip'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
@@ -19,14 +19,14 @@ import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
 
 const i18nPrefix = 'metadata.batchEditMetadata'
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
   onShowManage: () => void
-}
+}>
 const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSave, onHide, onShowManage }) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
@@ -96,7 +96,7 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
           onHide()
       }}
     >
-      <DialogContent className="w-full !max-w-[640px] overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
@@ -131,13 +131,15 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
 
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center select-none">
-            <Checkbox
-              checked={isApplyToAllSelectDocument}
-              onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)}
-              id="apply-to-all"
-              ariaLabel={t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}
-            />
-            <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
+            <label className="flex cursor-pointer items-center">
+              <Checkbox
+                checked={isApplyToAllSelectDocument}
+                onCheckedChange={setIsApplyToAllSelectDocument}
+              />
+              <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
+                {t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}
+              </span>
+            </label>
             <Infotip
               aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
               className="p-px"

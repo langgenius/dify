@@ -6,11 +6,32 @@ import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const {
+  mockAppContextState,
   mockPush,
   mockLogout,
   mockResetUser,
   mockSetShowAccountSettingModal,
 } = vi.hoisted(() => ({
+  mockAppContextState: {
+    userProfile: {
+      id: 'user-1',
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      avatar: '',
+      avatar_url: '',
+      is_password_set: true,
+    },
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.1.0',
+      release_date: '',
+      release_notes: 'https://example.com/releases/1.1.0',
+      version: '1.0.0',
+      can_auto_update: false,
+    },
+    isCurrentWorkspaceOwner: false,
+  },
   mockPush: vi.fn(),
   mockLogout: vi.fn(),
   mockResetUser: vi.fn(),
@@ -27,21 +48,15 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      name: 'Ada Lovelace',
-      email: 'ada@example.com',
-      avatar_url: '',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-      latest_version: '1.1.0',
-      release_notes: 'https://example.com/releases/1.1.0',
-    },
-    isCurrentWorkspaceOwner: false,
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -62,7 +77,8 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/service/use-common', () => ({
+vi.mock('@/service/use-common', async importOriginal => ({
+  ...await importOriginal<typeof import('@/service/use-common')>(),
   useLogout: () => ({
     mutateAsync: mockLogout,
   }),
@@ -141,7 +157,6 @@ describe('Header Account Dropdown Flow', () => {
   })
 
   it('logs out, resets cached user markers, and redirects to signin', async () => {
-    localStorage.setItem('setup_status', 'done')
     localStorage.setItem('education-reverify-prev-expire-at', '1')
     localStorage.setItem('education-reverify-has-noticed', '1')
     localStorage.setItem('education-expired-has-noticed', '1')
@@ -157,7 +172,6 @@ describe('Header Account Dropdown Flow', () => {
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
 
-    expect(localStorage.getItem('setup_status')).toBeNull()
     expect(localStorage.getItem('education-reverify-prev-expire-at')).toBeNull()
     expect(localStorage.getItem('education-reverify-has-noticed')).toBeNull()
     expect(localStorage.getItem('education-expired-has-noticed')).toBeNull()

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import { omit } from 'es-toolkit/object'
@@ -8,11 +9,12 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
+import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -42,6 +44,7 @@ const logsStateCache = new Map<string, {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -98,6 +101,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const handleQueryParamsChange = useCallback((next: QueryParam) => {
     setCurrPage(0)
@@ -118,8 +122,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full grow flex-col">
-      <p className="shrink-0 system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
-      <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
+      <PageTitle
+        title={t('title', { ns: 'appLog' })}
+        description={t('description', { ns: 'appLog' })}
+        learnMoreHref={docLink('/use-dify/monitor/logs')}
+        learnMoreLabel={t('operation.learnMore', { ns: 'common' })}
+      />
+      <div className="flex min-h-0 flex-1 grow flex-col py-4">
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
         {total === undefined
           ? <Loading type="app" />
@@ -130,11 +139,22 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={currPage}
-                onChange={handlePageChange}
-                total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                page={currPage + 1}
+                totalPages={totalPages}
+                onPageChange={page => handlePageChange(page - 1)}
+                labels={{
+                  previous: t('pagination.previous', { ns: 'common' }),
+                  next: t('pagination.next', { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                }}
+                pageSize={{
+                  value: limit,
+                  options: [10, 25, 50],
+                  onValueChange: setLimit,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }}
               />
             )
           : null}

@@ -14,6 +14,15 @@ const render = (ui: ReactElement) =>
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
 
+const openActionsMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+}
+
+const clickOperation = (label: string) => {
+  openActionsMenu()
+  fireEvent.click(screen.getByText(label))
+}
+
 const { mockToast } = vi.hoisted(() => ({
   mockToast: Object.assign(vi.fn(), {
     success: vi.fn(),
@@ -37,6 +46,7 @@ const {
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
+  mockOpenReadmePanel,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
@@ -45,6 +55,7 @@ const {
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
+    mockOpenReadmePanel: vi.fn(),
   }
 })
 
@@ -63,12 +74,6 @@ vi.mock('ahooks', async () => {
     },
   }
 })
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-}))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -99,11 +104,40 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateCheckInstalled: () => vi.fn(),
+  useInvalidateInstalledPluginList: () => vi.fn(),
+}))
+
+vi.mock('../../readme-panel/store', () => ({
+  useReadmePanelStore: (selector: (state: { openReadmePanel: typeof mockOpenReadmePanel }) => unknown) =>
+    selector({ openReadmePanel: mockOpenReadmePanel }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({ data: [] }),
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+  useInvalidateRAGRecommendedPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useInvalidDataSourceListAuth: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useInvalidDataSourceList: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-strategy', () => ({
+  useInvalidateStrategyProviders: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useInvalidateDefaultModel: () => vi.fn(),
+  useModelList: () => ({ mutate: vi.fn() }),
 }))
 
 vi.mock('../../install-plugin/hooks', async (importOriginal) => {
@@ -127,6 +161,7 @@ let mockAutoUpgradeInfo: {
 vi.mock('../../plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockAutoUpgradeInfo ? { auto_upgrade: mockAutoUpgradeInfo } : null,
+    canUpdate: true,
   }),
 }))
 
@@ -177,17 +212,6 @@ vi.mock('../../base/badges/verified', () => ({
 
 vi.mock('../../base/deprecation-notice', () => ({
   default: () => <div data-testid="deprecation-notice" />,
-}))
-
-// Enhanced operation-dropdown mock
-vi.mock('../operation-dropdown', () => ({
-  default: ({ onInfo, onCheckVersion, onRemove }: { onInfo: () => void, onCheckVersion: () => void, onRemove: () => void }) => (
-    <div data-testid="operation-dropdown">
-      <button data-testid="info-btn" onClick={onInfo}>Info</button>
-      <button data-testid="check-version-btn" onClick={onCheckVersion}>Check Version</button>
-      <button data-testid="remove-btn" onClick={onRemove}>Remove</button>
-    </div>
-  ),
 }))
 
 // Enhanced update modal mock
@@ -534,22 +558,28 @@ describe('DetailHeader', () => {
       expect(mockOnHide).toHaveBeenCalled()
     })
 
-    it('should have info button available', () => {
-      render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+    it('should expose info action for GitHub plugins', () => {
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      const infoBtn = screen.getByTestId('info-btn')
-      fireEvent.click(infoBtn)
+      openActionsMenu()
 
-      expect(infoBtn)!.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.info')).toBeInTheDocument()
     })
 
-    it('should have check version button available', () => {
-      render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+    it('should expose check version action for GitHub plugins', () => {
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      const checkBtn = screen.getByTestId('check-version-btn')
-      fireEvent.click(checkBtn)
+      openActionsMenu()
 
-      expect(checkBtn)!.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.operation.checkUpdate')).toBeInTheDocument()
     })
   })
 
@@ -655,18 +685,9 @@ describe('DetailHeader', () => {
     it('should have remove button available', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
+      openActionsMenu()
 
-      expect(removeBtn)!.toBeInTheDocument()
-    })
-
-    it('should have uninstallPlugin mock defined', () => {
-      render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
-
-      fireEvent.click(screen.getByTestId('remove-btn'))
-
-      expect(mockUninstallPlugin).toBeDefined()
+      expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 
     it('should render correctly for model plugin delete', () => {
@@ -678,13 +699,15 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('remove-btn'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
 
     it('should render correctly for tool plugin delete', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('remove-btn'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
     })
   })
 
@@ -729,20 +752,51 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', 'https://github.com/owner/repo')
     })
 
     it('should render marketplace source correctly', () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', 'https://marketplace.example.com/plugins/test-author/test-plugin-name')
     })
 
     it('should render local source correctly', () => {
       const detail = createPluginDetail({ source: PluginSource.local })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('README action', () => {
+    it('should open README panel from the operation dropdown action', () => {
+      const detail = createPluginDetail()
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      clickOperation('plugin.detailPanel.operation.viewReadme')
+
+      expect(mockOpenReadmePanel).toHaveBeenCalledWith({
+        detail,
+        presentation: 'drawer',
+      })
+    })
+
+    it('should not expose README action for builtin tools', () => {
+      render(<DetailHeader detail={createPluginDetail({ id: 'code' })} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      openActionsMenu()
+      expect(screen.queryByText('plugin.detailPanel.operation.viewReadme')).not.toBeInTheDocument()
+    })
+
+    it('should not expose README action when plugin unique identifier is missing', () => {
+      render(<DetailHeader detail={createPluginDetail({ plugin_unique_identifier: '' })} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      openActionsMenu()
+      expect(screen.queryByText('plugin.detailPanel.operation.viewReadme')).not.toBeInTheDocument()
     })
   })
 
@@ -809,7 +863,7 @@ describe('DetailHeader', () => {
     it('should show delete confirm when remove button is clicked', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
 
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
@@ -819,7 +873,7 @@ describe('DetailHeader', () => {
     it('should hide delete confirm when cancel is clicked', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -834,7 +888,7 @@ describe('DetailHeader', () => {
     it('should call uninstallPlugin when confirm delete is clicked', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -849,7 +903,7 @@ describe('DetailHeader', () => {
     it('should call onUpdate with true after successful delete', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -870,7 +924,7 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -885,7 +939,7 @@ describe('DetailHeader', () => {
     it('should invalidate tool providers when deleting tool plugin', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -900,7 +954,7 @@ describe('DetailHeader', () => {
     it('should track plugin uninstalled event after successful delete', async () => {
       render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('remove-btn'))
+      clickOperation('plugin.detailPanel.operation.remove')
       await waitFor(() => {
         expect(screen.getByRole('alertdialog'))!.toBeInTheDocument()
       })
@@ -969,9 +1023,13 @@ describe('DetailHeader', () => {
 
   describe('Plugin Info Modal', () => {
     it('should show plugin info modal when info button is clicked', async () => {
-      render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('info-btn'))
+      clickOperation('plugin.detailPanel.operation.info')
 
       await waitFor(() => {
         expect(screen.getByTestId('plugin-info'))!.toBeInTheDocument()
@@ -979,9 +1037,13 @@ describe('DetailHeader', () => {
     })
 
     it('should hide plugin info modal when close button is clicked', async () => {
-      render(<DetailHeader detail={createPluginDetail()} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      fireEvent.click(screen.getByTestId('info-btn'))
+      clickOperation('plugin.detailPanel.operation.info')
       await waitFor(() => {
         expect(screen.getByTestId('plugin-info'))!.toBeInTheDocument()
       })
@@ -1000,7 +1062,8 @@ describe('DetailHeader', () => {
       })
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('info-btn'))!.toBeInTheDocument()
+      openActionsMenu()
+      expect(screen.getByText('plugin.detailPanel.operation.info')).toBeInTheDocument()
     })
   })
 })

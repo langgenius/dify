@@ -1,17 +1,19 @@
+import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import type {
   Credential,
   PluginPayload,
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Indicator from '@/app/components/header/indicator'
 import {
   Authorized,
   usePluginAuth,
@@ -21,11 +23,13 @@ type AuthorizedInNodeProps = {
   pluginPayload: PluginPayload
   onAuthorizationItemClick: (id: string) => void
   credentialId?: string
+  onDefaultCredentialChange?: (id?: string) => void
 }
 const AuthorizedInNode = ({
   pluginPayload,
   onAuthorizationItemClick,
   credentialId,
+  onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -33,15 +37,20 @@ const AuthorizedInNode = ({
     canApiKey,
     canOAuth,
     credentials,
-    disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
-  } = usePluginAuth(pluginPayload, true)
+  } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
+  const defaultCredentialId = credentials.find(c => c.is_default)?.id
+
+  useEffect(() => {
+    onDefaultCredentialChange?.(defaultCredentialId)
+  }, [defaultCredentialId, onDefaultCredentialChange])
+
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
     let removed = false
     let unavailable = false
-    let color = 'green'
+    let color: StatusDotStatus = 'success'
     let defaultUnavailable = false
     if (!credentialId) {
       label = t('auth.workspaceDefault', { ns: 'plugin' })
@@ -49,7 +58,7 @@ const AuthorizedInNode = ({
       const defaultCredential = credentials.find(c => c.is_default)
 
       if (defaultCredential?.not_allowed_to_use) {
-        color = 'gray'
+        color = 'disabled'
         defaultUnavailable = true
       }
     }
@@ -60,9 +69,9 @@ const AuthorizedInNode = ({
       unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
 
       if (removed)
-        color = 'red'
+        color = 'error'
       else if (unavailable)
-        color = 'gray'
+        color = 'disabled'
     }
     return (
       <Button
@@ -73,9 +82,9 @@ const AuthorizedInNode = ({
         )}
         variant={(defaultUnavailable || unavailable) ? 'ghost' : 'secondary'}
       >
-        <Indicator
+        <StatusDot
           className="mr-1.5"
-          color={color as any}
+          status={color}
         />
         {label}
         {
@@ -88,7 +97,7 @@ const AuthorizedInNode = ({
         }
         <RiArrowDownSLine
           className={cn(
-            'h-3.5 w-3.5 text-components-button-ghost-text',
+            'size-3.5 text-components-button-ghost-text',
             removed && 'text-text-destructive',
           )}
         />
@@ -107,9 +116,15 @@ const AuthorizedInNode = ({
     },
   ]
   const handleAuthorizationItemClick = useCallback((id: string) => {
-    onAuthorizationItemClick(id)
+    onAuthorizationItemClick(
+      id === '__workspace_default__' && onDefaultCredentialChange
+        ? defaultCredentialId || id
+        : id,
+    )
     setIsOpen(false)
   }, [
+    defaultCredentialId,
+    onDefaultCredentialChange,
     onAuthorizationItemClick,
     setIsOpen,
   ])
@@ -127,7 +142,6 @@ const AuthorizedInNode = ({
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
-      disabled={disabled}
       disableSetDefault
       onItemClick={handleAuthorizationItemClick}
       extraAuthorizationItems={extraAuthorizationItems}

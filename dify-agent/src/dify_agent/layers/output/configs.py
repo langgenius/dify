@@ -8,7 +8,6 @@ imports do not pull in server execution code.
 
 from __future__ import annotations
 
-import re
 from typing import ClassVar, Final
 
 from pydantic import ConfigDict, JsonValue, field_validator
@@ -17,7 +16,6 @@ from agenton.layers import LayerConfig
 
 
 DIFY_OUTPUT_LAYER_TYPE_ID: Final[str] = "dify.output"
-_OUTPUT_TOOL_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 class DifyOutputLayerConfig(LayerConfig):
@@ -30,15 +28,13 @@ class DifyOutputLayerConfig(LayerConfig):
     schemas plus local ``#/$defs/...`` references so the same caller-provided
     schema can drive both runtime validation and model-facing tool exposure; the
     exposure copy may inline supported ``$defs`` refs as needed for the
-    Pydantic/Pydantic AI integration. ``name`` becomes the structured-output
-    tool name exposed to pydantic-ai, defaults to ``final_result``, and must be
-    1-64 ASCII letters, numbers, underscores, or hyphens so downstream model
-    providers accept it consistently. ``description`` and ``strict`` are passed
-    through to the generated structured-output tool definition.
+    Pydantic/Pydantic AI integration. The structured-output tool name and schema
+    title exposed to pydantic-ai are fixed to ``final_output`` so callers only
+    control the JSON Schema itself plus any optional description/strictness
+    metadata.
     """
 
     json_schema: dict[str, JsonValue]
-    name: str = "final_result"
     description: str | None = None
     strict: bool | None = None
 
@@ -49,13 +45,6 @@ class DifyOutputLayerConfig(LayerConfig):
     def _ensure_object_schema(cls, value: dict[str, JsonValue]) -> dict[str, JsonValue]:
         if value.get("type") != "object":
             raise ValueError("Schema must declare an object output.")
-        return value
-
-    @field_validator("name")
-    @classmethod
-    def _ensure_safe_tool_name(cls, value: str) -> str:
-        if not _OUTPUT_TOOL_NAME_PATTERN.fullmatch(value):
-            raise ValueError("name must be 1-64 characters of letters, numbers, underscores, or hyphens.")
         return value
 
 

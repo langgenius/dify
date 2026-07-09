@@ -1,12 +1,13 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 from httpx import get
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -22,7 +23,6 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
@@ -34,6 +34,27 @@ class ApiSchemaParseResult(TypedDict):
     parameters_schema: list[dict[str, Any]]
     credentials_schema: list[dict[str, Any]]
     warning: dict[str, str]
+
+
+class ApiToolPreviewResult(TypedDict, total=False):
+    result: str
+    error: str
+
+
+class RemoteSchemaResult(TypedDict):
+    schema: str
+
+
+class SimpleSuccessResult(TypedDict):
+    result: Literal["success"]
+
+
+def _dump_api_tool_bundles(tool_bundles: list[ApiToolBundle]) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], TypeAdapter(list[ApiToolBundle]).dump_python(tool_bundles, mode="json"))
+
+
+def _dump_provider_configs(configs: list[ProviderConfig]) -> list[dict[str, Any]]:
+    return cast(list[dict[str, Any]], TypeAdapter(list[ProviderConfig]).dump_python(configs, mode="json"))
 
 
 class ApiToolManageService:
@@ -52,7 +73,7 @@ class ApiToolManageService:
             credentials_schema = [
                 ProviderConfig(
                     name="auth_type",
-                    type=ProviderConfig.Type.SELECT,
+                    type=ProviderConfigType.SELECT,
                     required=True,
                     default="none",
                     options=[
@@ -63,7 +84,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_header",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key header", zh_Hans="输入 api key header，如：X-API-KEY"),
                     default="api_key",
@@ -71,7 +92,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_value",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key", zh_Hans="输入 api key"),
                     default="",
@@ -80,14 +101,12 @@ class ApiToolManageService:
 
             return cast(
                 ApiSchemaParseResult,
-                jsonable_encoder(
-                    {
-                        "schema_type": schema_type,
-                        "parameters_schema": tool_bundles,
-                        "credentials_schema": credentials_schema,
-                        "warning": warnings,
-                    }
-                ),
+                {
+                    "schema_type": schema_type.value,
+                    "parameters_schema": _dump_api_tool_bundles(tool_bundles),
+                    "credentials_schema": _dump_provider_configs(credentials_schema),
+                    "warning": warnings,
+                },
             )
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}")
@@ -118,7 +137,7 @@ class ApiToolManageService:
         privacy_policy: str,
         custom_disclaimer: str,
         labels: list[str],
-    ) -> dict[str, Any]:
+    ) -> SimpleSuccessResult:
         """
         Create a new API tool provider.
 
@@ -169,7 +188,7 @@ class ApiToolManageService:
                 schema=schema,
                 description=extra_info.get("description", ""),
                 schema_type_str=schema_type,
-                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+                tools_str=json.dumps(_dump_api_tool_bundles(tool_bundles)),
                 credentials_str="{}",
                 privacy_policy=privacy_policy,
                 custom_disclaimer=custom_disclaimer,
@@ -201,7 +220,7 @@ class ApiToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_api_tool_provider_remote_schema(user_id: str, tenant_id: str, url: str):
+    def get_api_tool_provider_remote_schema(user_id: str, tenant_id: str, url: str) -> RemoteSchemaResult:
         """
         get api tool provider remote schema
         """
@@ -276,7 +295,7 @@ class ApiToolManageService:
         privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
-    ) -> dict[str, Any]:
+    ) -> SimpleSuccessResult:
         """
         Update an existing API tool provider.
 
@@ -322,7 +341,7 @@ class ApiToolManageService:
             provider.schema = schema
             provider.description = extra_info.get("description", "")
             provider.schema_type_str = schema_type
-            provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
+            provider.tools_str = json.dumps(_dump_api_tool_bundles(tool_bundles))
             provider.privacy_policy = privacy_policy
             provider.custom_disclaimer = custom_disclaimer
 
@@ -365,7 +384,7 @@ class ApiToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str):
+    def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str) -> SimpleSuccessResult:
         """
         Delete an API tool provider.
 
@@ -413,9 +432,9 @@ class ApiToolManageService:
         tool_name: str,
         credentials: dict[str, Any],
         parameters: dict[str, Any],
-        schema_type: ApiProviderSchemaType,
+        schema_type: ApiProviderSchemaType | str,
         schema: str,
-    ) -> dict[str, Any]:
+    ) -> ApiToolPreviewResult:
         """
         Test an API tool before adding the API tool provider.
 
@@ -464,7 +483,7 @@ class ApiToolManageService:
                 schema=schema,
                 description="",
                 schema_type_str=ApiProviderSchemaType.OPENAPI,
-                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+                tools_str=json.dumps(_dump_api_tool_bundles(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
 

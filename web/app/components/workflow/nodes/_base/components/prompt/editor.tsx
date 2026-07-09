@@ -39,7 +39,7 @@ import { CodeLanguage } from '../../../code/types'
 import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
 import Wrap from '../editor/wrap'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   headerClassName?: string
   instanceId?: string
@@ -81,7 +81,7 @@ type Props = {
   placeholderClassName?: string
   titleClassName?: string
   required?: boolean
-}
+}>
 
 const Editor: FC<Props> = ({
   className,
@@ -161,7 +161,7 @@ const Editor: FC<Props> = ({
         <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('flex items-center justify-between pt-1 pr-2 pl-3', headerClassName)}>
             <div className="flex gap-2">
-              <div className={cn('text-xs leading-4 font-semibold text-text-secondary uppercase', titleClassName)}>
+              <div className={cn('text-xs/4 font-semibold text-text-secondary uppercase', titleClassName)}>
                 {title}
                 {' '}
                 {required && <span className="text-text-destructive">*</span>}
@@ -174,9 +174,9 @@ const Editor: FC<Props> = ({
                     render={(
                       <button
                         type="button"
-                        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                       >
-                        <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                        <span aria-hidden className="i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary" />
                       </button>
                     )}
                   />
@@ -199,7 +199,7 @@ const Editor: FC<Props> = ({
                 />
               )}
 
-              <div className="mr-2 ml-2 h-3 w-px bg-divider-regular"></div>
+              <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               {/* Operations */}
               <div className="flex items-center space-x-[2px]">
                 {isSupportJinja && (
@@ -238,7 +238,7 @@ const Editor: FC<Props> = ({
                     <TooltipTrigger
                       render={(
                         <ActionButton onClick={handleInsertVariable}>
-                          <Variable02 className="h-4 w-4" />
+                          <Variable02 className="size-4" />
                         </ActionButton>
                       )}
                     />
@@ -249,18 +249,18 @@ const Editor: FC<Props> = ({
                 )}
                 {showRemove && (
                   <ActionButton onClick={onRemove}>
-                    <RiDeleteBinLine className="h-4 w-4" />
+                    <RiDeleteBinLine className="size-4" />
                   </ActionButton>
                 )}
                 {!isCopied
                   ? (
                       <ActionButton onClick={handleCopy}>
-                        <Copy className="h-4 w-4" />
+                        <Copy className="size-4" />
                       </ActionButton>
                     )
                   : (
                       <ActionButton>
-                        <CopyCheck className="h-4 w-4" />
+                        <CopyCheck className="size-4" />
                       </ActionButton>
                     )}
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />

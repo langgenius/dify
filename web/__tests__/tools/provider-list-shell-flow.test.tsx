@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import ProviderList from '@/app/components/tools/provider-list'
+import ProviderList from '@/app/components/integrations/tool-provider-list'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
@@ -69,6 +69,8 @@ vi.mock('@/service/use-plugins', () => ({
       : null,
   }),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useMutationPluginPermissionSettings: () => ({ mutate: vi.fn(), isPending: false }),
+  usePluginPermissionSettings: () => ({ data: undefined, isLoading: false, isFetching: false, error: null }),
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
@@ -150,6 +152,10 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 
 vi.mock('@/app/components/tools/mcp', () => ({
   default: ({ searchText }: { searchText: string }) => <div data-testid="mcp-list">{searchText}</div>,
+}))
+
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
+  default: () => null,
 }))
 
 const renderProviderList = (searchParams = '') => {

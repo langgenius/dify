@@ -7,6 +7,8 @@ REPO_ROOT="$SCRIPT_DIR/.."
 cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
+TEST_CONTAINERS_DIR="tests/test_containers_integration_tests"
+TEST_CONTAINERS_CONFIG="$TEST_CONTAINERS_DIR/pyrefly.toml"
 
 target_paths=()
 for target_path in "$@"; do
@@ -26,6 +28,10 @@ pyrefly_args=(
   "--project-excludes=tests/"
 )
 
+if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+  pyrefly_args+=("--output-format=github")
+fi
+
 if [[ -f "$EXCLUDES_FILE" ]]; then
   while IFS= read -r exclude; do
     [[ -z "$exclude" || "${exclude:0:1}" == "#" ]] && continue
@@ -33,13 +39,53 @@ if [[ -f "$EXCLUDES_FILE" ]]; then
   done < "$EXCLUDES_FILE"
 fi
 
-tmp_output="$(mktemp)"
-set +e
-uv run --directory api --dev pyrefly check "${pyrefly_args[@]}" "${target_paths[@]}" >"$tmp_output" 2>&1
-pyrefly_status=$?
-set -e
+run_pyrefly() {
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    set +e
+    "$@"
+    local pyrefly_status=$?
+    set -e
+    return "$pyrefly_status"
+  fi
 
-uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
-rm -f "$tmp_output"
+  local tmp_output
+  tmp_output="$(mktemp)"
 
-exit "$pyrefly_status"
+  set +e
+  "$@" >"$tmp_output" 2>&1
+  local pyrefly_status=$?
+  set -e
+
+  uv run --directory api python libs/pyrefly_diagnostics.py --status "$pyrefly_status" < "$tmp_output"
+  rm -f "$tmp_output"
+  return "$pyrefly_status"
+}
+
+status=0
+
+pyrefly_command=(
+  uv run --directory api --dev pyrefly check
+  "${pyrefly_args[@]}"
+)
+if (( ${#target_paths[@]} > 0 )); then
+  pyrefly_command+=("${target_paths[@]}")
+fi
+
+run_pyrefly "${pyrefly_command[@]}" || status=$?
+
+if (( ${#target_paths[@]} == 0 )); then
+  test_containers_args=(
+    "--summary=none"
+    "--use-ignore-files=false"
+    "--config=$TEST_CONTAINERS_CONFIG"
+  )
+  if [[ "${PYREFLY_OUTPUT_FORMAT:-}" == "github" ]]; then
+    test_containers_args+=("--output-format=github")
+  fi
+  run_pyrefly \
+    uv run --directory api --dev pyrefly check \
+    "${test_containers_args[@]}" \
+    || status=$?
+fi
+
+exit "$status"

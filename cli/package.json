@@ -1,0 +1,113 @@
+{
+  "name": "@langgenius/difyctl",
+  "type": "module",
+  "version": "0.2.0-alpha",
+  "description": "Dify command-line interface",
+  "difyctl": {
+    "channel": "alpha",
+    "compat": {
+      "minDify": "1.16.0",
+      "maxDify": "1.16.0"
+    },
+    "release": {
+      "tagPrefix": "difyctl-v",
+      "binName": "difyctl",
+      "checksumsSuffix": "-checksums.txt",
+      "targets": [
+        {
+          "id": "linux-x64",
+          "bunTarget": "bun-linux-x64",
+          "exe": false
+        },
+        {
+          "id": "linux-arm64",
+          "bunTarget": "bun-linux-arm64",
+          "exe": false
+        },
+        {
+          "id": "darwin-x64",
+          "bunTarget": "bun-darwin-x64",
+          "exe": false
+        },
+        {
+          "id": "darwin-arm64",
+          "bunTarget": "bun-darwin-arm64",
+          "exe": false
+        },
+        {
+          "id": "windows-x64",
+          "bunTarget": "bun-windows-x64",
+          "exe": true
+        }
+      ]
+    }
+  },
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "README.md",
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "bun bin/dev.js",
+    "test": "vp test",
+    "test:coverage": "vp test --coverage",
+    "test:e2e": "vp test --config vitest.e2e.config.ts",
+    "test:e2e:smoke": "vp test --config vitest.e2e.config.ts --testNamePattern \"\\[P0\\]\"",
+    "test:e2e:local": "DIFY_E2E_MODE=local vp test --config vitest.e2e.config.ts",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "type-check": "tsc",
+    "tree:gen": "bun scripts/generate-command-tree.ts",
+    "tree:check": "bun scripts/generate-command-tree.ts --check",
+    "prebuild": "pnpm tree:gen",
+    "predev": "pnpm tree:gen",
+    "pretest": "pnpm tree:gen",
+    "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
+    "clean": "rm -rf dist node_modules/.cache",
+    "version:info": "bun scripts/print-buildinfo.ts",
+    "build:bin": "scripts/release-build.sh"
+  },
+  "dependencies": {
+    "@dify/contracts": "workspace:*",
+    "@napi-rs/keyring": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi-client": "catalog:",
+    "cli-table3": "catalog:",
+    "eventsource-parser": "catalog:",
+    "js-yaml": "catalog:",
+    "lockfile": "catalog:",
+    "open": "catalog:",
+    "ora": "catalog:",
+    "picocolors": "catalog:",
+    "std-semver": "catalog:",
+    "undici": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@hono/node-server": "catalog:",
+    "@types/js-yaml": "catalog:",
+    "@types/lockfile": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "hono": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -193,13 +193,13 @@ const ChatVariablePanel = () => {
         {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
-            <RiBookOpenLine className="h-4 w-4" />
+            <RiBookOpenLine className="size-4" />
           </ActionButton>
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@ const ChatVariablePanel = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
-                <BubbleX className="mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700" />
+                <BubbleX className="mb-1 size-4 shrink-0 text-util-colors-teal-teal-700" />
                 <div className="system-xs-semibold text-text-secondary">conversation_var</div>
                 <div className="system-2xs-regular text-text-tertiary">String</div>
               </div>

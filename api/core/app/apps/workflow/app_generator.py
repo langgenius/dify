@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -19,6 +19,7 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -32,12 +33,17 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_parent_trace_context_from_args
+from core.helper.trace_id_helper import (
+    extract_external_trace_id_from_args,
+    extract_parent_trace_context_from_args,
+    extract_trace_session_id_from_args,
+)
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
@@ -57,7 +63,32 @@ SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
 logger = logging.getLogger(__name__)
 
 
+def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> dict[str, str]:
+    if isinstance(args, Mapping):
+        return extract_trace_session_id_from_args(args)
+    return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+
+
 class WorkflowAppGenerator(BaseAppGenerator):
+    @staticmethod
+    def _ensure_snippet_start_node_in_worker(*, session: Session, workflow: Workflow) -> Workflow:
+        """Re-apply snippet virtual Start injection after worker reloads workflow from DB."""
+        if workflow.kind_or_standard != "snippet":
+            return workflow
+
+        from models.snippet import CustomizedSnippet
+        from services.snippet_generate_service import SnippetGenerateService
+
+        snippet = session.scalar(
+            select(CustomizedSnippet).where(
+                CustomizedSnippet.id == workflow.app_id,
+                CustomizedSnippet.tenant_id == workflow.tenant_id,
+            )
+        )
+        if snippet is None:
+            return workflow
+        return SnippetGenerateService.ensure_start_node_for_worker(workflow, snippet)
+
     @staticmethod
     def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
         return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
@@ -167,6 +198,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             extras = {
                 **extract_external_trace_id_from_args(args),
                 **extract_parent_trace_context_from_args(args),
+                **extract_trace_session_id_from_args(args),
             }
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
@@ -250,6 +282,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
@@ -280,6 +313,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_engine_layers=graph_engine_layers,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
 
     def _generate(
@@ -298,6 +332,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -326,12 +361,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_mode=app_model.mode,
             )
 
+            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
+                        response_stream_filter=resolved_response_stream_filter,
                     )
                 )
 
@@ -354,6 +391,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "workflow_node_execution_repository": workflow_node_execution_repository,
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
+                    "response_stream_filter": resolved_response_stream_filter,
                 },
             )
 
@@ -410,7 +448,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
@@ -496,7 +537,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
+            extras={
+                "auto_generate_conversation_name": False,
+                **_extract_trace_session_id_from_debug_args(args),
+            },
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
             workflow_execution_id=str(uuid.uuid4()),
         )
@@ -554,6 +598,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -574,6 +619,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+
+                workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
@@ -600,10 +647,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
             )
 
             try:
-                runner.run()
+                with active_workflow_task(application_generate_entity.task_id):
+                    runner.run()
             except GenerateTaskStoppedError as e:
                 logger.warning("Task stopped: %s", str(e))
                 pass

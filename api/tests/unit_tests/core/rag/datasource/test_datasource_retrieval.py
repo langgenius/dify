@@ -227,14 +227,15 @@ class TestRetrievalServiceInternals:
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
     @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
-    @patch("core.rag.datasource.retrieval_service.db.session.scalar")
-    def test_external_retrieve_with_metadata_conditions(self, mock_scalar, mock_validate, mock_fetch):
-        mock_scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
+    def test_external_retrieve_with_metadata_conditions(self, mock_validate, mock_fetch):
         mock_validate.return_value = "validated-condition"
         expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
         mock_fetch.return_value = expected_documents
+        session = MagicMock()
+        session.scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
 
         results = RetrievalService.external_retrieve(
+            session=session,
             dataset_id="dataset-1",
             query="test query",
             external_retrieval_model={"top_k": 3},
@@ -244,18 +245,19 @@ class TestRetrievalServiceInternals:
         assert results == expected_documents
         mock_validate.assert_called_once()
         mock_fetch.assert_called_once_with(
-            "tenant-1",
-            "dataset-1",
-            "test query",
-            {"top_k": 3},
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            query="test query",
+            external_retrieval_parameters={"top_k": 3},
             metadata_condition="validated-condition",
+            session=session,
         )
 
-    @patch("core.rag.datasource.retrieval_service.db.session.scalar")
-    def test_external_retrieve_returns_empty_when_dataset_not_found(self, mock_scalar):
-        mock_scalar.return_value = None
+    def test_external_retrieve_returns_empty_when_dataset_not_found(self):
+        session = MagicMock()
+        session.scalar.return_value = None
 
-        results = RetrievalService.external_retrieve(dataset_id="missing", query="q")
+        results = RetrievalService.external_retrieve(session=session, dataset_id="missing", query="q")
 
         assert results == []
 

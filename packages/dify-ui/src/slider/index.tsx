@@ -2,8 +2,21 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 
 export const SliderRoot = BaseSlider.Root
+
+export function SliderLabel({
+  className,
+  ...props
+}: BaseSlider.Label.Props) {
+  return (
+    <BaseSlider.Label
+      className={cn(formLabelClassName, className)}
+      {...props}
+    />
+  )
+}
 
 type SliderRootProps = BaseSlider.Root.Props<number>
 
@@ -60,7 +73,7 @@ const sliderThumbClassName = cn(
   'border-components-slider-knob-border bg-components-slider-knob shadow-sm',
   'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
   'hover:bg-components-slider-knob-hover',
-  'focus-visible:ring-2 focus-visible:ring-components-slider-knob-border-hover focus-visible:ring-offset-0 focus-visible:outline-hidden',
+  'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid has-[:focus-visible]:ring-offset-0',
   'active:shadow-md',
   'group-data-disabled/slider:border-components-slider-knob-border group-data-disabled/slider:bg-components-slider-knob-disabled group-data-disabled/slider:shadow-none',
 )
@@ -136,7 +149,7 @@ export function Slider({
       step={step}
       disabled={disabled}
       name={name}
-      thumbAlignment="edge-client-only"
+      thumbAlignment="center"
       className={cn(sliderRootClassName, className)}
     >
       <SliderControl className={slotClassNames?.control}>

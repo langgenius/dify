@@ -12,7 +12,9 @@ import {
   DatasetPermission,
   DataSourceType,
 } from '@/models/datasets'
+import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
@@ -57,6 +59,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   data_source_type: DataSourceType.FILE,
   indexing_technique: 'high_quality' as DataSet['indexing_technique'],
   created_by: 'user-1',
+  maintainer: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
@@ -126,18 +129,40 @@ const createCondition = (overrides: Partial<MetadataFilteringCondition> = {}): M
   ...overrides,
 })
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string } }) => unknown) => selector({
-    userProfile: { id: 'user-1' },
-  }),
-  useAppContext: () => ({
-    userProfile: {
-      timezone: 'UTC',
-    },
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
 }))
 
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('@/utils/permission', () => ({
+  DatasetACLPermission: {
+    Readonly: 'dataset.acl.readonly',
+    Edit: 'dataset.acl.edit',
+    Use: 'dataset.acl.use',
+  },
+  getDatasetACLCapabilities: vi.fn(() => ({
+    canReadonly: false,
+    canEdit: true,
+    canImportExportDSL: false,
+    canPipelineTest: false,
+    canDocumentDownload: false,
+    canRetrievalRecall: false,
+    canUse: true,
+    canDeleteFile: false,
+    canPipelineRelease: false,
+    canDelete: false,
+    canAccessConfig: false,
+  })),
   hasEditPermissionForDataset: (
     userId: string,
     datasetConfig: { createdBy: string, partialMemberList: string[], permission: DatasetPermission },
@@ -286,6 +311,19 @@ describe('knowledge-retrieval path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasEditPermissionForDataset.mockReturnValue(true)
+    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+      canReadonly: false,
+      canEdit: true,
+      canImportExportDSL: false,
+      canPipelineTest: false,
+      canDocumentDownload: false,
+      canRetrievalRecall: false,
+      canUse: true,
+      canDeleteFile: false,
+      canPipelineRelease: false,
+      canDelete: false,
+      canAccessConfig: false,
+    })
   })
 
   describe('Dataset controls', () => {
@@ -370,6 +408,42 @@ describe('knowledge-retrieval path', () => {
       fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onChange).toHaveBeenCalledWith([])
+    })
+
+    it('should hide dataset settings when ACL does not grant edit even if legacy dataset permission allows it', () => {
+      const dataset = createDataset({
+        permission: DatasetPermission.allTeamMembers,
+        permission_keys: [DatasetACLPermission.Use],
+      })
+      mockHasEditPermissionForDataset.mockReturnValue(true)
+      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+        canReadonly: false,
+        canEdit: false,
+        canImportExportDSL: false,
+        canPipelineTest: false,
+        canDocumentDownload: false,
+        canRetrievalRecall: false,
+        canUse: true,
+        canDeleteFile: false,
+        canPipelineRelease: false,
+        canDelete: false,
+        canAccessConfig: false,
+      })
+
+      render(
+        <DatasetList
+          list={[dataset]}
+          onChange={vi.fn()}
+        />,
+      )
+
+      const datasetItem = getDatasetItem()
+
+      expect(within(datasetItem).queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
+        currentUserId: 'user-1',
+        resourceMaintainer: dataset.maintainer,
+      }))
     })
   })
 
@@ -583,25 +657,28 @@ describe('knowledge-retrieval path', () => {
       const onDateChange = vi.fn()
       const onRemoveCondition = vi.fn()
       const onUpdateCondition = vi.fn()
+      const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
 
       const { container } = render(
-        <div>
-          <ConditionOperator
-            variableType={MetadataFilteringVariableType.string}
-            value={MetadataComparisonOperator.contains}
-            onSelect={onSelect}
-          />
-          <ConditionDate
-            value={1710000000}
-            onChange={onDateChange}
-          />
-          <ConditionItem
-            metadataList={[createMetadata()]}
-            condition={createCondition()}
-            onRemoveCondition={onRemoveCondition}
-            onUpdateCondition={onUpdateCondition}
-          />
-        </div>,
+        <AccountProfileQueryProvider queryClient={queryClient}>
+          <div>
+            <ConditionOperator
+              variableType={MetadataFilteringVariableType.string}
+              value={MetadataComparisonOperator.contains}
+              onSelect={onSelect}
+            />
+            <ConditionDate
+              value={1710000000}
+              onChange={onDateChange}
+            />
+            <ConditionItem
+              metadataList={[createMetadata()]}
+              condition={createCondition()}
+              onRemoveCondition={onRemoveCondition}
+              onUpdateCondition={onUpdateCondition}
+            />
+          </div>
+        </AccountProfileQueryProvider>,
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)

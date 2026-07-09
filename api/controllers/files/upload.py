@@ -9,6 +9,7 @@ from werkzeug.exceptions import Forbidden
 import services
 from core.tools.signature import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
 
 from ..common.errors import (
@@ -27,6 +28,7 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
+    conversation_id: str | None = Field(default=None, description="Conversation identifier")
 
 
 register_schema_models(files_ns, PluginUploadQuery)
@@ -58,7 +60,8 @@ class PluginUploadFileApi(Resource):
         The file must be accompanied by valid timestamp, nonce, and signature parameters.
 
         Returns:
-            dict: File metadata including ID, URLs, and properties
+            dict: File metadata including ID, canonical ``reference`` for
+                output-file reconstruction, URLs, and properties
             int: HTTP status code (201 for success)
 
         Raises:
@@ -90,6 +93,7 @@ class PluginUploadFileApi(Resource):
             mimetype=mimetype,
             tenant_id=tenant_id,
             user_id=user.id,
+            conversation_id=args.conversation_id,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
@@ -103,7 +107,7 @@ class PluginUploadFileApi(Resource):
                 file_binary=file.stream.read(),
                 mimetype=mimetype,
                 filename=filename,
-                conversation_id=None,
+                conversation_id=args.conversation_id,
             )
 
             extension = guess_extension(tool_file.mimetype) or ".bin"
@@ -112,6 +116,7 @@ class PluginUploadFileApi(Resource):
             # Create a dictionary with all the necessary attributes
             result = FileResponse(
                 id=tool_file.id,
+                reference=build_file_reference(record_id=tool_file.id),
                 name=tool_file.name,
                 size=tool_file.size,
                 extension=extension,

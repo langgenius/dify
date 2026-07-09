@@ -26,11 +26,11 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
   className: string
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,
@@ -70,9 +70,9 @@ const TryApp: FC<Props> = ({
             <AppIcon
               size="large"
               iconType={appDetail.site.icon_type}
-              icon={appDetail.site.icon}
-              background={appDetail.site.icon_background}
-              imageUrl={appDetail.site.icon_url}
+              icon={appDetail.site.icon ?? undefined}
+              background={appDetail.site.icon_background ?? undefined}
+              imageUrl={appDetail.site.icon_url ?? undefined}
             />
             <div className="grow truncate system-md-semibold text-text-primary" title={appDetail.name}>{appDetail.name}</div>
           </div>

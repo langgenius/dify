@@ -7,13 +7,13 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   saveLoading: boolean
   data: ConversationHistoriesRole
   onClose: () => void
   onSave: (data: any) => void
-}
+}>
 
 const EditModal: FC<Props> = ({
   isShow,
@@ -39,7 +39,7 @@ const EditModal: FC<Props> = ({
 
         <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.userPrefix', { ns: 'appDebug' })}</div>
         <input
-          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
+          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
           value={tempData.user_prefix}
           onChange={e => setTempData({
             ...tempData,
@@ -49,7 +49,7 @@ const EditModal: FC<Props> = ({
 
         <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.assistantPrefix', { ns: 'appDebug' })}</div>
         <input
-          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
+          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
           value={tempData.assistant_prefix}
           onChange={e => setTempData({
             ...tempData,

@@ -25,6 +25,45 @@ def test_should_prepare_user_inputs_keeps_validation_when_flag_false():
     assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
 
 
+def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup():
+    session = MagicMock()
+    workflow = SimpleNamespace(kind_or_standard="standard")
+
+    result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+    assert result is workflow
+    session.scalar.assert_not_called()
+
+
+def test_ensure_snippet_start_node_in_worker_returns_snippet_workflow_when_snippet_missing():
+    session = MagicMock()
+    session.scalar.return_value = None
+    workflow = SimpleNamespace(kind_or_standard="snippet", app_id="snippet-1", tenant_id="tenant-1")
+
+    result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+    assert result is workflow
+    session.scalar.assert_called_once()
+
+
+def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(mocker: MockerFixture):
+    session = MagicMock()
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    session.scalar.return_value = snippet
+    workflow = SimpleNamespace(kind_or_standard="snippet", app_id="snippet-1", tenant_id="tenant-1")
+    updated_workflow = SimpleNamespace(name="updated-workflow")
+    ensure_start_node = mocker.patch(
+        "services.snippet_generate_service.SnippetGenerateService.ensure_start_node_for_worker",
+        return_value=updated_workflow,
+    )
+
+    result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+    assert result is updated_workflow
+    session.scalar.assert_called_once()
+    ensure_start_node.assert_called_once_with(workflow, snippet)
+
+
 def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
     generator = WorkflowAppGenerator()
 
@@ -80,6 +119,7 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
                 "parent_workflow_run_id": "outer-workflow-run-1",
                 "parent_node_execution_id": "outer-node-execution-1",
             },
+            "trace_session_id": "session-1",
         },
         invoke_from="service-api",
         streaming=False,
@@ -93,6 +133,7 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "parent_workflow_run_id": "outer-workflow-run-1",
         "parent_node_execution_id": "outer-node-execution-1",
     }
+    assert extras["trace_session_id"] == "session-1"
 
 
 def test_resume_delegates_to_generate(mocker: MockerFixture):

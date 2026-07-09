@@ -12,7 +12,7 @@ describe('OptionList', () => {
     const list = screen.getByRole('list')
 
     expect(list).toHaveClass('overflow-y-auto')
-    expect(list).toHaveClass('[scrollbar-width:none]')
+    expect(list).toHaveClass('scrollbar-none')
     expect(list).toHaveClass('[&::-webkit-scrollbar]:hidden')
   })
 

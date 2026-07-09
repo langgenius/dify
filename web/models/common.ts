@@ -1,12 +1,10 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
-}
-
-export type OauthResponse = {
-  redirect_url: string
 }
 
 export type SetupStatusResponse = {
@@ -18,63 +16,36 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type UserProfileResponse = {
-  id: string
-  name: string
-  email: string
+export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar: string
-  avatar_url: string | null
-  is_password_set: boolean
-  interface_language?: string
-  interface_theme?: string
-  timezone?: string
   last_login_at?: string
   last_active_at?: string
-  last_login_ip?: string
   created_at?: string
-}
-
-export type UserProfileOriginResponse = {
-  json: () => Promise<UserProfileResponse>
-  bodyUsed: boolean
-  headers: any
-}
-
-export type LangGeniusVersionResponse = {
-  current_version: string
-  latest_version: string
-  version: string
-  release_date: string
-  release_notes: string
-  can_auto_update: boolean
-  current_env: string
-}
-
-export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
-  avatar: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  roles: Role[]
 }
 
-enum ProviderName {
-  OPENAI = 'openai',
-  AZURE_OPENAI = 'azure_openai',
-  ANTHROPIC = 'anthropic',
-  Replicate = 'replicate',
-  HuggingfaceHub = 'huggingface_hub',
-  MiniMax = 'minimax',
-  Spark = 'spark',
-  Tongyi = 'tongyi',
-  ChatGLM = 'chatglm',
-}
-export type ProviderAzureToken = {
+const ProviderName = {
+  OPENAI: 'openai',
+  AZURE_OPENAI: 'azure_openai',
+  ANTHROPIC: 'anthropic',
+  Replicate: 'replicate',
+  HuggingfaceHub: 'huggingface_hub',
+  MiniMax: 'minimax',
+  Spark: 'spark',
+  Tongyi: 'tongyi',
+  ChatGLM: 'chatglm',
+} as const
+type ProviderName = typeof ProviderName[keyof typeof ProviderName]
+type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
 }
-export type ProviderAnthropicToken = {
+type ProviderAnthropicToken = {
   anthropic_api_key?: string
 }
-export type Provider = {
+type Provider = {
   [Name in ProviderName]: {
     provider_name: Name
   } & {
@@ -86,19 +57,13 @@ export type Provider = {
   }
 }[ProviderName]
 
-export type AccountIntegrate = {
-  provider: 'google' | 'github'
-  created_at: number
-  is_bound: boolean
-  link: string
-}
-
 export type IWorkspace = {
   id: string
   name: string
   plan: string
   status: string
   created_at: number
+  last_opened_at?: number | null
   current: boolean
 }
 
@@ -142,26 +107,12 @@ export type DataSourceNotionWorkspace = {
   pages: DataSourceNotionPage[]
 }
 
-export type DataSourceNotion = {
-  id: string
-  provider: string
-  is_bound: boolean
-  source_info: DataSourceNotionWorkspace
-}
-
-export enum DataSourceProvider {
-  fireCrawl = 'firecrawl',
-  jinaReader = 'jinareader',
-  waterCrawl = 'watercrawl',
-}
-
-export type PluginProvider = {
-  tool_name: string
-  is_enabled: boolean
-  credentials: {
-    api_key: string
-  } | null
-}
+export const DataSourceProvider = {
+  fireCrawl: 'firecrawl',
+  jinaReader: 'jinareader',
+  waterCrawl: 'watercrawl',
+} as const
+export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
 
 export type FileUploadConfigResponse = {
   batch_count_limit: number
@@ -181,6 +132,10 @@ export type InvitationResult = {
   email: string
   url: string
 } | {
+  status: 'already_member'
+  email: string
+  message?: string
+} | {
   status: 'failed'
   email: string
   message: string
@@ -188,13 +143,6 @@ export type InvitationResult = {
 
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
-}
-
-export type ApiBasedExtension = {
-  id?: string
-  name?: string
-  api_endpoint?: string
-  api_key?: string
 }
 
 export type CodeBasedExtensionForm = {
@@ -210,7 +158,7 @@ export type CodeBasedExtensionForm = {
 
 export type CodeBasedExtensionItem = {
   name: string
-  label: any
+  label: I18nText
   form_schema: CodeBasedExtensionForm[]
 }
 export type CodeBasedExtension = {
@@ -227,12 +175,7 @@ export type ExternalDataTool = {
   enabled?: boolean
   config?: {
     api_based_extension_id?: string
-  } & Partial<Record<string, any>>
-}
-
-export type ModerateResponse = {
-  flagged: boolean
-  text: string
+  } & Partial<Record<string, string | undefined>>
 }
 
 export type StructuredOutputRulesRequestBody = {

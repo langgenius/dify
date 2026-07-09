@@ -140,16 +140,6 @@ If you are not familiar with writing tests, refer to:
 
 - [index.spec.tsx] - Component test example
 
-### Analyze Component Complexity
-
-Before writing tests, use the script to analyze component complexity:
-
-```bash
-pnpm analyze-component app/components/your-component/index.tsx
-```
-
-This will help you determine the testing strategy. See [web/testing/testing.md] for details.
-
 ## Documentation
 
 Visit <https://docs.dify.ai> to view the full documentation.
@@ -167,7 +157,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/radio/__tests__/index.spec.tsx
+[index.spec.tsx]: ./app/components/base/action-button/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
 [web/docs/test.md]: ./docs/test.md

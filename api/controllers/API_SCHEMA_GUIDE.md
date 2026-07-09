@@ -34,6 +34,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from libs.helper import dump_response
 ```
 
 Register request payload and query models with `register_schema_models(...)`:
@@ -82,7 +83,7 @@ register_schema_models(console_ns, DraftWorkflowNodeRunPayload)
 def post(self, app_model: App, node_id: str):
     payload = DraftWorkflowNodeRunPayload.model_validate(console_ns.payload or {})
     result = service.run(..., inputs=payload.inputs, query=payload.query)
-    return WorkflowRunNodeExecutionResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+    return dump_response(WorkflowRunNodeExecutionResponse, result)
 ```
 
 ## Query Parameters
@@ -105,7 +106,7 @@ class WorkflowRunListQuery(BaseModel):
 def get(self, app_model: App):
     query = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
     result = service.list(..., limit=query.limit, last_id=query.last_id)
-    return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+    return dump_response(WorkflowRunPaginationResponse, result)
 ```
 
 Do not do this for GET query parameters:
@@ -145,10 +146,25 @@ def post(...):
 Serialize explicitly:
 
 ```python
-return WorkflowRunNodeExecutionResponse.model_validate(
-    workflow_node_execution,
-    from_attributes=True,
-).model_dump(mode="json")
+return dump_response(WorkflowRunNodeExecutionResponse, workflow_node_execution)
+```
+
+`dump_response(...)` is the preferred response serialization helper for a single Pydantic response DTO. It validates
+with `from_attributes=True` and returns `model_dump(mode="json")`, so SQLAlchemy models, plain objects, dictionaries,
+Pydantic aliases, computed fields, and `datetime` values are serialized consistently.
+
+For wrapper responses, pass a dictionary with the public wrapper fields:
+
+```python
+return dump_response(
+    WorkflowRunPaginationResponse,
+    {
+        "data": workflow_runs,
+        "page": page,
+        "limit": limit,
+        "has_more": has_more,
+    },
+)
 ```
 
 If the service can return `None`, translate that into the expected HTTP error before validation:
@@ -158,8 +174,11 @@ workflow_run = service.get_workflow_run(...)
 if workflow_run is None:
     raise NotFound("Workflow run not found")
 
-return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+return dump_response(WorkflowRunDetailResponse, workflow_run)
 ```
+
+Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
+not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
 ## Legacy Flask-RESTX Patterns
 
@@ -190,4 +209,3 @@ Inspect affected endpoints with `jq`. Check that:
 - Request bodies appear only where the endpoint has a body.
 - Responses reference the expected `*Response` schema.
 - Response schemas use public serialized names, not internal validation aliases like `inputs_dict`.
-

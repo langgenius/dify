@@ -77,6 +77,14 @@ vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { textInput: 'text-input' },
 }))
 
+// PermissionSelector (rendered for create mode) calls useMembers via TanStack Query.
+// Stub it so tests don't need a QueryClientProvider wrapper.
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({ data: { accounts: [] } }),
+}))
+
+// PermissionSelector also reads userProfile from app-context.
+
 const basePayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
@@ -232,6 +240,18 @@ describe('ApiKeyModal', () => {
     render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
+    expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should call onClose after controlled cancel closes the modal', async () => {
+    const mockOnClose = vi.fn()
+    render(<ControlledModalHarness ApiKeyModal={ApiKeyModal} onClose={mockOnClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
+    })
     expect(mockOnClose).toHaveBeenCalled()
   })
 

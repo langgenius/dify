@@ -1,18 +1,10 @@
-import { ALL_PLANS, contactSalesUrl, contractSales, defaultPlan, getStartedWithCommunityUrl, getWithPremiumUrl, NUM_INFINITE, unAvailable } from '../config'
+import { ALL_PLANS, contactSalesUrl, defaultPlan, getStartedWithCommunityUrl, getWithPremiumUrl, NUM_INFINITE } from '../config'
 import { Priority } from '../type'
 
 describe('Billing Config', () => {
   describe('Constants', () => {
     it('should define NUM_INFINITE as -1', () => {
       expect(NUM_INFINITE).toBe(-1)
-    })
-
-    it('should define contractSales string', () => {
-      expect(contractSales).toBe('contractSales')
-    })
-
-    it('should define unAvailable string', () => {
-      expect(unAvailable).toBe('unAvailable')
     })
 
     it('should define valid URL constants', () => {

@@ -3,7 +3,7 @@
 import logging
 import traceback
 from datetime import UTC, datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, override
 
 import orjson
 
@@ -58,6 +58,7 @@ class StructuredJSONFormatter(logging.Formatter):
         super().__init__()
         self._service_name = service_name or dify_config.APPLICATION_NAME
 
+    @override
     def format(self, record: logging.LogRecord) -> str:
         log_dict = self._build_log_dict(record)
         try:

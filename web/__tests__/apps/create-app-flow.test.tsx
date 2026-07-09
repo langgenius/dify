@@ -18,9 +18,8 @@ import { AccessMode } from '@/models/access-control'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
-let mockIsCurrentWorkspaceEditor = true
-let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
@@ -42,16 +41,27 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
-  }),
-}))
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -96,7 +106,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useToggleAppStarMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -241,12 +256,20 @@ const renderList = () => {
   return { ...render(<List controlRefreshList={0} />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
+const openCreateMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+}
+
+const clickCreateMenuItem = (label: string) => {
+  openCreateMenu()
+  fireEvent.click(screen.getByText(label))
+}
+
 describe('Create App Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
-    mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -258,28 +281,28 @@ describe('Create App Flow', () => {
   })
 
   describe('NewAppCard Rendering', () => {
-    it('should render the "Create App" card with all options', () => {
+    it('should render the create menu with all options', () => {
       renderList()
 
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
+      openCreateMenu()
       expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
-    it('should not render NewAppCard when user is not an editor', () => {
-      mockIsCurrentWorkspaceEditor = false
+    it('should render disabled the create menu when user lacks app creation permission', () => {
+      mockWorkspacePermissionKeys = []
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
     })
 
-    it('should show loading state when workspace is loading', () => {
+    it('should keep the create menu available while workspace state is loading', () => {
       mockIsLoadingCurrentWorkspace = true
       renderList()
 
-      // NewAppCard renders but with loading style (pointer-events-none opacity-50)
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
   })
 
@@ -288,7 +311,7 @@ describe('Create App Flow', () => {
     it('should open the create app modal when "Start from Blank" is clicked', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
+      clickCreateMenuItem('app.newApp.startFromBlank')
 
       await waitFor(() => {
         expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
@@ -298,7 +321,7 @@ describe('Create App Flow', () => {
     it('should close the create app modal on cancel', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
+      clickCreateMenuItem('app.newApp.startFromBlank')
       await waitFor(() => {
         expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
       })
@@ -312,7 +335,7 @@ describe('Create App Flow', () => {
     it('should call onPlanInfoChanged and refetch on successful creation', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
+      clickCreateMenuItem('app.newApp.startFromBlank')
       await waitFor(() => {
         expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
       })
@@ -330,7 +353,7 @@ describe('Create App Flow', () => {
     it('should open template dialog when "Start from Template" is clicked', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
+      clickCreateMenuItem('app.newApp.startFromTemplate')
 
       await waitFor(() => {
         expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
@@ -340,7 +363,7 @@ describe('Create App Flow', () => {
     it('should allow switching from template to blank modal', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
+      clickCreateMenuItem('app.newApp.startFromTemplate')
       await waitFor(() => {
         expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
       })
@@ -355,7 +378,7 @@ describe('Create App Flow', () => {
     it('should allow switching from blank to template dialog', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
+      clickCreateMenuItem('app.newApp.startFromBlank')
       await waitFor(() => {
         expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
       })
@@ -373,7 +396,7 @@ describe('Create App Flow', () => {
     it('should open DSL import modal when "Import DSL" is clicked', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      clickCreateMenuItem('app.importDSL')
 
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
@@ -383,7 +406,7 @@ describe('Create App Flow', () => {
     it('should close DSL import modal on cancel', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      clickCreateMenuItem('app.importDSL')
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
       })
@@ -397,7 +420,7 @@ describe('Create App Flow', () => {
     it('should call onPlanInfoChanged and refetch on successful DSL import', async () => {
       renderList()
 
-      fireEvent.click(screen.getByText('app.importDSL'))
+      clickCreateMenuItem('app.importDSL')
       await waitFor(() => {
         expect(screen.getByTestId('create-from-dsl-modal')).toBeInTheDocument()
       })
@@ -460,17 +483,18 @@ describe('Create App Flow', () => {
       mockPages = [createPage([])]
       renderList()
 
-      // NewAppCard should still be visible even with no apps
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
+      expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
     it('should handle multiple rapid clicks on create buttons without crashing', async () => {
       renderList()
 
-      // Rapidly click different create options
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
-      fireEvent.click(screen.getByText('app.importDSL'))
+      clickCreateMenuItem('app.newApp.startFromBlank')
+      clickCreateMenuItem('app.newApp.startFromTemplate')
+      clickCreateMenuItem('app.importDSL')
 
       // Should not crash, and some modal should be present
       await waitFor(() => {

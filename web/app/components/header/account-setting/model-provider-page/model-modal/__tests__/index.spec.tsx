@@ -29,7 +29,7 @@ const mockState = vi.hoisted(() => ({
   credentialData: { credentials: {}, available_credentials: [] } as CredentialData,
   doingAction: false,
   deleteCredentialId: null as string | null,
-  isCurrentWorkspaceManager: true,
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
   formSchemas: [] as CredentialFormSchema[],
   formValues: {} as Record<string, unknown>,
   modelNameAndTypeFormSchemas: [] as CredentialFormSchema[],
@@ -75,9 +75,17 @@ vi.mock('../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({ isCurrentWorkspaceManager: mockState.isCurrentWorkspaceManager }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockState.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: { en_US: string }) => value.en_US,
@@ -183,7 +191,7 @@ describe('ModelModal', () => {
     mockState.credentialData = { credentials: {}, available_credentials: [] }
     mockState.doingAction = false
     mockState.deleteCredentialId = null
-    mockState.isCurrentWorkspaceManager = true
+    mockState.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockState.formSchemas = []
     mockState.formValues = {}
     mockState.modelNameAndTypeFormSchemas = []
@@ -351,5 +359,45 @@ describe('ModelModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(mockHandlers.openConfirmDelete).toHaveBeenCalledWith({ credential_id: 'remove-1' }, undefined)
     removable.unmount()
+  })
+
+  it('should use fixed model context when saving a model credential without model prop', async () => {
+    mockState.formSchemas = [{ variable: 'api_key', type: 'secret-input' } as unknown as CredentialFormSchema]
+    mockFormState.responses = [
+      { isCheckValidated: true, values: { __authorization_name__: 'Xinference Auth', api_key: 'secret' } },
+    ]
+
+    renderModal({
+      mode: ModelModalModeEnum.configModelCredential,
+      currentCustomConfigurationModelFixedFields: {
+        __model_name: 'bge-m3',
+        __model_type: ModelTypeEnum.textEmbedding,
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => {
+      expect(mockHandlers.handleSaveCredential).toHaveBeenCalledWith({
+        credential_id: undefined,
+        credentials: { api_key: 'secret' },
+        name: 'Xinference Auth',
+        model: 'bge-m3',
+        model_type: ModelTypeEnum.textEmbedding,
+      })
+    })
+  })
+
+  it('should not submit model credential payload when model context is missing', async () => {
+    mockState.formSchemas = [{ variable: 'api_key', type: 'secret-input' } as unknown as CredentialFormSchema]
+    mockFormState.responses = [
+      { isCheckValidated: true, values: { __authorization_name__: 'Missing Model Auth', api_key: 'secret' } },
+    ]
+
+    renderModal({ mode: ModelModalModeEnum.configModelCredential })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => {
+      expect(mockHandlers.handleSaveCredential).not.toHaveBeenCalled()
+    })
   })
 })

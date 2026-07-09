@@ -18,14 +18,23 @@ type TestEmailSenderProps = {
   jumpToEmailConfigModal: () => void
 }
 
-const mockUseAppContextSelector = vi.hoisted(() => vi.fn())
 const mockEmailConfigureModal = vi.hoisted(() => vi.fn())
 const mockTestEmailSender = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { email: string } }) => string) =>
-    mockUseAppContextSelector(selector),
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    email: 'owner@example.com',
+  },
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('../email-configure-modal', () => ({
   default: (props: EmailConfigureModalProps) => {
@@ -77,7 +86,7 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
 })
 
 const formInputs: FormInputItem[] = [{
-  type: InputVarType.textInput,
+  type: InputVarType.paragraph,
   output_variable_name: 'name',
   default: {
     selector: ['start', 'name'],
@@ -107,11 +116,6 @@ const getMethodRow = (label: string) => {
 describe('human-input/delivery-method/method-item', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAppContextSelector.mockImplementation(selector => selector({
-      userProfile: {
-        email: 'owner@example.com',
-      },
-    }))
   })
 
   it('should toggle and delete a webapp delivery method', () => {

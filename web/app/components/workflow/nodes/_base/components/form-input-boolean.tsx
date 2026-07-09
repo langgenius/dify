@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
-type Props = {
+type Props = Readonly<{
   value: boolean
   onChange: (value: boolean) => void
-}
+}>
 
 const FormInputBoolean: FC<Props> = ({
   value,

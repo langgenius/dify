@@ -258,6 +258,7 @@ vi.mock('../debug-with-single-model', () => {
 
 const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue => ({
   readonly: false,
+  canTestAndRun: true,
   appId: 'app-id',
   isAPIKeySet: true,
   isTrailFinished: false,
@@ -540,10 +541,23 @@ describe('Debug', () => {
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
-    it('should not render refresh action when readonly is true', () => {
+    it('should keep refresh action available when readonly app still has test/run permission', () => {
       renderDebug({
         contextValue: {
           readonly: true,
+          canTestAndRun: true,
+        },
+      })
+
+      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not render refresh action when test/run permission is missing', () => {
+      renderDebug({
+        contextValue: {
+          readonly: false,
+          canTestAndRun: false,
         },
       })
 
@@ -905,6 +919,26 @@ describe('Debug', () => {
       })
 
       expect(screen.getByRole('button', { name: 'common.modelProvider.addModel(4/4)' }))!.toBeDisabled()
+    })
+
+    it('should disable add-model button when test/run permission is missing', () => {
+      const onMultipleModelConfigsChange = vi.fn()
+
+      renderDebug({
+        contextValue: {
+          canTestAndRun: false,
+        },
+        props: {
+          debugWithMultipleModel: true,
+          multipleModelConfigs: [{ id: 'model-1', model: 'vision-model', provider: 'openai', parameters: {} }],
+          onMultipleModelConfigsChange,
+        },
+      })
+
+      const addModelButton = screen.getByRole('button', { name: 'common.modelProvider.addModel(1/4)' })
+      expect(addModelButton).toBeDisabled()
+      fireEvent.click(addModelButton)
+      expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
     })
 
     it('should emit completion event in multiple-model completion mode', () => {

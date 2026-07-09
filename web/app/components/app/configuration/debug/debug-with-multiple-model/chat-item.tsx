@@ -3,6 +3,7 @@ import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { useAtomValue } from 'jotai'
 import {
   memo,
   useCallback,
@@ -13,7 +14,7 @@ import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
@@ -38,12 +39,13 @@ type ChatItemProps = {
 const ChatItem: FC<ChatItemProps> = ({
   modelAndParameter,
 }) => {
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const {
     modelConfig,
     appId,
     inputs,
     collectionList,
+    canTestAndRun = false,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -84,6 +86,8 @@ const ChatItem: FC<ChatItemProps> = ({
   useFormattingChangedSubscription(chatList)
 
   const doSend: OnSend = useCallback((message, files) => {
+    if (!canTestAndRun)
+      return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
@@ -116,7 +120,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
+  }, [appId, canTestAndRun, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

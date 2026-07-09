@@ -1,10 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import Indicator from '@/app/components/header/indicator'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -17,6 +20,8 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -27,7 +32,7 @@ const ServiceApi = ({
   }, [])
 
   return (
-    <div>
+    <div className="flex items-center">
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -36,17 +41,17 @@ const ServiceApi = ({
           render={(
             <button type="button" className="w-full border-none bg-transparent p-0 text-left">
               <div className={cn(
-                'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg px-3',
-                open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
+                'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
+                open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
               )}
               >
-                <Indicator
+                <StatusDot
                   className={cn('shrink-0')}
-                  color={
-                    apiBaseUrl ? 'green' : 'yellow'
+                  status={
+                    apiBaseUrl ? 'success' : 'warning'
                   }
                 />
-                <div className="grow system-sm-medium text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+                <div className="px-0.5 system-xs-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
               </div>
             </button>
           )}
@@ -60,12 +65,14 @@ const ServiceApi = ({
           <Card
             apiBaseUrl={apiBaseUrl}
             onOpenSecretKeyModal={handleOpenSecretKeyModal}
+            canManageSecretKey={canManageSecretKey}
           />
         </PopoverContent>
       </Popover>
       <SecretKeyModal
         isShow={isSecretKeyModalVisible}
         onClose={handleCloseSecretKeyModal}
+        canManage={canManageSecretKey}
       />
     </div>
   )

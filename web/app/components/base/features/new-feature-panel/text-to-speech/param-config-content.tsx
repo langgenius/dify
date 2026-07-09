@@ -21,7 +21,7 @@ import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
 
 type SelectOption = {
-  value: string | number
+  value: string
   name: string
 }
 
@@ -40,7 +40,7 @@ const VoiceParamConfig = ({
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
   const formatLanguageName = (item: SelectOption) => {
-    return t(`voice.language.${replace(String(item.value), '-', '')}`, item.name, { ns: 'common' as const })
+    return t(`voice.language.${replace(item.value, '-', '')}`, item.name, { ns: 'common' as const })
   }
 
   let languageItem = languages.find(item => item.value === text2speech?.language)
@@ -83,7 +83,7 @@ const VoiceParamConfig = ({
           aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
         >
-          <span aria-hidden className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </button>
       </div>
       <div className="mb-3">
@@ -101,9 +101,9 @@ const VoiceParamConfig = ({
           </Infotip>
         </div>
         <Select
-          value={languageItem ? String(languageItem.value) : null}
+          value={languageItem?.value ?? null}
           onValueChange={(nextValue) => {
-            if (!nextValue)
+            if (nextValue == null)
               return
             handleChange({
               language: nextValue,
@@ -115,7 +115,7 @@ const VoiceParamConfig = ({
           </SelectTrigger>
           <SelectContent listClassName="max-h-60">
             {languages.map(item => (
-              <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>
                   {formatLanguageName(item)}
                 </SelectItemText>
@@ -131,10 +131,10 @@ const VoiceParamConfig = ({
         </div>
         <div className="flex items-center gap-1">
           <Select
-            value={voiceItem ? String(voiceItem.value) : null}
+            value={voiceItem?.value ?? null}
             disabled={!languageItem}
             onValueChange={(nextValue) => {
-              if (!nextValue)
+              if (nextValue == null || nextValue === '')
                 return
               handleChange({
                 voice: nextValue,
@@ -147,7 +147,7 @@ const VoiceParamConfig = ({
               </SelectTrigger>
               <SelectContent listClassName="max-h-60">
                 {voiceItems?.map((item: SelectOption) => (
-                  <SelectItem key={item.value} value={String(item.value)}>
+                  <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>
                       {item.name}
                     </SelectItemText>

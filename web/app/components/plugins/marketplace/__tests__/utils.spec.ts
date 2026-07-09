@@ -118,22 +118,6 @@ describe('getPluginLinkInMarketplace', () => {
   })
 })
 
-describe('getPluginDetailLinkInMarketplace', () => {
-  it('should return correct detail link for regular plugin', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-    const link = getPluginDetailLinkInMarketplace(plugin)
-    expect(link).toBe('/plugins/test-org/test-plugin')
-  })
-
-  it('should return correct detail link for bundle', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-    const link = getPluginDetailLinkInMarketplace(bundle)
-    expect(link).toBe('/bundles/test-org/test-bundle')
-  })
-})
-
 describe('getMarketplaceListCondition', () => {
   it('should return category condition for tool', async () => {
     const { getMarketplaceListCondition } = await import('../utils')

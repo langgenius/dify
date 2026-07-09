@@ -44,11 +44,18 @@ vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: true,
-  }),
-}))
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const mockSetShowModelModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
@@ -141,10 +148,6 @@ vi.mock('@remixicon/react', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
   ConfigurationMethodEnum: { predefinedModel: 'predefined-model' },
-}))
-
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <span data-testid={`indicator-${color}`} />,
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -282,7 +285,7 @@ describe('Tool Provider Detail Flow Integration', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Authorized')).toBeInTheDocument()
-        expect(screen.getByTestId('indicator-green')).toBeInTheDocument()
+        expect(document.querySelector('.shadow-status-indicator-green-shadow')).toBeInTheDocument()
       })
     })
 

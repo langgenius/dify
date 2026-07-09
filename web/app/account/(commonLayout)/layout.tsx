@@ -1,37 +1,25 @@
-import type { ReactNode } from 'react'
 import * as React from 'react'
-import { AppInitializer } from '@/app/components/app-initializer'
-import AmplitudeProvider from '@/app/components/base/amplitude'
-import GA, { GaType } from '@/app/components/base/ga'
+import { ConsoleContextProviders, ConsoleRuntimeProviders } from '@/app/(commonLayout)/providers'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
-import { AppContextProvider } from '@/context/app-context-provider'
-import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { ModalContextProvider } from '@/context/modal-context-provider'
-import { ProviderContextProvider } from '@/context/provider-context-provider'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import Header from './header'
 
-const Layout = ({ children }: { children: ReactNode }) => {
+export default async function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <GA gaType={GaType.admin} />
-      <AmplitudeProvider />
-      <AppInitializer>
-        <AppContextProvider>
-          <EventEmitterContextProvider>
-            <ProviderContextProvider>
-              <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
-                  {children}
-                </div>
-              </ModalContextProvider>
-            </ProviderContextProvider>
-          </EventEmitterContextProvider>
-        </AppContextProvider>
-      </AppInitializer>
-    </>
+    <React.Fragment>
+      <ConsoleRuntimeProviders>
+        <div className="flex h-full flex-col overflow-hidden bg-background-body">
+          <MaintenanceNotice />
+          <ConsoleContextProviders>
+            <HeaderWrapper>
+              <Header />
+            </HeaderWrapper>
+            <div className="relative flex h-0 min-h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
+              {children}
+            </div>
+          </ConsoleContextProviders>
+        </div>
+      </ConsoleRuntimeProviders>
+    </React.Fragment>
   )
 }
-export default Layout

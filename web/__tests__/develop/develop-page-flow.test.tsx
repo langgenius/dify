@@ -50,14 +50,6 @@ vi.mock('@/i18n-config/language', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Workspace' },
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-  }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: vi.fn((val: number) => `Time:${val}`),
@@ -108,6 +100,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)
@@ -128,6 +121,7 @@ describe('DevelopMain page flow', () => {
       name: 'Chat App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     const { container } = render(<DevelopMain appId="app-1" />)
@@ -150,6 +144,7 @@ describe('DevelopMain page flow', () => {
       name: 'My App',
       api_base_url: 'https://api.example.com/v1',
       mode: AppModeEnum.COMPLETION,
+      permission_keys: ['app.acl.edit'],
     }
     rerender(<DevelopMain appId="app-1" />)
 
@@ -166,6 +161,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.WORKFLOW,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)
@@ -196,6 +192,7 @@ describe('DevelopMain page flow', () => {
         name: `${mode} App`,
         api_base_url: 'https://api.test.com/v1',
         mode,
+        permission_keys: ['app.acl.edit'],
       }
 
       const { container, unmount } = render(<DevelopMain appId="app-1" />)
@@ -216,6 +213,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)

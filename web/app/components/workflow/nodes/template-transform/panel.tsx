@@ -49,7 +49,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                     className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={handleAddEmptyVariable}
                   >
-                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                    <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
                   </button>
                 )
               : undefined
@@ -85,7 +85,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                 rel="noopener noreferrer"
               >
                 <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
-                <RiQuestionLine className="h-3 w-3" />
+                <RiQuestionLine className="size-3" />
               </a>
               <div className="mx-1.5 h-3 w-px bg-divider-regular"></div>
             </div>

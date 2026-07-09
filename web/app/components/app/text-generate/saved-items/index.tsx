@@ -63,13 +63,13 @@ const SavedItems: FC<ISavedItemsProps> = ({
                         toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                       }}
                       >
-                        <RiClipboardLine className="h-4 w-4" />
+                        <RiClipboardLine className="size-4" />
                       </ActionButton>
                       <ActionButton onClick={() => {
                         onRemove(id)
                       }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4" />
+                        <RiDeleteBinLine className="size-4" />
                       </ActionButton>
                     </div>
                   </div>

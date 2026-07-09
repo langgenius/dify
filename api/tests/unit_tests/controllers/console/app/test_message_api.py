@@ -3,20 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import message as message_module
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
-
-def test_chat_messages_query_valid(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_messages_query_valid(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test valid ChatMessagesQuery with all fields."""
     query = message_module.ChatMessagesQuery(
         conversation_id="550e8400-e29b-41d4-a716-446655440000",
@@ -26,14 +18,14 @@ def test_chat_messages_query_valid(app, monkeypatch: pytest.MonkeyPatch) -> None
     assert query.limit == 50
 
 
-def test_chat_messages_query_defaults(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_messages_query_defaults(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test ChatMessagesQuery with defaults."""
     query = message_module.ChatMessagesQuery(conversation_id="550e8400-e29b-41d4-a716-446655440000")
     assert query.first_id is None
     assert query.limit == 20
 
 
-def test_chat_messages_query_empty_first_id(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_messages_query_empty_first_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test ChatMessagesQuery converts empty first_id to None."""
     query = message_module.ChatMessagesQuery(
         conversation_id="550e8400-e29b-41d4-a716-446655440000",
@@ -42,7 +34,7 @@ def test_chat_messages_query_empty_first_id(app, monkeypatch: pytest.MonkeyPatch
     assert query.first_id is None
 
 
-def test_message_feedback_payload_valid_like(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageFeedbackPayload with like rating."""
     payload = message_module.MessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
@@ -53,7 +45,7 @@ def test_message_feedback_payload_valid_like(app, monkeypatch: pytest.MonkeyPatc
     assert payload.content == "Good answer"
 
 
-def test_message_feedback_payload_valid_dislike(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageFeedbackPayload with dislike rating."""
     payload = message_module.MessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
@@ -62,69 +54,69 @@ def test_message_feedback_payload_valid_dislike(app, monkeypatch: pytest.MonkeyP
     assert payload.rating == "dislike"
 
 
-def test_message_feedback_payload_no_rating(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageFeedbackPayload without rating."""
     payload = message_module.MessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.rating is None
 
 
-def test_feedback_export_query_defaults(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_defaults(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with default format."""
     query = message_module.FeedbackExportQuery()
     assert query.format == "csv"
     assert query.from_source is None
 
 
-def test_feedback_export_query_json_format(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_json_format(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with JSON format."""
     query = message_module.FeedbackExportQuery(format="json")
     assert query.format == "json"
 
 
-def test_feedback_export_query_has_comment_true(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_has_comment_true(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with has_comment as true string."""
     query = message_module.FeedbackExportQuery(has_comment="true")
     assert query.has_comment is True
 
 
-def test_feedback_export_query_has_comment_false(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_has_comment_false(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with has_comment as false string."""
     query = message_module.FeedbackExportQuery(has_comment="false")
     assert query.has_comment is False
 
 
-def test_feedback_export_query_has_comment_1(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_has_comment_1(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with has_comment as 1."""
     query = message_module.FeedbackExportQuery(has_comment="1")
     assert query.has_comment is True
 
 
-def test_feedback_export_query_has_comment_0(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_has_comment_0(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with has_comment as 0."""
     query = message_module.FeedbackExportQuery(has_comment="0")
     assert query.has_comment is False
 
 
-def test_feedback_export_query_rating_filter(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_feedback_export_query_rating_filter(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test FeedbackExportQuery with rating filter."""
     query = message_module.FeedbackExportQuery(rating="like")
     assert query.rating == "like"
 
 
-def test_annotation_count_response(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test AnnotationCountResponse creation."""
     response = message_module.AnnotationCountResponse(count=10)
     assert response.count == 10
 
 
-def test_suggested_questions_response(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_suggested_questions_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test SuggestedQuestionsResponse creation."""
     response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])
     assert len(response.data) == 2
     assert response.data[0] == "What is AI?"
 
 
-def test_message_detail_response_normalizes_aliases_and_timestamp(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test MessageDetailResponse normalizes alias fields and datetime timestamps."""
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     response = message_module.MessageDetailResponse.model_validate(
@@ -133,13 +125,57 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app, monkeypat
             "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
             "inputs": {"foo": "bar"},
             "query": "hello",
-            "re_sign_file_url_answer": "world",
+            "message": [{"text": "hello"}],
+            "message_tokens": 7,
+            "answer": "world",
+            "answer_tokens": 11,
+            "provider_response_latency": 1.25,
             "from_source": "user",
+            "from_end_user_id": None,
+            "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+            "feedbacks": [],
+            "workflow_run_id": None,
+            "annotation": None,
+            "annotation_hit_history": None,
             "status": "normal",
             "created_at": created_at,
+            "agent_thoughts": [],
+            "message_files": [],
             "message_metadata_dict": {"token_usage": 3},
+            "error": None,
+            "parent_message_id": None,
+            "extra_contents": [],
         }
     )
     assert response.answer == "world"
+    assert response.message_tokens == 7
+    assert response.answer_tokens == 11
+    assert response.provider_response_latency == 1.25
     assert response.metadata == {"token_usage": 3}
     assert response.created_at == int(created_at.timestamp())
+    assert response.model_dump(mode="json") == {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+        "inputs": {"foo": "bar"},
+        "query": "hello",
+        "message": [{"text": "hello"}],
+        "message_tokens": 7,
+        "answer": "world",
+        "answer_tokens": 11,
+        "provider_response_latency": 1.25,
+        "from_source": "user",
+        "from_end_user_id": None,
+        "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+        "feedbacks": [],
+        "workflow_run_id": None,
+        "annotation": None,
+        "annotation_hit_history": None,
+        "created_at": int(created_at.timestamp()),
+        "agent_thoughts": [],
+        "message_files": [],
+        "metadata": {"token_usage": 3},
+        "status": "normal",
+        "error": None,
+        "parent_message_id": None,
+        "extra_contents": [],
+    }

@@ -81,12 +81,22 @@ vi.mock('../detail/operation-dropdown', () => ({
   ),
 }))
 
-// Mock the app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
+
+vi.mock('@/context/app-context-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 // Mock the format time hook
@@ -155,6 +165,7 @@ describe('MCPCard', () => {
     mockDeleteMCP.mockClear()
     mockUpdateMCP.mockResolvedValue({ result: 'success' })
     mockDeleteMCP.mockResolvedValue({ result: 'success' })
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -182,6 +193,29 @@ describe('MCPCard', () => {
     it('should display update time', () => {
       render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
+    })
+
+    it('should use the Figma card shell', () => {
+      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      const card = screen.getByText('Test MCP Server').closest('.group')
+      expect(card).toHaveClass(
+        'overflow-hidden',
+        'rounded-xl',
+        'border-[0.5px]',
+        'border-components-panel-border',
+        'bg-components-panel-on-panel-item-bg',
+        'shadow-xs',
+      )
+    })
+
+    it('should render footer metadata without a tools icon', () => {
+      const { container } = render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.getByText(/tools.mcp.toolsCount/)).toBeInTheDocument()
+      expect(screen.getByText(/tools.mcp.updateTime/)).toBeInTheDocument()
+      expect(screen.getByText('·')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-hammer-fill')).not.toBeInTheDocument()
     })
   })
 
@@ -273,11 +307,12 @@ describe('MCPCard', () => {
 
     it('should show red indicator when not configured', () => {
       const data = createMockData({ is_team_authorization: false })
-      render(
+      const { container } = render(
         <MCPCard {...defaultProps} data={data} />,
         { wrapper: createWrapper() },
       )
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
+      expect(container.querySelector('.size-1\\.5')).toBeInTheDocument()
     })
   })
 
@@ -311,10 +346,18 @@ describe('MCPCard', () => {
   })
 
   describe('Operation Dropdown', () => {
-    it('should render operation dropdown for workspace managers', () => {
+    it('should render operation dropdown when user has mcp.manage', () => {
       render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+    })
+
+    it('should not render operation dropdown when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
+
+      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
     })
 
     it('should stop propagation when clicking on dropdown container', () => {

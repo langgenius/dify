@@ -70,12 +70,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ onCheck, checked }: { onCheck: () => void, checked: boolean }) => (
-    <button type="button" onClick={onCheck}>{checked ? 'checked' : 'unchecked'}</button>
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@langgenius/dify-ui/select')>()
 
@@ -217,6 +211,12 @@ describe('ConfigModalFormFields', () => {
     expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
 
+    const hiddenFieldDisabledProps = createBaseProps()
+    const hiddenFieldDisabledView = render(<ConfigModalFormFields {...hiddenFieldDisabledProps} showHiddenField={false} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
+    hiddenFieldDisabledView.unmount()
+
     const singleFileProps = createBaseProps()
     singleFileProps.tempPayload = {
       ...singleFileProps.tempPayload,
@@ -230,7 +230,7 @@ describe('ConfigModalFormFields', () => {
     expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
-    fireEvent.click(screen.getAllByText('unchecked')[0]!)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'variableConfig.required' }))
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
     expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
@@ -416,17 +416,14 @@ describe('ConfigModalFormFields', () => {
     requiredProps.tempPayload = { ...requiredProps.tempPayload, type: InputVarType.textInput, required: true, hide: false }
     const { unmount } = render(<ConfigModalFormFields {...requiredProps} />)
 
-    const buttons = screen.getAllByRole('button')
-    const hideButton = buttons.find(btn => btn.textContent === 'unchecked' && btn !== buttons[0])
-    expect(hideButton).toBeDefined()
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute('aria-disabled', 'true')
     unmount()
 
     const hideProps = createBaseProps()
     hideProps.tempPayload = { ...hideProps.tempPayload, type: InputVarType.textInput, required: false, hide: true }
     render(<ConfigModalFormFields {...hideProps} />)
 
-    const allButtons = screen.getAllByRole('button')
-    const checkedHideButton = allButtons.find(btn => btn.textContent === 'checked')
-    expect(checkedHideButton).toBeDefined()
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute('aria-checked', 'true')
   })
 })

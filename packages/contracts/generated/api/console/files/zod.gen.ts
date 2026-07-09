@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AllowedExtensionsResponse
+ */
+export const zAllowedExtensionsResponse = z.object({
+  allowed_extensions: z.array(z.string()),
+})
+
+/**
  * UploadConfig
  */
 export const zUploadConfig = z.object({
@@ -32,6 +39,7 @@ export const zFileResponse = z.object({
   name: z.string(),
   original_url: z.string().nullish(),
   preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
   size: z.int(),
   source_url: z.string().nullish(),
   tenant_id: z.string().nullish(),
@@ -39,14 +47,26 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * TextContentResponse
+ */
+export const zTextContentResponse = z.object({
+  content: z.string(),
+})
+
+/**
  * Success
  */
-export const zGetFilesSupportTypeResponse = z.record(z.string(), z.unknown())
+export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
 
 /**
  * Success
  */
 export const zGetFilesUploadResponse = zUploadConfig
+
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+  source: z.enum(['datasets']).optional(),
+})
 
 /**
  * File uploaded successfully
@@ -54,10 +74,10 @@ export const zGetFilesUploadResponse = zUploadConfig
 export const zPostFilesUploadResponse = zFileResponse
 
 export const zGetFilesByFileIdPreviewPath = z.object({
-  file_id: z.string(),
+  file_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetFilesByFileIdPreviewResponse = z.record(z.string(), z.unknown())
+export const zGetFilesByFileIdPreviewResponse = zTextContentResponse

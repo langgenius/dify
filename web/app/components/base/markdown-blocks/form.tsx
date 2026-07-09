@@ -1,16 +1,16 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -41,7 +41,15 @@ type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = /^[a-z][\w-]*$/i
+const SAFE_NAME_RE = (() => {
+  try {
+    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_-]*$', 'u')
+  }
+  catch {
+    // Fallback for browsers without Unicode property escape support.
+    return /^[a-z][\w-]*$/i
+  }
+})()
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
@@ -85,6 +93,10 @@ type EditState = {
 function getTextContent(node: HastElement): string {
   const textChild = node.children.find((c): c is HastText => c.type === 'text')
   return textChild?.value ?? ''
+}
+
+function getLabelTarget(node: HastElement): string {
+  return str(node.properties.htmlFor || node.properties.for || node.properties.name)
 }
 
 function str(val: unknown): string {
@@ -243,7 +255,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           return (
             <label
               key={key}
-              htmlFor={str(child.properties.htmlFor || child.properties.name)}
+              htmlFor={getLabelTarget(child)}
               className="my-2 system-md-semibold text-text-secondary"
               data-testid="label-field"
             >
@@ -281,14 +293,20 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
+            const label = str(child.properties.dataTip || child.properties['data-tip'])
+            const hasExternalLabel = elementChildren.some(node =>
+              node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
+            )
+            const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
-                  checked={!!formValues[name]}
-                  onCheck={() => updateValue(name, !formValues[name])}
                   id={name}
+                  checked={!!formValues[name]}
+                  aria-label={checkboxAriaLabel}
+                  onCheckedChange={checked => updateValue(name, checked)}
                 />
-                <span>{str(child.properties.dataTip || child.properties['data-tip'])}</span>
+                {label && <span>{label}</span>}
               </div>
             )
           }
@@ -362,11 +380,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             return null
           return (
             <Textarea
+              aria-label={name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={e => updateValue(name, e.target.value)}
+              onValueChange={value => updateValue(name, value)}
             />
           )
         }

@@ -1,5 +1,6 @@
 import type { VersionHistory } from '@/types/workflow'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { Plan } from '@/app/components/billing/type'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -10,6 +11,31 @@ const mockInvalidAllLastRun = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
+let mockPlanType = Plan.professional
+let mockEnableBilling = true
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: '',
+    name: '',
+  },
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    plan: { type: mockPlanType },
+    enableBilling: mockEnableBilling,
+  }),
+}))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -75,6 +101,8 @@ const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory 
 describe('HeaderInRestoring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPlanType = Plan.professional
+    mockEnableBilling = true
   })
 
   it('should disable restore when the flow id is not ready yet', () => {
@@ -124,5 +152,27 @@ describe('HeaderInRestoring', () => {
     })
 
     expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
+  })
+
+  it('should show plan upgrade modal instead of restoring when sandbox users click restore', () => {
+    mockPlanType = Plan.sandbox
+    renderWorkflowComponent(<HeaderInRestoring />, {
+      initialStoreState: {
+        currentVersion: createVersion(),
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+    expect(screen.getByText('billing.upgrade.workflowRestore.title')).toBeInTheDocument()
+    expect(mockRestoreWorkflow).not.toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })

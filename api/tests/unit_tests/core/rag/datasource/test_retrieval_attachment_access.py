@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -112,7 +114,7 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     assert "upload_files.id IN" in whereclause
 
 
-def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypatch) -> None:
+def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_id = str(uuid4())
@@ -147,6 +149,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypat
 
     with bind_file_access_scope(scope):
         results = retrieval.knowledge_retrieval(
+            MagicMock(),
             KnowledgeRetrievalRequest(
                 tenant_id=tenant_id,
                 user_id=str(uuid4()),
@@ -155,7 +158,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypat
                 dataset_ids=[dataset_id],
                 query="desktop picture",
                 retrieval_mode="multiple",
-            )
+            ),
         )
         current_scope = get_current_file_access_scope()
 

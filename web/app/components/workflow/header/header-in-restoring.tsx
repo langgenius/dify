@@ -2,11 +2,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
+import { userProfileAtom } from '@/context/app-context-state'
+import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
@@ -32,8 +37,10 @@ const HeaderInRestoring = ({
 }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
+  const { plan, enableBilling } = useProviderContext()
   const workflowStore = useWorkflowStore()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const userProfile = useAtomValue(userProfileAtom)
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
@@ -49,6 +56,7 @@ const HeaderInRestoring = ({
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
   const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
 
   const handleCancelRestore = useCallback(() => {
@@ -62,6 +70,8 @@ const HeaderInRestoring = ({
       return ''
     if (configsMap.flowType === FlowType.ragPipeline)
       return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
+    if (configsMap.flowType === FlowType.snippet)
+      return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
     return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
   }, [configsMap?.flowId, configsMap?.flowType])
 
@@ -114,6 +124,11 @@ const HeaderInRestoring = ({
     if (!canRestore || !currentVersion)
       return
 
+    if (!canUseWorkflowVersionAction) {
+      setIsRestorePlanUpgradeModalOpen(true)
+      return
+    }
+
     setShowWorkflowVersionHistoryPanel(false)
     await emitRestoreIntent()
 
@@ -136,7 +151,7 @@ const HeaderInRestoring = ({
       resetWorkflowVersionHistory()
       onRestoreSettled?.()
     }
-  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory, onRestoreSettled])
+  }, [canRestore, currentVersion, canUseWorkflowVersionAction, setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory, onRestoreSettled])
 
   return (
     <>
@@ -163,11 +178,19 @@ const HeaderInRestoring = ({
           )}
         >
           <div className="flex items-center gap-x-0.5">
-            <RiHistoryLine className="h-4 w-4" />
+            <RiHistoryLine className="size-4" />
             <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>
       </div>
+      {isRestorePlanUpgradeModalOpen && (
+        <PlanUpgradeModal
+          show
+          onClose={() => setIsRestorePlanUpgradeModalOpen(false)}
+          title={t('upgrade.workflowRestore.title', { ns: 'billing' })!}
+          description={t('upgrade.workflowRestore.description', { ns: 'billing' })!}
+        />
+      )}
     </>
   )
 }

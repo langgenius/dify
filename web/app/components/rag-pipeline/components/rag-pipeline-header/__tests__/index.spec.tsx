@@ -9,6 +9,14 @@ import Publisher from '../publisher'
 import Popup from '../publisher/popup'
 import RunMode from '../run-mode'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockSetShowInputFieldPanel = vi.fn()
 const mockSetShowEnvPanel = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
@@ -40,6 +48,16 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -114,9 +132,38 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 const mockMutateDatasetRes = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    dataset: {
+      permission_keys: mockDatasetPermissionKeys,
+      maintainer: mockDatasetMaintainer,
+    },
+    mutateDatasetRes: mockMutateDatasetRes,
+  }),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const mockSetShowPricingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
@@ -172,11 +219,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     promise: toastMocks.promise,
   }),
 }))
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: (key: string) => key,
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
-
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     let value = initial
@@ -189,7 +231,6 @@ vi.mock('ahooks', () => ({
       },
     ]
   },
-  useKeyPress: vi.fn(),
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
@@ -219,6 +260,11 @@ describe('RagPipelineHeader', () => {
       setShowEnvPanel: mockSetShowEnvPanel,
     }
     mockProviderContextValue = createMockProviderContextValue()
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Rendering', () => {
@@ -408,10 +454,11 @@ describe('Popup', () => {
     })
 
     it('should render keyboard shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
-      expect(screen.getByText('ctrl'))!.toBeInTheDocument()
-      expect(screen.getByText('⇧'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
+      expect(screen.getByText('Ctrl'))!.toBeInTheDocument()
+      expect(screen.getByText('Shift'))!.toBeInTheDocument()
       expect(screen.getByText('P'))!.toBeInTheDocument()
     })
 
@@ -566,9 +613,10 @@ describe('RunMode', () => {
     })
 
     it('should render keyboard shortcuts when not disabled', () => {
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
       expect(screen.getByText('R'))!.toBeInTheDocument()
     })
   })
@@ -1077,9 +1125,10 @@ describe('Edge Cases', () => {
       mockStoreState.workflowRunningData = null
       mockStoreState.isPreparingDataSource = false
 
-      render(<RunMode />)
+      const { container } = render(<RunMode />)
 
-      expect(screen.getByText('alt'))!.toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByText('Alt'))!.toBeInTheDocument()
       expect(screen.getByText('R'))!.toBeInTheDocument()
     })
 

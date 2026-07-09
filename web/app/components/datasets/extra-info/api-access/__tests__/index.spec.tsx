@@ -7,10 +7,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
-}))
-
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: vi.fn(() => 'https://api.example.com/docs'),
 }))
@@ -124,6 +120,13 @@ describe('ApiAccess', () => {
       const innerDiv = container.querySelector('.cursor-pointer')
       // When expanded, should have gap-2 and text, not justify-center
       expect(innerDiv).not.toHaveClass('justify-center')
+    })
+
+    it('should use compact sidebar footer spacing when expanded', () => {
+      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
+
+      expect(container.firstChild).toHaveClass('px-1', 'py-2')
+      expect(screen.getByText('common.appMenus.apiAccess')).toHaveClass('system-sm-regular', 'truncate')
     })
   })
 })

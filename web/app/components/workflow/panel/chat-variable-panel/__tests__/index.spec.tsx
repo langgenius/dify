@@ -191,7 +191,7 @@ describe('ChatVariablePanel', () => {
     await user.click(toggleTipButton)
     expect(screen.queryByText('workflow.chatVariable.panelDescription')).not.toBeInTheDocument()
 
-    const closeButton = container.querySelector('.flex.h-6.w-6.cursor-pointer.items-center.justify-center') as HTMLElement
+    const closeButton = container.querySelector('.flex.size-6.cursor-pointer.items-center.justify-center') as HTMLElement
     await user.click(closeButton)
 
     expect(mockSetShowChatVariablePanel).toHaveBeenCalledWith(false)

@@ -86,7 +86,7 @@ class TestModelConfigResourcePermissions:
 
         # Mock app loading
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         # Mock current user
         monkeypatch.setattr(model_config_api, "current_user", mock_account)

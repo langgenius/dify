@@ -33,6 +33,8 @@ vi.mock('@/context/dataset-detail', () => ({
         embedding_available: true,
         data_source_type: DataSourceType.FILE,
         runtime_mode: 'rag',
+        created_by: 'test-user',
+        permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
       },
     }
     return selector(mockState as MockState)
@@ -44,6 +46,15 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'professional' },
   })),
 }))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'test-user' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
 
 // Mock document service hooks
 const mockInvalidDocumentList = vi.fn()
@@ -81,6 +92,12 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDocumentList: vi.fn(() => mockInvalidDocumentList),
   useInvalidDocumentDetail: vi.fn(() => mockInvalidDocumentDetail),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock segment service hooks
 vi.mock('@/service/knowledge/use-segment', () => ({
@@ -278,6 +295,8 @@ describe('Documents', () => {
           embedding_available: true,
           data_source_type: DataSourceType.FILE,
           runtime_mode: 'rag',
+          created_by: 'test-user',
+          permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
         },
       }
       return selector(mockState as MockState)
@@ -362,6 +381,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.NOTION,
             runtime_mode: 'rag',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)
@@ -466,6 +487,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag_pipeline',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)
@@ -487,6 +510,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)

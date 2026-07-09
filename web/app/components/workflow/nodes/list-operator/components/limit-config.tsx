@@ -14,13 +14,13 @@ const LIMIT_SIZE_MIN = 1
 const LIMIT_SIZE_MAX = 20
 const LIMIT_SIZE_DEFAULT = 10
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   config: Limit
   onChange: (limit: Limit) => void
   canSetRoleName?: boolean
-}
+}>
 
 const LIMIT_DEFAULT: Limit = {
   enabled: false,
@@ -66,6 +66,7 @@ const LimitConfig: FC<Props> = ({
         {payload?.enabled
           ? (
               <InputNumberWithSlider
+                label={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
                 value={payload?.size || LIMIT_SIZE_DEFAULT}
                 min={LIMIT_SIZE_MIN}
                 max={LIMIT_SIZE_MAX}

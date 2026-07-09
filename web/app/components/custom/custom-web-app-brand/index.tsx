@@ -20,7 +20,7 @@ const CustomWebAppBrand = () => {
     webappBrandRemoved,
     uploadDisabled,
     workspaceLogo,
-    isCurrentWorkspaceManager,
+    canManageCustomBrand,
     isSandbox,
     handleApply,
     handleCancel,
@@ -36,7 +36,7 @@ const CustomWebAppBrand = () => {
         <Switch
           size="lg"
           checked={webappBrandRemoved ?? false}
-          disabled={isSandbox || !isCurrentWorkspaceManager}
+          disabled={isSandbox || !canManageCustomBrand}
           onCheckedChange={handleSwitch}
         />
       </div>
@@ -64,7 +64,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={uploadDisabled}
               >
-                <span className="mr-1 i-ri-image-add-line h-4 w-4" />
+                <span className="mr-1 i-ri-image-add-line size-4" />
                 {
                   (webappLogo || fileId)
                     ? t('change', { ns: 'custom' })
@@ -87,7 +87,7 @@ const CustomWebAppBrand = () => {
                 className="relative mr-2"
                 disabled={true}
               >
-                <span className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
+                <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
                 {t('uploading', { ns: 'custom' })}
               </Button>
             )
@@ -98,7 +98,7 @@ const CustomWebAppBrand = () => {
                 <Button
                   className="mr-2"
                   onClick={handleCancel}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !canManageCustomBrand}
                 >
                   {t('operation.cancel', { ns: 'common' })}
                 </Button>
@@ -106,7 +106,7 @@ const CustomWebAppBrand = () => {
                   variant="primary"
                   className="mr-2"
                   onClick={handleApply}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !canManageCustomBrand}
                 >
                   {t('apply', { ns: 'custom' })}
                 </Button>

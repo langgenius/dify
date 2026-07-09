@@ -70,9 +70,10 @@ const Configure = ({
         <PopoverTrigger
           render={(
             <Button
+              className="h-8"
               variant="secondary-accent"
             >
-              <RiAddLine className="h-4 w-4" />
+              <RiAddLine className="size-4" />
               {t('dataSource.configure', { ns: 'common' })}
             </Button>
           )}

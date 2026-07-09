@@ -27,13 +27,21 @@ const mockCurrentWorkspace = vi.fn().mockReturnValue({
 const mockIsCurrentWorkspaceManager = vi.fn().mockReturnValue(true)
 const mockIsCurrentWorkspaceEditor = vi.fn().mockReturnValue(true)
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -83,6 +91,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 describe('SecretKeyModal', () => {
   const defaultProps = {
     isShow: true,
+    canManage: true,
     onClose: vi.fn(),
   }
 
@@ -124,7 +133,7 @@ describe('SecretKeyModal', () => {
 
     it('should render the close icon', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
+      const closeIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid')
       expect(closeIcon).toBeInTheDocument()
     })
   })
@@ -186,19 +195,26 @@ describe('SecretKeyModal', () => {
       expect(screen.getByText('appApi.never')).toBeInTheDocument()
     })
 
-    it('should render delete button for managers', async () => {
+    it('should render delete button for permitted users', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBeGreaterThanOrEqual(2)
-      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
+      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
       expect(deleteIcon).toBeInTheDocument()
     })
 
-    it('should not render delete button for non-managers', async () => {
+    it('should render delete button when canManage is true even if the workspace role is not manager', async () => {
       mockIsCurrentWorkspaceManager.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-      const actionButtons = screen.getAllByRole('button')
-      expect(actionButtons.length).toBeGreaterThan(0)
+      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
+      expect(deleteIcon).toBeInTheDocument()
+    })
+
+    it('should not render delete button when canManage is false even if the workspace role is manager', async () => {
+      mockIsCurrentWorkspaceManager.mockReturnValue(true)
+      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" canManage={false} />)
+      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
+      expect(deleteIcon).not.toBeInTheDocument()
     })
 
     it('should render table headers', async () => {
@@ -230,7 +246,7 @@ describe('SecretKeyModal', () => {
       const onClose = vi.fn()
       await renderModal(<SecretKeyModal {...defaultProps} onClose={onClose} />)
 
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
+      const closeIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid')
       expect(closeIcon).toBeInTheDocument()
 
       await act(async () => {
@@ -349,16 +365,24 @@ describe('SecretKeyModal', () => {
     })
 
     it('should disable create button when no workspace', async () => {
-      mockCurrentWorkspace.mockReturnValue(null)
+      mockCurrentWorkspace.mockReturnValue({ id: '', name: '' })
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
       expect(createButton).toBeDisabled()
     })
 
-    it('should disable create button when not editor', async () => {
+    it('should keep create button enabled when canManage is true even if the workspace role is not editor', async () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} />)
+
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      expect(createButton).not.toBeDisabled()
+    })
+
+    it('should disable create button when canManage is false even if the workspace role is editor', async () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(true)
+      await renderModal(<SecretKeyModal {...defaultProps} canManage={false} />)
 
       const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
       expect(createButton).toBeDisabled()
@@ -374,7 +398,7 @@ describe('SecretKeyModal', () => {
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
     })
 
-    it('should render delete button for managers', async () => {
+    it('should render delete button for permitted users', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = screen.getAllByRole('button')
@@ -394,10 +418,10 @@ describe('SecretKeyModal', () => {
       expect(actionContainers.length).toBeGreaterThan(0)
     })
 
-    it('should have delete button visible for managers', async () => {
+    it('should have delete button visible for permitted users', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
+      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
       const deleteButton = deleteIcon?.closest('button')
       expect(deleteButton).toBeInTheDocument()
     })

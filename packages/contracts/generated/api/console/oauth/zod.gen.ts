@@ -23,46 +23,89 @@ export const zOAuthDataSourceSyncResponse = z.object({
   result: z.string(),
 })
 
-export const zGetOauthAuthorizeByProviderPath = z.object({
-  provider: z.string(),
-})
-
-export const zGetOauthAuthorizeByProviderQuery = z.object({
-  code: z.string().optional(),
-  state: z.string().optional(),
+/**
+ * PluginOAuthAuthorizationUrlResponse
+ */
+export const zPluginOAuthAuthorizationUrlResponse = z.object({
+  authorization_url: z.string(),
 })
 
 /**
- * Success
+ * OAuthProviderRequest
  */
-export const zGetOauthAuthorizeByProviderResponse = z.record(z.string(), z.unknown())
+export const zOAuthProviderRequest = z.object({
+  client_id: z.string(),
+  redirect_uri: z.string(),
+})
+
+/**
+ * OAuthProviderAppResponse
+ */
+export const zOAuthProviderAppResponse = z.object({
+  app_icon: z.string(),
+  app_label: z.record(z.string(), z.unknown()),
+  scope: z.string(),
+})
+
+/**
+ * OAuthClientPayload
+ */
+export const zOAuthClientPayload = z.object({
+  client_id: z.string(),
+})
+
+/**
+ * OAuthProviderAccountResponse
+ */
+export const zOAuthProviderAccountResponse = z.object({
+  avatar: z.string().nullish(),
+  email: z.string(),
+  interface_language: z.string(),
+  name: z.string(),
+  timezone: z.string(),
+})
+
+/**
+ * OAuthProviderAuthorizeResponse
+ */
+export const zOAuthProviderAuthorizeResponse = z.object({
+  code: z.string(),
+})
+
+/**
+ * OAuthTokenRequest
+ */
+export const zOAuthTokenRequest = z.object({
+  client_id: z.string(),
+  client_secret: z.string().nullish(),
+  code: z.string().nullish(),
+  grant_type: z.string(),
+  redirect_uri: z.string().nullish(),
+  refresh_token: z.string().nullish(),
+})
+
+/**
+ * OAuthProviderTokenResponse
+ */
+export const zOAuthProviderTokenResponse = z.object({
+  access_token: z.string(),
+  expires_in: z.int(),
+  refresh_token: z.string(),
+  token_type: z.string(),
+})
 
 export const zGetOauthDataSourceBindingByProviderPath = z.object({
   provider: z.string(),
 })
 
 export const zGetOauthDataSourceBindingByProviderQuery = z.object({
-  code: z.string().optional(),
+  code: z.string(),
 })
 
 /**
  * Data source binding success
  */
 export const zGetOauthDataSourceBindingByProviderResponse = zOAuthDataSourceBindingResponse
-
-export const zGetOauthDataSourceCallbackByProviderPath = z.object({
-  provider: z.string(),
-})
-
-export const zGetOauthDataSourceCallbackByProviderQuery = z.object({
-  code: z.string().optional(),
-  error: z.string().optional(),
-})
-
-/**
- * Success
- */
-export const zGetOauthDataSourceCallbackByProviderResponse = z.record(z.string(), z.unknown())
 
 export const zGetOauthDataSourceByProviderPath = z.object({
   provider: z.string(),
@@ -74,7 +117,7 @@ export const zGetOauthDataSourceByProviderPath = z.object({
 export const zGetOauthDataSourceByProviderResponse = zOAuthDataSourceResponse
 
 export const zGetOauthDataSourceByProviderByBindingIdSyncPath = z.object({
-  binding_id: z.string(),
+  binding_id: z.uuid(),
   provider: z.string(),
 })
 
@@ -83,89 +126,54 @@ export const zGetOauthDataSourceByProviderByBindingIdSyncPath = z.object({
  */
 export const zGetOauthDataSourceByProviderByBindingIdSyncResponse = zOAuthDataSourceSyncResponse
 
-export const zGetOauthLoginByProviderPath = z.object({
-  provider: z.string(),
-})
-
-export const zGetOauthLoginByProviderQuery = z.object({
-  invite_token: z.string().optional(),
-})
-
-/**
- * Success
- */
-export const zGetOauthLoginByProviderResponse = z.record(z.string(), z.unknown())
-
-export const zGetOauthPluginByProviderIdDatasourceCallbackPath = z.object({
-  provider_id: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetOauthPluginByProviderIdDatasourceCallbackResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
-
 export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath = z.object({
   provider_id: z.string(),
 })
 
+export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.object({
+  credential_id: z.string().optional(),
+})
+
 /**
- * Success
+ * Datasource OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
+  = zPluginOAuthAuthorizationUrlResponse
 
 export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Tool OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderToolAuthorizationUrlResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetOauthPluginByProviderToolAuthorizationUrlResponse
+  = zPluginOAuthAuthorizationUrlResponse
 
-export const zGetOauthPluginByProviderToolCallbackPath = z.object({
-  provider: z.string(),
-})
+export const zPostOauthProviderBody = zOAuthProviderRequest
 
 /**
  * Success
  */
-export const zGetOauthPluginByProviderToolCallbackResponse = z.record(z.string(), z.unknown())
+export const zPostOauthProviderResponse = zOAuthProviderAppResponse
 
-export const zGetOauthPluginByProviderTriggerCallbackPath = z.object({
-  provider: z.string(),
-})
+export const zPostOauthProviderAccountBody = zOAuthClientPayload
 
 /**
  * Success
  */
-export const zGetOauthPluginByProviderTriggerCallbackResponse = z.record(z.string(), z.unknown())
+export const zPostOauthProviderAccountResponse = zOAuthProviderAccountResponse
+
+export const zPostOauthProviderAuthorizeBody = zOAuthClientPayload
 
 /**
  * Success
  */
-export const zPostOauthProviderResponse = z.record(z.string(), z.unknown())
+export const zPostOauthProviderAuthorizeResponse = zOAuthProviderAuthorizeResponse
+
+export const zPostOauthProviderTokenBody = zOAuthTokenRequest
 
 /**
  * Success
  */
-export const zPostOauthProviderAccountResponse = z.record(z.string(), z.unknown())
-
-/**
- * Success
- */
-export const zPostOauthProviderAuthorizeResponse = z.record(z.string(), z.unknown())
-
-/**
- * Success
- */
-export const zPostOauthProviderTokenResponse = z.record(z.string(), z.unknown())
+export const zPostOauthProviderTokenResponse = zOAuthProviderTokenResponse

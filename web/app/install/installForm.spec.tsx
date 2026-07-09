@@ -3,6 +3,7 @@ import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/c
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { expectLoadingButton } from '@/test/button'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
@@ -59,7 +60,7 @@ describe('InstallForm', () => {
     expect(mockSetup).not.toHaveBeenCalled()
   })
 
-  it('should submit and redirect to apps on successful login', async () => {
+  it('should submit and redirect to the console root on successful login', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
     mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
 
@@ -96,7 +97,7 @@ describe('InstallForm', () => {
     })
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/')
     })
   })
 
@@ -135,7 +136,7 @@ describe('InstallForm', () => {
     fireEvent.click(button)
 
     await waitFor(() => {
-      expect(button).toBeDisabled()
+      expectLoadingButton(button)
     })
 
     fireEvent.click(button)
@@ -154,7 +155,6 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     await waitFor(() => {
-      expect(localStorage.setItem).toHaveBeenCalledWith('setup_status', 'finished')
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
   })

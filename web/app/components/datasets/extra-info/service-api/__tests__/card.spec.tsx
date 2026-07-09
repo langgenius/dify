@@ -98,12 +98,19 @@ describe('Card (Service API)', () => {
   // User Interactions: tests button clicks
   describe('User Interactions', () => {
     it('should call onOpenSecretKeyModal when API key button is clicked', () => {
-      renderWithProviders(<Card {...defaultProps} />)
+      renderWithProviders(<Card {...defaultProps} canManageSecretKey />)
 
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
       fireEvent.click(apiKeyButton!)
 
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should disable API key button when secret key management is not allowed', () => {
+      renderWithProviders(<Card {...defaultProps} canManageSecretKey={false} />)
+
+      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
+      expect(apiKeyButton).toBeDisabled()
     })
 
     it('should render API reference as a link', () => {

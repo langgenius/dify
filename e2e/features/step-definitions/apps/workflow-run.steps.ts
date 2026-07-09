@@ -12,7 +12,7 @@ Given('a minimal runnable workflow draft has been synced', async function (this:
 
 When('I run the workflow', async function (this: DifyWorld) {
   const page = this.getPage()
-  const testRunButton = page.getByText('Test Run')
+  const testRunButton = page.getByRole('button', { name: /Test Run/ })
 
   await expect(testRunButton).toBeVisible({ timeout: 15_000 })
   await testRunButton.click()
@@ -20,6 +20,6 @@ When('I run the workflow', async function (this: DifyWorld) {
 
 Then('the workflow run should succeed', async function (this: DifyWorld) {
   const page = this.getPage()
-  await page.getByText('DETAIL').click()
-  await expect(page.getByText('SUCCESS').first()).toBeVisible({ timeout: 55_000 })
+  await page.getByText('DETAIL', { exact: true }).click()
+  await expect(page.getByText('SUCCESS', { exact: true }).first()).toBeVisible({ timeout: 55_000 })
 })

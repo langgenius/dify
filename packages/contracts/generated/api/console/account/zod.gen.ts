@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AvatarUrlResponse
+ */
+export const zAvatarUrlResponse = z.object({
+  avatar_url: z.string(),
+})
+
+/**
  * AccountAvatarPayload
  */
 export const zAccountAvatarPayload = z.object({
@@ -10,10 +17,11 @@ export const zAccountAvatarPayload = z.object({
 })
 
 /**
- * Account
+ * AccountResponse
  */
-export const zAccount = z.object({
+export const zAccountResponse = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -37,10 +45,25 @@ export const zChangeEmailSendPayload = z.object({
 })
 
 /**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
+/**
  * CheckEmailUniquePayload
  */
 export const zCheckEmailUniquePayload = z.object({
   email: z.string(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
@@ -57,6 +80,15 @@ export const zChangeEmailResetPayload = z.object({
 export const zChangeEmailValidityPayload = z.object({
   code: z.string(),
   email: z.string(),
+  token: z.string(),
+})
+
+/**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
   token: z.string(),
 })
 
@@ -174,6 +206,23 @@ export const zAccountIntegrateListResponse = z.object({
   data: z.array(zAccountIntegrateResponse),
 })
 
+/**
+ * AccountResponse
+ */
+export const zAccountResponseWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
 export const zGetAccountAvatarQuery = z.object({
   avatar: z.string(),
 })
@@ -181,61 +230,61 @@ export const zGetAccountAvatarQuery = z.object({
 /**
  * Success
  */
-export const zGetAccountAvatarResponse = z.record(z.string(), z.unknown())
+export const zGetAccountAvatarResponse = zAvatarUrlResponse
 
 export const zPostAccountAvatarBody = zAccountAvatarPayload
 
 /**
  * Success
  */
-export const zPostAccountAvatarResponse = zAccount
+export const zPostAccountAvatarResponse = zAccountResponse
 
 export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 
 /**
  * Success
  */
-export const zPostAccountChangeEmailResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailResponse = zSimpleResultDataResponse
 
 export const zPostAccountChangeEmailCheckEmailUniqueBody = zCheckEmailUniquePayload
 
 /**
  * Success
  */
-export const zPostAccountChangeEmailCheckEmailUniqueResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailCheckEmailUniqueResponse = zSimpleResultResponse
 
 export const zPostAccountChangeEmailResetBody = zChangeEmailResetPayload
 
 /**
  * Success
  */
-export const zPostAccountChangeEmailResetResponse = zAccount
+export const zPostAccountChangeEmailResetResponse = zAccountResponse
 
 export const zPostAccountChangeEmailValidityBody = zChangeEmailValidityPayload
 
 /**
  * Success
  */
-export const zPostAccountChangeEmailValidityResponse = z.record(z.string(), z.unknown())
+export const zPostAccountChangeEmailValidityResponse = zVerificationTokenResponse
 
 export const zPostAccountDeleteBody = zAccountDeletePayload
 
 /**
  * Success
  */
-export const zPostAccountDeleteResponse = z.record(z.string(), z.unknown())
+export const zPostAccountDeleteResponse = zSimpleResultResponse
 
 export const zPostAccountDeleteFeedbackBody = zAccountDeletionFeedbackPayload
 
 /**
  * Success
  */
-export const zPostAccountDeleteFeedbackResponse = z.record(z.string(), z.unknown())
+export const zPostAccountDeleteFeedbackResponse = zSimpleResultResponse
 
 /**
  * Success
  */
-export const zGetAccountDeleteVerifyResponse = z.record(z.string(), z.unknown())
+export const zGetAccountDeleteVerifyResponse = zSimpleResultDataResponse
 
 /**
  * Success
@@ -270,7 +319,7 @@ export const zPostAccountInitBody = zAccountInitPayload
 /**
  * Success
  */
-export const zPostAccountInitResponse = z.record(z.string(), z.unknown())
+export const zPostAccountInitResponse = zSimpleResultResponse
 
 /**
  * Success
@@ -282,37 +331,37 @@ export const zPostAccountInterfaceLanguageBody = zAccountInterfaceLanguagePayloa
 /**
  * Success
  */
-export const zPostAccountInterfaceLanguageResponse = zAccount
+export const zPostAccountInterfaceLanguageResponse = zAccountResponse
 
 export const zPostAccountInterfaceThemeBody = zAccountInterfaceThemePayload
 
 /**
  * Success
  */
-export const zPostAccountInterfaceThemeResponse = zAccount
+export const zPostAccountInterfaceThemeResponse = zAccountResponse
 
 export const zPostAccountNameBody = zAccountNamePayload
 
 /**
  * Success
  */
-export const zPostAccountNameResponse = zAccount
+export const zPostAccountNameResponse = zAccountResponse
 
 export const zPostAccountPasswordBody = zAccountPasswordPayload
 
 /**
  * Success
  */
-export const zPostAccountPasswordResponse = zAccount
+export const zPostAccountPasswordResponse = zAccountResponse
 
 /**
  * Success
  */
-export const zGetAccountProfileResponse = zAccount
+export const zGetAccountProfileResponse = zAccountResponse
 
 export const zPostAccountTimezoneBody = zAccountTimezonePayload
 
 /**
  * Success
  */
-export const zPostAccountTimezoneResponse = zAccount
+export const zPostAccountTimezoneResponse = zAccountResponse

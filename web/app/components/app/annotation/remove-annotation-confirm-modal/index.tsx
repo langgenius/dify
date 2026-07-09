@@ -11,11 +11,11 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   onRemove: () => void
-}
+}>
 
 const RemoveAnnotationConfirmModal: FC<Props> = ({
   isShow,

@@ -12,12 +12,12 @@ import Picker from '@/app/components/base/date-and-time-picker/date-picker'
 import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   start: Dayjs
   end: Dayjs
   onStartChange: (date?: Dayjs) => void
   onEndChange: (date?: Dayjs) => void
-}
+}>
 
 const today = dayjs()
 const DatePicker: FC<Props> = ({

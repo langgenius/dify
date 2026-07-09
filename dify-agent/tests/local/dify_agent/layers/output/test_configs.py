@@ -121,11 +121,16 @@ def test_output_package_exports_client_safe_config_symbols_only() -> None:
     assert not hasattr(output_exports, "DifyOutputLayer")
 
 
-def test_output_layer_config_accepts_valid_object_schema_and_defaults_name() -> None:
+def test_output_layer_config_accepts_valid_object_schema_without_public_tool_name() -> None:
     config = DifyOutputLayerConfig(json_schema=_json_schema())
 
     assert DIFY_OUTPUT_LAYER_TYPE_ID == "dify.output"
-    assert config.name == "final_result"
+    assert hasattr(config, "name") is False
+    assert config.model_dump(mode="json") == {
+        "json_schema": _json_schema(),
+        "description": None,
+        "strict": None,
+    }
     assert config.description is None
     assert config.strict is None
 
@@ -138,7 +143,7 @@ def test_output_layer_config_rejects_non_object_top_level_json_schema() -> None:
 @pytest.mark.parametrize(
     ("payload", "message"),
     [
-        ({"json_schema": _json_schema(), "name": "bad name"}, "letters, numbers, underscores, or hyphens"),
+        ({"json_schema": _json_schema(), "name": "bad name"}, "Extra inputs are not permitted"),
         ({"json_schema": _json_schema(), "unknown": True}, "Extra inputs are not permitted"),
     ],
 )
@@ -150,7 +155,6 @@ def test_output_layer_config_rejects_invalid_input(payload: dict[str, object], m
 def test_output_layer_builds_validated_output_contract_for_object_schema() -> None:
     config = DifyOutputLayerConfig(
         json_schema=_json_schema(),
-        name="incident_summary",
         description="Structured incident summary.",
         strict=True,
     )
@@ -163,11 +167,11 @@ def test_output_layer_builds_validated_output_contract_for_object_schema() -> No
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
 
     assert isinstance(output_type, ToolOutput)
-    assert output_type.name == "incident_summary"
+    assert output_type.name == "final_output"
     assert output_type.description is None
     assert output_type.strict is True
     assert output_schema["type"] == "object"
-    assert output_schema["title"] == "incident_summary"
+    assert output_schema["title"] == "final_output"
     assert output_schema["description"] == "Structured incident summary."
     assert output_adapter.validate_python(valid_output) == valid_output
 
@@ -206,7 +210,7 @@ def test_output_layer_rejects_non_defs_local_ref_in_direct_object_schema() -> No
 
 def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> None:
     output_contract = DifyOutputLayer.from_config(
-        DifyOutputLayerConfig(json_schema=_object_local_defs_ref_schema(), name="direct_defs_result")
+        DifyOutputLayerConfig(json_schema=_object_local_defs_ref_schema())
     ).build_output_contract()
     output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
     output_schema = output_adapter.json_schema()
@@ -221,7 +225,7 @@ def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> 
             },
         },
         "required": ["items"],
-        "title": "direct_defs_result",
+        "title": "final_output",
     }
     assert output_adapter.validate_python({"items": ["a", "b"]}) == {"items": ["a", "b"]}
 

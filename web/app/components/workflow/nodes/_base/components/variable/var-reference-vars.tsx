@@ -116,15 +116,15 @@ const Item: FC<ItemProps> = ({
           <span
             aria-hidden
             className={cn(
-              'h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600',
+              'size-3.5 shrink-0 text-util-colors-violet-violet-600',
               isInCodeGeneratorInstructionEditor ? 'i-custom-vender-line-general-code-assistant' : 'i-custom-vender-line-general-magic-edit',
             )}
           />
         )
       case 'error_message':
-        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600" />
+        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600" />
       default:
-        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-text-accent" />
+        return <span aria-hidden className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent" />
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
@@ -247,7 +247,7 @@ const Item: FC<ItemProps> = ({
       <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
       {
         (isObj || isStructureOutput) && (
-          <span aria-hidden className={cn('ml-0.5 i-custom-vender-line-arrows-chevron-right h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
+          <span aria-hidden className={cn('ml-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
         )
       }
     </div>
@@ -279,7 +279,7 @@ const Item: FC<ItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   hideSearch?: boolean
   searchText?: string
   searchBoxClassName?: string
@@ -295,7 +295,7 @@ type Props = {
   onManageInputField?: () => void
   autoFocus?: boolean
   preferSchemaType?: boolean
-}
+}>
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
   searchText,
@@ -428,7 +428,7 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('mx-2 mt-2 mb-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('m-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 className={VAR_SEARCH_INPUT_CLASS_NAME}
                 showLeftIcon

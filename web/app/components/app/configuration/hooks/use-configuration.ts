@@ -1,5 +1,6 @@
 'use client'
 import type { ComponentProps } from 'react'
+import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { Features as FeaturesData, OnFeaturesChange } from '@/app/components/base/features/types'
@@ -21,10 +22,10 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
-import type { PublishWorkflowParams } from '@/types/workflow'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -34,15 +35,21 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceLoadingAtom,
+  userProfileIdAtom,
+  workspacePermissionKeysAtom,
+} from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
@@ -50,6 +57,7 @@ import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { basePath } from '@/utils/var'
 import {
@@ -108,18 +116,27 @@ export type ConfigurationViewModel = {
 
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const openIntegrationsSetting = useIntegrationsSetting()
 
-  const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
+  const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
+  const setDetailSidebarMode = useSetDetailSidebarMode()
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  const configurationReadonly = !appACLCapabilities.canEdit
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const pathname = usePathname()
@@ -481,7 +498,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
     resolvedModelModeType,
   ])
 
-  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams, features?: FeaturesData) => {
+  const onPublish = useCallback(async (params?: AppPublisherPublishParams, features?: FeaturesData) => {
+    if (!appACLCapabilities.canReleaseAndVersion)
+      return
+
     const modelAndParameter = params && 'model' in params && 'provider' in params && 'parameters' in params
       ? params
       : undefined
@@ -515,6 +535,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       textToSpeechConfig,
     })(updateAppModelConfig, modelAndParameter, features)
   }, [
+    appACLCapabilities.canReleaseAndVersion,
     appId,
     chatPromptConfig,
     citationConfig,
@@ -557,8 +578,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    setAppSidebarExpand('collapse')
-  }, [completionParamsState, handleMultipleModelConfigsChange, modelConfig.model_id, modelConfig.provider, setAppSidebarExpand])
+    setDetailSidebarMode('collapse')
+  }, [completionParamsState, handleMultipleModelConfigsChange, modelConfig.model_id, modelConfig.provider, setDetailSidebarMode])
 
   const onAgentSettingChange = useCallback((config: ModelConfig['agentConfig']) => {
     setModelConfig(produce(modelConfig, (draft: ModelConfig) => {
@@ -567,6 +588,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
   }, [modelConfig, setModelConfig])
 
   const contextValue: DebugConfigurationValue = {
+    readonly: configurationReadonly,
+    canTestAndRun: appACLCapabilities.canTestAndRun,
     appId,
     isAPIKeySet,
     isTrailFinished: false,
@@ -644,7 +667,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
-      publishDisabled: cannotPublish,
+      disabled: !appACLCapabilities.canReleaseAndVersion,
+      publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (latestPublishedAt || 0) * 1000,
       debugWithMultipleModel,
       multipleModelConfigs,
@@ -669,7 +693,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onCloseSelectDataSet: hideSelectDataSet,
     onCompletionParamsChange: setCompletionParams,
     onConfirmUseGPT4: () => {
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
@@ -677,7 +701,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,
     onMultipleModelConfigsChange: handleMultipleModelConfigsChange,
-    onOpenAccountSettings: () => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
+    onOpenAccountSettings: () => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
     onOpenDebugPanel: showDebugPanel,
     onSaveHistory: (data) => {
       setConversationHistoriesRole(data)

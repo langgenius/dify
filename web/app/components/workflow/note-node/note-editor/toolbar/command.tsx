@@ -25,15 +25,15 @@ const Command = ({
   const icon = useMemo(() => {
     switch (type) {
       case 'bold':
-        return <span aria-hidden className={cn('i-ri-bold h-4 w-4', selectedIsBold && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-bold size-4', selectedIsBold && 'text-primary-600')} />
       case 'italic':
-        return <span aria-hidden className={cn('i-ri-italic h-4 w-4', selectedIsItalic && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-italic size-4', selectedIsItalic && 'text-primary-600')} />
       case 'strikethrough':
-        return <span aria-hidden className={cn('i-ri-strikethrough h-4 w-4', selectedIsStrikeThrough && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-strikethrough size-4', selectedIsStrikeThrough && 'text-primary-600')} />
       case 'link':
-        return <span aria-hidden className={cn('i-ri-link h-4 w-4', selectedIsLink && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-link size-4', selectedIsLink && 'text-primary-600')} />
       case 'bullet':
-        return <span aria-hidden className={cn('i-ri-list-unordered h-4 w-4', selectedIsBullet && 'text-primary-600')} />
+        return <span aria-hidden className={cn('i-ri-list-unordered size-4', selectedIsBullet && 'text-primary-600')} />
     }
   }, [type, selectedIsBold, selectedIsItalic, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 
@@ -60,7 +60,7 @@ const Command = ({
             type="button"
             aria-label={tip}
             className={cn(
-              'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent',
+              'flex size-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent',
               type === 'bold' && selectedIsBold && 'bg-state-accent-active',
               type === 'italic' && selectedIsItalic && 'bg-state-accent-active',
               type === 'strikethrough' && selectedIsStrikeThrough && 'bg-state-accent-active',

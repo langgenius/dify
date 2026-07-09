@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.rag.entities import ParentMode
+from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
@@ -278,7 +278,7 @@ class TestParentChildIndexProcessor:
         ):
             processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[])
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"])
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"])
 
     def test_clean_deletes_all_summaries_when_node_ids_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock
@@ -291,31 +291,16 @@ class TestParentChildIndexProcessor:
         ):
             processor.clean(dataset, None, delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, None)
-
-    def test_retrieve_filters_by_score_threshold(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        ok_result = SimpleNamespace(page_content="keep", metadata={"m": 1}, score=0.8)
-        low_result = SimpleNamespace(page_content="drop", metadata={"m": 2}, score=0.2)
-
-        with patch(
-            "core.rag.index_processor.processor.parent_child_index_processor.RetrievalService.retrieve"
-        ) as mock_retrieve:
-            mock_retrieve.return_value = [ok_result, low_result]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].page_content == "keep"
-        assert docs[0].metadata["score"] == 0.8
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None)
 
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
-        rules = SimpleNamespace(subchunk_segmentation=None)
+        rules = Rule(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
             processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
-        rules = SimpleNamespace(subchunk_segmentation=self._segmentation())
+        rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
         splitter = Mock()
         splitter.split_documents.return_value = [
             Document(page_content=".child-1", metadata={}),

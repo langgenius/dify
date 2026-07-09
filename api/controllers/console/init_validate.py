@@ -50,7 +50,7 @@ def get_init_status() -> InitStatusResponse:
 @only_edition_self_hosted
 def validate_init_password(payload: InitValidatePayload) -> InitValidateResponse:
     """Validate initialization password."""
-    tenant_count = TenantService.get_tenant_count()
+    tenant_count = TenantService.get_tenant_count(session=db.session())
     if tenant_count > 0:
         raise AlreadySetupError()
 

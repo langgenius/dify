@@ -14,7 +14,7 @@ import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-pick
 import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
 import Field from './field'
 
-type Props = {
+type Props = Readonly<{
   dataSetId: string
   className?: string
   noHeader?: boolean
@@ -29,7 +29,7 @@ type Props = {
   onDelete?: (item: MetadataItemWithValue) => void
   onSelect?: (item: MetadataItemWithValue) => void
   onAdd?: (item: BuiltInMetadataItem) => void
-}
+}>
 
 const InfoGroup: FC<Props> = ({
   dataSetId,
@@ -91,6 +91,7 @@ const InfoGroup: FC<Props> = ({
                   <div className="flex items-center space-x-0.5">
                     <InputCombined
                       className="h-6"
+                      label={item.name}
                       type={item.type}
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}

@@ -40,7 +40,7 @@ const appIcon = (app: App) => (
     />
     <AppTypeIcon
       wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
-      className="h-3 w-3"
+      className="size-3"
       type={app.mode}
     />
   </div>
@@ -52,10 +52,7 @@ const parser = (apps: App[]): AppSearchResult[] => {
     title: app.name,
     description: app.description,
     type: 'app' as const,
-    path: getRedirectionPath(true, {
-      id: app.id,
-      mode: app.mode,
-    }),
+    path: getRedirectionPath(app),
     icon: appIcon(app),
     data: app,
   }))
@@ -70,7 +67,7 @@ const parserWithSections = (apps: App[]): SearchResult[] => {
       title: app.name,
       description: app.description,
       type: 'app' as const,
-      path: getRedirectionPath(true, { id: app.id, mode: app.mode }),
+      path: getRedirectionPath(app),
       icon: appIcon(app),
       data: app,
     })
@@ -83,7 +80,7 @@ const parserWithSections = (apps: App[]): SearchResult[] => {
         path: section.path,
         icon: (
           <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-            <section.icon className="h-4 w-4 text-text-tertiary" />
+            <section.icon className="size-4 text-text-tertiary" />
           </div>
         ),
         data: app,

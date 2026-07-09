@@ -18,7 +18,7 @@ describe('Empty', () => {
       const { container } = render(<Empty onClearFilter={vi.fn()} />)
 
       // Assert - RiFileList2Line icon should be rendered
-      const icon = container.querySelector('.h-6.w-6')
+      const icon = container.querySelector('.size-6')
       expect(icon).toBeInTheDocument()
     })
 

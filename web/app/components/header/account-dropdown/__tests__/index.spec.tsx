@@ -1,11 +1,11 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { SystemFeatures } from '@/types/feature'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -39,9 +39,30 @@ vi.mock('@/app/components/base/theme-switcher', () => ({
   default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+const { mockSetTheme } = vi.hoisted(() => ({
+  mockSetTheme: vi.fn(),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: undefined as AppContextStateMockState | undefined,
+}))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
+
+vi.mock('next-themes', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    setTheme: mockSetTheme,
+  }),
+}))
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -51,7 +72,8 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
+vi.mock('@/service/use-common', async importOriginal => ({
+  ...await importOriginal<typeof import('@/service/use-common')>(),
   useLogout: vi.fn(),
 }))
 
@@ -96,7 +118,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 vi.mock('@/env', () => mockEnv)
 
-const baseAppContextValue: AppContextValue = {
+const baseAppContextValue: AppContextStateMockState = {
   userProfile: {
     id: '1',
     name: 'Test User',
@@ -132,9 +154,13 @@ const baseAppContextValue: AppContextValue = {
     version: '0.6.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
+}
+
+const setAppContextValue = (value: AppContextStateMockState) => {
+  mockAppContextState.current = value
+  mockUseAppContext.mockReturnValue(value)
 }
 
 describe('AccountDropdown', () => {
@@ -144,7 +170,7 @@ describe('AccountDropdown', () => {
 
   const renderWithRouter = (
     ui: React.ReactElement,
-    options: { systemFeatures?: DeepPartial<SystemFeatures> } = {},
+    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
   ) => {
     return renderWithSystemFeatures(ui, {
       systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
@@ -157,7 +183,7 @@ describe('AccountDropdown', () => {
     mockConfig.IS_CLOUD_EDITION = false
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
-    vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
+    setAppContextValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
@@ -228,10 +254,33 @@ describe('AccountDropdown', () => {
       expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
     })
 
+    it('should open preferences from the account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.settings.preferences'))
+
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+    })
+
+    it('should show Appearance after Preferences in the main nav account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      const preferences = screen.getByText('common.settings.preferences')
+      const appearance = screen.getByText('common.account.appearanceLabel')
+
+      // Assert
+      expect(preferences.compareDocumentPosition(appearance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' })).toBeInTheDocument()
+    })
+
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
@@ -250,7 +299,7 @@ describe('AccountDropdown', () => {
     it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         isCurrentWorkspaceOwner: false,
       })
@@ -277,9 +326,17 @@ describe('AccountDropdown', () => {
       // Assert
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
-        expect(localStorage.removeItem).toHaveBeenCalledWith('setup_status')
         expect(mockPush).toHaveBeenCalledWith('/signin')
       })
+    })
+
+    it('should use the shutdown icon for main nav logout', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }).querySelector('.i-ri-shut-down-line')).toBeInTheDocument()
     })
 
     it('should show About section when about button is clicked and can close it', () => {
@@ -338,7 +395,7 @@ describe('AccountDropdown', () => {
   describe('Version Indicators', () => {
     it('should show orange indicator when version is not latest', () => {
       // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {
@@ -353,13 +410,12 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-warning-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
       // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {
@@ -374,8 +430,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      const indicator = screen.getByTestId('status-indicator')
-      expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
+      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
     })
   })
 })

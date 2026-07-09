@@ -79,7 +79,7 @@ function AppPickerOption({
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
-        <span title={`${app.name} (${app.id})`} className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           <span className="mr-1">{app.name}</span>
           <span className="text-text-tertiary">
             (
@@ -134,7 +134,7 @@ export function AppPicker({
       <ComboboxTrigger
         aria-label={t('appSelector.label', { ns: 'app' })}
         icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
       >
         {trigger}
       </ComboboxTrigger>

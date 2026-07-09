@@ -1,21 +1,10 @@
 import type { InputVarType } from '@/app/components/workflow/types'
-import type { AppContextValue } from '@/context/app-context'
 import type { HumanInputFormData } from '@/types/workflow'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import { useSelector } from '@/context/app-context'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
-
-// Mock AppContext's useSelector to control user profile data
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useSelector: vi.fn(),
-  }
-})
 
 describe('UnsubmittedHumanInputContent Integration', () => {
   const user = userEvent.setup()
@@ -49,18 +38,6 @@ describe('UnsubmittedHumanInputContent Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useSelector).mockImplementation((selector: (value: AppContextValue) => unknown) => {
-      return selector({
-        userProfile: {
-          id: 'user_123',
-          name: 'Test User',
-          email: 'test@example.com',
-          avatar: '',
-          avatar_url: '',
-          is_password_set: false,
-        },
-      } as AppContextValue)
-    })
   })
 
   describe('Rendering', () => {

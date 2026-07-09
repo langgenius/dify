@@ -167,7 +167,7 @@ describe('GlobalInputs', () => {
     it('should render the tooltip trigger as an icon-sized button', () => {
       render(<GlobalInputs />)
 
-      expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toHaveClass('h-4', 'w-4')
+      expect(screen.getByLabelText('datasetPipeline.inputFieldPanel.globalInputs.tooltip')).toHaveClass('size-4')
     })
 
     it('should have correct container layout', () => {

@@ -22,12 +22,12 @@ import {
   useCommonModalState,
 } from './hooks/use-common-modal-state'
 
-type Props = {
+type Props = Readonly<{
   open?: boolean
   onClose: () => void
   createType: SupportedCreationMethods
   builder?: TriggerSubscriptionBuilder
-}
+}>
 
 export const CommonCreateModal = ({ open = true, onClose, createType, builder }: Props) => {
   return (
@@ -97,7 +97,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
           {t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
         </DialogTitle>
         <DialogCloseButton
-          className="top-5 right-5 h-8 w-8 rounded-lg [&>span]:h-5 [&>span]:w-5"
+          className="top-5 right-5 size-8 rounded-lg [&>span]:size-5"
           onClick={onClose}
         />
       </div>

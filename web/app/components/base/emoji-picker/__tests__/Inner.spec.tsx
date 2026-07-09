@@ -46,13 +46,11 @@ describe('EmojiPickerInner', () => {
       expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
     })
 
-    it('initializes selected emoji and background when provided', async () => {
+    it('initializes selected emoji and background when provided', () => {
       render(<EmojiPickerInner emoji="rabbit" background="#E4FBCC" onSelect={mockOnSelect} />)
 
       expect(screen.getByText('Choose Style'))!.toBeInTheDocument()
-      await waitFor(() => {
-        expect(mockOnSelect).toHaveBeenCalledWith('rabbit', '#E4FBCC')
-      })
+      expect(mockOnSelect).not.toHaveBeenCalled()
     })
   })
 

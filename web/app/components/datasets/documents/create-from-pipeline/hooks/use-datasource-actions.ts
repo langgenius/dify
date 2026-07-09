@@ -34,6 +34,7 @@ type DatasourceActionsParams = {
   clearWebsiteCrawlData: () => void
   clearOnlineDriveData: () => void
   setDatasource: (ds: Datasource) => void
+  canProcess?: boolean
 }
 
 /**
@@ -54,6 +55,7 @@ export const useDatasourceActions = ({
   clearWebsiteCrawlData,
   clearOnlineDriveData,
   setDatasource,
+  canProcess = true,
 }: DatasourceActionsParams) => {
   const isPreview = useRef(false)
   const formRef = useRef<{ submit: () => void } | null>(null)
@@ -170,6 +172,9 @@ export const useDatasourceActions = ({
 
   // Handle document processing
   const handleProcess = useCallback(async (data: Record<string, unknown>) => {
+    if (!canProcess)
+      return
+
     if (!datasource || !pipelineId)
       return
 
@@ -192,13 +197,16 @@ export const useDatasourceActions = ({
         })
       },
     })
-  }, [datasource, pipelineId, datasourceType, buildProcessDatasourceInfo, runPublishedPipeline, setBatchId, setDocuments, handleNextStep])
+  }, [canProcess, datasource, pipelineId, datasourceType, buildProcessDatasourceInfo, runPublishedPipeline, setBatchId, setDocuments, handleNextStep])
 
   // Form submission handlers
   const onClickProcess = useCallback(() => {
+    if (!canProcess)
+      return
+
     isPreview.current = false
     formRef.current?.submit()
-  }, [])
+  }, [canProcess])
 
   const onClickPreview = useCallback(() => {
     isPreview.current = true
@@ -238,11 +246,9 @@ export const useDatasourceActions = ({
   }, [dataSourceStore, onClickPreview])
 
   // Select all handler
-  const handleSelectAll = useCallback(() => {
+  const handleSelectAll = useCallback((checked: boolean) => {
     const {
-      onlineDocuments,
       onlineDriveFileList,
-      selectedFileIds,
       setOnlineDocuments,
       setSelectedFileIds,
       setSelectedPagesId,
@@ -250,7 +256,7 @@ export const useDatasourceActions = ({
 
     if (datasourceType === DatasourceType.onlineDocument) {
       const allIds = currentWorkspacePages?.map(page => page.page_id) || []
-      if (onlineDocuments.length < allIds.length) {
+      if (checked) {
         const selectedPages = Array.from(allIds).map(pageId => PagesMapAndSelectedPagesId[pageId]!)
         setOnlineDocuments(selectedPages)
         setSelectedPagesId(new Set(allIds))
@@ -263,7 +269,7 @@ export const useDatasourceActions = ({
 
     if (datasourceType === DatasourceType.onlineDrive) {
       const allKeys = onlineDriveFileList.filter(item => item.type !== 'bucket').map(file => file.id)
-      if (selectedFileIds.length < allKeys.length)
+      if (checked)
         setSelectedFileIds(allKeys)
       else
         setSelectedFileIds([])

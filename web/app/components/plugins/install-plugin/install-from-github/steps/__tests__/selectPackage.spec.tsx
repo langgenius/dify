@@ -5,7 +5,7 @@ import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
 
 type SelectOption = {
-  value: string | number
+  value: string
   name: string
 }
 
@@ -38,6 +38,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
         <div>{children}</div>
       </SelectContext.Provider>
     ),
+    SelectLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     SelectTrigger: ({ children }: { children: React.ReactNode }) => {
       const context = React.useContext(SelectContext)
       return (
@@ -149,7 +150,8 @@ describe('SelectPackage', () => {
 
   const getSection = (label: string): HTMLElement => {
     const labelElement = screen.getByText(label)
-    const section = labelElement.closest('label')?.nextElementSibling
+    const labelContainer = labelElement.closest('label') ?? labelElement.parentElement
+    const section = labelContainer?.parentElement
     if (!(section instanceof HTMLElement))
       throw new Error(`Missing section for ${label}`)
     return section

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/constants'
 
 describe('Plugin Marketplace to Install Flow', () => {
   describe('install permission validation pipeline', () => {

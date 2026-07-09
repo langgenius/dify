@@ -6,27 +6,31 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import * as React from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 type ICardViewProps = {
   appId: string
@@ -36,8 +40,16 @@ type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canEdit, [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -75,15 +87,18 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
+  const setNeedRefresh = useSetNeedRefreshAppList()
+
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
       setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appId, setAppDetail])
+  }, [appId, queryClient, setAppDetail])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
@@ -126,6 +141,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }, [appId, updateAppDetail])
 
   const onChangeSiteStatus = async (value: boolean) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
         url: `/apps/${appId}/site-enable`,
@@ -137,6 +155,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onChangeApiStatus = async (value: boolean) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
         url: `/apps/${appId}/api-enable`,
@@ -148,6 +169,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onSaveSiteConfig: IAppCardProps['onSaveSiteConfig'] = async (params) => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<App>(
       updateAppSiteConfig({
         url: `/apps/${appId}/site`,
@@ -155,12 +179,15 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }) as Promise<App>,
     )
     if (!err)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
 
     handleCallbackResult(err)
   }
 
   const onGenerateCode = async () => {
+    if (!canEditApp)
+      return
+
     const [err] = await asyncRunSafe<UpdateAppSiteCodeResponse>(
       updateAppSiteAccessToken({
         url: `/apps/${appId}/site/access-token-reset`,

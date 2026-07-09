@@ -13,7 +13,8 @@ import {
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useDeferredValue, useState } from 'react'
+import { useDebounce } from 'ahooks'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Loading from '@/app/components/base/loading'
@@ -22,12 +23,12 @@ import { useDocumentList } from '@/service/knowledge/use-document'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   value?: SimpleDocumentDetail | null
   parentMode?: ParentMode
   onChange: (value: SimpleDocumentDetail) => void
-}
+}>
 
 function getDocumentLabel(document: SimpleDocumentDetail) {
   return document.name
@@ -83,10 +84,10 @@ function DocumentPickerTriggerValue({
           <span className="max-w-[280px] min-w-0 truncate system-md-semibold text-text-primary">
             {document?.name || '--'}
           </span>
-          <ArrowIcon className="h-4 w-4 shrink-0 text-text-primary" aria-hidden="true" />
+          <ArrowIcon className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
         </span>
         <span className="flex h-3 max-w-[300px] items-center gap-0.5 text-text-tertiary">
-          <TypeIcon className="h-3 w-3 shrink-0" />
+          <TypeIcon className="size-3 shrink-0" />
           <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
             {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
             {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
@@ -106,12 +107,12 @@ export function DocumentPicker({
 }: Props) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const deferredSearchValue = useDeferredValue(searchValue)
+  const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const { data } = useDocumentList({
     datasetId,
     query: {
-      keyword: deferredSearchValue,
+      keyword: debouncedSearchValue,
       page: 1,
       limit: 20,
     },
@@ -153,7 +154,7 @@ export function DocumentPicker({
         aria-label={value?.name || t('operation.search', { ns: 'common' })}
         icon={false}
         className={cn(
-          'ml-1 flex h-auto w-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-open:bg-state-base-hover',
+          'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-popup-open:bg-state-base-hover',
         )}
       >
         <ComboboxValue>
@@ -175,19 +176,16 @@ export function DocumentPicker({
             className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
           />
         </ComboboxInputGroup>
+        <DocumentList
+          className="mt-2 data-empty:mt-0"
+        />
         {data
           ? (
-              documentsList.length > 0
-                ? (
-                    <DocumentList
-                      className="mt-2"
-                    />
-                  )
-                : (
-                    <ComboboxEmpty className="mt-2 flex h-[100px] w-full items-center justify-center">
-                      {t('noData', { ns: 'common' })}
-                    </ComboboxEmpty>
-                  )
+              <ComboboxEmpty className="p-0">
+                <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
+                  {t('noData', { ns: 'common' })}
+                </div>
+              </ComboboxEmpty>
             )
           : (
               <ComboboxStatus className="mt-2 flex h-[100px] w-full items-center justify-center">

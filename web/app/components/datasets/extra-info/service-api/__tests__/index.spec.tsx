@@ -8,6 +8,16 @@ import ServiceApi from '../index'
 
 // Mock Setup
 
+let mockWorkspacePermissionKeys: string[] = ['dataset.api_key.manage']
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -16,6 +26,12 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
   useSearchParams: () => new URLSearchParams(),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock next/link
 vi.mock('@/next/link', () => ({
@@ -31,10 +47,11 @@ vi.mock('@/hooks/use-api-access-url', () => ({
 
 // Mock SecretKeyModal to avoid complex modal rendering
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
+  default: ({ isShow, onClose, canManage }: { isShow: boolean, onClose: () => void, canManage: boolean }) => (
     isShow
       ? (
           <div data-testid="secret-key-modal">
+            <span data-testid="secret-key-modal-can-manage">{String(canManage)}</span>
             <button onClick={onClose} data-testid="close-modal-btn">Close</button>
           </div>
         )
@@ -48,6 +65,7 @@ const renderCard = (ui: React.ReactElement) =>
 describe('ServiceApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['dataset.api_key.manage']
   })
 
   describe('Rendering', () => {
@@ -63,7 +81,7 @@ describe('ServiceApi', () => {
 
     it('should render Indicator component', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
@@ -75,7 +93,7 @@ describe('ServiceApi', () => {
 
     it('should render with border and background styles', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const trigger = container.querySelector('[class*="border-components-button-secondary-border-hover"]')
+      const trigger = container.querySelector('[class*="text-text-tertiary"]')
       expect(trigger).toBeInTheDocument()
     })
   })
@@ -83,13 +101,13 @@ describe('ServiceApi', () => {
   describe('Props Variations', () => {
     it('should show Indicator when apiBaseUrl is provided', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
     it('should show Indicator when apiBaseUrl is empty', () => {
       const { container } = render(<ServiceApi apiBaseUrl="" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
@@ -191,13 +209,20 @@ describe('Card (service-api)', () => {
     it('should call onOpenSecretKeyModal when API Key button is clicked', async () => {
       const user = userEvent.setup()
 
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} canManageSecretKey />)
 
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
       if (apiKeyButton)
         await user.click(apiKeyButton)
 
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
+    })
+
+    it('should disable API Key button when secret key management is not allowed', () => {
+      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} canManageSecretKey={false} />)
+
+      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+      expect(apiKeyButton).toBeDisabled()
     })
 
     it('should have correct href for API Reference link', () => {
@@ -242,5 +267,49 @@ describe('ServiceApi Integration', () => {
     await waitFor(() => {
       expect(screen.queryByText(/serviceApi\.card\.title/i)).not.toBeInTheDocument()
     })
+  })
+
+  it('should pass workspace API key management permission to secret key modal', async () => {
+    const user = userEvent.setup()
+
+    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+
+    const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
+    if (trigger)
+      await user.click(trigger)
+
+    await waitFor(() => {
+      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
+    })
+
+    const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+    if (apiKeyButton)
+      await user.click(apiKeyButton)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('secret-key-modal-can-manage')).toHaveTextContent('true')
+    })
+  })
+
+  it('should keep API key button disabled without workspace API key management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys = []
+
+    render(<ServiceApi apiBaseUrl="https://api.example.com" />)
+
+    const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
+    if (trigger)
+      await user.click(trigger)
+
+    await waitFor(() => {
+      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
+    })
+
+    const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
+    expect(apiKeyButton).toBeDisabled()
+    if (apiKeyButton)
+      await user.click(apiKeyButton)
+
+    expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
   })
 })

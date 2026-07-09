@@ -3,12 +3,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import ToggleButton from '../toggle-button'
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => (
-    <span data-testid="shortcuts">{keys.join('+')}</span>
-  ),
-}))
-
 describe('ToggleButton', () => {
   it('should render collapse arrow when expanded', () => {
     render(<ToggleButton expand handleToggle={vi.fn()} />)

@@ -27,8 +27,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -88,8 +89,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -141,8 +143,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -194,8 +197,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -257,8 +261,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -291,8 +296,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account1, name=fake.company(), session=db_session_with_containers
+        )
         tenant1 = account1.current_tenant
 
         account2 = AccountService.create_account(
@@ -300,8 +308,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account2, name=fake.company(), session=db_session_with_containers
+        )
         tenant2 = account2.current_tenant
 
         # Create dataset for tenant1
@@ -367,8 +378,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Don't create any datasets
@@ -391,8 +403,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create multiple datasets
@@ -452,8 +465,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -504,7 +518,7 @@ class TestKnowledgeRetrievalIntegration:
             with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                 with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                     # Act
-                    result = dataset_retrieval.knowledge_retrieval(request)
+                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
                     # Assert
                     assert isinstance(result, list)
@@ -520,8 +534,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset but no documents
@@ -552,7 +567,7 @@ class TestKnowledgeRetrievalIntegration:
         # Mock rate limit check
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Act
-            result = dataset_retrieval.knowledge_retrieval(request)
+            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
             # Assert
             assert result == []
@@ -568,8 +583,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -604,7 +620,7 @@ class TestKnowledgeRetrievalIntegration:
         ):
             # Act & Assert
             with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(request)
+                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 
 @pytest.fixture

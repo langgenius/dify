@@ -2,6 +2,7 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useAtomValue } from 'jotai'
 import {
   useEffect,
   useMemo,
@@ -19,11 +20,12 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom, userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -44,11 +46,19 @@ const WorkflowAppWithAdditionalContext = () => {
     fileUploadConfigResponse,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const appId = appDetail?.id
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
@@ -72,8 +82,8 @@ const WorkflowAppWithAdditionalContext = () => {
       // Cancel any pending debounced sync operations
       const { debouncedSyncWorkflowDraft } = workflowStore.getState()
       // The debounced function from lodash has a cancel method
-      if (debouncedSyncWorkflowDraft && 'cancel' in debouncedSyncWorkflowDraft)
-        (debouncedSyncWorkflowDraft as any).cancel()
+      const cancellableSyncWorkflowDraft = debouncedSyncWorkflowDraft as { cancel?: () => void } | undefined
+      cancellableSyncWorkflowDraft?.cancel?.()
     }
   }, [workflowStore])
 
@@ -98,7 +108,7 @@ const WorkflowAppWithAdditionalContext = () => {
   const replayRunId = searchParams.get('replayRunId')
 
   useEffect(() => {
-    if (!replayRunId)
+    if (!replayRunId || !appACLCapabilities.canTestAndRun)
       return
     const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
     if (!runUrl)
@@ -127,11 +137,11 @@ const WorkflowAppWithAdditionalContext = () => {
       setShowInputsPanel(true)
       setShowDebugAndPreviewPanel(true)
     })
-  }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+  }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
-      <div className="relative flex h-full w-full items-center justify-center">
+      <div className="relative flex size-full items-center justify-center">
         <Loading />
       </div>
     )

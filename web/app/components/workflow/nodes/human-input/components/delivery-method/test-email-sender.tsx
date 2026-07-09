@@ -2,20 +2,22 @@ import type { EmailConfig, FormInputItem } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
-  ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightSFill } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
+import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
 import {
   getNodeInfoById,
   isConversationVar,
@@ -23,10 +25,10 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, userProfileEmailAtom } from '@/context/app-context-state'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
-import { isOutput } from '../../utils'
+import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -70,6 +72,45 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
   return undefined
 }
 
+const varTypeToInputVarType = (type: VarType) => {
+  if (type === VarType.number)
+    return InputVarType.number
+  if (type === VarType.boolean)
+    return InputVarType.checkbox
+  if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
+    return InputVarType.json
+  if (type === VarType.file)
+    return InputVarType.singleFile
+  if (type === VarType.arrayFile)
+    return InputVarType.multiFiles
+
+  return InputVarType.textInput
+}
+
+const formatEmailSenderInputs = (
+  variables: Array<{ variable: string, type: InputVarType, label: unknown }>,
+  values: Record<string, unknown>,
+) => {
+  const formattedValues: Record<string, unknown> = {}
+  let parseErrorJsonField = ''
+
+  variables.forEach((variable) => {
+    try {
+      formattedValues[variable.variable] = formatValue(values[variable.variable], variable.type)
+    }
+    catch {
+      parseErrorJsonField = typeof variable.label === 'object' && variable.label !== null && 'variable' in variable.label
+        ? String(variable.label.variable)
+        : variable.variable
+    }
+  })
+
+  return {
+    formattedValues,
+    parseErrorJsonField,
+  }
+}
+
 const EmailSenderModal = ({
   nodeId,
   deliveryId,
@@ -83,7 +124,8 @@ const EmailSenderModal = ({
   availableNodes = [],
 }: EmailSenderModalProps) => {
   const { t } = useTranslation()
-  const { userProfile, currentWorkspace } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const appDetail = useAppStore(state => state.appDetail)
   const { mutateAsync: testEmailSender } = useTestEmailSender()
 
@@ -96,14 +138,9 @@ const EmailSenderModal = ({
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
-    const defaultValueSelectors = (formInputs || []).reduce((acc, input) => {
-      if (input.default.type === 'variable') {
-        acc.push(input.default.selector)
-      }
-      return acc
-    }, [] as ValueSelector[])
+    const formInputDependencySelectors = getHumanInputFormDependencySelectors(formInputs || [])
     const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
-    const variables = unionBy([...valueSelectors, ...defaultValueSelectors], item => item.join('.')).map((item) => {
+    const variables = unionBy([...valueSelectors, ...formInputDependencySelectors], item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0]!)?.data
 
       return {
@@ -132,7 +169,7 @@ const EmailSenderModal = ({
       return {
         label: item.label || item.variable,
         variable: item.variable,
-        type: originalVar.type === VarType.number ? InputVarType.number : InputVarType.textInput,
+        type: varTypeToInputVarType(originalVar.type),
         required: true,
       }
     })
@@ -166,20 +203,25 @@ const EmailSenderModal = ({
   const handleConfirm = useCallback(async () => {
     if (!confirmChecked)
       return
+    const { formattedValues, parseErrorJsonField } = formatEmailSenderInputs(generatedInputs, inputs)
+    if (parseErrorJsonField) {
+      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
+      return
+    }
     setSendingEmail(true)
     try {
       await testEmailSender({
         appID: appDetail?.id || '',
         nodeID: nodeId,
         deliveryID: deliveryId,
-        inputs,
+        inputs: formattedValues,
       })
       setDone(true)
     }
     finally {
       setSendingEmail(false)
     }
-  }, [confirmChecked, testEmailSender, appDetail?.id, nodeId, deliveryId, inputs])
+  }, [confirmChecked, generatedInputs, inputs, testEmailSender, appDetail?.id, nodeId, deliveryId, t])
 
   if (done) {
     return (
@@ -196,7 +238,7 @@ const EmailSenderModal = ({
                   i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugDone`}
                   ns="workflow"
                   components={{ email: <span className="system-md-semibold text-text-secondary"></span> }}
-                  values={{ email: userProfile.email }}
+                  values={{ email: userProfileEmail }}
                 />
               </div>
             )}
@@ -228,7 +270,7 @@ const EmailSenderModal = ({
             <div className="mt-4">
               <EmailInput
                 disabled
-                email={userProfile.email}
+                email={userProfileEmail}
                 value={config?.recipients?.items}
                 list={accounts}
                 onDelete={noop}
@@ -268,7 +310,7 @@ const EmailSenderModal = ({
                   i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
                   ns="workflow"
                   components={{ email: <span className="system-sm-semibold text-text-primary"></span> }}
-                  values={{ email: userProfile.email }}
+                  values={{ email: userProfileEmail }}
                 />
               </div>
             </>
@@ -302,7 +344,7 @@ const EmailSenderModal = ({
             <div className="mt-4">
               <EmailInput
                 disabled
-                email={userProfile.email}
+                email={userProfileEmail}
                 value={config?.recipients?.items}
                 list={accounts}
                 onDelete={noop}
@@ -341,7 +383,7 @@ const EmailSenderModal = ({
                 onClick={() => setCollapsed(!collapsed)}
               >
                 <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
-                <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} aria-hidden />
+                <RiArrowRightSFill className={cn('size-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} aria-hidden />
               </button>
               <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
               {!collapsed && (

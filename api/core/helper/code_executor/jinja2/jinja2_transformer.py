@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from textwrap import dedent
-from typing import Any
+from typing import Any, override
 
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
@@ -10,7 +10,8 @@ class Jinja2TemplateTransformer(TemplateTransformer):
     _template_b64_placeholder: str = "{{template_b64}}"
 
     @classmethod
-    def transform_response(cls, response: str):
+    @override
+    def transform_response(cls, response: str) -> dict[str, Any]:
         """
         Transform response to dict
         :param response: response
@@ -19,6 +20,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return {"result": cls.extract_result_str_from_response(response)}
 
     @classmethod
+    @override
     def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         """
         Override base class to use base64 encoding for template code.
@@ -34,6 +36,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return script
 
     @classmethod
+    @override
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
             import jinja2
@@ -61,6 +64,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         return runner_script
 
     @classmethod
+    @override
     def get_preload_script(cls) -> str:
         preload_script = dedent("""
             import jinja2

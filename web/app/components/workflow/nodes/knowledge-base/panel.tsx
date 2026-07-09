@@ -12,6 +12,7 @@ import SummaryIndexSetting from '@/app/components/datasets/settings/summary-inde
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
@@ -54,11 +55,11 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const retrievalRerankingEnable = retrievalModel?.reranking_enable
   const embeddingModelProvider = data.embedding_model_provider
   const { data: embeddingProviderModelList } = useQuery(
-    consoleQuery.modelProviders.models.queryOptions({
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data,
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 

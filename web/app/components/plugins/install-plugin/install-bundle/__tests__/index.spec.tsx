@@ -376,7 +376,7 @@ describe('InstallBundle', () => {
       // Change step to installed
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should maintain installPlugin title for readyToInstall step', () => {
@@ -464,7 +464,7 @@ describe('InstallBundle', () => {
 
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should return installPlugin title for all other steps', () => {
@@ -536,7 +536,7 @@ describe('InstallBundle', () => {
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
       expect(screen.getByTestId('current-step')).toHaveTextContent(InstallStep.installed)
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should handle step change to uploadFailed', () => {
@@ -815,7 +815,7 @@ describe('InstallBundle', () => {
 
       // Change to installed
       fireEvent.click(screen.getByTestId('change-to-installed'))
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
 
       // Change to uploadFailed
       fireEvent.click(screen.getByTestId('change-to-upload-failed'))
@@ -909,7 +909,7 @@ describe('InstallBundle', () => {
       // ReadyToInstall should still exist
       expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
       // Title should be updated
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
   })
 })
@@ -1053,8 +1053,7 @@ describe('LoadedItem', () => {
     vi.clearAllMocks()
   })
 
-  // Helper to find checkbox element
-  const getCheckbox = () => screen.getByTestId(/^checkbox/)
+  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultLoadedItemProps.payload.name })
 
   // ================================
   // Rendering Tests
@@ -1070,16 +1069,14 @@ describe('LoadedItem', () => {
       render(<LoadedItem {...defaultLoadedItemProps} checked={true} />)
 
       expect(getCheckbox()).toBeInTheDocument()
-      // Check icon should be present when checked
-      expect(screen.getByTestId(/^check-icon/)).toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render checkbox without check icon when checked prop is false', () => {
       render(<LoadedItem {...defaultLoadedItemProps} checked={false} />)
 
       expect(getCheckbox()).toBeInTheDocument()
-      // Check icon should not be present when unchecked
-      expect(screen.queryByTestId(/^check-icon/)).not.toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
   })
 
@@ -1142,8 +1139,7 @@ describe('MarketplaceItem', () => {
     vi.clearAllMocks()
   })
 
-  // Helper to find checkbox element
-  const getCheckbox = () => screen.getByTestId(/^checkbox/)
+  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultMarketplaceItemProps.payload.name })
 
   // ================================
   // Rendering Tests
@@ -1158,9 +1154,7 @@ describe('MarketplaceItem', () => {
     it('should render Loading when payload is undefined', () => {
       render(<MarketplaceItem {...defaultMarketplaceItemProps} payload={undefined} />)
 
-      // Loading component renders a disabled checkbox
-      const checkbox = screen.getByTestId(/^checkbox/)
-      expect(checkbox).toHaveClass('cursor-not-allowed')
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     })
   })
 
@@ -1177,8 +1171,7 @@ describe('MarketplaceItem', () => {
     it('should pass checked state to LoadedItem', () => {
       render(<MarketplaceItem {...defaultMarketplaceItemProps} checked={true} />)
 
-      // When checked, the check icon should be present
-      expect(screen.getByTestId(/^check-icon/)).toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -1222,8 +1215,7 @@ describe('PackageItem', () => {
     vi.clearAllMocks()
   })
 
-  // Helper to find checkbox element
-  const getCheckbox = () => screen.getByTestId(/^checkbox/)
+  const getCheckbox = () => screen.getByRole('checkbox', { name: 'Package Plugin' })
 
   // ================================
   // Rendering Tests
@@ -1243,9 +1235,7 @@ describe('PackageItem', () => {
 
       render(<PackageItem {...defaultPackageItemProps} payload={invalidPayload} />)
 
-      // LoadingError renders a disabled checkbox and error text
-      const checkbox = screen.getByTestId(/^checkbox/)
-      expect(checkbox).toHaveClass('cursor-not-allowed')
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.pluginLoadError')).toBeInTheDocument()
     })
   })
@@ -1263,8 +1253,7 @@ describe('PackageItem', () => {
     it('should pass checked state to LoadedItem', () => {
       render(<PackageItem {...defaultPackageItemProps} checked={true} />)
 
-      // When checked, the check icon should be present
-      expect(screen.getByTestId(/^check-icon/)).toBeInTheDocument()
+      expect(getCheckbox()).toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -1319,9 +1308,7 @@ describe('GithubItem', () => {
       mockUseUploadGitHub.mockReturnValue({ data: null, error: null })
       render(<GithubItem {...defaultGithubItemProps} />)
 
-      // Loading component renders a disabled checkbox
-      const checkbox = screen.getByTestId(/^checkbox/)
-      expect(checkbox).toHaveClass('cursor-not-allowed')
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     })
 
     it('should render LoadedItem when data is fetched', async () => {
@@ -1352,9 +1339,8 @@ describe('GithubItem', () => {
 
       render(<GithubItem {...defaultGithubItemProps} />)
 
-      // When data is loaded, LoadedItem should be rendered with checkbox
       await waitFor(() => {
-        expect(screen.getByTestId(/^checkbox/)).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'Test Plugin' })).toBeInTheDocument()
       })
     })
   })

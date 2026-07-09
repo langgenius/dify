@@ -24,18 +24,19 @@
     "build": "vp pack",
     "prepare": "pnpm run build",
     "test": "vp test",
-    "type-check": "tsgo",
+    "type-check": "tsc",
     "prepublish": "pnpm run build"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
     "c12": "catalog:",
+    "chokidar": "catalog:",
     "hono": "catalog:"
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"

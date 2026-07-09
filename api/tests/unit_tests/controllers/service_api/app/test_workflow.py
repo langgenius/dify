@@ -16,8 +16,9 @@ Focus on:
 import sys
 import uuid
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -166,26 +167,6 @@ class TestWorkflowLogQuery:
         query_max_limit = WorkflowLogQuery(limit=100)
         assert query_max_limit.limit == 100
 
-    def test_query_rejects_page_below_minimum(self):
-        """Test query rejects page < 1."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(page=0)
-
-    def test_query_rejects_page_above_maximum(self):
-        """Test query rejects page > 99999."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(page=100000)
-
-    def test_query_rejects_limit_below_minimum(self):
-        """Test query rejects limit < 1."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(limit=0)
-
-    def test_query_rejects_limit_above_maximum(self):
-        """Test query rejects limit > 100."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(limit=101)
-
     def test_query_with_keyword_search(self):
         """Test query with keyword filter."""
         query = WorkflowLogQuery(keyword="workflow execution")
@@ -262,7 +243,7 @@ class TestAppGenerateServiceWorkflow:
     """Test AppGenerateService workflow integration."""
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_accepts_workflow_args(self, mock_generate):
+    def test_generate_accepts_workflow_args(self, mock_generate: MagicMock):
         """Test generate accepts workflow-specific args."""
         mock_generate.return_value = {"result": "success"}
 
@@ -271,6 +252,7 @@ class TestAppGenerateServiceWorkflow:
             user=Mock(),
             args={"inputs": {"key": "value"}, "workflow_id": "workflow_123"},
             invoke_from=Mock(),
+            session=MagicMock(),
             streaming=False,
         )
 
@@ -278,7 +260,7 @@ class TestAppGenerateServiceWorkflow:
         mock_generate.assert_called_once()
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_workflow_not_found_error(self, mock_generate):
+    def test_generate_raises_workflow_not_found_error(self, mock_generate: MagicMock):
         """Test generate raises WorkflowNotFoundError."""
         mock_generate.side_effect = WorkflowNotFoundError("Workflow not found")
 
@@ -288,11 +270,12 @@ class TestAppGenerateServiceWorkflow:
                 user=Mock(),
                 args={"workflow_id": "invalid_id"},
                 invoke_from=Mock(),
+                session=MagicMock(),
                 streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_is_draft_workflow_error(self, mock_generate):
+    def test_generate_raises_is_draft_workflow_error(self, mock_generate: MagicMock):
         """Test generate raises IsDraftWorkflowError."""
         mock_generate.side_effect = IsDraftWorkflowError("Workflow is draft")
 
@@ -302,11 +285,12 @@ class TestAppGenerateServiceWorkflow:
                 user=Mock(),
                 args={"workflow_id": "draft_workflow"},
                 invoke_from=Mock(),
+                session=MagicMock(),
                 streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_supports_streaming_mode(self, mock_generate):
+    def test_generate_supports_streaming_mode(self, mock_generate: MagicMock):
         """Test generate supports streaming response mode."""
         mock_stream = Mock()
         mock_generate.return_value = mock_stream
@@ -316,6 +300,7 @@ class TestAppGenerateServiceWorkflow:
             user=Mock(),
             args={"inputs": {}, "response_mode": "streaming"},
             invoke_from=Mock(),
+            session=MagicMock(),
             streaming=True,
         )
 
@@ -369,7 +354,7 @@ class TestWorkflowRunRepository:
 class TestWorkflowRunDetailApi:
     def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunDetailApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
 
         with app.test_request_context("/workflows/run/1", method="GET"):
@@ -388,8 +373,8 @@ class TestWorkflowRunDetailApi:
         )
 
         api = WorkflowRunDetailApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value, tenant_id="t1", id="a1")
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW, tenant_id="t1", id="a1")
 
         result = handler(api, app_model=app_model, workflow_run_id="run")
         assert result["id"] == "run"
@@ -400,13 +385,13 @@ class TestWorkflowRunDetailApi:
 class TestWorkflowRunApi:
     def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
     def test_rate_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -416,13 +401,13 @@ class TestWorkflowRunApi:
         )
 
         api = WorkflowRunApi()
-        handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(InvokeRateLimitHttpError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
 
 class TestWorkflowRunByIdApi:
@@ -434,13 +419,13 @@ class TestWorkflowRunByIdApi:
         )
 
         api = WorkflowRunByIdApi()
-        handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -450,19 +435,19 @@ class TestWorkflowRunByIdApi:
         )
 
         api = WorkflowRunByIdApi()
-        handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
 
 
 class TestWorkflowTaskStopApi:
     def test_wrong_mode(self, app: Flask) -> None:
         api = WorkflowTaskStopApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -477,8 +462,8 @@ class TestWorkflowTaskStopApi:
         monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
 
         api = WorkflowTaskStopApi()
-        handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
@@ -515,7 +500,7 @@ class TestWorkflowAppLogApi:
         )
 
         api = WorkflowAppLogApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="a1")
 
         with app.test_request_context("/workflows/logs", method="GET"):
@@ -533,15 +518,13 @@ class TestWorkflowAppLogApi:
 # directly to bypass the decorator.
 # =============================================================================
 
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
-
 
 @pytest.fixture
 def mock_workflow_app():
     app = Mock(spec=App)
     app.id = str(uuid.uuid4())
     app.tenant_id = str(uuid.uuid4())
-    app.mode = AppMode.WORKFLOW.value
+    app.mode = AppMode.WORKFLOW
     return app
 
 
@@ -574,7 +557,7 @@ class TestWorkflowRunDetailApiGet:
             method="GET",
         ):
             api = WorkflowRunDetailApi()
-            result = _unwrap(api.get)(api, app_model=mock_workflow_app, workflow_run_id=mock_run.id)
+            result = unwrap(api.get)(api, app_model=mock_workflow_app, workflow_run_id=mock_run.id)
 
         assert result["id"] == mock_run.id
         assert result["status"] == "succeeded"
@@ -590,7 +573,7 @@ class TestWorkflowRunDetailApiGet:
         with app.test_request_context("/workflows/run/run-1", method="GET"):
             api = WorkflowRunDetailApi()
             with pytest.raises(NotWorkflowAppError):
-                _unwrap(api.get)(api, app_model=mock_app, workflow_run_id="run-1")
+                unwrap(api.get)(api, app_model=mock_app, workflow_run_id="run-1")
 
 
 class TestWorkflowTaskStopApiPost:
@@ -613,7 +596,7 @@ class TestWorkflowTaskStopApiPost:
 
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
-            result = _unwrap(api.post)(
+            result = unwrap(api.post)(
                 api,
                 app_model=mock_workflow_app,
                 end_user=Mock(),
@@ -635,7 +618,7 @@ class TestWorkflowTaskStopApiPost:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
             with pytest.raises(NotWorkflowAppError):
-                _unwrap(api.post)(api, app_model=mock_app, end_user=Mock(), task_id="task-1")
+                unwrap(api.post)(api, app_model=mock_app, end_user=Mock(), task_id="task-1")
 
 
 class TestWorkflowAppLogApiGet:
@@ -681,6 +664,6 @@ class TestWorkflowAppLogApiGet:
         ):
             with patch("controllers.service_api.app.workflow.sessionmaker", return_value=mock_session_factory):
                 api = WorkflowAppLogApi()
-                result = _unwrap(api.get)(api, app_model=mock_workflow_app)
+                result = unwrap(api.get)(api, app_model=mock_workflow_app)
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}

@@ -6,10 +6,11 @@ Redis queuing, error handling, and community vs enterprise behavior.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from redis import RedisError
 from sqlalchemy.orm import Session
 
@@ -44,7 +45,7 @@ class TestQueueTask:
         assert "task_id" in task_data
         assert "created_at" in task_data
 
-    def test_queue_task_redis_error(self, caplog):
+    def test_queue_task_redis_error(self, caplog: pytest.LogCaptureFixture):
         with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
             mock_redis.lpush.side_effect = RedisError("Connection failed")
 
@@ -53,7 +54,7 @@ class TestQueueTask:
             assert result is False
             assert "Failed to queue account deletion sync" in caplog.text
 
-    def test_queue_task_type_error(self, caplog):
+    def test_queue_task_type_error(self, caplog: pytest.LogCaptureFixture):
         with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
             mock_redis.lpush.side_effect = TypeError("Cannot serialize")
 
@@ -117,13 +118,13 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = False
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted")
+            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=MagicMock())
 
             assert result is True
             mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_multiple_workspaces(
-        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
@@ -136,7 +137,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is True
             assert mock_queue_task.call_count == 3
@@ -145,18 +148,20 @@ class TestSyncAccountDeletion:
             assert queued_workspace_ids == set(tenant_ids)
 
     def test_sync_account_deletion_no_workspaces(
-        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session, mock_queue_task
     ):
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted")
+            result = sync_account_deletion(
+                account_id=str(uuid4()), source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is True
             mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_partial_failure(
-        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
@@ -175,13 +180,15 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is False
             assert mock_queue_task.call_count == 3
 
     def test_sync_account_deletion_all_failures(
-        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_id = str(uuid4())
@@ -195,7 +202,9 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted")
+            result = sync_account_deletion(
+                account_id=account_id, source="account_deleted", session=db_session_with_containers
+            )
 
             assert result is False
             mock_queue_task.assert_called_once()

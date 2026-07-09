@@ -9,6 +9,16 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
 
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
+}))
+
 vi.mock('@/service/use-pipeline', () => ({
   useConvertDatasetToPipeline: () => ({
     mutateAsync: mockConvert,
@@ -54,6 +64,12 @@ vi.mock('../screenshot', () => ({
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
   })
 
   afterEach(() => {
@@ -72,6 +88,25 @@ describe('Conversion', () => {
     render(<Conversion />)
 
     expect(screen.getByText('datasetPipeline.operations.convert')).toBeInTheDocument()
+  })
+
+  it('should disable convert button when dataset lacks edit ACL', () => {
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.readonly'],
+        maintainer: 'maintainer-id',
+      },
+    }
+
+    render(<Conversion />)
+
+    const convertButton = screen.getByRole('button', { name: 'datasetPipeline.operations.convert' })
+    expect(convertButton).toBeDisabled()
+
+    fireEvent.click(convertButton)
+
+    expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+    expect(mockConvert).not.toHaveBeenCalled()
   })
 
   it('should render warning text', () => {

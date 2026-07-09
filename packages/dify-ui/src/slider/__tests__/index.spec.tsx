@@ -1,5 +1,13 @@
 import { render } from 'vitest-browser-react'
-import { Slider } from '../index'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderRoot,
+  SliderThumb,
+  SliderTrack,
+} from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -76,5 +84,22 @@ describe('Slider', () => {
     const screen = await render(<Slider value={10} onValueChange={vi.fn()} aria-label="Value" />)
 
     expect(screen.container.querySelector('script')).not.toBeInTheDocument()
+  })
+
+  it('should expose SliderLabel for composed slider fields', async () => {
+    const screen = await render(
+      <SliderRoot defaultValue={50}>
+        <SliderLabel>Temperature</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+          </SliderTrack>
+          <SliderThumb />
+        </SliderControl>
+      </SliderRoot>,
+    )
+
+    await expect.element(screen.getByRole('slider', { name: 'Temperature' })).toHaveAttribute('aria-valuenow', '50')
+    await expect.element(screen.getByText('Temperature')).toBeInTheDocument()
   })
 })

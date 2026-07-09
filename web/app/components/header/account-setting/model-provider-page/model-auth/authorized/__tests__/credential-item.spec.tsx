@@ -2,8 +2,8 @@ import type { Credential } from '../../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import CredentialItem from '../credential-item'
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: () => <div data-testid="indicator" />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status?: string }) => <div data-testid="indicator" data-status={status} />,
 }))
 
 describe('CredentialItem', () => {
@@ -47,6 +47,19 @@ describe('CredentialItem', () => {
     fireEvent.click(screen.getByText('Test API Key'))
 
     expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('should render unavailable credential with error indicator and unavailable label', () => {
+    render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
+    expect(screen.getByText('common.modelProvider.card.unavailable')).toBeInTheDocument()
+  })
+
+  it('should render available credential with success indicator', () => {
+    render(<CredentialItem credential={credential} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('should call onEdit and onDelete from action buttons', () => {

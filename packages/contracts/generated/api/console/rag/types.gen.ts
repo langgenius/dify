@@ -4,9 +4,92 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type CustomizedPipelineTemplatePayload = {
+  description?: string
+  icon_info?: {
+    [key: string]: unknown
+  }
+  name: string
+}
+
+export type SimpleDataResponse = {
+  data: string
+}
+
 export type RagPipelineDatasetImportPayload = {
   yaml_content: string
 }
+
+export type RagPipelineImportResponse = {
+  current_dsl_version: string
+  dataset_id?: string | null
+  error?: string
+  id: string
+  imported_dsl_version: string
+  pipeline_id?: string | null
+  status: ImportStatus
+}
+
+export type DatasetDetailResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
+  name: string
+  permission: string
+  permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type PipelineTemplateListResponse = {
+  pipeline_templates: Array<PipelineTemplateItemResponse>
+}
+
+export type PipelineTemplateDetailResponse = {
+  chunk_structure: string
+  created_by?: string | null
+  description: string
+  export_data: string
+  graph: {
+    [key: string]: unknown
+  }
+  icon_info: {
+    [key: string]: unknown
+  }
+  id: string
+  name: string
+}
+
+export type RagPipelineOpaqueResponse = unknown
 
 export type RagPipelineImportPayload = {
   description?: string | null
@@ -20,12 +103,8 @@ export type RagPipelineImportPayload = {
   yaml_url?: string | null
 }
 
-export type Payload = {
-  description?: string
-  icon_info?: {
-    [key: string]: unknown
-  } | null
-  name: string
+export type RagPipelineImportCheckDependenciesResponse = {
+  leaked_dependencies?: Array<PluginDependency>
 }
 
 export type WorkflowRunPaginationResponse = {
@@ -34,10 +113,14 @@ export type WorkflowRunPaginationResponse = {
   limit: number
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -55,6 +138,68 @@ export type WorkflowRunDetailResponse = {
 
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<WorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type DefaultBlockConfigsResponse = Array<{
+  [key: string]: unknown
+}>
+
+export type DefaultBlockConfigResponse = {
+  [key: string]: unknown
+}
+
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
+}
+
+export type DraftWorkflowSyncPayload = {
+  conversation_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+  features?: {
+    [key: string]: unknown
+  } | null
+  graph: {
+    [key: string]: unknown
+  }
+  hash?: string | null
+  rag_pipeline_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+}
+
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type DatasourceNodeRunPayload = {
@@ -76,8 +221,8 @@ export type DatasourceVariablesPayload = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -99,6 +244,10 @@ export type WorkflowRunNodeExecutionResponse = {
   title?: string | null
 }
 
+export type EnvironmentVariableListResponse = {
+  items: Array<EnvironmentVariableItemResponse>
+}
+
 export type NodeRunPayload = {
   inputs?: {
     [key: string]: unknown
@@ -111,6 +260,14 @@ export type NodeRunRequiredPayload = {
   }
 }
 
+export type WorkflowDraftVariableList = {
+  items?: Array<WorkflowDraftVariable>
+}
+
+export type RagPipelineStepParametersResponse = {
+  variables: unknown
+}
+
 export type DraftWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
@@ -120,6 +277,46 @@ export type DraftWorkflowRunPayload = {
     [key: string]: unknown
   }
   start_node_id: string
+}
+
+export type WorkflowDraftVariableListWithoutValue = {
+  items?: Array<WorkflowDraftVariableWithoutValue>
+  total?: number
+}
+
+export type WorkflowDraftVariable = {
+  description?: string
+  edited?: boolean
+  full_content?: {
+    [key: string]: unknown
+  }
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+  value_type?: string
+  visible?: boolean
+}
+
+export type WorkflowDraftVariablePatchPayload = {
+  name?: string | null
+  value?: unknown | null
+}
+
+export type RagPipelineWorkflowPublishResponse = {
+  created_at: number
+  result: string
 }
 
 export type Parser = {
@@ -144,9 +341,85 @@ export type PublishedWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type WorkflowUpdatePayload = {
+  marked_comment?: string | null
+  marked_name?: string | null
+}
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DatasetDocMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetExternalKnowledgeInfoResponse = {
+  external_knowledge_api_endpoint?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_api_name?: string | null
+  external_knowledge_id?: string | null
+}
+
+export type DatasetExternalRetrievalModelResponse = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k: number
+}
+
+export type DatasetIconInfoResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+}
+
+export type DatasetRetrievalModelResponse = {
+  reranking_enable: boolean
+  reranking_mode?: string | null
+  reranking_model?: DatasetRerankingModelResponse
+  score_threshold?: number | null
+  score_threshold_enabled: boolean
+  search_method: string
+  top_k: number
+  weights?: DatasetWeightedScoreResponse | null
+}
+
+export type DatasetSummaryIndexSettingResponse = {
+  enable?: boolean | null
+  model_name?: string | null
+  model_provider_name?: string | null
+  summary_prompt?: string | null
+}
+
+export type DatasetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type PipelineTemplateItemResponse = {
+  chunk_structure: string
+  copyright?: string | null
+  description: string
+  icon: {
+    [key: string]: unknown
+  }
+  id: string
+  name: string
+  position: number
+  privacy_policy?: string | null
+}
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: PluginDependencyType
+  value: Github | Marketplace | Package
+}
+
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -158,7 +431,7 @@ export type WorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -171,6 +444,104 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type WorkflowEnvironmentVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type PipelineVariableResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  belong_to_node_id: string
+  default_value?: unknown
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required: boolean
+  tooltips?: string | null
+  type: string
+  unit?: string | null
+  variable: string
+}
+
+export type EnvironmentVariableItemResponse = {
+  description?: string | null
+  editable: boolean
+  edited: boolean
+  id: string
+  name: string
+  selector: Array<string>
+  type: string
+  value: unknown
+  value_type: string
+  visible: boolean
+}
+
+export type WorkflowDraftVariableWithoutValue = {
+  description?: string
+  edited?: boolean
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value_type?: string
+  visible?: boolean
+}
+
+export type DatasetRerankingModelResponse = {
+  reranking_model_name?: string | null
+  reranking_provider_name?: string | null
+}
+
+export type DatasetWeightedScoreResponse = {
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
+}
+
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
+
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type DatasetKeywordSettingResponse = {
+  keyword_weight?: number | null
+}
+
+export type DatasetVectorSettingResponse = {
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
+}
+
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
   path: {
@@ -181,16 +552,14 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse
   = DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses]
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
-  body?: never
+  body: CustomizedPipelineTemplatePayload
   path: {
     template_id: string
   }
@@ -199,9 +568,7 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -217,9 +584,7 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -233,9 +598,7 @@ export type PostRagPipelineDatasetData = {
 }
 
 export type PostRagPipelineDatasetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RagPipelineImportResponse
 }
 
 export type PostRagPipelineDatasetResponse
@@ -249,9 +612,7 @@ export type PostRagPipelineEmptyDatasetData = {
 }
 
 export type PostRagPipelineEmptyDatasetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: DatasetDetailResponse
 }
 
 export type PostRagPipelineEmptyDatasetResponse
@@ -260,14 +621,15 @@ export type PostRagPipelineEmptyDatasetResponse
 export type GetRagPipelineTemplatesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: string
+    type?: string
+  }
   url: '/rag/pipeline/templates'
 }
 
 export type GetRagPipelineTemplatesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PipelineTemplateListResponse
 }
 
 export type GetRagPipelineTemplatesResponse
@@ -278,14 +640,14 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
   path: {
     template_id: string
   }
-  query?: never
+  query?: {
+    type?: string
+  }
   url: '/rag/pipeline/templates/{template_id}'
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PipelineTemplateDetailResponse
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponse
@@ -299,9 +661,7 @@ export type GetRagPipelinesDatasourcePluginsData = {
 }
 
 export type GetRagPipelinesDatasourcePluginsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type GetRagPipelinesDatasourcePluginsResponse
@@ -314,10 +674,16 @@ export type PostRagPipelinesImportsData = {
   url: '/rag/pipelines/imports'
 }
 
+export type PostRagPipelinesImportsErrors = {
+  400: RagPipelineImportResponse
+}
+
+export type PostRagPipelinesImportsError
+  = PostRagPipelinesImportsErrors[keyof PostRagPipelinesImportsErrors]
+
 export type PostRagPipelinesImportsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportResponse
+  202: RagPipelineImportResponse
 }
 
 export type PostRagPipelinesImportsResponse
@@ -332,10 +698,15 @@ export type PostRagPipelinesImportsByImportIdConfirmData = {
   url: '/rag/pipelines/imports/{import_id}/confirm'
 }
 
+export type PostRagPipelinesImportsByImportIdConfirmErrors = {
+  400: RagPipelineImportResponse
+}
+
+export type PostRagPipelinesImportsByImportIdConfirmError
+  = PostRagPipelinesImportsByImportIdConfirmErrors[keyof PostRagPipelinesImportsByImportIdConfirmErrors]
+
 export type PostRagPipelinesImportsByImportIdConfirmResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportResponse
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmResponse
@@ -351,9 +722,7 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineImportCheckDependenciesResponse
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
@@ -362,14 +731,14 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
 export type GetRagPipelinesRecommendedPluginsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    type?: string
+  }
   url: '/rag/pipelines/recommended-plugins'
 }
 
 export type GetRagPipelinesRecommendedPluginsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type GetRagPipelinesRecommendedPluginsResponse
@@ -385,16 +754,14 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponse
   = PostRagPipelinesTransformDatasetsByDatasetIdResponses[keyof PostRagPipelinesTransformDatasetsByDatasetIdResponses]
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
-  body: Payload
+  body: CustomizedPipelineTemplatePayload
   path: {
     pipeline_id: string
   }
@@ -403,9 +770,7 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponse
@@ -416,14 +781,14 @@ export type GetRagPipelinesByPipelineIdExportsData = {
   path: {
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    include_secret?: string
+  }
   url: '/rag/pipelines/{pipeline_id}/exports'
 }
 
 export type GetRagPipelinesByPipelineIdExportsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type GetRagPipelinesByPipelineIdExportsResponse
@@ -434,7 +799,10 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsData = {
   path: {
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    last_id?: string
+    limit?: number
+  }
   url: '/rag/pipelines/{pipeline_id}/workflow-runs'
 }
 
@@ -456,9 +824,7 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
@@ -503,14 +869,21 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
   path: {
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    named_only?: boolean
+    page?: number
+    user_id?: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
+  403: unknown
+}
+
 export type GetRagPipelinesByPipelineIdWorkflowsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowPaginationResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsResponse
@@ -526,9 +899,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DefaultBlockConfigsResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse
@@ -540,14 +911,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
     block_type: string
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    q?: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DefaultBlockConfigResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
@@ -562,17 +933,19 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/draft'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
+  404: unknown
+}
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse
   = GetRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
-  body?: never
+  body: DraftWorkflowSyncPayload
   path: {
     pipeline_id: string
   }
@@ -581,9 +954,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse
@@ -600,9 +971,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse
@@ -634,9 +1003,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EnvironmentVariableListResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse
@@ -653,9 +1020,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunD
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -672,9 +1037,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData =
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -725,9 +1088,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesDa
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -744,9 +1105,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariableList
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -757,14 +1116,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData
   path: {
     pipeline_id: string
   }
-  query?: never
+  query: {
+    node_id: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineStepParametersResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse
@@ -775,14 +1134,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = 
   path: {
     pipeline_id: string
   }
-  query?: never
+  query: {
+    node_id: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineStepParametersResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse
@@ -798,9 +1157,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponse
@@ -816,9 +1173,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariableList
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
@@ -834,9 +1189,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
@@ -847,14 +1200,15 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   path: {
     pipeline_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariableListWithoutValue
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
@@ -871,9 +1225,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdDat
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
@@ -890,16 +1242,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariable
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
   = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
-  body?: never
+  body: WorkflowDraftVariablePatchPayload
   path: {
     pipeline_id: string
     variable_id: string
@@ -909,9 +1259,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariable
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
@@ -928,9 +1276,8 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowDraftVariable
+  204: void
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse
@@ -946,9 +1293,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -964,9 +1309,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowPublishResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
@@ -1003,9 +1346,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse
@@ -1016,14 +1357,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
   path: {
     pipeline_id: string
   }
-  query?: never
+  query: {
+    node_id: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineStepParametersResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse
@@ -1034,14 +1375,14 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersDat
   path: {
     pipeline_id: string
   }
-  query?: never
+  query: {
+    node_id: string
+  }
   url: '/rag/pipelines/{pipeline_id}/workflows/published/processing/parameters'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineStepParametersResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse
@@ -1057,9 +1398,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineOpaqueResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse
@@ -1076,16 +1415,14 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
   = DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
-  body?: never
+  body: WorkflowUpdatePayload
   path: {
     pipeline_id: string
     workflow_id: string
@@ -1094,10 +1431,14 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}'
 }
 
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  403: unknown
+  404: unknown
+}
+
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowResponse
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
@@ -1114,9 +1455,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse

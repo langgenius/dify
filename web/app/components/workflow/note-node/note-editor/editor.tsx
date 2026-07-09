@@ -43,7 +43,7 @@ const Editor = ({
               onFocus={() => setHistoryShortcutsEnabled?.(false)}
               onBlur={() => setHistoryShortcutsEnabled?.(true)}
               spellCheck={false}
-              className="h-full w-full text-text-secondary caret-primary-600 outline-hidden"
+              className="size-full text-text-secondary caret-primary-600 outline-hidden"
             />
           </div>
         )}

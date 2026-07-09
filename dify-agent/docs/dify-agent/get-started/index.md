@@ -51,6 +51,9 @@ DIFY_AGENT_REDIS_PREFIX=dify-agent
 
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-plugin-daemon-server-key
+
+DIFY_AGENT_INNER_API_URL=http://localhost:5001
+DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 EOF
 ```
 
@@ -63,8 +66,17 @@ The minimum settings are:
 - `DIFY_AGENT_PLUGIN_DAEMON_API_KEY`: API key sent by the server to the plugin
   daemon. In a Dify Docker setup this is usually the value previously configured
   as `PLUGIN_DAEMON_KEY`.
+- `DIFY_AGENT_INNER_API_URL`: Dify API service root for `/inner/api/...` calls.
+- `DIFY_AGENT_INNER_API_KEY`: API key sent to Dify API inner plugin endpoints.
+  In Docker this should match `PLUGIN_DIFY_INNER_API_KEY`, which maps to Dify
+  API `INNER_API_KEY_FOR_PLUGIN`.
 
 See `.example.env` for the full server settings template.
+
+If you plan to run `dify.shell`, also configure `DIFY_AGENT_SHELLCTL_ENTRYPOINT`
+and, when shell jobs need to call back with the `dify-agent` command, set
+`DIFY_AGENT_STUB_API_BASE_URL` plus a 32-byte base64url
+`DIFY_AGENT_SERVER_SECRET_KEY` as documented in `.example.env`.
 
 ## Start the Dify Agent server
 
@@ -98,114 +110,81 @@ uv run --extra server uvicorn dify_agent.server.app:app \
 `ServerSettings` reads `.env` from the current `dify-agent` directory, or from
 `dify-agent/.env` when the command is run from the repository root.
 
-## Create a one-file uv script client
+## Create a Python client example
 
-In another shell, keep working from the `dify-agent` directory and create this
-script. The script depends on the local `dify-agent` package only; it does not
-install the server extra because it talks to the already running server through
-the public Python client.
+In another shell, keep working from the `dify-agent` directory. Create
+`run_dify_agent_client.py` with the example below, then replace the placeholder
+tenant id and provider credential values.
 
-```bash
-DIFY_AGENT_PACKAGE_URL="$(python3 - <<'PY'
-from pathlib import Path
-
-print(Path.cwd().resolve().as_uri())
-PY
-)"
-
-cat > ./run_dify_agent_client.py <<PY
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#   "dify-agent @ ${DIFY_AGENT_PACKAGE_URL}",
-# ]
-# ///
-
+```python {test="skip" lint="skip"}
 import asyncio
 import json
-import os
 import sys
-from typing import Any
 
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import (
-    DIFY_PLUGIN_LAYER_TYPE_ID,
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
-    DifyPluginLayerConfig,
 )
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
 
-def env(name: str, default: str | None = None) -> str:
-    value = os.environ.get(name, default)
-    if value is None or value == "":
-        raise SystemExit(f"Missing required environment variable: {name}")
-    return value
+API_BASE_URL = "http://127.0.0.1:8000"
+
+TENANT_ID = "replace-with-tenant-id"
+PLUGIN_ID = "langgenius/openai"
+USER_ID: str | None = None
+
+# Keep these aligned with DIFY_AGENT_PROVIDER and DIFY_AGENT_MODEL_NAME in dify-agent/.env.
+MODEL_PROVIDER = "replace-with-provider-from-dify-agent-env"
+MODEL_NAME = "replace-with-model-from-dify-agent-env"
+MODEL_CREDENTIALS: dict[str, str | int | float | bool | None] = {
+    "api_key": "replace-with-provider-key",
+}
+
+SYSTEM_PROMPT = "You are a concise assistant."
+USER_PROMPT = "用一句话介绍 Dify Agent。"
 
 
-def load_credentials() -> dict[str, Any]:
-    raw = env("DIFY_AGENT_MODEL_CREDENTIALS_JSON")
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"DIFY_AGENT_MODEL_CREDENTIALS_JSON must be valid JSON: {exc}") from exc
-
-    if not isinstance(data, dict):
-        raise SystemExit("DIFY_AGENT_MODEL_CREDENTIALS_JSON must be a JSON object")
-
-    return data
-
-
-async def main() -> int:
-    api_base_url = env("DIFY_AGENT_SERVER_URL", "http://127.0.0.1:8000")
-
-    tenant_id = env("DIFY_AGENT_TENANT_ID")
-    plugin_id = env("DIFY_AGENT_PLUGIN_ID", "langgenius/openai")
-    user_id = os.environ.get("DIFY_AGENT_USER_ID") or None
-
-    model_provider = env("DIFY_AGENT_PROVIDER", "openai")
-    model_name = env("DIFY_AGENT_MODEL_NAME", "gpt-4o-mini")
-    model_credentials = load_credentials()
-
-    system_prompt = env("DIFY_AGENT_SYSTEM_PROMPT", "You are a concise assistant.")
-    user_prompt = env("DIFY_AGENT_PROMPT", "Say hello from the Dify Agent client.")
-
-    request = CreateRunRequest(
+def build_request() -> CreateRunRequest:
+    return CreateRunRequest(
         composition=RunComposition(
             layers=[
                 RunLayerSpec(
                     name="prompt",
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
-                    config=PromptLayerConfig(prefix=system_prompt, user=user_prompt),
+                    config=PromptLayerConfig(prefix=SYSTEM_PROMPT, user=USER_PROMPT),
                 ),
                 RunLayerSpec(
-                    name="plugin",
-                    type=DIFY_PLUGIN_LAYER_TYPE_ID,
-                    config=DifyPluginLayerConfig(
-                        tenant_id=tenant_id,
-                        plugin_id=plugin_id,
-                        user_id=user_id,
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id=TENANT_ID,
+                        user_id=USER_ID,
+                        invoke_from="workflow_run",
                     ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-                    deps={"plugin": "plugin"},
+                    deps={"execution_context": "execution_context"},
                     config=DifyPluginLLMLayerConfig(
-                        model_provider=model_provider,
-                        model=model_name,
-                        credentials=model_credentials,
+                        plugin_id=PLUGIN_ID,
+                        model_provider=MODEL_PROVIDER,
+                        model=MODEL_NAME,
+                        credentials=MODEL_CREDENTIALS,
                     ),
                 ),
             ],
         ),
     )
 
-    async with Client(base_url=api_base_url, stream_timeout=None) as client:
-        run = await client.create_run(request)
+
+async def main() -> int:
+    async with Client(base_url=API_BASE_URL, stream_timeout=None) as client:
+        run = await client.create_run(build_request())
         print(f"created run: {run.run_id}, status={run.status}")
 
         async for event in client.stream_events(run.run_id):
@@ -225,35 +204,26 @@ async def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main()))
-PY
-
-chmod +x ./run_dify_agent_client.py
 ```
 
-## Configure the client request and run it
+## Run the client example
 
 The server-side `.env` controls how Dify Agent reaches the plugin daemon. The
-client request controls which tenant/plugin/provider/model and provider
-credentials the run uses. Configure those values before executing the script:
+client example controls which tenant/plugin/provider/model and provider
+credentials the run uses.
+
+Run the example from the `dify-agent` directory:
 
 ```bash
-export DIFY_AGENT_SERVER_URL=http://127.0.0.1:8000
-
-export DIFY_AGENT_TENANT_ID=replace-with-tenant-id
-export DIFY_AGENT_PLUGIN_ID=langgenius/openai
-export DIFY_AGENT_PROVIDER=openai
-export DIFY_AGENT_MODEL_NAME=gpt-4o-mini
-
-export DIFY_AGENT_MODEL_CREDENTIALS_JSON='{"api_key":"replace-with-provider-key"}'
-
-export DIFY_AGENT_PROMPT='用一句话介绍 Dify Agent。'
-
-./run_dify_agent_client.py
+uv run python ./run_dify_agent_client.py
 ```
 
-The shape of `DIFY_AGENT_MODEL_CREDENTIALS_JSON` depends on the selected plugin
-provider's credential schema. The `{"api_key":"..."}` value above is only an
-OpenAI-style example.
+The shape of `MODEL_CREDENTIALS` depends on the selected plugin provider's
+credential schema. The `{"api_key":"..."}` value above is only an OpenAI-style
+example.
+
+Set `MODEL_PROVIDER` and `MODEL_NAME` to the same values as
+`DIFY_AGENT_PROVIDER` and `DIFY_AGENT_MODEL_NAME` in `dify-agent/.env`.
 
 ## Troubleshooting
 
@@ -263,6 +233,7 @@ If the run fails, check these items first:
 2. The Dify Agent server is listening on `127.0.0.1:8000`.
 3. `DIFY_AGENT_PLUGIN_DAEMON_URL` points to the correct plugin daemon.
 4. `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` matches the plugin daemon server key.
-5. `DIFY_AGENT_PLUGIN_ID`, `DIFY_AGENT_PROVIDER`, and
-   `DIFY_AGENT_MODEL_NAME` match a provider available through the plugin daemon.
-6. `DIFY_AGENT_MODEL_CREDENTIALS_JSON` matches that provider's credential schema.
+5. `PLUGIN_ID`, `MODEL_PROVIDER`, and `MODEL_NAME` in the client example match
+   the corresponding values configured in `dify-agent/.env` and a provider
+   available through the plugin daemon.
+6. `MODEL_CREDENTIALS` matches that provider's credential schema.

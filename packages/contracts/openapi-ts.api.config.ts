@@ -2,49 +2,34 @@ import type { UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 type JsonObject = Record<string, unknown>
 
 type SwaggerSchema = JsonObject & {
-  '$defs'?: Record<string, SwaggerSchema>
-  '$ref'?: string
-  'x-nullable'?: boolean
-  'additionalProperties'?: unknown
-  'anyOf'?: SwaggerSchema[]
-  'const'?: unknown
-  'default'?: unknown
-  'definitions'?: Record<string, SwaggerSchema>
-  'description'?: string
-  'enum'?: unknown[]
-  'format'?: string
-  'items'?: SwaggerSchema
-  'properties'?: Record<string, SwaggerSchema>
-  'required'?: string[]
-  'type'?: string
+  $ref?: string
 }
 
-type SwaggerParameter = JsonObject & {
-  in?: string
-  name?: string
-  required?: boolean
+type OpenApiMediaType = JsonObject & {
   schema?: SwaggerSchema
-  type?: string
 }
 
-type SwaggerResponse = JsonObject & {
-  description?: string
-  schema?: SwaggerSchema
+type OpenApiResponse = JsonObject & {
+  content?: Record<string, OpenApiMediaType>
+}
+
+type OpenApiComponents = JsonObject & {
+  schemas?: Record<string, SwaggerSchema>
 }
 
 type SwaggerOperation = JsonObject & {
   operationId?: string
-  parameters?: SwaggerParameter[]
-  responses?: Record<string, SwaggerResponse>
+  responses?: Record<string, OpenApiResponse>
 }
 
 type SwaggerDocument = JsonObject & {
-  definitions?: Record<string, SwaggerSchema>
+  components?: OpenApiComponents
+  openapi?: string
   paths?: Record<string, Record<string, unknown>>
 }
 
@@ -54,8 +39,16 @@ type ApiSpec = {
 }
 
 type ApiJob = {
+  clean?: boolean
   document: SwaggerDocument
   outputPath: string
+  plugins?: UserConfig['plugins']
+  source?: {
+    callback: () => void
+    enabled: true
+    path: null
+    serialize: () => string
+  }
 }
 
 type ApiContractOperation = {
@@ -67,21 +60,21 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
+const fastOpenApiConsolePathPrefix = '/console/api'
 
 const apiSpecs: ApiSpec[] = [
-  { filename: 'console-swagger.json', name: 'console' },
-  { filename: 'web-swagger.json', name: 'web' },
-  { filename: 'service-swagger.json', name: 'service' },
+  { filename: 'console-openapi.json', name: 'console' },
+  { filename: 'web-openapi.json', name: 'web' },
+  { filename: 'service-openapi.json', name: 'service' },
+  { filename: 'openapi-openapi.json', name: 'openapi' },
 ]
 
 const isObject = (value: unknown): value is JsonObject => {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
-
-const unknownObjectSchema = (): SwaggerSchema => ({
-  additionalProperties: true,
-  type: 'object',
-})
 
 const toWords = (value: string) => {
   return value
@@ -111,11 +104,11 @@ const segmentWords = (segment: string) => {
   return toWords(segment)
 }
 
+// Split on `:` too so custom methods nest as their own node (apps.byAppId.run), not apps.appIdRun.
+const routeNamingSegments = (routePath: string) => routePath.split(/[/:]/).filter(Boolean)
+
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routeNamingSegments(routePath).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
@@ -123,10 +116,7 @@ const operationId = (method: string, routePath: string) => {
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = operation.path
-    .split('/')
-    .filter(Boolean)
-    .map(segment => toCamelCase(segmentWords(segment)))
+  const segments = routeNamingSegments(operation.path).map(segment => toCamelCase(segmentWords(segment)))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
@@ -151,7 +141,20 @@ const clone = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-const collectDefinitionRefs = (value: unknown, refs: Set<string>, visited = new WeakSet<object>()) => {
+const componentSchemaRefPrefix = '#/components/schemas/'
+
+const schemaNameFromRef = (ref: string) => {
+  if (ref.startsWith(componentSchemaRefPrefix))
+    return ref.slice(componentSchemaRefPrefix.length)
+  return undefined
+}
+
+const getDocumentSchemas = (document: SwaggerDocument) => {
+  const components = document.components ??= {}
+  return components.schemas ??= {}
+}
+
+const collectSchemaRefs = (value: unknown, refs: Set<string>, visited = new WeakSet<object>()) => {
   if (!value || typeof value !== 'object')
     return
 
@@ -161,286 +164,22 @@ const collectDefinitionRefs = (value: unknown, refs: Set<string>, visited = new 
   visited.add(value)
 
   if (Array.isArray(value)) {
-    value.forEach(item => collectDefinitionRefs(item, refs, visited))
+    value.forEach(item => collectSchemaRefs(item, refs, visited))
     return
   }
 
   const objectValue = value as JsonObject
   const ref = objectValue.$ref
-  if (typeof ref === 'string' && ref.startsWith('#/definitions/'))
-    refs.add(ref.slice('#/definitions/'.length))
-
-  Object.values(objectValue).forEach(item => collectDefinitionRefs(item, refs, visited))
-}
-
-const removeNullDefaults = (value: unknown, visited = new WeakSet<object>()) => {
-  if (!value || typeof value !== 'object' || visited.has(value))
-    return
-
-  visited.add(value)
-
-  if (Array.isArray(value)) {
-    value.forEach(item => removeNullDefaults(item, visited))
-    return
+  if (typeof ref === 'string') {
+    const refName = schemaNameFromRef(ref)
+    if (refName)
+      refs.add(refName)
   }
 
-  const schema = value as SwaggerSchema
-  if (schema.default === null)
-    delete schema.default
-
-  Object.values(schema).forEach(item => removeNullDefaults(item, visited))
+  Object.values(objectValue).forEach(item => collectSchemaRefs(item, refs, visited))
 }
 
-const isNullSchema = (schema: SwaggerSchema) => {
-  return schema.type === 'null'
-}
-
-const normalizeNullableAnyOf = (value: unknown, visited = new WeakSet<object>()) => {
-  if (!value || typeof value !== 'object' || visited.has(value))
-    return
-
-  visited.add(value)
-
-  if (Array.isArray(value)) {
-    value.forEach(item => normalizeNullableAnyOf(item, visited))
-    return
-  }
-
-  const schema = value as SwaggerSchema
-
-  if (Array.isArray(schema.anyOf)) {
-    const nonNullSchemas = schema.anyOf.filter(item => !isNullSchema(item))
-    const hasNullSchema = nonNullSchemas.length !== schema.anyOf.length
-
-    if (hasNullSchema && nonNullSchemas.length === 1) {
-      const { anyOf: _anyOf, ...rest } = schema
-      Object.keys(schema).forEach(key => delete schema[key])
-      Object.assign(schema, rest, nonNullSchemas[0], { 'x-nullable': true })
-    }
-  }
-
-  Object.values(schema).forEach(item => normalizeNullableAnyOf(item, visited))
-}
-
-const hoistNestedDefinitions = (definitions: Record<string, SwaggerSchema>) => {
-  const visited = new WeakSet<object>()
-
-  const visit = (value: unknown) => {
-    if (!value || typeof value !== 'object' || visited.has(value))
-      return
-
-    visited.add(value)
-
-    if (Array.isArray(value)) {
-      value.forEach(visit)
-      return
-    }
-
-    const schema = value as SwaggerSchema
-    for (const key of ['$defs', 'definitions'] as const) {
-      const nestedDefinitions = schema[key]
-      if (!isObject(nestedDefinitions))
-        continue
-
-      for (const [name, nestedSchema] of Object.entries(nestedDefinitions)) {
-        definitions[name] ??= nestedSchema
-        visit(nestedSchema)
-      }
-
-      delete schema[key]
-    }
-
-    Object.values(schema).forEach(visit)
-  }
-
-  Object.values(definitions).forEach(visit)
-}
-
-const ensureReferencedDefinitions = (document: SwaggerDocument) => {
-  const definitions = document.definitions ??= {}
-  const refs = new Set<string>()
-  collectDefinitionRefs(document, refs)
-
-  for (const refName of refs)
-    definitions[refName] ??= unknownObjectSchema()
-}
-
-const resolveDefinitionRef = (
-  schema: SwaggerSchema | undefined,
-  definitions: Record<string, SwaggerSchema>,
-): SwaggerSchema | undefined => {
-  const ref = schema?.$ref
-
-  if (!ref?.startsWith('#/definitions/'))
-    return schema
-
-  return definitions[ref.slice('#/definitions/'.length)] ?? schema
-}
-
-const withoutNullableWrapper = (schema: SwaggerSchema | undefined): SwaggerSchema => {
-  if (!schema)
-    return {}
-
-  const nonNullSchema = schema.anyOf?.find(item => item.type !== 'null')
-  if (!nonNullSchema)
-    return schema
-
-  const { anyOf: _anyOf, ...rest } = schema
-  return {
-    ...rest,
-    ...nonNullSchema,
-  }
-}
-
-const isNullEnumItem = (item: unknown) => {
-  return isObject(item) && (item.type === 'null' || item.const === null)
-}
-
-const markNullableEnumSchema = (ctx: { schema: JsonObject }): undefined => {
-  const items = ctx.schema.items
-
-  if (ctx.schema['x-nullable'] !== true || !Array.isArray(items) || items.some(isNullEnumItem))
-    return undefined
-
-  // Hey API's enum visitors infer nullable from a null enum item, not x-nullable.
-  ctx.schema.items = [...items, { const: null, type: 'null' }]
-
-  return undefined
-}
-
-const queryParameterFromSchema = (
-  name: string,
-  schema: SwaggerSchema | undefined,
-  required: boolean,
-): SwaggerParameter => {
-  const querySchema = withoutNullableWrapper(schema)
-  const parameter: SwaggerParameter = {
-    in: 'query',
-    name,
-    required,
-  }
-
-  if (querySchema.default !== undefined)
-    parameter.default = querySchema.default
-
-  if (querySchema.description)
-    parameter.description = querySchema.description
-
-  if (querySchema.enum)
-    parameter.enum = querySchema.enum
-
-  if (querySchema.format)
-    parameter.format = querySchema.format
-
-  if (querySchema.items)
-    parameter.items = querySchema.items
-
-  for (const key of [
-    'exclusiveMaximum',
-    'exclusiveMinimum',
-    'maxItems',
-    'maxLength',
-    'maximum',
-    'minItems',
-    'minLength',
-    'minimum',
-    'multipleOf',
-    'pattern',
-    'uniqueItems',
-    'x-nullable',
-  ]) {
-    if (querySchema[key] !== undefined)
-      parameter[key] = querySchema[key]
-  }
-
-  parameter.type = ['array', 'boolean', 'integer', 'number', 'string'].includes(querySchema.type ?? '')
-    ? querySchema.type
-    : 'string'
-
-  return parameter
-}
-
-const mergeQueryParameter = (
-  parameters: SwaggerParameter[],
-  queryParameter: SwaggerParameter,
-) => {
-  const existingIndex = parameters.findIndex((parameter) => {
-    return parameter.in === 'query' && parameter.name === queryParameter.name
-  })
-
-  if (existingIndex === -1) {
-    parameters.push(queryParameter)
-    return
-  }
-
-  const existingParameter = parameters[existingIndex]
-  if (!existingParameter) {
-    parameters.push(queryParameter)
-    return
-  }
-
-  parameters[existingIndex] = {
-    ...existingParameter,
-    ...queryParameter,
-    description: queryParameter.description ?? existingParameter.description,
-    required: Boolean(existingParameter.required) || Boolean(queryParameter.required),
-  }
-}
-
-const normalizeGetBodyParameters = (
-  operation: SwaggerOperation,
-  definitions: Record<string, SwaggerSchema>,
-) => {
-  if (!Array.isArray(operation.parameters))
-    return
-
-  const bodyParameters: SwaggerParameter[] = []
-  const normalizedParameters: SwaggerParameter[] = []
-
-  for (const parameter of operation.parameters) {
-    if (parameter.in === 'body') {
-      bodyParameters.push(parameter)
-      continue
-    }
-
-    normalizedParameters.push(parameter)
-  }
-
-  for (const parameter of bodyParameters) {
-    const schema = resolveDefinitionRef(parameter.schema, definitions)
-    const properties = schema?.properties ?? {}
-    const required = new Set(schema?.required ?? [])
-
-    for (const [name, propertySchema] of Object.entries(properties)) {
-      mergeQueryParameter(
-        normalizedParameters,
-        queryParameterFromSchema(name, propertySchema, required.has(name)),
-      )
-    }
-  }
-
-  operation.parameters = normalizedParameters
-}
-
-const normalizeResponses = (operation: SwaggerOperation) => {
-  const responses = operation.responses ??= {}
-
-  for (const response of Object.values(responses)) {
-    if (!response.schema)
-      response.schema = unknownObjectSchema()
-  }
-
-  if (!Object.keys(responses).some(status => /^2\d\d$/.test(status))) {
-    responses['200'] = {
-      description: 'Success',
-      schema: unknownObjectSchema(),
-    }
-  }
-}
-
-const normalizeOperations = (document: SwaggerDocument) => {
-  const definitions = document.definitions ??= {}
-
+const addOperationIds = (document: SwaggerDocument) => {
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation))
@@ -448,25 +187,120 @@ const normalizeOperations = (document: SwaggerDocument) => {
 
       const swaggerOperation = operation as SwaggerOperation
       swaggerOperation.operationId = operationId(method, routePath)
-
-      normalizeResponses(swaggerOperation)
-
-      if (method === 'get')
-        normalizeGetBodyParameters(swaggerOperation, definitions)
     }
   }
 }
 
-const normalizeApiSwagger = (document: SwaggerDocument) => {
-  document.definitions ??= {}
+const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
+  // This runs before contract filtering. Flask-RESTX often emits plain success responses
+  // without a body schema; give those routes an opaque output so they stay in oRPC.
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation))
+        continue
 
-  // Flask-RESTX emits Pydantic nested $defs inside individual schemas while
-  // refs point at the root Swagger 2.0 definitions object.
-  hoistNestedDefinitions(document.definitions)
-  ensureReferencedDefinitions(document)
-  normalizeNullableAnyOf(document)
-  removeNullDefaults(document)
-  normalizeOperations(document)
+      const swaggerOperation = operation as SwaggerOperation
+      for (const [status, response] of Object.entries(swaggerOperation.responses ?? {})) {
+        // Ignore non-2xx or 204 or those w/o a response field
+        if (!/^2\d\d$/.test(status) || status === '204' || !isObject(response))
+          continue
+
+        const content = response.content
+        if (!isObject(content) || Object.keys(content).length === 0) {
+          // No response specification, fill a dummy opaque resp
+          response.content = {
+            'application/json': {
+              schema: {
+                additionalProperties: true,
+                type: 'object',
+              },
+            },
+          }
+          continue
+        }
+
+        for (const [mediaType, media] of Object.entries(content)) {
+          if (mediaType !== 'application/json' && mediaType !== 'text/event-stream')
+            continue
+          if (!isObject(media) || isObject(media.schema))
+            continue
+
+          // JSON/SSE media without a schema traps heyapi. Patch only that media entry so
+          // sibling binary media keeps heyapi's Blob | File inference.
+          // Still a dummy opaque resp
+          media.schema = {
+            additionalProperties: true,
+            type: 'object',
+          }
+        }
+      }
+    }
+  }
+}
+
+const hasSuccessResponse = (operation: SwaggerOperation) => {
+  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
+    if (!/^2\d\d$/.test(status))
+      return false
+    if (!isObject(response))
+      return false
+    const content = (response as JsonObject).content
+    // 204 No Content is a valid success response without a body
+    if (!isObject(content) || Object.keys(content).length === 0)
+      return status === '204'
+    return true
+  })
+}
+
+const filterContractOperations = (document: SwaggerDocument) => {
+  for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation))
+        continue
+
+      if (!hasSuccessResponse(operation as SwaggerOperation))
+        delete pathItem[method]
+    }
+
+    const hasOperations = Object.entries(pathItem)
+      .some(([method, operation]) => operationMethods.has(method) && isObject(operation))
+
+    if (!hasOperations)
+      delete document.paths?.[routePath]
+  }
+}
+
+const normalizeApiSwagger = (document: SwaggerDocument) => {
+  normalizeOpaqueContractResponses(document)
+  filterContractOperations(document)
+  addOperationIds(document)
+
+  return document
+}
+
+const mergeFastOpenApiConsoleSwagger = (document: SwaggerDocument) => {
+  const fastOpenApiDocument = readApiSwagger(fastOpenApiConsoleSpecFilename)
+  const targetPaths = document.paths ??= {}
+
+  for (const [routePath, pathItem] of Object.entries(fastOpenApiDocument.paths ?? {})) {
+    const contractPath = routePath.startsWith(fastOpenApiConsolePathPrefix)
+      ? routePath.slice(fastOpenApiConsolePathPrefix.length) || '/'
+      : routePath
+
+    if (targetPaths[contractPath])
+      throw new Error(`Duplicate console API path after FastOpenAPI merge: ${contractPath}`)
+
+    targetPaths[contractPath] = pathItem
+  }
+
+  const targetSchemas = getDocumentSchemas(document)
+  const sourceSchemas = getDocumentSchemas(fastOpenApiDocument)
+  for (const [schemaName, schema] of Object.entries(sourceSchemas)) {
+    if (targetSchemas[schemaName])
+      throw new Error(`Duplicate console API schema after FastOpenAPI merge: ${schemaName}`)
+
+    targetSchemas[schemaName] = schema
+  }
 
   return document
 }
@@ -475,13 +309,13 @@ const topLevelPathSegment = (routePath: string) => {
   return routePath.split('/').filter(Boolean)[0] ?? 'root'
 }
 
-const selectReferencedDefinitions = (
-  definitions: Record<string, SwaggerSchema>,
+const selectReferencedSchemas = (
+  schemas: Record<string, SwaggerSchema>,
   paths: Record<string, Record<string, unknown>>,
 ) => {
-  const selectedDefinitions: Record<string, SwaggerSchema> = {}
+  const selectedSchemas: Record<string, SwaggerSchema> = {}
   const pendingRefs = new Set<string>()
-  collectDefinitionRefs(paths, pendingRefs)
+  collectSchemaRefs(paths, pendingRefs)
 
   while (pendingRefs.size > 0) {
     const refName = pendingRefs.values().next().value
@@ -490,34 +324,124 @@ const selectReferencedDefinitions = (
 
     pendingRefs.delete(refName)
 
-    if (selectedDefinitions[refName])
+    if (selectedSchemas[refName])
       continue
 
-    selectedDefinitions[refName] = definitions[refName] ?? unknownObjectSchema()
+    const schema = schemas[refName]
+    if (!schema)
+      throw new Error(`Missing referenced schema: ${refName}`)
+
+    selectedSchemas[refName] = schema
 
     const nestedRefs = new Set<string>()
-    collectDefinitionRefs(selectedDefinitions[refName], nestedRefs)
+    collectSchemaRefs(selectedSchemas[refName], nestedRefs)
     for (const nestedRef of nestedRefs) {
-      if (!selectedDefinitions[nestedRef])
+      if (!selectedSchemas[nestedRef])
         pendingRefs.add(nestedRef)
     }
   }
 
-  return selectedDefinitions
+  return selectedSchemas
 }
 
 const cloneDocumentWithPaths = (
   document: SwaggerDocument,
   paths: Record<string, Record<string, unknown>>,
 ) => {
-  const { definitions: _definitions, paths: _paths, ...metadata } = document
+  const { components: _components, paths: _paths, ...metadata } = document
   const clonedPaths = clone(paths)
+  const components = clone(document.components ?? {})
+  const sourceSchemas = getDocumentSchemas(document)
+
+  components.schemas = selectReferencedSchemas(sourceSchemas, clonedPaths)
 
   return {
     ...clone(metadata),
-    definitions: selectReferencedDefinitions(document.definitions ?? {}, clonedPaths),
+    components,
     paths: clonedPaths,
   } satisfies SwaggerDocument
+}
+
+const consoleContractEntryContent = (segments: string[]) => {
+  const contracts = segments.map((segment) => {
+    return {
+      importPath: toKebabCase(segment),
+      name: toCamelCase(segmentWords(segment)),
+    }
+  })
+
+  const contractEntries = contracts
+    .map(contract => `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`)
+    .join('\n')
+
+  return `// This file is auto-generated by @hey-api/openapi-ts
+
+export const contractLoaders = {
+${contractEntries}
+}
+`
+}
+
+const writeConsoleContractEntry = (segments: string[]) => {
+  const entryPath = path.resolve(currentDir, 'generated/api/console/orpc.gen.ts')
+  fs.mkdirSync(path.dirname(entryPath), { recursive: true })
+  fs.writeFileSync(entryPath, consoleContractEntryContent(segments))
+}
+
+const consoleRouterContractContent = (segments: string[]) => {
+  const contracts = segments.map((segment) => {
+    return {
+      importPath: toKebabCase(segment),
+      name: toCamelCase(segmentWords(segment)),
+    }
+  })
+
+  const imports = contracts
+    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .join('\n')
+
+  const communityContractEntries = contracts
+    .map(contract => `  ${contract.name},`)
+    .join('\n')
+
+  return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
+
+${imports}
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+
+const communityContract = {
+${communityContractEntries}
+}
+
+export const consoleRouterContract = {
+  enterprise: enterpriseContract,
+  ...communityContract,
+}
+`
+}
+
+const writeConsoleRouterContract = (segments: string[]) => {
+  const routerPath = path.resolve(currentDir, 'generated/api/console/router.gen.ts')
+  fs.mkdirSync(path.dirname(routerPath), { recursive: true })
+  fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
+}
+
+const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
+  return {
+    clean: false,
+    document,
+    outputPath: 'generated/api/console',
+    plugins: [],
+    source: {
+      callback: () => {
+        writeConsoleContractEntry(segments)
+        writeConsoleRouterContract(segments)
+      },
+      enabled: true,
+      path: null,
+      serialize: () => '',
+    },
+  }
 }
 
 const splitConsoleDocument = (document: SwaggerDocument) => {
@@ -530,16 +454,21 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
     pathsBySegment.set(segment, paths)
   }
 
-  return [...pathsBySegment.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([segment, paths]): ApiJob => ({
-      document: cloneDocumentWithPaths(document, paths),
-      outputPath: `generated/api/console/${toKebabCase(segment)}`,
-    }))
+  const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
+  const jobs = segments.map((segment): ApiJob => ({
+    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+    outputPath: `generated/api/console/${toKebabCase(segment)}`,
+  }))
+
+  return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(
+    spec.name === 'console'
+      ? mergeFastOpenApiConsoleSwagger(readApiSwagger(spec.filename))
+      : readApiSwagger(spec.filename),
+  )
 
   if (spec.name === 'console')
     return splitConsoleDocument(document)
@@ -552,40 +481,46 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   ]
 }
 
+const apiJobs = apiSpecs.flatMap(createApiJobs)
+
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
   logs: {
     file: false,
   },
   output: {
+    ...(job.clean === undefined ? {} : { clean: job.clean }),
     entryFile: false,
     fileName: {
       suffix: '.gen',
     },
     path: job.outputPath,
-    postProcess: [
-      {
-        args: ['fmt', '{{path}}'],
-        command: 'vp',
-      },
-      {
-        args: ['--fix', '{{path}}/*.ts'],
-        command: 'eslint',
-      },
-    ],
+    ...(job.source ? { source: job.source } : {}),
   },
-  plugins: [
+  plugins: job.plugins ?? [
     {
-      'comments': false,
-      'name': '@hey-api/typescript',
-      '~resolvers': {
-        enum: markNullableEnumSchema,
-      },
+      comments: false,
+      name: '@hey-api/typescript',
     },
     {
       'name': 'zod',
       '~resolvers': {
-        enum: markNullableEnumSchema,
+        string: (ctx) => {
+          if (ctx.schema.format === 'binary')
+            return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+
+          if (ctx.schema.pattern === pydanticDecimalStringPattern) {
+            // the pydantic generated regex will emit error like
+            // regexp/no-useless-assertions, so patch the regex here
+            return $(ctx.symbols.z)
+              .attr('string')
+              .call()
+              .attr('regex')
+              .call($.regexp(codegenSafeDecimalStringPattern))
+          }
+
+          return undefined
+        },
       },
     },
     {
@@ -607,4 +542,4 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
   ],
 })
 
-export default defineConfig(apiSpecs.flatMap(createApiJobs).map(createApiConfig))
+export default defineConfig(apiJobs.map(createApiConfig))

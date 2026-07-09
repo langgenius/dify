@@ -36,12 +36,12 @@ import { BlockEnum } from '../types'
 import Empty from './empty'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
   isValueFetching?: boolean
-}
+}>
 
 const Right = ({
   nodeId,
@@ -111,9 +111,6 @@ const Right = ({
     if (blockType === BlockEnum.LLM)
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
 
-    // if (blockType === BlockEnum.Agent) {
-    //   return node?.data?.agent_parameters?.instruction?.value
-    // }
     if (blockType === BlockEnum.Code)
       return node?.data?.code
   }, [canShowPromptGenerator])
@@ -139,12 +136,6 @@ const Right = ({
           }
           break
 
-        //  Agent is a plugin, may has many instructions, can not locate which one to update
-        // case BlockEnum.Agent:
-        //   if (draft?.agent_parameters?.instruction) {
-        //     draft.agent_parameters.instruction.value = res.modified
-        //   }
-        //   break
         case BlockEnum.Code:
           draft.code = res.modified
           break
@@ -167,7 +158,7 @@ const Right = ({
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <ActionButton className="shrink-0" onClick={handleOpenMenu}>
-            <RiMenuLine className="h-4 w-4" />
+            <RiMenuLine className="size-4" />
           </ActionButton>
         )}
         <div className="flex w-0 grow items-center gap-1">
@@ -264,7 +255,7 @@ const Right = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton onClick={resetValue}>
-                        <RiArrowGoBackLine className="h-4 w-4" />
+                        <RiArrowGoBackLine className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -278,7 +269,7 @@ const Right = ({
                   <TooltipTrigger
                     render={(
                       <ActionButton onClick={handleClear}>
-                        <RiArrowGoBackLine className="h-4 w-4" />
+                        <RiArrowGoBackLine className="size-4" />
                       </ActionButton>
                     )}
                   />
@@ -293,7 +284,7 @@ const Right = ({
             </>
           )}
           <ActionButton onClick={handleClose}>
-            <RiCloseLine className="h-4 w-4" />
+            <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
       </div>

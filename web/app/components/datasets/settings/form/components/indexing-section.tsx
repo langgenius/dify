@@ -2,7 +2,6 @@
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { RiAlertFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -33,6 +32,7 @@ type IndexingSectionProps = {
   summaryIndexSetting: SummaryIndexSettingType | undefined
   handleSummaryIndexSettingChange: (payload: SummaryIndexSettingType) => void
   showMultiModalTip: boolean
+  readonly?: boolean
 }
 
 const IndexingSection = ({
@@ -49,6 +49,7 @@ const IndexingSection = ({
   summaryIndexSetting,
   handleSummaryIndexSettingChange,
   showMultiModalTip,
+  readonly = false,
 }: IndexingSectionProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -108,7 +109,7 @@ const IndexingSection = ({
           <div className="grow">
             <IndexMethod
               value={indexMethod!}
-              disabled={!currentDataset?.embedding_available}
+              disabled={!currentDataset?.embedding_available || readonly}
               onChange={setIndexMethod}
               currentValue={currentDataset.indexing_technique}
               keywordNumber={keywordNumber}
@@ -116,9 +117,9 @@ const IndexingSection = ({
             />
             {showUpgradeWarning && (
               <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="absolute top-0 left-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
+                <div className="absolute top-0 left-0 flex size-full items-center bg-toast-warning-bg opacity-40" />
                 <div className="p-1">
-                  <RiAlertFill className="size-4 text-text-warning-secondary" />
+                  <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
                   {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
@@ -142,6 +143,7 @@ const IndexingSection = ({
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
               onSelect={setEmbeddingModel}
+              readonly={readonly}
             />
           </div>
         </div>
@@ -155,6 +157,7 @@ const IndexingSection = ({
             entry="dataset-settings"
             summaryIndexSetting={summaryIndexSetting}
             onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+            readonly={readonly}
           />
         </>
       )}
@@ -189,12 +192,14 @@ const IndexingSection = ({
                       value={retrievalConfig}
                       onChange={setRetrievalConfig}
                       showMultiModalTip={showMultiModalTip}
+                      disabled={readonly}
                     />
                   )
                 : (
                     <EconomicalRetrievalMethodConfig
                       value={retrievalConfig}
                       onChange={setRetrievalConfig}
+                      disabled={readonly}
                     />
                   )}
             </div>

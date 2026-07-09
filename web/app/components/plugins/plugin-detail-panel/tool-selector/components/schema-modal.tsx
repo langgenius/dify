@@ -11,12 +11,12 @@ import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   schema: SchemaRoot
   rootName: string
   onClose: () => void
-}
+}>
 
 const SchemaModal: FC<Props> = ({
   isShow,
@@ -40,7 +40,7 @@ const SchemaModal: FC<Props> = ({
             <button
               type="button"
               aria-label={t('operation.close', { ns: 'common' })}
-              className="absolute top-5 right-5 flex h-8 w-8 items-center justify-center p-1.5"
+              className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
               onClick={onClose}
             >
               <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />

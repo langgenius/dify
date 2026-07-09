@@ -1,6 +1,7 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,6 +63,26 @@ const CrawledResult = ({
     onPreview(list[index]!, index)
   }, [list, onPreview])
 
+  const selectedSourceUrl = checkedList[0]?.source_url
+  const handleRadioChange = useCallback((sourceUrl: string) => {
+    const selectedItem = list.find(item => item.source_url === sourceUrl)
+    if (selectedItem)
+      onSelectedChange([selectedItem])
+  }, [list, onSelectedChange])
+
+  const resultItems = list.map((item, index) => (
+    <CrawledResultItem
+      key={item.source_url}
+      payload={item}
+      isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
+      onCheckChange={handleItemCheckChange(item)}
+      isPreview={index === previewIndex}
+      onPreview={handlePreview.bind(null, index)}
+      showPreview={showPreview}
+      isMultipleChoice={isMultipleChoice}
+    />
+  ))
+
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
       <div className="pt-2 system-sm-medium text-text-primary">
@@ -81,20 +102,26 @@ const CrawledResult = ({
             />
           </div>
         )}
-        <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
-          {list.map((item, index) => (
-            <CrawledResultItem
-              key={item.source_url}
-              payload={item}
-              isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
-              onCheckChange={handleItemCheckChange(item)}
-              isPreview={index === previewIndex}
-              onPreview={handlePreview.bind(null, index)}
-              showPreview={showPreview}
-              isMultipleChoice={isMultipleChoice}
-            />
-          ))}
-        </div>
+        {isMultipleChoice
+          ? (
+              <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
+                {resultItems}
+              </div>
+            )
+          : (
+              <RadioGroup
+                aria-label={t(`${I18N_PREFIX}.scrapTimeInfo`, {
+                  ns: 'datasetCreation',
+                  total: list.length,
+                  time: usedTime.toFixed(1),
+                })}
+                value={selectedSourceUrl}
+                onValueChange={handleRadioChange}
+                className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2"
+              >
+                {resultItems}
+              </RadioGroup>
+            )}
       </div>
     </div>
   )

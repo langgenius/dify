@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
@@ -6,19 +6,19 @@ import {
   AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
+  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
   AutocompleteItemIndicator,
   AutocompleteItemText,
-  AutocompleteLabel,
   AutocompleteList,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
 } from '../index'
 
-const renderWithSafeViewport = (ui: ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,
@@ -31,13 +31,13 @@ const renderAutocomplete = ({
   open = false,
   defaultValue = 'workflow',
 }: {
-  children?: ReactNode
+  children?: React.ReactNode
   open?: boolean
   defaultValue?: string
 } = {}) => renderWithSafeViewport(
   <Autocomplete open={open} defaultValue={defaultValue} items={['workflow', 'dataset']}>
     {children ?? (
-      <>
+      <React.Fragment>
         <AutocompleteInputGroup data-testid="input-group">
           <AutocompleteInput aria-label="Search suggestions" data-testid="input" />
           <AutocompleteClear data-testid="clear" />
@@ -65,35 +65,13 @@ const renderAutocomplete = ({
           </AutocompleteList>
           <AutocompleteEmpty data-testid="empty">No suggestions</AutocompleteEmpty>
         </AutocompleteContent>
-      </>
+      </React.Fragment>
     )}
   </Autocomplete>,
 )
 
 describe('Autocomplete wrappers', () => {
   describe('Input group and input', () => {
-    it('should apply medium input group and input classes by default', async () => {
-      const screen = await renderAutocomplete()
-
-      await expect.element(screen.getByTestId('input-group')).toHaveClass('rounded-lg')
-      await expect.element(screen.getByRole('combobox', { name: 'Search suggestions' })).toHaveClass('px-3')
-      await expect.element(screen.getByRole('combobox', { name: 'Search suggestions' })).toHaveClass('system-sm-regular')
-    })
-
-    it('should apply large input group and input classes when large size is provided', async () => {
-      const screen = await renderAutocomplete({
-        children: (
-          <AutocompleteInputGroup size="large" data-testid="input-group">
-            <AutocompleteInput size="large" aria-label="Search suggestions" data-testid="input" />
-          </AutocompleteInputGroup>
-        ),
-      })
-
-      await expect.element(screen.getByTestId('input-group')).toHaveClass('rounded-[10px]')
-      await expect.element(screen.getByRole('combobox', { name: 'Search suggestions' })).toHaveClass('px-4')
-      await expect.element(screen.getByRole('combobox', { name: 'Search suggestions' })).toHaveClass('system-md-regular')
-    })
-
     it('should set input defaults and forward passthrough props', async () => {
       const screen = await renderAutocomplete({
         children: (
@@ -122,8 +100,6 @@ describe('Autocomplete wrappers', () => {
 
       await expect.element(screen.getByRole('button', { name: 'Clear autocomplete' })).toHaveAttribute('type', 'button')
       await expect.element(screen.getByRole('button', { name: 'Open autocomplete suggestions' })).toHaveAttribute('type', 'button')
-      expect(screen.getByRole('button', { name: 'Clear autocomplete' }).element().querySelector('.i-ri-close-line')).toHaveAttribute('aria-hidden', 'true')
-      expect(screen.getByRole('button', { name: 'Open autocomplete suggestions' }).element().querySelector('.i-ri-arrow-down-s-line')).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should preserve explicit labels and custom children', async () => {
@@ -143,14 +119,12 @@ describe('Autocomplete wrappers', () => {
 
       expect(screen.getByRole('button', { name: 'Reset search' }).element()).toContainElement(screen.getByTestId('custom-clear').element())
       expect(screen.getByRole('button', { name: 'Show suggestions' }).element()).toContainElement(screen.getByTestId('custom-trigger').element())
-      expect(screen.getByRole('button', { name: 'Reset search' }).element().querySelector('.i-ri-close-line')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Show suggestions' }).element().querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
     })
 
     it('should rely on aria-labelledby when provided instead of injecting fallback labels', async () => {
       const screen = await renderAutocomplete({
         children: (
-          <>
+          <React.Fragment>
             <span id="clear-label">Clear from label</span>
             <span id="trigger-label">Trigger from label</span>
             <AutocompleteInputGroup>
@@ -158,7 +132,7 @@ describe('Autocomplete wrappers', () => {
               <AutocompleteClear aria-labelledby="clear-label" />
               <AutocompleteTrigger aria-labelledby="trigger-label" />
             </AutocompleteInputGroup>
-          </>
+          </React.Fragment>
         ),
       })
 
@@ -168,15 +142,11 @@ describe('Autocomplete wrappers', () => {
   })
 
   describe('Content and options', () => {
-    it('should use default overlay placement and Dify popup classes', async () => {
+    it('should use default overlay placement', async () => {
       const screen = await renderAutocomplete({ open: true })
 
       await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveAttribute('data-align', 'start')
-      await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveClass('z-50')
-      await expect.element(screen.getByRole('dialog', { name: 'autocomplete popup' })).toHaveClass('rounded-xl')
-      await expect.element(screen.getByRole('dialog', { name: 'autocomplete popup' })).toHaveClass('w-(--anchor-width)')
-      await expect.element(screen.getByRole('listbox', { name: 'autocomplete list' })).toHaveClass('scroll-py-1')
     })
 
     it('should apply custom placement side and passthrough popup props', async () => {
@@ -212,15 +182,6 @@ describe('Autocomplete wrappers', () => {
       expect(onPopupClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should render item text indicator status and empty wrappers with design classes', async () => {
-      const screen = await renderAutocomplete({ open: true })
-
-      await expect.element(screen.getByText('Workflow')).toHaveClass('system-sm-medium')
-      await expect.element(screen.getByTestId('status')).toHaveClass('text-text-tertiary')
-      await expect.element(screen.getByTestId('empty')).toHaveClass('system-sm-regular')
-      expect(screen.getByText('Workflow').element().parentElement?.querySelector('.i-ri-arrow-right-line')).toHaveAttribute('aria-hidden', 'true')
-    })
-
     it('should forward custom classes to label separator item text and indicator', async () => {
       const screen = await renderWithSafeViewport(
         <Autocomplete open defaultValue="workflow" items={['workflow']}>
@@ -230,7 +191,7 @@ describe('Autocomplete wrappers', () => {
           <AutocompleteContent popupProps={{ 'role': 'dialog', 'aria-label': 'autocomplete popup' }}>
             <AutocompleteList role="listbox" aria-label="autocomplete list">
               <AutocompleteGroup items={['workflow']}>
-                <AutocompleteLabel className="custom-label">Resources</AutocompleteLabel>
+                <AutocompleteGroupLabel className="custom-label">Resources</AutocompleteGroupLabel>
                 <AutocompleteSeparator className="custom-separator" data-testid="separator" />
                 <AutocompleteItem value="workflow" className="custom-item">
                   <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
@@ -247,6 +208,35 @@ describe('Autocomplete wrappers', () => {
       await expect.element(screen.getByRole('option', { name: 'Workflow' })).toHaveClass('custom-item')
       await expect.element(screen.getByText('Workflow')).toHaveClass('custom-text')
       await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
+    })
+
+    it('should navigate function-rendered items with arrow keys', async () => {
+      const screen = await renderWithSafeViewport(
+        <Autocomplete open defaultValue="" items={['workflow', 'dataset', 'app']}>
+          <AutocompleteInputGroup>
+            <AutocompleteInput aria-label="Search resources" />
+          </AutocompleteInputGroup>
+          <AutocompleteContent>
+            <AutocompleteList>
+              {(item: string) => (
+                <AutocompleteItem key={item} value={item}>
+                  <AutocompleteItemText>{item}</AutocompleteItemText>
+                </AutocompleteItem>
+              )}
+            </AutocompleteList>
+          </AutocompleteContent>
+        </Autocomplete>,
+      )
+
+      const input = asHTMLElement(screen.getByRole('combobox', { name: 'Search resources' }).element())
+
+      input.focus()
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await expect.element(screen.getByRole('option', { name: 'workflow' })).toHaveAttribute('data-highlighted')
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+
+      await expect.element(screen.getByRole('option', { name: 'dataset' })).toHaveAttribute('data-highlighted')
     })
   })
 })

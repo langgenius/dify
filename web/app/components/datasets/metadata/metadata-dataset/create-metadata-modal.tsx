@@ -4,12 +4,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { CreateContent } from './create-content'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (open: boolean) => void
   trigger: React.ReactNode
   popupLeft?: number
-} & CreateContentProps
+}> & CreateContentProps
 
 export function CreateMetadataModal({
   open,

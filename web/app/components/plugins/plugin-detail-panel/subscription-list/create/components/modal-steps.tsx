@@ -26,7 +26,7 @@ const StatusStep = ({ isActive, text }: StatusStepProps) => {
       : 'text-text-tertiary'}`}
     >
       {isActive && (
-        <div className="h-1 w-1 rounded-full bg-state-accent-solid"></div>
+        <div className="size-1 rounded-full bg-state-accent-solid"></div>
       )}
       {text}
     </div>
@@ -229,8 +229,8 @@ const ManualPropertiesSection = ({
         </div>
 
         <div className="mb-1 flex items-center justify-center gap-1 rounded-lg bg-background-section p-3">
-          <div className="h-3.5 w-3.5">
-            <RiLoader2Line className="h-full w-full animate-spin" />
+          <div className="size-3.5">
+            <RiLoader2Line className="size-full animate-spin" />
           </div>
           <div className="system-xs-regular text-text-tertiary">
             {t('modal.manual.logs.loading', { ns: 'pluginTrigger', pluginName })}

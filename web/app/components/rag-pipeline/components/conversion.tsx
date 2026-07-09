@@ -9,22 +9,38 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useParams } from '@/next/navigation'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useConvertDatasetToPipeline } from '@/service/use-pipeline'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
+  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }), [currentUserId, dataset?.maintainer, dataset?.permission_keys, workspacePermissionKeys])
+  const canConvertDataset = datasetACLCapabilities.canEdit
   const handleConvert = useCallback(() => {
+    if (!canConvertDataset || !datasetId)
+      return
+
     convert(datasetId as string, {
       onSuccess: (res) => {
         if (res.status === 'success') {
@@ -40,17 +56,20 @@ const Conversion = () => {
         toast.error(t('conversion.errorMessage', { ns: 'datasetPipeline' }))
       },
     })
-  }, [convert, datasetId, invalidDatasetDetail, t])
+  }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])
   const handleShowConfirmModal = useCallback(() => {
+    if (!canConvertDataset)
+      return
+
     setShowConfirmModal(true)
-  }, [])
+  }, [canConvertDataset])
   const handleCancelConversion = useCallback(() => {
     setShowConfirmModal(false)
   }, [])
   const confirmTitle = t('conversion.confirm.title', { ns: 'datasetPipeline' })
   const confirmContent = t('conversion.confirm.content', { ns: 'datasetPipeline' })
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background-body p-6 pb-16">
+    <div className="flex size-full items-center justify-center bg-background-body p-6 pb-16">
       <div className="flex rounded-2xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-sm shadow-shadow-shadow-4">
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
@@ -63,7 +82,7 @@ const Conversion = () => {
             </div>
           </div>
           <div className="flex items-center gap-x-4">
-            <Button variant="primary" className="w-32" onClick={handleShowConfirmModal}>
+            <Button variant="primary" className="w-32" disabled={!canConvertDataset} onClick={handleShowConfirmModal}>
               {t('operations.convert', { ns: 'datasetPipeline' })}
             </Button>
             <span className="system-xs-regular text-text-warning">
@@ -93,7 +112,7 @@ const Conversion = () => {
             <AlertDialogCancelButton>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isPending} disabled={isPending} onClick={handleConvert}>
+            <AlertDialogConfirmButton loading={isPending} disabled={isPending || !canConvertDataset} onClick={handleConvert}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

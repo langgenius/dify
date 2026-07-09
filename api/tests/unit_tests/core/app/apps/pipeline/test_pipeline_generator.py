@@ -173,6 +173,9 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
     mocker.patch("services.dataset_service.DocumentService.get_documents_position", return_value=1)
+    features = SimpleNamespace()
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
+    check_limits = mocker.patch("services.dataset_service.DocumentService.check_document_creation_limits")
 
     document1 = SimpleNamespace(
         id="doc1",
@@ -226,7 +229,51 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
 
     assert result["batch"]
     assert len(result["documents"]) == 2
+    check_limits.assert_called_once_with(len(datasource_info_list), features)
     task_proxy.delay.assert_called_once()
+
+
+def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(generator, mocker: MockerFixture):
+    pipeline = _build_pipeline()
+    workflow = _build_workflow()
+
+    session = DummySession()
+    _patch_session(mocker, session)
+
+    datasource_info_list = [{"name": "file1"}, {"name": "file2"}]
+    mocker.patch.object(
+        generator,
+        "_format_datasource_info_list",
+        return_value=datasource_info_list,
+    )
+    mocker.patch.object(
+        module.PipelineConfigManager,
+        "get_pipeline_config",
+        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
+    )
+
+    features = SimpleNamespace()
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
+    check_limits = mocker.patch(
+        "services.dataset_service.DocumentService.check_document_creation_limits",
+        side_effect=ValueError("document limit exceeded"),
+    )
+
+    db_session = MagicMock()
+    mocker.patch.object(module.db, "session", db_session)
+
+    with pytest.raises(ValueError, match="document limit exceeded"):
+        generator.generate(
+            pipeline=pipeline,
+            workflow=workflow,
+            user=_build_user(),
+            args=_build_args(),
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            streaming=False,
+        )
+
+    check_limits.assert_called_once_with(len(datasource_info_list), features)
+    db_session.add.assert_not_called()
 
 
 def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
@@ -717,3 +764,129 @@ def test_get_files_in_folder_recurses_and_collects(generator):
     )
 
     assert {f["id"] for f in all_files} == {"f1", "f2"}
+
+
+def test_get_files_in_folder_handles_empty_folder(generator):
+    """An empty folder must return an empty file list without recursion errors."""
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            # Empty folder: returns a page with no files, not truncated
+            return iter([Result([FilesPage([], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="empty-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+
+
+def test_get_files_in_folder_handles_empty_folder_with_false_truncation(generator):
+    """An empty folder that incorrectly reports is_truncated=True must not recurse forever."""
+
+    call_count = 0
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # Empty folder that incorrectly claims truncation
+            return iter([Result([FilesPage([], True, {"page": 2})])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="buggy-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the empty-page guard prevents further recursion
+    assert call_count == 1
+
+
+def test_get_files_in_folder_handles_self_referencing_folder(generator):
+    """A folder that lists itself as a child must not recurse infinitely."""
+
+    class File:
+        def __init__(self, id, name, type):
+            self.id = id
+            self.name = name
+            self.type = type
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    call_count = 0
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # The folder returns itself as a child (self-reference)
+            return iter([Result([FilesPage([File("self-ref", "myfolder", "folder")], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="self-ref",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the visited-set guard prevents re-entry
+    assert call_count == 1

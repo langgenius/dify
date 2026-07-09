@@ -1,7 +1,8 @@
 'use client'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
 import ListWithCollection from './list-with-collection'
@@ -14,6 +15,7 @@ type ListProps = {
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   emptyClassName?: string
+  onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const List = ({
   marketplaceCollections,
@@ -23,9 +25,10 @@ const List = ({
   cardContainerClassName,
   cardRender,
   emptyClassName,
+  onCollectionMoreClick,
 }: ListProps) => {
   return (
-    <>
+    <PluginInstallPermissionProviderGuard canInstallPlugin={!!showInstallButton}>
       {
         !plugins && (
           <ListWithCollection
@@ -34,6 +37,7 @@ const List = ({
             showInstallButton={showInstallButton}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
+            onCollectionMoreClick={onCollectionMoreClick}
           />
         )
       }
@@ -66,7 +70,7 @@ const List = ({
           <Empty className={emptyClassName} />
         )
       }
-    </>
+    </PluginInstallPermissionProviderGuard>
   )
 }
 

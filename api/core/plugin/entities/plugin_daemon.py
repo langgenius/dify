@@ -168,6 +168,7 @@ class PluginInstallTask(BasePluginEntity):
 class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
+    task: PluginInstallTask | None = Field(default=None, description="The install task.")
 
 
 class PluginVerification(BaseModel):
@@ -206,6 +207,11 @@ class PluginListResponse(BaseModel):
     total: int
 
 
+class PluginListWithoutTotalResponse(BaseModel):
+    list: list[PluginEntity]
+    has_more: bool
+
+
 class PluginDynamicSelectOptionsResponse(BaseModel):
     options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")
 
@@ -222,7 +228,7 @@ class CredentialType(enum.StrEnum):
     OAUTH2 = "oauth2"
     UNAUTHORIZED = "unauthorized"
 
-    def get_name(self):
+    def get_name(self) -> str:
         if self == CredentialType.API_KEY:
             return "API KEY"
         elif self == CredentialType.OAUTH2:

@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
+import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo, VersionProps } from '../../../types'
 import type { ExposeRefs } from './install-multi'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
@@ -18,18 +18,19 @@ import {
 } from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { getPluginKey } from './hooks/use-install-multi-state'
 import InstallMulti from './install-multi'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   allPlugins: Dependency[]
   onStartToInstall?: () => void
-  onInstalled: (plugins: Plugin[], installStatus: InstallStatus[]) => void
+  onInstalled: (plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => void
   onCancel: () => void
   isFromMarketPlace?: boolean
   isHideButton?: boolean
-}
+}>
 
 const Install: FC<Props> = ({
   allPlugins,
@@ -73,6 +74,16 @@ const Install: FC<Props> = ({
   }, [onCancel, stop])
 
   const { handleRefetch } = usePluginTaskList()
+  const getSelectedVersionInfo = useCallback(() => {
+    return selectedPlugins.map((plugin) => {
+      const pluginDetail = installedInfo?.[getPluginKey(plugin)]
+      return {
+        hasInstalled: !!pluginDetail,
+        installedVersion: pluginDetail?.installedVersion,
+        toInstallVersion: plugin.version,
+      }
+    })
+  }, [installedInfo, selectedPlugins])
 
   // Install from marketplace and github
   const { mutate: installOrUpdate, isPending: isInstalling } = useInstallOrUpdate({
@@ -85,7 +96,7 @@ const Install: FC<Props> = ({
             success: r.status === TaskStatus.success,
             isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
           })
-        }))
+        }), getSelectedVersionInfo())
         const hasInstallSuccess = res.some(r => r.status === TaskStatus.success)
         if (hasInstallSuccess) {
           refreshPluginList(undefined, true)
@@ -113,7 +124,7 @@ const Install: FC<Props> = ({
           isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
         }
       }))
-      onInstalled(selectedPlugins, installStatus)
+      onInstalled(selectedPlugins, installStatus, getSelectedVersionInfo())
       const hasInstallSuccess = installStatus.some(r => r.success)
       if (hasInstallSuccess) {
         emit('plugin:install:success', selectedPlugins.map((p) => {
@@ -193,10 +204,10 @@ const Install: FC<Props> = ({
         <div className="flex items-center justify-between gap-2 self-stretch p-6 pt-5">
           <div className="px-2">
             {canInstall && (
-              <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
-                <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-                <p className="cursor-pointer system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
-              </div>
+              <label className="flex cursor-pointer items-center gap-x-2">
+                <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} onCheckedChange={() => handleClickSelectAll()} />
+                <span className="system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</span>
+              </label>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
@@ -211,7 +222,7 @@ const Install: FC<Props> = ({
               disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
               onClick={handleInstall}
             >
-              {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+              {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
               <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
             </Button>
           </div>

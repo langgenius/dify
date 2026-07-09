@@ -16,11 +16,12 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
+import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -109,10 +110,12 @@ export default function AddMemberOrGroupDialog() {
         aria-label={t('operation.add', { ns: 'common' })}
         icon={false}
         size="small"
-        className="flex h-6 w-auto shrink-0 items-center gap-x-0.5 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
-        <RiAddCircleFill className="h-4 w-4" aria-hidden="true" />
-        <span>{t('operation.add', { ns: 'common' })}</span>
+        <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
+          <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
+          <span className="shrink-0">{t('operation.add', { ns: 'common' })}</span>
+        </span>
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-end"
@@ -277,8 +280,8 @@ function GroupItem({ group, subject }: GroupItemProps) {
       <BaseItem subject={subject}>
         <SelectionBox checked={isChecked} />
         <ComboboxItemText className="flex grow items-center px-0">
-          <div className="mr-2 h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-            <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
+          <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+            <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
               <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" aria-hidden="true" />
             </div>
           </div>
@@ -295,7 +298,7 @@ function GroupItem({ group, subject }: GroupItemProps) {
         onClick={handleExpandClick}
       >
         <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
-        <RiArrowRightSLine className="h-4 w-4" aria-hidden="true" />
+        <RiArrowRightSLine className="size-4" aria-hidden="true" />
       </Button>
     </div>
   )
@@ -306,7 +309,7 @@ type MemberItemProps = {
   subject: Subject
 }
 function MemberItem({ member, subject }: MemberItemProps) {
-  const currentUser = useSelector(s => s.userProfile)
+  const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   const isChecked = specificMembers.some(m => m.id === member.id)
@@ -314,8 +317,8 @@ function MemberItem({ member, subject }: MemberItemProps) {
     <BaseItem subject={subject} className="pr-3">
       <SelectionBox checked={isChecked} />
       <ComboboxItemText className="flex grow items-center px-0">
-        <div className="mr-2 h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
-          <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
+        <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
+          <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
             <Avatar size="xxs" avatar={null} name={member.name} />
           </div>
         </div>

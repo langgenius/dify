@@ -97,7 +97,7 @@ const BatchModal: FC<IBatchModalProps> = ({
           aria-label={t('operation.close', { ns: 'common' })}
           onClick={onCancel}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </button>
         <CSVUploader
           file={currentCSV}

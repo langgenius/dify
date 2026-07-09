@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
@@ -32,7 +32,7 @@ export const Tooltip = BaseTooltip.Root
 export const TooltipTrigger = BaseTooltip.Trigger
 
 type TooltipContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -62,7 +62,7 @@ export function TooltipContent({
       >
         <BaseTooltip.Popup
           className={cn(
-            'max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+            'max-w-75 rounded-md bg-components-panel-bg px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
             'origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none',
             className,
           )}

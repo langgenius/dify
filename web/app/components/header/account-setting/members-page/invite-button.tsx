@@ -1,10 +1,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiUserAddLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { currentWorkspaceIdAtom } from '@/context/app-context-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
 type InviteButtonProps = {
@@ -14,9 +15,9 @@ type InviteButtonProps = {
 
 const InviteButton = (props: InviteButtonProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
       return <Loading />
@@ -27,7 +28,7 @@ const InviteButton = (props: InviteButtonProps) => {
   }
   return (
     <Button variant="primary" {...props}>
-      <RiUserAddLine className="mr-1 h-4 w-4" />
+      <RiUserAddLine className="mr-1 size-4" />
       {t('members.invite', { ns: 'common' })}
     </Button>
   )

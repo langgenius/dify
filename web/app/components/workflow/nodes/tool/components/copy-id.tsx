@@ -6,9 +6,9 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   content: string
-}
+}>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 
@@ -44,7 +44,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
               >
                 {content}
               </span>
-              <span aria-hidden className="i-ri-file-copy-line h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
+              <span aria-hidden className="i-ri-file-copy-line size-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
             </button>
           )}
         />

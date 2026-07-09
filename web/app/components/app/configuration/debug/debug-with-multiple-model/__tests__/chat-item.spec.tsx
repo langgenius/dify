@@ -29,10 +29,6 @@ let capturedChatProps: {
 
 let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
-
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
@@ -115,6 +111,7 @@ const createDefaultMocks = () => {
     appId: 'app-123',
     inputs: { key: 'value' },
     collectionList: [],
+    canTestAndRun: true,
   })
 
   mockUseProviderContext.mockReturnValue({
@@ -287,6 +284,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -522,6 +520,7 @@ describe('ChatItem', () => {
           { id: 'collection1', icon: 'icon1' },
           { id: 'collection2', icon: 'icon2' },
         ],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -545,6 +544,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -563,6 +563,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -631,6 +632,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       // This may throw since the code does agentConfig.tools?.forEach

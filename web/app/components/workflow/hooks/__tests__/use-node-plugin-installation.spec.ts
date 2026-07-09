@@ -13,6 +13,19 @@ const mockInvalidToolsByType = vi.fn()
 const mockTriggerPlugins = vi.fn()
 const mockInvalidateTriggers = vi.fn()
 const mockInvalidDataSourceList = vi.fn()
+let mockWorkspacePermissionKeys = ['plugin.install']
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: (enabled: boolean) => mockBuiltInTools(enabled),
@@ -86,6 +99,7 @@ const matchedDataSource = {
 describe('useNodePluginInstallation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['plugin.install']
     mockBuiltInTools.mockReturnValue({ data: undefined, isLoading: false })
     mockCustomTools.mockReturnValue({ data: undefined, isLoading: false })
     mockWorkflowTools.mockReturnValue({ data: undefined, isLoading: false })
@@ -167,6 +181,17 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.uniqueIdentifier).toBe('legacy-provider')
     expect(result.current.canInstall).toBe(false)
     expect(result.current.shouldDim).toBe(false)
+  })
+
+  it('should not allow installing missing tool plugins without plugin install permission', () => {
+    mockWorkspacePermissionKeys = []
+    mockBuiltInTools.mockReturnValue({ data: [], isLoading: false })
+
+    const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()))
+
+    expect(result.current.isMissing).toBe(true)
+    expect(result.current.uniqueIdentifier).toBe('plugin-search@1.0.0')
+    expect(result.current.canInstall).toBe(false)
   })
 
   it('should flag missing trigger plugins and invalidate trigger data after installation', () => {
