@@ -8,8 +8,9 @@ import {
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,

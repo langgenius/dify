@@ -4,7 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TerminalSquare } from '@/app/components/base/icons/src/vender/solid/development'
 import { Beaker02 } from '@/app/components/base/icons/src/vender/solid/education'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 
 const headerEnvClassName: { [k: string]: string } = {
   DEVELOPMENT: 'bg-[#FEC84B] border-[#FDB022] text-[#93370D]',

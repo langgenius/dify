@@ -36,7 +36,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'

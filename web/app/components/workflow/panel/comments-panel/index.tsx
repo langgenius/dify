@@ -10,7 +10,7 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const CommentsPanel = () => {

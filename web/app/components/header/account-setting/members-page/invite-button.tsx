@@ -4,7 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 

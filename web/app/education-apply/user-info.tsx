@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 

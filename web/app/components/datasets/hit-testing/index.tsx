@@ -28,11 +28,9 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {

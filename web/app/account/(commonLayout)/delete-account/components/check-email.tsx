@@ -4,7 +4,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
 

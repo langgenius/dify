@@ -17,7 +17,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 
 export function SubjectItem({

@@ -3,11 +3,9 @@ import type { FC } from 'react'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'

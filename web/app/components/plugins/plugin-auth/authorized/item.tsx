@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 

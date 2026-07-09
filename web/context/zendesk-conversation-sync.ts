@@ -4,11 +4,9 @@ import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import {
-  currentWorkspaceAtom,
-  langGeniusVersionInfoAtom,
-  userProfileAtom,
-} from './app-context-state'
+import { userProfileAtom } from './account-state'
+import { langGeniusVersionInfoAtom } from './version-state'
+import { currentWorkspaceAtom } from './workspace-state'
 
 type ZendeskSyncState = {
   email?: string

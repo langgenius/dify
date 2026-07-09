@@ -11,7 +11,7 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'

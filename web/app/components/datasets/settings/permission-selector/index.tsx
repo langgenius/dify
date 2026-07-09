@@ -11,10 +11,8 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  datasetRbacEnabledAtom,
-  userProfileAtom,
-} from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import Item from './permission-item'
