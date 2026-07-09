@@ -37,6 +37,7 @@ from pydantic_ai.messages import (
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -54,6 +55,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.model import MessageAgentThought
 
@@ -1086,6 +1088,19 @@ def test_failed_run_raises_agent_backend_error():
     # No message-end on failure; no snapshot saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
     assert store.saved == []
+
+
+def test_agent_backend_failure_to_exception_maps_rate_limit_reason():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="quota exceeded",
+            reason="InvokeRateLimitError",
+        )
+    )
+
+    assert isinstance(err, InvokeRateLimitError)
+    assert str(err) == "quota exceeded"
 
 
 def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():
