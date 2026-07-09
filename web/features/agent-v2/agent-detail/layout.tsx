@@ -34,7 +34,7 @@ export function AgentDetailLayout({
 
   useEffect(() => {
     if (shouldRedirectToRoster)
-      router.replace('/roster')
+      router.replace('/agents')
   }, [router, shouldRedirectToRoster])
 
   if (shouldRedirectToRoster)

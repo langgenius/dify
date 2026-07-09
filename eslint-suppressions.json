@@ -1598,11 +1598,6 @@
       "count": 6
     }
   },
-  "web/app/components/base/icons/src/public/thought/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "web/app/components/base/icons/src/public/tracing/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 21

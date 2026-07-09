@@ -420,6 +420,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         message.total_price = usage.total_price
         message.currency = usage.currency
         self._task_state.llm_result.usage.latency = message.provider_response_latency
+        self._task_state.metadata.usage = self._task_state.llm_result.usage
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:

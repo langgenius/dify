@@ -47,7 +47,7 @@ export function MainNav({
     }))
     .map(route => ({
       href: route.href,
-      label: t(route.labelKey, { ns: 'common' }),
+      label: 'label' in route ? route.label : t(route.labelKey, { ns: 'common' }),
       active: route.active,
       icon: route.icon,
       activeIcon: route.activeIcon,
@@ -93,7 +93,7 @@ export function MainNav({
         <nav className="isolate flex flex-col gap-px p-2">
           {navItems.map(item => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
-              {item.href === '/roster' && (
+              {item.href === '/agents' && (
                 <Badge
                   size="xs"
                   variant="dimm"

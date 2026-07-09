@@ -31,8 +31,8 @@ export type CreateTestAgentOptions = {
   role?: string
 }
 
-export const getAgentConfigurePath = (agentId: string) => `/roster/agent/${agentId}/configure`
-export const getAgentAccessPath = (agentId: string) => `/roster/agent/${agentId}/access`
+export const getAgentConfigurePath = (agentId: string) => `/agents/${agentId}/configure`
+export const getAgentAccessPath = (agentId: string) => `/agents/${agentId}/access`
 
 export async function createTestAgent({
   description = 'Created by Dify E2E.',
