@@ -3,7 +3,8 @@
 `with_session` is an HTTP controller helper: it opens one SQLAlchemy session
 for a Resource handler and injects it as the first argument after `self`.
 Handlers use a transaction by default so migrated write paths keep
-commit/rollback handling; pure read handlers may opt out with `write=False`.
+commit/rollback handling; pure read handlers opt into a guarded read-only
+session with `write=False`.
 """
 
 from collections.abc import Callable
@@ -47,7 +48,7 @@ def with_session[T, **P, R](
                 with session_factory.get_session_maker().begin() as session:
                     return view(self, session, *args, **kwargs)
 
-            with session_factory.create_session() as session:
+            with session_factory.create_readonly_session() as session:
                 return view(self, session, *args, **kwargs)
 
         return wrapper
