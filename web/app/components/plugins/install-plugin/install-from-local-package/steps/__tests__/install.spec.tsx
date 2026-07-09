@@ -62,7 +62,19 @@ const mockAppContextState = vi.hoisted(() => ({
   langGeniusVersionInfo: { current_version: '1.0.0' as string | undefined },
 }))
 
-vi.mock('@/context/app-context-state', () => ({
+vi.mock('@/context/account-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
   langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
 }))
 

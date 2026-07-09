@@ -10,18 +10,19 @@ import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '../permission-state'
+import { langGeniusVersionInfoAtom } from '../version-state'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
-  langGeniusVersionInfoAtom,
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+  isCurrentWorkspaceManagerAtom,
+  isCurrentWorkspaceOwnerAtom,
   refreshCurrentWorkspaceAtom,
-  refreshUserProfileAtom,
-  userProfileAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-  workspaceRoleFlagsAtom,
-} from '../app-context-state'
+} from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
@@ -194,7 +195,10 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 function ConsoleBootstrapProbe() {
   const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -230,19 +234,19 @@ function ConsoleBootstrapProbe() {
       </span>
       <span>
         manager:
-        {String(roleFlags.isCurrentWorkspaceManager)}
+        {String(isCurrentWorkspaceManager)}
       </span>
       <span>
         owner:
-        {String(roleFlags.isCurrentWorkspaceOwner)}
+        {String(isCurrentWorkspaceOwner)}
       </span>
       <span>
         editor:
-        {String(roleFlags.isCurrentWorkspaceEditor)}
+        {String(isCurrentWorkspaceEditor)}
       </span>
       <span>
         dataset operator:
-        {String(roleFlags.isCurrentWorkspaceDatasetOperator)}
+        {String(isCurrentWorkspaceDatasetOperator)}
       </span>
       <span>
         version:

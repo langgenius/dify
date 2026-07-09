@@ -4,8 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from '#i18n'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
 import { useGetLanguage } from '@/context/i18n'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
 import {
   renderI18nObject,

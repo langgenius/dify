@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useAtomValue } from 'jotai'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 
 type MarketplaceInstallPermissionProviderProps = {

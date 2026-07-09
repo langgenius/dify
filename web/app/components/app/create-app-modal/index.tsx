@@ -20,7 +20,8 @@ import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
@@ -95,7 +96,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      try {
+        await trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      }
+      catch {
+        // Analytics should not turn a successful app creation into a failed flow.
+      }
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()

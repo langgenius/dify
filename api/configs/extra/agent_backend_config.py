@@ -25,11 +25,10 @@ class AgentBackendConfig(BaseSettings):
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
             "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
-            "Requires the agent backend to be wired with a shellctl entrypoint; keep it "
-            "off until shellctl is deployed, otherwise every agent run that includes the "
-            "shell layer will fail."
+            "Requires the agent backend to be wired with a shellctl entrypoint before "
+            "shell-using Agent runs are executed."
         ),
-        default=False,
+        default=True,
     )
 
     AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS: NonNegativeFloat = Field(

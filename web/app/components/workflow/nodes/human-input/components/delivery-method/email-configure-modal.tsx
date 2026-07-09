@@ -12,7 +12,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { userProfileEmailAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 

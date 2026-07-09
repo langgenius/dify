@@ -1,7 +1,7 @@
 import type { NoteNodeType } from '../note-node/types'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import {
   CUSTOM_NOTE_NODE,
 } from '../note-node/constants'

@@ -31,13 +31,14 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
-from collections.abc import AsyncIterable, Callable
+from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
@@ -104,6 +105,28 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
+def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
+    """Return the public failed-run error text and structured reason."""
+    message = str(exc) or type(exc).__name__
+    reason: str | None = None
+
+    if isinstance(exc, ModelHTTPError):
+        body = exc.body
+        if isinstance(body, Mapping):
+            body_message = body.get("message")
+            if isinstance(body_message, str) and body_message:
+                message = body_message
+
+            error_type = body.get("error_type")
+            if isinstance(error_type, str) and error_type:
+                reason = error_type
+
+        if reason is None and exc.status_code == 429:
+            reason = "InvokeRateLimitError"
+
+    return message, reason
+
+
 def _has_model_layer(request: CreateRunRequest) -> bool:
     """Return whether the public composition includes the reserved model layer."""
     return any(layer.name == DIFY_AGENT_MODEL_LAYER_ID for layer in request.composition.layers)
@@ -165,8 +188,8 @@ class AgentRunRunner:
         try:
             outcome = await self._run_agent()
         except Exception as exc:
-            message = str(exc) or type(exc).__name__
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
+            message, reason = _run_failed_error_payload(exc)
+            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 

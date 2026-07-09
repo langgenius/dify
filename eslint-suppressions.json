@@ -967,11 +967,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/amplitude/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/app-icon-picker/ImageInput.tsx": {
     "react/no-create-ref": {
       "count": 1
@@ -1601,11 +1596,6 @@
   "web/app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
-    }
-  },
-  "web/app/components/base/icons/src/public/thought/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
     }
   },
   "web/app/components/base/icons/src/public/tracing/index.ts": {
