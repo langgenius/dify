@@ -1,6 +1,7 @@
 import type { NoteNodeType } from '../note-node/types'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import {
   CUSTOM_NOTE_NODE,
 } from '../note-node/constants'
@@ -11,7 +12,7 @@ import { generateNewNode } from '../utils'
 
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const showAuthorStorage = useWorkflowNoteShowAuthorValue()
 
   const handleAddNote = useCallback(() => {

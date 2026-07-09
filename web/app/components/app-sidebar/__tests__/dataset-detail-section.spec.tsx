@@ -8,6 +8,12 @@ let mockPathname = '/datasets/dataset-1/documents'
 let mockDataset: DataSet | undefined
 let mockRelatedApps: RelatedAppResponse | undefined
 let mockIsRbacEnabled = true
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [] as string[],
+  },
+}))
 
 const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -19,12 +25,15 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),

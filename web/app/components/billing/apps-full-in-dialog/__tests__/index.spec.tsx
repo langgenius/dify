@@ -1,17 +1,17 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { Mock } from 'vitest'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
-import type { AppContextValue } from '@/context/app-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
 
-let mockAppContextState: AppContextValue
+let mockAppContextState: AppContextStateMockState
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -20,10 +20,6 @@ vi.mock('@/config', async (importOriginal) => {
     IS_CLOUD_EDITION: true,
   }
 })
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -79,7 +75,7 @@ const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): Pr
   ...overrides,
 })
 
-const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
+const buildAppContext = (overrides: Partial<AppContextStateMockState> = {}): AppContextStateMockState => {
   const userProfile: GetAccountProfileResponse = {
     id: 'user-id',
     name: 'Test User',
@@ -109,7 +105,7 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     version: '',
     can_auto_update: false,
   }
-  const base: Omit<AppContextValue, 'useSelector'> = {
+  const base: AppContextStateMockState = {
     userProfile,
     currentWorkspace,
     isCurrentWorkspaceManager: false,
@@ -120,13 +116,10 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
     workspacePermissionKeys: [],
   }
-  const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {
     ...base,
-    useSelector,
     ...overrides,
   }
 }
@@ -136,7 +129,7 @@ describe('AppsFull', () => {
     vi.clearAllMocks()
     ;(useProviderContext as Mock).mockReturnValue(buildProviderContext())
     mockAppContextState = buildAppContext()
-    ;(useAppContext as Mock).mockReturnValue(mockAppContextState)
+    mockUseAppContext.mockReturnValue(mockAppContextState)
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 

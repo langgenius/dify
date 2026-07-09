@@ -1,4 +1,3 @@
-import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
@@ -6,7 +5,6 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
@@ -18,6 +16,11 @@ const { mockSwitchWorkspace, mockIsCloudEdition, mockCurrentWorkspaceQueryKey, m
   mockIsCloudEdition: { value: false },
   mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
   mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
+}))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    workspacePermissionKeys: [] as string[],
+  },
 }))
 
 vi.mock('@/config', async (importOriginal) => {
@@ -34,9 +37,15 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -127,9 +136,9 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
 }
 
 const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
-  vi.mocked(useAppContextSelector).mockImplementation((selector: (state: AppContextValue) => unknown) => selector({
+  mockAppContextState.current = {
     workspacePermissionKeys,
-  } as AppContextValue))
+  }
 }
 
 describe('WorkspaceCard', () => {

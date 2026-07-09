@@ -54,6 +54,18 @@ export async function agentBuildDraftExists(agentId: string): Promise<boolean> {
   }
 }
 
+export async function getAgentBuildDraft(agentId: string): Promise<AgentBuildDraftResponse> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agentId}/build-draft`)
+    await expectApiResponseOK(response, `Get Agent v2 build draft for ${agentId}`)
+    return (await response.json()) as AgentBuildDraftResponse
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
 export async function applyAgentBuildDraft(agentId: string): Promise<void> {
   const ctx = await createApiContext()
   try {

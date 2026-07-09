@@ -43,10 +43,6 @@ const mockMutations = vi.hoisted(() => ({
   removeMemberBindings: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppContext,
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

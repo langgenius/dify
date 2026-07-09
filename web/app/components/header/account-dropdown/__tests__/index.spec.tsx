@@ -1,12 +1,11 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -44,18 +43,15 @@ const { mockSetTheme } = vi.hoisted(() => ({
   mockSetTheme: vi.fn(),
 }))
 const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextValue | undefined,
+  current: undefined as AppContextStateMockState | undefined,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
     theme: 'system',
     setTheme: mockSetTheme,
   }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -122,7 +118,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 vi.mock('@/env', () => mockEnv)
 
-const baseAppContextValue: AppContextValue = {
+const baseAppContextValue: AppContextStateMockState = {
   userProfile: {
     id: '1',
     name: 'Test User',
@@ -158,15 +154,13 @@ const baseAppContextValue: AppContextValue = {
     version: '0.6.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [],
 }
 
-const setAppContextValue = (value: AppContextValue) => {
+const setAppContextValue = (value: AppContextStateMockState) => {
   mockAppContextState.current = value
-  vi.mocked(useAppContext).mockReturnValue(value)
+  mockUseAppContext.mockReturnValue(value)
 }
 
 describe('AccountDropdown', () => {

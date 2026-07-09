@@ -44,11 +44,19 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {

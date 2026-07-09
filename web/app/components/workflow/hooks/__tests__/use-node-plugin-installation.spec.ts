@@ -15,12 +15,6 @@ const mockInvalidateTriggers = vi.fn()
 const mockInvalidDataSourceList = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({

@@ -26,19 +26,20 @@ const {
   mockUpdateMutate: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-  useSelector: <T,>(selector: (state: {
-    isCurrentWorkspaceEditor: boolean
-    workspacePermissionKeys: string[]
-  }) => T): T => selector({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({

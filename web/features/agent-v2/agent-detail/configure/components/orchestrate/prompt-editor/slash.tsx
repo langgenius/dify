@@ -40,17 +40,21 @@ type AgentPromptSlashMenuProps = {
   categories: SlashMenuCategory[]
   skills: AgentSkill[]
   files: AgentFileNode[]
-  tools: AgentTool[]
+  configuredTools: AgentTool[]
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onAddCliTool?: AgentOrchestrateAddAction
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
   onAddSkill?: AgentOrchestrateAddAction
-  retrievals: AgentKnowledgeRetrievalItem[]
+  knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }
+
+const agentPromptSlashMenuItemProps = {
+  'data-agent-prompt-menu-item': '',
+} as const
 
 const createReferenceToken = (kind: string, id: string, label?: string) => (
   `[§${kind}:${id}${label ? `:${label}` : ''}§]`
@@ -81,16 +85,16 @@ export function AgentPromptSlashMenu({
   categories,
   skills,
   files,
-  tools,
+  configuredTools,
   onAddProviderTools,
   onAddCliTool,
   onAddFile,
   onAddKnowledge,
   onAddSkill,
-  retrievals,
+  knowledgeRetrievals,
   onBack,
   onOpenCategory,
-  onSelect,
+  onInsertToken,
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
   const title = categories.find(category => category.key === view)?.label
@@ -99,7 +103,7 @@ export function AgentPromptSlashMenu({
       onAddSkill?.({
         onAdded: (item) => {
           if (isPromptReferenceItem(item))
-            onSelect(createConfigReferenceToken('skill', item.id, item.name))
+            onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
         },
       })
       return
@@ -109,7 +113,7 @@ export function AgentPromptSlashMenu({
       onAddFile?.({
         onAdded: (item) => {
           if (isAgentFileNode(item))
-            onSelect(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
+            onInsertToken(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
         },
       })
       return
@@ -119,7 +123,7 @@ export function AgentPromptSlashMenu({
       onAddKnowledge?.({
         onAdded: (item) => {
           if (isKnowledgeRetrievalItem(item))
-            onSelect(createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)))
+            onInsertToken(createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)))
         },
       })
     }
@@ -133,7 +137,9 @@ export function AgentPromptSlashMenu({
             <button
               key={category.key}
               type="button"
-              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+              {...agentPromptSlashMenuItemProps}
+              data-agent-prompt-menu-category={category.key}
+              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
               onClick={() => onOpenCategory(category.key)}
             >
               <span aria-hidden className={`${category.icon} size-4 shrink-0 text-text-secondary`} />
@@ -151,27 +157,29 @@ export function AgentPromptSlashMenu({
       <div className="flex flex-col p-1">
         <button
           type="button"
-          className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+          {...agentPromptSlashMenuItemProps}
+          data-agent-prompt-menu-back=""
+          className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
           onClick={onBack}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase">{title}</span>
         </button>
         {view === 'skills' && (
-          <AgentPromptSkillRows skills={skills} onSelect={onSelect} />
+          <AgentPromptSkillRows skills={skills} onInsertToken={onInsertToken} />
         )}
         {view === 'files' && (
-          <AgentPromptFileRows files={files} onSelect={onSelect} />
+          <AgentPromptFileRows files={files} onInsertToken={onInsertToken} />
         )}
         {view === 'tools' && (
           <AgentPromptToolRows
-            configuredTools={tools}
+            configuredTools={configuredTools}
             onAddProviderTools={onAddProviderTools}
-            onSelect={onSelect}
+            onInsertToken={onInsertToken}
           />
         )}
         {view === 'knowledge' && (
-          <AgentPromptKnowledgeRows retrievals={retrievals} onSelect={onSelect} />
+          <AgentPromptKnowledgeRows knowledgeRetrievals={knowledgeRetrievals} onInsertToken={onInsertToken} />
         )}
       </div>
       {view === 'tools'
@@ -182,7 +190,7 @@ export function AgentPromptSlashMenu({
                     onAddCliTool?.({
                       onAdded: (item) => {
                         if (isCliToolItem(item))
-                          onSelect(createReferenceToken('cli_tool', item.id, item.name))
+                          onInsertToken(createReferenceToken('cli_tool', item.id, item.name))
                       },
                     })
                   }
@@ -193,7 +201,8 @@ export function AgentPromptSlashMenu({
             <div className="border-t border-divider-subtle p-1">
               <button
                 type="button"
-                className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+                {...agentPromptSlashMenuItemProps}
+                className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
                 onClick={handleAddFromFooter}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
@@ -225,10 +234,10 @@ function AgentPromptSlashPanel({
 
 function AgentPromptSkillRows({
   skills,
-  onSelect,
+  onInsertToken,
 }: {
   skills: AgentSkill[]
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   return (
     <>
@@ -237,7 +246,7 @@ function AgentPromptSkillRows({
           key={skill.id}
           icon="i-ri-box-3-line"
           label={skill.name}
-          onClick={() => onSelect(createConfigReferenceToken('skill', skill.id, skill.name))}
+          onClick={() => onInsertToken(createConfigReferenceToken('skill', skill.id, skill.name))}
         />
       ))}
     </>
@@ -247,11 +256,11 @@ function AgentPromptSkillRows({
 function AgentPromptFileRows({
   files,
   depth = 0,
-  onSelect,
+  onInsertToken,
 }: {
   files: AgentFileNode[]
   depth?: number
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   return (
     <>
@@ -264,11 +273,11 @@ function AgentPromptFileRows({
             hasChildren={!!file.children?.length}
             onClick={() => {
               if (!file.children?.length)
-                onSelect(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
+                onInsertToken(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
             }}
           />
           {!!file.children?.length && (
-            <AgentPromptFileRows files={file.children} depth={depth + 1} onSelect={onSelect} />
+            <AgentPromptFileRows files={file.children} depth={depth + 1} onInsertToken={onInsertToken} />
           )}
         </div>
       ))}
@@ -279,11 +288,11 @@ function AgentPromptFileRows({
 function AgentPromptToolRows({
   configuredTools,
   onAddProviderTools,
-  onSelect,
+  onInsertToken,
 }: {
   configuredTools: AgentTool[]
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const language = useGetLanguage()
@@ -346,14 +355,14 @@ function AgentPromptToolRows({
   const handleSelectProvider = (provider: ToolWithProvider) => {
     const { icon, iconDark } = getProviderIcons(provider)
     selectTools(provider.tools.map(tool => toToolDefaultValue(provider, tool, language, icon, iconDark)))
-    onSelect(createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)))
+    onInsertToken(createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)))
   }
 
   const handleSelectTool = (provider: ToolWithProvider, tool: Tool) => {
     const { icon, iconDark } = getProviderIcons(provider)
     const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
-    onSelect(createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label))
+    onInsertToken(createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label))
   }
 
   return (
@@ -363,6 +372,7 @@ function AgentPromptToolRows({
           <button
             key={tab.key}
             type="button"
+            {...agentPromptSlashMenuItemProps}
             className={cn(
               'flex h-6 shrink-0 items-center rounded-md px-2 system-xs-medium text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
               activeTab === tab.key && 'bg-state-base-active system-xs-semibold text-text-primary',
@@ -379,7 +389,7 @@ function AgentPromptToolRows({
               <AgentPromptCliToolRow
                 key={tool.id}
                 tool={tool}
-                onClick={() => onSelect(createReferenceToken('cli_tool', tool.id, tool.name))}
+                onClick={() => onInsertToken(createReferenceToken('cli_tool', tool.id, tool.name))}
               />
             ))
           : availableProviders.filter(provider => provider.tools.length > 0).map(provider => (
@@ -524,7 +534,8 @@ function AgentPromptProviderToolRow({
     <div className="group flex h-7 w-full items-center gap-px overflow-hidden rounded-md">
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+        {...agentPromptSlashMenuItemProps}
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
         onClick={onClick}
       >
         <AgentPromptProviderIcon provider={provider} getProviderIcon={getProviderIcon} />
@@ -540,8 +551,10 @@ function AgentPromptProviderToolRow({
       </button>
       <button
         type="button"
+        {...agentPromptSlashMenuItemProps}
         aria-label={providerLabel}
-        className="flex size-7 shrink-0 items-center justify-center rounded-r-md text-text-tertiary group-hover:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+        aria-expanded={isExpanded}
+        className="flex size-7 shrink-0 items-center justify-center rounded-r-md text-text-tertiary group-hover:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
         onClick={onToggle}
       >
         <span aria-hidden className={`${isExpanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line'} size-4`} />
@@ -582,7 +595,8 @@ function AgentPromptToolFooter({
         href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
         target="_blank"
         rel="noreferrer"
-        className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+        {...agentPromptSlashMenuItemProps}
+        className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       >
         <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
         <span className="system-sm-regular text-text-secondary">{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
@@ -590,7 +604,8 @@ function AgentPromptToolFooter({
       {onAddCliTool && (
         <button
           type="button"
-          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+          {...agentPromptSlashMenuItemProps}
+          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
           onClick={onAddCliTool}
         >
           <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
@@ -613,7 +628,8 @@ function AgentPromptProviderToolActionRow({
   return (
     <button
       type="button"
-      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+      {...agentPromptSlashMenuItemProps}
+      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       onClick={onClick}
     >
       <span className="ml-4 h-full w-px shrink-0 bg-divider-subtle" />
@@ -638,7 +654,8 @@ function AgentPromptCliToolRow({
   return (
     <button
       type="button"
-      className="flex h-7 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+      {...agentPromptSlashMenuItemProps}
+      className="flex h-7 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       onClick={onClick}
     >
       <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-8 pl-2">
@@ -655,22 +672,22 @@ function AgentPromptCliToolRow({
 }
 
 function AgentPromptKnowledgeRows({
-  retrievals,
-  onSelect,
+  knowledgeRetrievals,
+  onInsertToken,
 }: {
-  retrievals: AgentKnowledgeRetrievalItem[]
-  onSelect: (token: string) => void
+  knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
+  onInsertToken: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
 
   return (
     <>
-      {retrievals.map(retrieval => (
+      {knowledgeRetrievals.map(retrieval => (
         <AgentPromptSubmenuRow
           key={retrieval.id}
           icon="i-ri-book-open-line"
           label={getKnowledgeRetrievalName(retrieval, t)}
-          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, getKnowledgeRetrievalName(retrieval, t)))}
+          onClick={() => onInsertToken(createReferenceToken('knowledge', retrieval.id, getKnowledgeRetrievalName(retrieval, t)))}
         />
       ))}
     </>
@@ -702,7 +719,8 @@ function AgentPromptSubmenuRow({
   return (
     <button
       type="button"
-      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+      {...agentPromptSlashMenuItemProps}
+      className="flex h-6 w-full items-center gap-1 rounded-md text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       onClick={onClick}
     >
       <span className={`flex min-w-0 flex-1 items-center gap-1 ${indent} pr-2`}>

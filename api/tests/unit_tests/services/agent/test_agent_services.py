@@ -1,8 +1,11 @@
 import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
+from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import RuntimeLayerSpec
 from sqlalchemy.exc import IntegrityError
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
@@ -3168,6 +3171,159 @@ class TestAgentAppBackingAgent:
         assert len(conversations) == 1
         assert conversations[0].id == conversation_id
         assert session.deleted == []
+        assert session.commits == 1
+
+    def test_refresh_agent_app_debug_conversation_enqueues_cleanup_for_old_runtime_sessions(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        stored_session = SimpleNamespace(
+            scope=SimpleNamespace(
+                tenant_id="tenant-1",
+                app_id="old-app",
+                conversation_id="old-conversation",
+                agent_id="agent-9",
+                agent_config_snapshot_id="snap-9",
+            ),
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            backend_run_id="run-old",
+            runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+        )
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+        cleanup_delay = MagicMock()
+        cleanup_store = MagicMock()
+        cleanup_store.list_active_sessions_for_conversation.return_value = [stored_session]
+        monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", lambda: cleanup_store)
+        monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        cleanup_store.list_active_sessions_for_conversation.assert_called_once_with(
+            tenant_id="tenant-1",
+            app_id="old-app",
+            conversation_id="old-conversation",
+        )
+        cleanup_delay.assert_called_once()
+        payload = cleanup_delay.call_args.args[0]
+        assert payload["metadata"]["conversation_id"] == "old-conversation"
+        assert payload["metadata"]["agent_id"] == "agent-9"
+        assert (
+            payload["idempotency_key"] == "tenant-1:agent-1:account-1:old-conversation:debug-session-cleanup:"
+            "agent-9:snap-9:run-old"
+        )
+        cleanup_store.mark_cleaned.assert_called_once_with(
+            scope=stored_session.scope,
+            backend_run_id="run-old",
+        )
+        assert mapping.app_id == "app-1"
+        assert mapping.conversation_id == conversation_id
+
+    def test_refresh_agent_app_debug_conversation_marks_old_runtime_sessions_clean_when_enqueue_fails(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        stored_session = SimpleNamespace(
+            scope=SimpleNamespace(
+                tenant_id="tenant-1",
+                app_id="old-app",
+                conversation_id="old-conversation",
+                agent_id="agent-9",
+                agent_config_snapshot_id="snap-9",
+            ),
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            backend_run_id="run-old",
+            runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+        )
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+        cleanup_store = MagicMock()
+        cleanup_store.list_active_sessions_for_conversation.return_value = [stored_session]
+        monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", lambda: cleanup_store)
+        monkeypatch.setattr(
+            roster_service.cleanup_conversation_agent_runtime_session,
+            "delay",
+            MagicMock(side_effect=RuntimeError("queue down")),
+        )
+
+        service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        cleanup_store.mark_cleaned.assert_called_once_with(
+            scope=stored_session.scope,
+            backend_run_id="run-old",
+        )
+
+    def test_refresh_agent_app_debug_conversation_ignores_mark_cleaned_failure(self, monkeypatch: pytest.MonkeyPatch):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        stored_session = SimpleNamespace(
+            scope=SimpleNamespace(
+                tenant_id="tenant-1",
+                app_id="old-app",
+                conversation_id="old-conversation",
+                agent_id="agent-9",
+                agent_config_snapshot_id="snap-9",
+            ),
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            backend_run_id="run-old",
+            runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+        )
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+        cleanup_store = MagicMock()
+        cleanup_store.list_active_sessions_for_conversation.return_value = [stored_session]
+        cleanup_store.mark_cleaned.side_effect = RuntimeError("cleanup bookkeeping failed")
+        monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", lambda: cleanup_store)
+        monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", MagicMock())
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        assert mapping.app_id == "app-1"
+        assert mapping.conversation_id == conversation_id
         assert session.commits == 1
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):

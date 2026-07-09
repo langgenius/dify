@@ -40,35 +40,6 @@ if TYPE_CHECKING:
 
 
 class AppGenerateService:
-    @classmethod
-    @trace_span(AppGenerateHandler)
-    def generate_stateless_agent_app(
-        cls,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-    ):
-        """Run build-chat finalization as a blocking, non-SSE Agent App action.
-
-        This is the service entry point for the Agent build-chat finalize flow.
-        It applies the same tracing, quota, and rate-limit guardrails as normal
-        app generation, but invokes the Agent App generator in stateless mode:
-        the call waits synchronously for Agent backend completion, triggers only
-        the backend side effect, and does not create Dify chat/message records.
-        """
-        return cls._run_with_guardrails(
-            app_model=app_model,
-            streaming=False,
-            action=lambda _rate_limit, _request_id: AgentAppGenerator().generate_stateless(
-                app_model=app_model,
-                user=user,
-                args=args,
-                invoke_from=invoke_from,
-            ),
-        )
-
     @staticmethod
     def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
         """
