@@ -1,10 +1,12 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from dify_agent.protocol import PydanticAIStreamRunEvent, RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendRunEventAdapter,
@@ -190,6 +192,30 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
         )
 
 
+class AgentMessageDeltaBackendClient(FakeAgentBackendRunClient):
+    def _events(self, run_id: str):
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+            PydanticAIStreamRunEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+                agent_message_delta="hello ",
+            ),
+            RunSucceededEvent(
+                id="3-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunSucceededEventData(
+                    output={"text": "hello agent"},
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
 def _node(
     *,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
@@ -275,6 +301,19 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
+    events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["status"] == "succeeded"
+    assert agent_backend["agent_message_delta_count"] == 1
+    assert agent_backend["agent_message_delta_length"] == len("hello ")
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
