@@ -339,9 +339,7 @@ async def test_shellctl_client_list_jobs_uses_query_params_and_auth() -> None:
         )
 
     transport = httpx.MockTransport(handler)
-    async with ShellctlClient(
-        "http://127.0.0.1:8765", token="secret", transport=transport
-    ) as client:
+    async with ShellctlClient("http://127.0.0.1:8765", token="secret", transport=transport) as client:
         result = await client.list_jobs(status="running", limit=5)
 
     assert len(result) == 1
@@ -451,9 +449,7 @@ async def test_shellctl_client_terminate_uses_body_and_auth() -> None:
         )
 
     transport = httpx.MockTransport(handler)
-    async with ShellctlClient(
-        "http://127.0.0.1:8765", token="secret", transport=transport
-    ) as client:
+    async with ShellctlClient("http://127.0.0.1:8765", token="secret", transport=transport) as client:
         result = await client.terminate("job-1", 0.25)
 
     assert result.status == JobStatusName.TERMINATED
@@ -471,9 +467,7 @@ async def test_shellctl_client_delete_uses_query_params_and_auth() -> None:
         return httpx.Response(200, json={"job_id": "job-1", "deleted": True})
 
     transport = httpx.MockTransport(handler)
-    async with ShellctlClient(
-        "http://127.0.0.1:8765", token="secret", transport=transport
-    ) as client:
+    async with ShellctlClient("http://127.0.0.1:8765", token="secret", transport=transport) as client:
         result = await client.delete("job-1", force=True, grace_seconds=0.5)
 
     assert result.job_id == "job-1"
@@ -489,9 +483,7 @@ async def test_shellctl_client_raises_structured_errors() -> None:
         )
 
     transport = httpx.MockTransport(handler)
-    async with ShellctlClient(
-        "http://127.0.0.1:8765", token="secret", transport=transport
-    ) as client:
+    async with ShellctlClient("http://127.0.0.1:8765", token="secret", transport=transport) as client:
         with pytest.raises(ShellctlClientError, match="job_not_running"):
             await client.input("job-1", "ls\n", offset=0)
 
@@ -559,9 +551,7 @@ async def test_shellctl_client_raises_invalid_payload_errors() -> None:
 
 
 @pytest.mark.anyio
-async def test_shellctl_client_health_returns_model_and_healthz_stays_compatible() -> (
-    None
-):
+async def test_shellctl_client_health_returns_model_and_healthz_stays_compatible() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "GET"
         assert request.url.path == "/healthz"

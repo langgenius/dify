@@ -65,15 +65,11 @@ def create_app(
     ) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
-            content=ErrorResponse(
-                error=ErrorDetail(code=exc.code, message=exc.message)
-            ).model_dump(mode="json"),
+            content=ErrorResponse(error=ErrorDetail(code=exc.code, message=exc.message)).model_dump(mode="json"),
         )
 
     @app.exception_handler(RuntimeError)
-    async def handle_runtime_error(
-        _request: Request, exc: RuntimeError
-    ) -> JSONResponse:
+    async def handle_runtime_error(_request: Request, exc: RuntimeError) -> JSONResponse:
         return JSONResponse(
             status_code=500,
             content=ErrorResponse(
@@ -95,9 +91,7 @@ def create_app(
             return
         expected = f"Bearer {token}"
         if authorization != expected:
-            raise ShellctlServerError(
-                401, "unauthorized", "Missing or invalid bearer token"
-            )
+            raise ShellctlServerError(401, "unauthorized", "Missing or invalid bearer token")
 
     @app.get("/healthz", response_model=HealthResponse)
     async def healthz() -> HealthResponse:
@@ -133,9 +127,7 @@ def create_app(
     )
     async def tail_job(
         job_id: str,
-        output_limit: Annotated[
-            int, Query(ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
-        ] = DEFAULT_OUTPUT_LIMIT_BYTES,
+        output_limit: Annotated[int, Query(ge=1, le=MAX_OUTPUT_LIMIT_BYTES)] = DEFAULT_OUTPUT_LIMIT_BYTES,
         svc: ShellctlService = Depends(get_service),
     ) -> JobResult:
         return await svc.tail_job(job_id, output_limit=output_limit)

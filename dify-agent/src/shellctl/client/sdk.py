@@ -77,16 +77,12 @@ class ShellctlClient:
         self.output_limit = output_limit
         self.idle_flush_seconds = idle_flush_seconds
         self.request_timeout_grace_seconds = request_timeout_grace_seconds
-        self.token = (
-            token if token is not None else os.environ.get(DEFAULT_AUTH_TOKEN_ENV)
-        )
+        self.token = token if token is not None else os.environ.get(DEFAULT_AUTH_TOKEN_ENV)
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
             base_url=self.base_url,
             follow_redirects=True,
-            timeout=httpx.Timeout(
-                DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_TIMEOUT_SECONDS
-            ),
+            timeout=httpx.Timeout(DEFAULT_TIMEOUT_SECONDS, connect=DEFAULT_TIMEOUT_SECONDS),
             transport=transport,
         )
 
@@ -117,9 +113,7 @@ class ShellctlClient:
             pool=DEFAULT_TIMEOUT_SECONDS,
         )
 
-    def _terminate_request_timeout(
-        self, grace_seconds: float | None = None
-    ) -> httpx.Timeout:
+    def _terminate_request_timeout(self, grace_seconds: float | None = None) -> httpx.Timeout:
         """Return a request timeout for terminate-style calls.
 
         `terminate()` and forced `delete()` block until the server finishes the
@@ -127,9 +121,7 @@ class ShellctlClient:
         business wait budget even when the request relies on the API default.
         """
 
-        effective_grace_seconds = (
-            DEFAULT_TERMINATE_GRACE_SECONDS if grace_seconds is None else grace_seconds
-        )
+        effective_grace_seconds = DEFAULT_TERMINATE_GRACE_SECONDS if grace_seconds is None else grace_seconds
         return self._wait_request_timeout(effective_grace_seconds)
 
     async def health(self) -> HealthResponse:
@@ -307,9 +299,7 @@ class ShellctlClient:
         try:
             payload = response.json()
         except ValueError as exc:  # pragma: no cover - network/proxy corruption
-            raise ShellctlClientError(
-                response.status_code, "invalid_json", response.text
-            ) from exc
+            raise ShellctlClientError(response.status_code, "invalid_json", response.text) from exc
 
         if response.is_error:
             error = payload.get("error") if isinstance(payload, dict) else None
@@ -322,9 +312,7 @@ class ShellctlClient:
             raise ShellctlClientError(response.status_code, code, message)
 
         if not isinstance(payload, dict):
-            raise ShellctlClientError(
-                response.status_code, "invalid_payload", response.text
-            )
+            raise ShellctlClientError(response.status_code, "invalid_payload", response.text)
         return payload
 
 

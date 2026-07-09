@@ -139,12 +139,8 @@ class RunJobRequest(ShellctlModel):
     cwd: str | None = None
     env: dict[str, str] | None = None
     terminal: TerminalSize | None = None
-    timeout: float = Field(
-        default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS
-    )
-    output_limit: int = Field(
-        default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES
-    )
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
+    output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
 
     @field_validator("env")
@@ -175,13 +171,9 @@ class RunJobRequest(ShellctlModel):
 class WaitJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/{job_id}/wait`."""
 
-    timeout: float = Field(
-        default=DEFAULT_TIMEOUT_SECONDS, ge=0, le=MAX_WAIT_TIMEOUT_SECONDS
-    )
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, ge=0, le=MAX_WAIT_TIMEOUT_SECONDS)
     offset: int = Field(ge=0)
-    output_limit: int = Field(
-        default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES
-    )
+    output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
 
 
@@ -189,13 +181,9 @@ class InputJobRequest(ShellctlModel):
     """HTTP request body for `POST /v1/jobs/{job_id}/input`."""
 
     text: str
-    timeout: float = Field(
-        default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS
-    )
+    timeout: float = Field(default=DEFAULT_TIMEOUT_SECONDS, gt=0, le=MAX_WAIT_TIMEOUT_SECONDS)
     offset: int = Field(ge=0)
-    output_limit: int = Field(
-        default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES
-    )
+    output_limit: int = Field(default=DEFAULT_OUTPUT_LIMIT_BYTES, ge=1, le=MAX_OUTPUT_LIMIT_BYTES)
     idle_flush_seconds: float = Field(default=DEFAULT_IDLE_FLUSH_SECONDS, ge=0, le=30)
 
 

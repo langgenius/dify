@@ -36,9 +36,7 @@ def test_sanitize_pty_golden_cases() -> None:
     for case in cases:
         chunks = [bytes.fromhex(chunk) for chunk in case["chunks_hex"]]
         sanitizer = PtySanitizer()
-        streamed = (
-            "".join(sanitizer.feed(chunk) for chunk in chunks) + sanitizer.flush()
-        )
+        streamed = "".join(sanitizer.feed(chunk) for chunk in chunks) + sanitizer.flush()
         batch = sanitize_pty_output(b"".join(chunks))
 
         assert streamed == case["expected"], case["name"]
@@ -130,8 +128,6 @@ def test_sanitize_pty_stream_flushes_incrementally() -> None:
         ({"A": "x\x00y"}, "must not contain NUL"),
     ],
 )
-def test_run_job_request_rejects_invalid_env_entries(
-    env: dict[str, str], message: str
-) -> None:
+def test_run_job_request_rejects_invalid_env_entries(env: dict[str, str], message: str) -> None:
     with pytest.raises(ValidationError, match=message):
         RunJobRequest(script="printf ready\n", env=env)

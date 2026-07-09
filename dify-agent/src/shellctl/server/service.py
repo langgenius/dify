@@ -164,9 +164,7 @@ class ShellctlService:
 
     def start_background_pipe_monitor(self) -> None:
         if self._monitor_task is None:
-            self._monitor_task = asyncio.create_task(
-                self._pipe_monitor_loop(), name="shellctl-pipe-monitor"
-            )
+            self._monitor_task = asyncio.create_task(self._pipe_monitor_loop(), name="shellctl-pipe-monitor")
 
     async def run_job(self, request: RunJobRequest) -> JobResult:
         """Create a tmux-backed job and wait for its initial result window.
@@ -429,9 +427,7 @@ class ShellctlService:
 
         view = await self.get_job_status(job_id)
         if view.done:
-            raise ShellctlServerError(
-                409, "job_not_running", f"Job {job_id} is already terminal"
-            )
+            raise ShellctlServerError(409, "job_not_running", f"Job {job_id} is already terminal")
         try:
             await self._tmux.send_input(job_id=job_id, text=request.text)
         except ShellctlServerError as exc:
@@ -439,9 +435,7 @@ class ShellctlService:
                 raise
             view = await self.get_job_status(job_id)
             if view.done:
-                raise ShellctlServerError(
-                    409, "job_not_running", f"Job {job_id} is already terminal"
-                ) from exc
+                raise ShellctlServerError(409, "job_not_running", f"Job {job_id} is already terminal") from exc
             raise ShellctlServerError(500, "tmux_input_failed", exc.message) from exc
         return await self.wait_job(
             job_id,
@@ -453,9 +447,7 @@ class ShellctlService:
             ),
         )
 
-    async def terminate_job(
-        self, job_id: str, request: TerminateJobRequest
-    ) -> JobStatusView:
+    async def terminate_job(self, job_id: str, request: TerminateJobRequest) -> JobStatusView:
         """Terminate a job, reserving `terminated` before tmux cleanup.
 
         The initial conditional DB update allows an `exited` row to be overridden
@@ -510,12 +502,8 @@ class ShellctlService:
         view = await self.get_job_status(job_id)
         if not view.done:
             if not force:
-                raise ShellctlServerError(
-                    409, "job_running", f"Job {job_id} is still running"
-                )
-            await self.terminate_job(
-                job_id, TerminateJobRequest(grace_seconds=grace_seconds)
-            )
+                raise ShellctlServerError(409, "job_running", f"Job {job_id} is still running")
+            await self.terminate_job(job_id, TerminateJobRequest(grace_seconds=grace_seconds))
         await self._tmux.cleanup_session(job_id=job_id)
         await self._delete_job_row(job_id)
         shutil.rmtree(self._artifact_dir(job_id), ignore_errors=True)
@@ -575,9 +563,7 @@ class ShellctlService:
                 raise
             shutil.rmtree(self._artifact_dir(row.job_id), ignore_errors=True)
 
-    async def record_runner_exit(
-        self, job_id: str, exit_code: int, ended_at: str
-    ) -> None:
+    async def record_runner_exit(self, job_id: str, exit_code: int, ended_at: str) -> None:
         """Persist a drained normal-exit fact into SQLite.
 
         The usual caller is the tmux pipe finalizer after the lightweight PTY
@@ -625,9 +611,7 @@ class ShellctlService:
             )
             result = await session.execute(stmt)
             if cast(Any, result).rowcount == 0:
-                raise ShellctlServerError(
-                    404, "job_not_found", f"Unknown job id: {job_id}"
-                )
+                raise ShellctlServerError(404, "job_not_found", f"Unknown job id: {job_id}")
             await session.commit()
 
     async def check_running_jobs_pipe_health(self) -> None:
@@ -653,9 +637,7 @@ class ShellctlService:
             await anyio.sleep(self.config.pipe_monitor_interval_seconds)
             await self.check_running_jobs_pipe_health()
 
-    async def _wait_for_output_pipe_ready(
-        self, *, job_id: str, ready_file: Path
-    ) -> None:
+    async def _wait_for_output_pipe_ready(self, *, job_id: str, ready_file: Path) -> None:
         """Confirm the sanitize/output pipeline is live before opening start-gate.
 
         Timeout failures include the ready-file path, current `#{pane_pipe}`
@@ -747,9 +729,7 @@ class ShellctlService:
         stderr_text = error_log.read_text(encoding="utf-8", errors="replace").strip()
         if not stderr_text:
             return f"{error_log} empty"
-        summary = " | ".join(
-            line.strip() for line in stderr_text.splitlines() if line.strip()
-        )
+        summary = " | ".join(line.strip() for line in stderr_text.splitlines() if line.strip())
         if not summary:
             return f"{error_log} contains only whitespace"
         if len(summary) > 240:
@@ -837,10 +817,7 @@ class ShellctlService:
                         message="The tmux output pipe stopped while the job was still running.",
                         ended_at=format_timestamp(),
                     )
-            elif (
-                status in {JobStatusName.CREATED, JobStatusName.STARTING}
-                and job_id not in self._starting_jobs
-            ):
+            elif status in {JobStatusName.CREATED, JobStatusName.STARTING} and job_id not in self._starting_jobs:
                 row = await self._transition_status(
                     job_id,
                     allowed_from={JobStatusName.CREATED, JobStatusName.STARTING},
@@ -850,10 +827,7 @@ class ShellctlService:
         else:
             if self._normal_exit_commit_pending(job_id):
                 pass
-            elif not (
-                status in {JobStatusName.CREATED, JobStatusName.STARTING}
-                and job_id in self._starting_jobs
-            ):
+            elif not (status in {JobStatusName.CREATED, JobStatusName.STARTING} and job_id in self._starting_jobs):
                 row = await self._transition_status(
                     job_id,
                     allowed_from={
@@ -926,9 +900,7 @@ class ShellctlService:
             )
 
         async with self._session_factory() as session:
-            stmt = update(JobRow).where(
-                job_id_col == job_id, status_col.in_(allowed_statuses)
-            )
+            stmt = update(JobRow).where(job_id_col == job_id, status_col.in_(allowed_statuses))
             if require_exit_code_null:
                 stmt = stmt.where(exit_code_col.is_(None))
             result = await session.execute(stmt.values(**values))
@@ -965,13 +937,9 @@ class ShellctlService:
 
     async def _delete_job_row(self, job_id: str) -> None:
         async with self._session_factory() as session:
-            result = await session.execute(
-                delete(JobRow).where(cast(Any, JobRow.job_id) == job_id)
-            )
+            result = await session.execute(delete(JobRow).where(cast(Any, JobRow.job_id) == job_id))
             if cast(Any, result).rowcount == 0:
-                raise ShellctlServerError(
-                    404, "job_not_found", f"Unknown job id: {job_id}"
-                )
+                raise ShellctlServerError(404, "job_not_found", f"Unknown job id: {job_id}")
             await session.commit()
 
     async def _get_job_row(self, job_id: str) -> JobRow:
@@ -981,9 +949,7 @@ class ShellctlService:
             raise ShellctlServerError(404, "job_not_found", f"Unknown job id: {job_id}")
         return row
 
-    async def _list_job_rows(
-        self, *, statuses: set[JobStatusName] | None = None
-    ) -> list[JobRow]:
+    async def _list_job_rows(self, *, statuses: set[JobStatusName] | None = None) -> list[JobRow]:
         created_at_col = cast(Any, JobRow.created_at)
         status_col = cast(Any, JobRow.status)
         async with self._session_factory() as session:
@@ -1051,11 +1017,7 @@ class ShellctlService:
         drained_path = pipe_drained_path(job_dir)
         exit_code_path = runner_exit_code_path(job_dir)
         ended_at_path = runner_ended_at_path(job_dir)
-        if (
-            not drained_path.exists()
-            or not exit_code_path.exists()
-            or not ended_at_path.exists()
-        ):
+        if not drained_path.exists() or not exit_code_path.exists() or not ended_at_path.exists():
             return None
         raw_exit_code = exit_code_path.read_text(encoding="utf-8").strip()
         raw_ended_at = ended_at_path.read_text(encoding="utf-8").strip()
@@ -1079,21 +1041,13 @@ class ShellctlService:
                 return job_id, job_dir
             except FileExistsError:
                 continue
-        raise ShellctlServerError(
-            500, "job_id_collision", "Failed to allocate a unique job id"
-        )
+        raise ShellctlServerError(500, "job_id_collision", "Failed to allocate a unique job id")
 
     def _resolve_cwd(self, raw_cwd: str | None) -> Path:
-        cwd = (
-            Path(raw_cwd).expanduser()
-            if raw_cwd is not None
-            else self.config.default_cwd.expanduser()
-        )
+        cwd = Path(raw_cwd).expanduser() if raw_cwd is not None else self.config.default_cwd.expanduser()
         cwd = cwd.resolve()
         if not cwd.exists() or not cwd.is_dir():
-            raise ShellctlServerError(
-                400, "invalid_cwd", f"cwd is not a directory: {cwd}"
-            )
+            raise ShellctlServerError(400, "invalid_cwd", f"cwd is not a directory: {cwd}")
         return cwd
 
     def _resolve_env(self, raw_env: dict[str, str] | None) -> dict[str, str]:
@@ -1122,9 +1076,7 @@ class ShellctlService:
         path.chmod(0o700)
 
     def _install_runner(self) -> None:
-        self.config.runner_path.write_text(
-            self._runner_script_source(), encoding="utf-8"
-        )
+        self.config.runner_path.write_text(self._runner_script_source(), encoding="utf-8")
         mode = self.config.runner_path.stat().st_mode
         self.config.runner_path.chmod(mode | stat.S_IXUSR)
 

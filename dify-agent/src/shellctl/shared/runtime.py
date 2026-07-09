@@ -47,9 +47,7 @@ def generate_job_id(*, now: datetime | None = None) -> str:
     """Generate a short, human-readable job id."""
 
     timestamp = (now or utc_now()).astimezone(UTC).strftime("%m%d%H%M")
-    suffix = "".join(
-        secrets.choice(JOB_ID_ALPHABET) for _ in range(JOB_ID_RANDOM_SUFFIX_LENGTH)
-    )
+    suffix = "".join(secrets.choice(JOB_ID_ALPHABET) for _ in range(JOB_ID_RANDOM_SUFFIX_LENGTH))
     return f"{timestamp}-{suffix}"
 
 

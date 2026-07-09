@@ -39,11 +39,7 @@ def _click_command(command_name: str) -> click.Command:
 
 def _command_option_names(command_name: str) -> set[str]:
     command = _click_command(command_name)
-    return {
-        option
-        for parameter in command.params
-        for option in getattr(parameter, "opts", [])
-    }
+    return {option for parameter in command.params for option in getattr(parameter, "opts", [])}
 
 
 def _command_option(command_name: str, option_name: str) -> click.Option:
@@ -128,9 +124,7 @@ class RecordingShellctlClient:
         return self._result("run", JobResult)
 
     async def wait(self, job_id: str, *, offset: int, timeout: float) -> JobResult:
-        type(self).calls.append(
-            ("wait", (job_id,), {"offset": offset, "timeout": timeout})
-        )
+        type(self).calls.append(("wait", (job_id,), {"offset": offset, "timeout": timeout}))
         return self._result("wait", JobResult)
 
     async def status(self, job_id: str) -> JobStatusView:
@@ -168,9 +162,7 @@ class RecordingShellctlClient:
         return self._result("tail", JobResult)
 
     async def terminate(self, job_id: str, grace_seconds: float) -> JobStatusView:
-        type(self).calls.append(
-            ("terminate", (job_id,), {"grace_seconds": grace_seconds})
-        )
+        type(self).calls.append(("terminate", (job_id,), {"grace_seconds": grace_seconds}))
         return self._result("terminate", JobStatusView)
 
     async def delete(
@@ -204,11 +196,7 @@ def _package_env() -> dict[str, str]:
     src_path = package_root / "src"
     env = dict(os.environ)
     current_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        f"{src_path}{os.pathsep}{current_pythonpath}"
-        if current_pythonpath
-        else str(src_path)
-    )
+    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{current_pythonpath}" if current_pythonpath else str(src_path)
     return env
 
 
@@ -603,10 +591,7 @@ def test_shellctl_base_url_and_auth_token_flags_override_environment(
 
 
 def test_shellctl_cli_controller_module_is_removed() -> None:
-    assert (
-        importlib.util.find_spec("shellctl.server.cli_controller")
-        is None
-    )
+    assert importlib.util.find_spec("shellctl.server.cli_controller") is None
 
 
 def test_importing_shellctl_cli_for_run_help_skips_server_stack() -> None:

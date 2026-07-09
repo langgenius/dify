@@ -52,9 +52,7 @@ class TmuxControllerProtocol(Protocol):
         terminal: TerminalSize,
     ) -> None: ...
 
-    async def enable_output_pipe(
-        self, *, job_id: str, job_dir: Path, ready_file: Path
-    ) -> None: ...
+    async def enable_output_pipe(self, *, job_id: str, job_dir: Path, ready_file: Path) -> None: ...
 
     async def send_input(self, *, job_id: str, text: str) -> None: ...
 
@@ -78,16 +76,12 @@ class TmuxController:
         await self._run_tmux("start-server")
 
     async def list_sessions(self) -> set[str]:
-        result = await self._run_tmux(
-            "list-sessions", "-F", "#{session_name}", check=False
-        )
+        result = await self._run_tmux("list-sessions", "-F", "#{session_name}", check=False)
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace")
             if _tmux_target_missing(stderr):
                 return set()
-            raise ShellctlServerError(
-                500, "tmux_error", stderr.strip() or "tmux list-sessions failed"
-            )
+            raise ShellctlServerError(500, "tmux_error", stderr.strip() or "tmux list-sessions failed")
         output = result.stdout.decode("utf-8", errors="replace")
         return {line.strip() for line in output.splitlines() if line.strip()}
 
@@ -152,9 +146,7 @@ class TmuxController:
                 or f"Failed to create tmux session for {job_id}",
             )
 
-    async def enable_output_pipe(
-        self, *, job_id: str, job_dir: Path, ready_file: Path
-    ) -> None:
+    async def enable_output_pipe(self, *, job_id: str, job_dir: Path, ready_file: Path) -> None:
         output_command = self._pipe_command_source(
             job_id=job_id,
             job_dir=job_dir,
@@ -172,13 +164,10 @@ class TmuxController:
             raise ShellctlServerError(
                 500,
                 "pipe_failed",
-                result.stderr.decode("utf-8", errors="replace").strip()
-                or f"Failed to attach output pipe for {job_id}",
+                result.stderr.decode("utf-8", errors="replace").strip() or f"Failed to attach output pipe for {job_id}",
             )
 
-    def _pipe_command_source(
-        self, *, job_id: str, job_dir: Path, ready_file: Path
-    ) -> str:
+    def _pipe_command_source(self, *, job_id: str, job_dir: Path, ready_file: Path) -> str:
         """Build the tmux `pipe-pane` command that drains and finalizes output.
 
         For normal exits, the runner now records completion metadata into job
@@ -243,9 +232,7 @@ class TmuxController:
         buffer_name = f"shellctl-in-{job_id}"
         runtime_dir = cast(Path, self._config.runtime_dir)
         runtime_dir.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(
-            prefix=f"shellctl-input-{job_id}-", dir=runtime_dir
-        )
+        fd, tmp_name = tempfile.mkstemp(prefix=f"shellctl-input-{job_id}-", dir=runtime_dir)
         tmp_path = Path(tmp_name)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -312,9 +299,7 @@ class TmuxController:
             check=False,
         )
 
-    async def _run_tmux(
-        self, *args: str, check: bool = True
-    ) -> subprocess.CompletedProcess[bytes]:
+    async def _run_tmux(self, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
         env = dict(os.environ)
         env.pop("TMUX", None)
         try:
@@ -326,15 +311,12 @@ class TmuxController:
                 stderr=subprocess.PIPE,
             )
         except FileNotFoundError as exc:
-            raise ShellctlServerError(
-                500, "tmux_not_installed", "tmux executable was not found"
-            ) from exc
+            raise ShellctlServerError(500, "tmux_not_installed", "tmux executable was not found") from exc
         if check and result.returncode != 0:
             raise ShellctlServerError(
                 500,
                 "tmux_error",
-                result.stderr.decode("utf-8", errors="replace").strip()
-                or "tmux command failed",
+                result.stderr.decode("utf-8", errors="replace").strip() or "tmux command failed",
             )
         return result
 

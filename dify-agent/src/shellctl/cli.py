@@ -487,9 +487,7 @@ def _terminal_size(*, cols: int | None, rows: int | None) -> TerminalSize | None
     )
 
 
-def _build_model[ModelT: BaseModel](
-    model_type: type[ModelT], /, **data: object
-) -> ModelT:
+def _build_model[ModelT: BaseModel](model_type: type[ModelT], /, **data: object) -> ModelT:
     try:
         return model_type(**data)
     except ValidationError as exc:

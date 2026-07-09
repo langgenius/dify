@@ -49,9 +49,7 @@ from shellctl.shared import (
     job_session_name,
 )
 
-server_serve_module = importlib.import_module(
-    "shellctl.server.serve"
-)
+server_serve_module = importlib.import_module("shellctl.server.serve")
 
 
 class FakeTmuxController:
@@ -77,16 +75,12 @@ class FakeTmuxController:
     async def is_output_pipe_active(self, *, job_id: str) -> bool | None:
         return self.pipe_active.get(job_id)
 
-    async def create_job_session(
-        self, *, job_id: str, job_dir: Path, cwd: Path, terminal: TerminalSize
-    ) -> None:
+    async def create_job_session(self, *, job_id: str, job_dir: Path, cwd: Path, terminal: TerminalSize) -> None:
         del job_dir, cwd, terminal
         self.sessions.add(job_session_name(job_id))
         self.pipe_active[job_id] = False
 
-    async def enable_output_pipe(
-        self, *, job_id: str, job_dir: Path, ready_file: Path
-    ) -> None:
+    async def enable_output_pipe(self, *, job_id: str, job_dir: Path, ready_file: Path) -> None:
         self.pipe_active[job_id] = self.pipe_active_on_enable
         if self.pipe_error_log_text is not None:
             pipe_error_log_path(job_dir).write_text(
@@ -171,11 +165,7 @@ def _write_delayed_sanitize_wrapper(
                 "    ready_file = Path(args[args.index('--ready-file') + 1])",
                 "    ready_file.touch()",
                 f"    time.sleep({delay_seconds!r})",
-                (
-                    f"    raise SystemExit({sanitize_exit_code!r})"
-                    if sanitize_exit_code is not None
-                    else ""
-                ),
+                (f"    raise SystemExit({sanitize_exit_code!r})" if sanitize_exit_code is not None else ""),
                 "raise SystemExit(subprocess.run(REAL + args, check=False).returncode)",
                 "",
             ]
@@ -460,12 +450,7 @@ async def test_run_job_env_overlay_overrides_inherited_value(
     try:
         result = await service.run_job(
             RunJobRequest(
-                script=(
-                    "python3 - <<'PY'\n"
-                    "import os\n"
-                    "print(os.environ['SHELLCTL_PRESET'])\n"
-                    "PY\n"
-                ),
+                script=("python3 - <<'PY'\nimport os\nprint(os.environ['SHELLCTL_PRESET'])\nPY\n"),
                 cwd=str(tmp_path),
                 env={"SHELLCTL_PRESET": "from-client"},
                 terminal=TerminalSize(),
@@ -493,11 +478,7 @@ async def test_send_input_reaches_real_job_stdin_after_env_bootstrap(
     try:
         initial = await service.run_job(
             RunJobRequest(
-                script=(
-                    "printf 'ready\\n'\n"
-                    "IFS= read -r line\n"
-                    "printf 'got:%s\\n' \"$line\"\n"
-                ),
+                script=("printf 'ready\\n'\nIFS= read -r line\nprintf 'got:%s\\n' \"$line\"\n"),
                 cwd=str(tmp_path),
                 terminal=TerminalSize(),
                 timeout=5,
@@ -565,11 +546,7 @@ async def test_terminated_job_does_not_emit_python_wrapper_traceback(
     try:
         initial = await service.run_job(
             RunJobRequest(
-                script=(
-                    "trap 'exit 130' INT\n"
-                    "printf 'ready\\n'\n"
-                    "while :; do sleep 1; done\n"
-                ),
+                script=("trap 'exit 130' INT\nprintf 'ready\\n'\nwhile :; do sleep 1; done\n"),
                 cwd=str(tmp_path),
                 terminal=TerminalSize(),
                 timeout=5,
@@ -794,9 +771,7 @@ async def test_run_job_retries_after_sqlite_insert_conflict_and_cleans_artifacts
     service._ensure_dir(service.config.jobs_dir)
     generated_ids = iter(["05211530-k7p", "05211530-abc"])
 
-    monkeypatch.setattr(
-        server_service_module, "generate_job_id", lambda now=None: next(generated_ids)
-    )
+    monkeypatch.setattr(server_service_module, "generate_job_id", lambda now=None: next(generated_ids))
 
     result = await service.run_job(
         RunJobRequest(
@@ -947,9 +922,7 @@ async def test_terminate_beats_concurrent_runner_exit(tmp_path: Path) -> None:
         await service.record_runner_exit(job_id, 130, "2026-05-21T15:30:20Z")
 
     fake_tmux.on_send_interrupt = record_exit
-    view = await service.terminate_job(
-        "05211530-k7p", TerminateJobRequest(grace_seconds=0)
-    )
+    view = await service.terminate_job("05211530-k7p", TerminateJobRequest(grace_seconds=0))
 
     assert view.status is JobStatusName.TERMINATED
     assert view.exit_code == 130
@@ -1021,9 +994,7 @@ async def test_drained_uncommitted_normal_exit_self_commits_to_exited(
     await _seed_job(service, job_id=job_id, status=JobStatusName.RUNNING)
     job_dir = service.config.jobs_dir / job_id
     (job_dir / RUNNER_EXIT_CODE_FILENAME).write_text("0\n", encoding="utf-8")
-    (job_dir / RUNNER_ENDED_AT_FILENAME).write_text(
-        "2026-05-21T15:30:20Z\n", encoding="utf-8"
-    )
+    (job_dir / RUNNER_ENDED_AT_FILENAME).write_text("2026-05-21T15:30:20Z\n", encoding="utf-8")
     (job_dir / PIPE_DRAINED_FILENAME).touch()
 
     view = await service.get_job_status(job_id)
@@ -1103,9 +1074,7 @@ async def test_delete_job_removes_db_row_before_artifact_cleanup(
     observed_db_missing_before_cleanup = False
     original_rmtree = server_service_module.shutil.rmtree
 
-    def assert_db_deleted_then_remove(
-        path: Path, *, ignore_errors: bool = False
-    ) -> None:
+    def assert_db_deleted_then_remove(path: Path, *, ignore_errors: bool = False) -> None:
         nonlocal observed_db_missing_before_cleanup
         with sqlite3.connect(service.config.db_path) as connection:
             count = connection.execute(
@@ -1116,9 +1085,7 @@ async def test_delete_job_removes_db_row_before_artifact_cleanup(
         observed_db_missing_before_cleanup = True
         original_rmtree(path, ignore_errors=ignore_errors)
 
-    monkeypatch.setattr(
-        server_service_module.shutil, "rmtree", assert_db_deleted_then_remove
-    )
+    monkeypatch.setattr(server_service_module.shutil, "rmtree", assert_db_deleted_then_remove)
 
     await service.delete_job("05211530-k7p", force=False, grace_seconds=0)
 
@@ -1324,9 +1291,7 @@ async def test_allocate_job_dir_retries_on_atomic_mkdir_collision(
     (service.config.jobs_dir / "05211530-k7p").mkdir(mode=0o700)
     generated_ids = iter(["05211530-k7p", "05211530-abc"])
 
-    monkeypatch.setattr(
-        server_service_module, "generate_job_id", lambda now=None: next(generated_ids)
-    )
+    monkeypatch.setattr(server_service_module, "generate_job_id", lambda now=None: next(generated_ids))
 
     job_id, job_dir = service._allocate_job_dir()
 
@@ -1356,18 +1321,14 @@ async def test_http_routes_inject_shellctl_service_dependency(
     app = create_app(service.config, service=service)
     transport = httpx.ASGITransport(app=app)
 
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://shellctl.test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://shellctl.test") as client:
         health = await client.get("/healthz")
         assert health.status_code == 200
 
         unauthenticated = await client.get("/v1/jobs")
         assert unauthenticated.status_code == 401
 
-        authenticated = await client.get(
-            "/v1/jobs", headers={"Authorization": "Bearer route-token"}
-        )
+        authenticated = await client.get("/v1/jobs", headers={"Authorization": "Bearer route-token"})
 
     assert authenticated.status_code == 200
     assert authenticated.json() == {"jobs": []}
@@ -1383,13 +1344,9 @@ async def test_http_routes_enforce_auth_from_environment_fallback(
     app = create_app(service.config, service=service)
     transport = httpx.ASGITransport(app=app)
 
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://shellctl.test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://shellctl.test") as client:
         unauthenticated = await client.get("/v1/jobs")
-        authenticated = await client.get(
-            "/v1/jobs", headers={"Authorization": "Bearer route-token"}
-        )
+        authenticated = await client.get("/v1/jobs", headers={"Authorization": "Bearer route-token"})
 
     assert unauthenticated.status_code == 401
     assert authenticated.status_code == 200
@@ -1406,16 +1363,12 @@ async def test_create_app_without_explicit_config_reads_auth_token_from_environm
     monkeypatch.setenv(DEFAULT_AUTH_TOKEN_ENV, "route-token")
     monkeypatch.setattr(ShellctlService, "initialize", noop_initialize)
     monkeypatch.setattr(ShellctlService, "start_background_gc", lambda self: None)
-    monkeypatch.setattr(
-        ShellctlService, "start_background_pipe_monitor", lambda self: None
-    )
+    monkeypatch.setattr(ShellctlService, "start_background_pipe_monitor", lambda self: None)
 
     app = create_app()
     transport = httpx.ASGITransport(app=app)
 
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://shellctl.test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://shellctl.test") as client:
         response = await client.get("/v1/jobs")
 
     assert app.state.shellctl_service.config.auth_token == "route-token"
@@ -1429,9 +1382,7 @@ async def test_http_routes_skip_auth_when_token_missing(tmp_path: Path) -> None:
     app = create_app(service.config, service=service)
     transport = httpx.ASGITransport(app=app)
 
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://shellctl.test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://shellctl.test") as client:
         response = await client.get("/v1/jobs")
 
     assert response.status_code == 200
@@ -1445,9 +1396,7 @@ async def test_http_routes_skip_auth_when_token_is_empty(tmp_path: Path) -> None
     app = create_app(service.config, service=service)
     transport = httpx.ASGITransport(app=app)
 
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://shellctl.test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://shellctl.test") as client:
         response = await client.get("/v1/jobs")
 
     assert response.status_code == 200
@@ -1455,9 +1404,7 @@ async def test_http_routes_skip_auth_when_token_is_empty(tmp_path: Path) -> None
     await service.shutdown()
 
 
-def test_shellctl_config_reads_auth_token_from_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_shellctl_config_reads_auth_token_from_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(DEFAULT_AUTH_TOKEN_ENV, "env-token")
 
     config = ShellctlConfig(state_dir=tmp_path / "state", runtime_dir=tmp_path / "run")
@@ -1475,9 +1422,7 @@ def test_shellctl_config_treats_empty_environment_auth_token_as_disabled(
     assert config.auth_token is None
 
 
-def test_serve_cli_passes_direct_auth_token_to_config(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_serve_cli_passes_direct_auth_token_to_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     captured, runner = _capture_serve_config(monkeypatch)
 
     result = runner.invoke(
@@ -1525,9 +1470,7 @@ def test_serve_cli_prefers_explicit_auth_token_over_environment(
     assert config.auth_token == "direct-token"
 
 
-def test_serve_cli_treats_empty_auth_token_as_disabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_serve_cli_treats_empty_auth_token_as_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     captured, runner = _capture_serve_config(monkeypatch)
 
     result = runner.invoke(
@@ -1547,9 +1490,7 @@ def test_serve_cli_treats_empty_auth_token_as_disabled(
     assert config.auth_token is None
 
 
-def test_serve_cli_explicit_empty_auth_token_beats_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_serve_cli_explicit_empty_auth_token_beats_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(DEFAULT_AUTH_TOKEN_ENV, "env-token")
     captured, runner = _capture_serve_config(monkeypatch)
 
@@ -1570,9 +1511,7 @@ def test_serve_cli_explicit_empty_auth_token_beats_environment(
     assert config.auth_token is None
 
 
-def test_serve_cli_reads_auth_token_from_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_serve_cli_reads_auth_token_from_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(DEFAULT_AUTH_TOKEN_ENV, "env-token")
     captured, runner = _capture_serve_config(monkeypatch)
 
@@ -1591,9 +1530,7 @@ def test_serve_cli_reads_auth_token_from_environment(
     assert config.auth_token == "env-token"
 
 
-def test_serve_cli_forwards_state_runtime_and_gc_flags(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_serve_cli_forwards_state_runtime_and_gc_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     captured, runner = _capture_serve_config(monkeypatch)
     state_dir = tmp_path / "state"
     runtime_dir = tmp_path / "runtime"
@@ -1691,11 +1628,7 @@ def test_python_m_shellctl_server_module_entrypoint_shows_cli_help() -> None:
     src_path = package_root / "src"
     env = dict(os.environ)
     current_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        f"{src_path}{os.pathsep}{current_pythonpath}"
-        if current_pythonpath
-        else str(src_path)
-    )
+    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{current_pythonpath}" if current_pythonpath else str(src_path)
 
     result = subprocess.run(
         [sys.executable, "-m", "shellctl.server", "--help"],
@@ -1716,11 +1649,7 @@ def test_server_package_keeps_config_access_lazy() -> None:
     src_path = package_root / "src"
     env = dict(os.environ)
     current_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        f"{src_path}{os.pathsep}{current_pythonpath}"
-        if current_pythonpath
-        else str(src_path)
-    )
+    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{current_pythonpath}" if current_pythonpath else str(src_path)
 
     script = """
 import json
@@ -1755,6 +1684,4 @@ print(json.dumps({
     assert payload["deny"] == []
     assert "shellctl.server.api" not in payload["server_modules"]
     assert "shellctl.server.cli" not in payload["server_modules"]
-    assert (
-        "shellctl.server.service" not in payload["server_modules"]
-    )
+    assert "shellctl.server.service" not in payload["server_modules"]

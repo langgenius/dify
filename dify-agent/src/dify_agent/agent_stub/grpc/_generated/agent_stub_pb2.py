@@ -4,47 +4,44 @@
 # source: dify/agent/stub/v1/agent_stub.proto
 # Protobuf Python Version: 6.33.5
 """Generated protocol buffer code."""
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    6,
-    33,
-    5,
-    '',
-    'dify/agent/stub/v1/agent_stub.proto'
+    _runtime_version.Domain.PUBLIC, 6, 33, 5, "", "dify/agent/stub/v1/agent_stub.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n#dify/agent/stub/v1/agent_stub.proto\x12\x12\x64ify.agent.stub.v1\"O\n\x0e\x43onnectRequest\x12\x18\n\x10protocol_version\x18\x01 \x01(\x05\x12\x0c\n\x04\x61rgv\x18\x02 \x03(\t\x12\x15\n\rmetadata_json\x18\x03 \x01(\t\"8\n\x0f\x43onnectResponse\x12\x15\n\rconnection_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\"7\n\x11\x46ileUploadRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x10\n\x08mimetype\x18\x02 \x01(\t\"(\n\x12\x46ileUploadResponse\x12\x12\n\nupload_url\x18\x01 \x01(\t\"f\n\x0b\x46ileMapping\x12\x17\n\x0ftransfer_method\x18\x01 \x01(\t\x12\x16\n\treference\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x10\n\x03url\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x0c\n\n_referenceB\x06\n\x04_url\"p\n\x13\x46ileDownloadRequest\x12-\n\x04\x66ile\x18\x01 \x01(\x0b\x32\x1f.dify.agent.stub.v1.FileMapping\x12\x19\n\x0c\x66or_external\x18\x02 \x01(\x08H\x00\x88\x01\x01\x42\x0f\n\r_for_external\"r\n\x14\x46ileDownloadResponse\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x16\n\tmime_type\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0c\n\x04size\x18\x03 \x01(\x03\x12\x14\n\x0c\x64ownload_url\x18\x04 \x01(\tB\x0c\n\n_mime_type2\xc0\x02\n\x10\x41gentStubService\x12R\n\x07\x43onnect\x12\".dify.agent.stub.v1.ConnectRequest\x1a#.dify.agent.stub.v1.ConnectResponse\x12h\n\x17\x43reateFileUploadRequest\x12%.dify.agent.stub.v1.FileUploadRequest\x1a&.dify.agent.stub.v1.FileUploadResponse\x12n\n\x19\x43reateFileDownloadRequest\x12\'.dify.agent.stub.v1.FileDownloadRequest\x1a(.dify.agent.stub.v1.FileDownloadResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n#dify/agent/stub/v1/agent_stub.proto\x12\x12\x64ify.agent.stub.v1"O\n\x0e\x43onnectRequest\x12\x18\n\x10protocol_version\x18\x01 \x01(\x05\x12\x0c\n\x04\x61rgv\x18\x02 \x03(\t\x12\x15\n\rmetadata_json\x18\x03 \x01(\t"8\n\x0f\x43onnectResponse\x12\x15\n\rconnection_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t"7\n\x11\x46ileUploadRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x10\n\x08mimetype\x18\x02 \x01(\t"(\n\x12\x46ileUploadResponse\x12\x12\n\nupload_url\x18\x01 \x01(\t"f\n\x0b\x46ileMapping\x12\x17\n\x0ftransfer_method\x18\x01 \x01(\t\x12\x16\n\treference\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x10\n\x03url\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x0c\n\n_referenceB\x06\n\x04_url"p\n\x13\x46ileDownloadRequest\x12-\n\x04\x66ile\x18\x01 \x01(\x0b\x32\x1f.dify.agent.stub.v1.FileMapping\x12\x19\n\x0c\x66or_external\x18\x02 \x01(\x08H\x00\x88\x01\x01\x42\x0f\n\r_for_external"r\n\x14\x46ileDownloadResponse\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x16\n\tmime_type\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0c\n\x04size\x18\x03 \x01(\x03\x12\x14\n\x0c\x64ownload_url\x18\x04 \x01(\tB\x0c\n\n_mime_type2\xc0\x02\n\x10\x41gentStubService\x12R\n\x07\x43onnect\x12".dify.agent.stub.v1.ConnectRequest\x1a#.dify.agent.stub.v1.ConnectResponse\x12h\n\x17\x43reateFileUploadRequest\x12%.dify.agent.stub.v1.FileUploadRequest\x1a&.dify.agent.stub.v1.FileUploadResponse\x12n\n\x19\x43reateFileDownloadRequest\x12\'.dify.agent.stub.v1.FileDownloadRequest\x1a(.dify.agent.stub.v1.FileDownloadResponseb\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'dify.agent.stub.v1.agent_stub_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "dify.agent.stub.v1.agent_stub_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  DESCRIPTOR._loaded_options = None
-  _globals['_CONNECTREQUEST']._serialized_start=59
-  _globals['_CONNECTREQUEST']._serialized_end=138
-  _globals['_CONNECTRESPONSE']._serialized_start=140
-  _globals['_CONNECTRESPONSE']._serialized_end=196
-  _globals['_FILEUPLOADREQUEST']._serialized_start=198
-  _globals['_FILEUPLOADREQUEST']._serialized_end=253
-  _globals['_FILEUPLOADRESPONSE']._serialized_start=255
-  _globals['_FILEUPLOADRESPONSE']._serialized_end=295
-  _globals['_FILEMAPPING']._serialized_start=297
-  _globals['_FILEMAPPING']._serialized_end=399
-  _globals['_FILEDOWNLOADREQUEST']._serialized_start=401
-  _globals['_FILEDOWNLOADREQUEST']._serialized_end=513
-  _globals['_FILEDOWNLOADRESPONSE']._serialized_start=515
-  _globals['_FILEDOWNLOADRESPONSE']._serialized_end=629
-  _globals['_AGENTSTUBSERVICE']._serialized_start=632
-  _globals['_AGENTSTUBSERVICE']._serialized_end=952
+    DESCRIPTOR._loaded_options = None
+    _globals["_CONNECTREQUEST"]._serialized_start = 59
+    _globals["_CONNECTREQUEST"]._serialized_end = 138
+    _globals["_CONNECTRESPONSE"]._serialized_start = 140
+    _globals["_CONNECTRESPONSE"]._serialized_end = 196
+    _globals["_FILEUPLOADREQUEST"]._serialized_start = 198
+    _globals["_FILEUPLOADREQUEST"]._serialized_end = 253
+    _globals["_FILEUPLOADRESPONSE"]._serialized_start = 255
+    _globals["_FILEUPLOADRESPONSE"]._serialized_end = 295
+    _globals["_FILEMAPPING"]._serialized_start = 297
+    _globals["_FILEMAPPING"]._serialized_end = 399
+    _globals["_FILEDOWNLOADREQUEST"]._serialized_start = 401
+    _globals["_FILEDOWNLOADREQUEST"]._serialized_end = 513
+    _globals["_FILEDOWNLOADRESPONSE"]._serialized_start = 515
+    _globals["_FILEDOWNLOADRESPONSE"]._serialized_end = 629
+    _globals["_AGENTSTUBSERVICE"]._serialized_start = 632
+    _globals["_AGENTSTUBSERVICE"]._serialized_end = 952
 # @@protoc_insertion_point(module_scope)

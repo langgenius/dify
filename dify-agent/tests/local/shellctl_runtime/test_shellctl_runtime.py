@@ -46,18 +46,12 @@ class ModuleHelpStats(TypedDict):
 def _pythonpath_env() -> dict[str, str]:
     env = dict(os.environ)
     current_pythonpath = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = (
-        f"{SRC_PATH}{os.pathsep}{current_pythonpath}"
-        if current_pythonpath
-        else str(SRC_PATH)
-    )
+    env["PYTHONPATH"] = f"{SRC_PATH}{os.pathsep}{current_pythonpath}" if current_pythonpath else str(SRC_PATH)
     return env
 
 
 async def _initialize_database(state_dir: Path) -> None:
-    service = ShellctlService(
-        ShellctlConfig(state_dir=state_dir, runtime_dir=state_dir / "run")
-    )
+    service = ShellctlService(ShellctlConfig(state_dir=state_dir, runtime_dir=state_dir / "run"))
     await service.initialize_database()
     await service.shutdown()
 
@@ -198,13 +192,8 @@ def test_run_sanitize_pty_touches_ready_file_before_reading(tmp_path: Path) -> N
 
 
 def test_removed_sanitizer_modules_are_not_importable() -> None:
-    assert (
-        importlib.util.find_spec("shellctl.sanitize_pty") is None
-    )
-    assert (
-        importlib.util.find_spec("shellctl.shared.sanitize")
-        is None
-    )
+    assert importlib.util.find_spec("shellctl.sanitize_pty") is None
+    assert importlib.util.find_spec("shellctl.shared.sanitize") is None
 
 
 def test_removed_sanitizer_helpers_are_not_shellctl_exports() -> None:
@@ -276,9 +265,7 @@ def test_runner_exit_is_idempotent_for_terminal_job(tmp_path: Path) -> None:
     assert _fetch_job_row(state_dir, "job-2") == before
 
 
-def test_runner_exit_uses_explicit_busy_timeout_override(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_runner_exit_uses_explicit_busy_timeout_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir = tmp_path / "state"
     anyio.run(_initialize_database, state_dir)
     _insert_job_row(state_dir=state_dir, job_id="job-3", status="running")
@@ -290,9 +277,7 @@ def test_runner_exit_uses_explicit_busy_timeout_override(
         def __init__(self, connection: sqlite3.Connection) -> None:
             self._connection = connection
 
-        def execute(
-            self, sql: str, parameters: tuple[object, ...] = ()
-        ) -> sqlite3.Cursor:
+        def execute(self, sql: str, parameters: tuple[object, ...] = ()) -> sqlite3.Cursor:
             if sql.startswith("PRAGMA busy_timeout="):
                 captured["pragma"] = sql
             return self._connection.execute(sql, parameters)
@@ -323,9 +308,7 @@ def test_runner_exit_uses_explicit_busy_timeout_override(
     assert captured["pragma"] == "PRAGMA busy_timeout=6789"
 
 
-def test_runner_exit_does_not_clobber_newer_terminal_state(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_runner_exit_does_not_clobber_newer_terminal_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     state_dir = tmp_path / "state"
     anyio.run(_initialize_database, state_dir)
     _insert_job_row(state_dir=state_dir, job_id="job-4", status="running")
@@ -349,9 +332,7 @@ def test_runner_exit_does_not_clobber_newer_terminal_state(
         ) -> bool | None:
             return self._connection.__exit__(exc_type, exc, tb)
 
-        def execute(
-            self, sql: str, parameters: tuple[object, ...] = ()
-        ) -> sqlite3.Cursor:
+        def execute(self, sql: str, parameters: tuple[object, ...] = ()) -> sqlite3.Cursor:
             if sql.lstrip().startswith("UPDATE jobs") and not self._raced:
                 self._raced = True
                 with real_connect(state_dir / "shellctl.db") as racing_connection:
@@ -381,9 +362,7 @@ def test_runner_exit_does_not_clobber_newer_terminal_state(
         def close(self) -> None:
             self._connection.close()
 
-    def fake_connect(
-        path: str | Path, timeout: float = 5.0, *args: object, **kwargs: object
-    ) -> RacingConnection:
+    def fake_connect(path: str | Path, timeout: float = 5.0, *args: object, **kwargs: object) -> RacingConnection:
         return RacingConnection(real_connect(path, timeout=timeout))
 
     monkeypatch.setattr("shellctl_runtime.runner_exit.sqlite3.connect", fake_connect)
@@ -470,16 +449,12 @@ def test_python_m_shellctl_runtime_runner_exit_reports_missing_job(
     )
 
     assert result.returncode != 0
-    assert (
-        "Unknown job id: missing-job" in result.stderr
-        or "Unknown job id: missing-job" in result.stdout
-    )
+    assert "Unknown job id: missing-job" in result.stderr or "Unknown job id: missing-job" in result.stdout
 
 
 def test_runtime_console_scripts_are_installed() -> None:
     entry_points = {
-        entry_point.name: entry_point.value
-        for entry_point in importlib.metadata.entry_points(group="console_scripts")
+        entry_point.name: entry_point.value for entry_point in importlib.metadata.entry_points(group="console_scripts")
     }
 
     assert entry_points["shellctl-sanitize-pty"] == "shellctl_runtime.sanitize:main"
