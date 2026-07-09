@@ -1903,7 +1903,7 @@ class MessageFile(TypeBase):
     url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+        sa.DateTime, nullable=False, server_default=func.current_timestamp()
     )
 
 
