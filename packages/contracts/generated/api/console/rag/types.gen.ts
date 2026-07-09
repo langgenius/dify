@@ -251,8 +251,8 @@ export type WorkflowRunNodeExecutionResponse = {
   title?: string | null
 }
 
-export type EnvironmentVariableListResponse = {
-  items: Array<EnvironmentVariableItemResponse>
+export type RagPipelineEnvironmentVariableListResponse = {
+  items: Array<RagPipelineEnvironmentVariableResponse>
 }
 
 export type NodeRunPayload = {
@@ -267,8 +267,8 @@ export type NodeRunRequiredPayload = {
   }
 }
 
-export type WorkflowDraftVariableList = {
-  items?: Array<WorkflowDraftVariable>
+export type WorkflowDraftVariableListResponse = {
+  items: Array<WorkflowDraftVariableResponse>
 }
 
 export type RagPipelineVariablesResponse = {
@@ -286,39 +286,28 @@ export type DraftWorkflowRunPayload = {
   start_node_id: string
 }
 
-export type WorkflowDraftVariableListWithoutValue = {
-  items?: Array<WorkflowDraftVariableWithoutValue>
-  total?: number
+export type WorkflowDraftVariableListWithoutValueResponse = {
+  items: Array<WorkflowDraftVariableWithoutValueResponse>
+  total: number | null
 }
 
-export type WorkflowDraftVariable = {
-  description?: string
-  edited?: boolean
-  full_content?: {
-    [key: string]: unknown
-  }
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value?:
-    | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableResponse = {
+  description: string
+  edited: boolean
+  full_content: WorkflowDraftVariableFullContentResponse | null
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value: unknown
+  value_type: string
+  visible: boolean
 }
 
 export type WorkflowDraftVariablePatchPayload = {
   name?: string | null
-  value?: unknown | null
+  value?: unknown
 }
 
 export type RagPipelineWorkflowPublishResponse = {
@@ -492,8 +481,8 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
-export type EnvironmentVariableItemResponse = {
-  description?: string | null
+export type RagPipelineEnvironmentVariableResponse = {
+  description: string
   editable: boolean
   edited: boolean
   id: string
@@ -505,16 +494,23 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type WorkflowDraftVariableWithoutValue = {
-  description?: string
-  edited?: boolean
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableWithoutValueResponse = {
+  description: string
+  edited: boolean
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value_type: string
+  visible: boolean
+}
+
+export type WorkflowDraftVariableFullContentResponse = {
+  download_url: string
+  length: number | null
+  size_bytes: number | null
+  value_type: string
 }
 
 export type DatasetRerankingModelResponse = {
@@ -1195,7 +1191,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses = {
-  200: EnvironmentVariableListResponse
+  200: RagPipelineEnvironmentVariableListResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse
@@ -1301,7 +1297,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -1371,7 +1367,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
@@ -1398,15 +1394,12 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   path: {
     pipeline_id: string
   }
-  query?: {
-    limit?: number
-    page?: number
-  }
+  query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables'
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
-  200: WorkflowDraftVariableListWithoutValue
+  200: WorkflowDraftVariableListWithoutValueResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
@@ -1440,7 +1433,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
@@ -1457,7 +1450,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
@@ -1474,7 +1467,7 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
   204: void
 }
 
