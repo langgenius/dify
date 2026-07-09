@@ -1,5 +1,4 @@
-from collections.abc import Mapping
-from typing import Any, cast
+from collections.abc import Mapping, Sequence
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity
@@ -10,34 +9,30 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
 )
-from core.prompt.utils.prompt_message_util import SavedPrompt
 from core.rag.entities import RetrievalSourceMetadata
-from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
     GraphEngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunSucceededEvent,
-    NodeRunExceptionEvent,
-    NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 
 _LLM_TEXT_SELECTOR_PREFIX = ("llm", "text")
 
 
 class CompletionGraphEventAdapter:
-    """Translate runtime workflow events into legacy Completion queue events."""
+    """Translate one runtime graph run into legacy Completion queue events."""
 
     _application_generate_entity: CompletionAppGenerateEntity
     _queue_manager: AppQueueManager
     _answer: str
     _usage: LLMUsage
-    _saved_prompt: list[SavedPrompt]
+    _prompt_messages: list[PromptMessage]
     _chunk_index: int
 
     def __init__(
@@ -50,8 +45,12 @@ class CompletionGraphEventAdapter:
         self._queue_manager = queue_manager
         self._answer = ""
         self._usage = LLMUsage.empty_usage()
-        self._saved_prompt = []
+        self._prompt_messages = []
         self._chunk_index = 0
+
+    def set_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        """Capture the final GraphOn prompt for legacy chunks and message persistence."""
+        self._prompt_messages = list(prompt_messages)
 
     def handle_event(self, event: GraphEngineEvent) -> None:
         match event:
@@ -61,8 +60,6 @@ class CompletionGraphEventAdapter:
                 self._handle_retriever_resource(event)
             case NodeRunSucceededEvent():
                 self._handle_node_succeeded(event)
-            case NodeRunFailedEvent() | NodeRunExceptionEvent():
-                self._publish_error(event.error or event.node_run_result.error or "Node failed")
             case GraphRunSucceededEvent():
                 self._publish_message_end(event.outputs)
             case GraphRunFailedEvent():
@@ -86,7 +83,7 @@ class CompletionGraphEventAdapter:
             QueueLLMChunkEvent(
                 chunk=LLMResultChunk(
                     model=self._application_generate_entity.model_conf.model,
-                    prompt_messages=[],
+                    prompt_messages=self._prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=self._chunk_index,
                         message=AssistantPromptMessage(content=event.chunk),
@@ -98,6 +95,10 @@ class CompletionGraphEventAdapter:
         self._chunk_index += 1
 
     def _handle_retriever_resource(self, event: NodeRunRetrieverResourceEvent) -> None:
+        additional_features = self._application_generate_entity.app_config.additional_features
+        if not additional_features or not additional_features.show_retrieve_source:
+            return
+
         self._queue_manager.publish(
             QueueRetrieverResourcesEvent(
                 retriever_resources=[
@@ -110,7 +111,7 @@ class CompletionGraphEventAdapter:
         )
 
     def _handle_node_succeeded(self, event: NodeRunSucceededEvent) -> None:
-        if event.node_type != BuiltinNodeTypes.LLM and event.node_id != "llm":
+        if event.node_id != "llm":
             return
 
         result = event.node_run_result
@@ -118,10 +119,6 @@ class CompletionGraphEventAdapter:
         if isinstance(text, str):
             self._answer = text
         self._usage = result.llm_usage
-
-        prompts = result.process_data.get("prompts")
-        if isinstance(prompts, list):
-            self._saved_prompt = cast(list[SavedPrompt], prompts)
 
     def _publish_message_end(self, outputs: Mapping[str, object]) -> None:
         result = outputs.get("result")
@@ -132,16 +129,15 @@ class CompletionGraphEventAdapter:
             QueueMessageEndEvent(
                 llm_result=LLMResult(
                     model=self._application_generate_entity.model_conf.model,
-                    prompt_messages=[],
+                    prompt_messages=self._prompt_messages,
                     message=AssistantPromptMessage(content=self._answer),
                     usage=self._usage,
-                ),
-                saved_prompt=self._saved_prompt,
+                )
             ),
             PublishFrom.APPLICATION_MANAGER,
         )
 
-    def _publish_error(self, error: Any) -> None:
+    def _publish_error(self, error: object) -> None:
         self._queue_manager.publish(
             QueueErrorEvent(error=ValueError(str(error))),
             PublishFrom.APPLICATION_MANAGER,

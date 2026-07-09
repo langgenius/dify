@@ -342,8 +342,7 @@ def test_console_text_api_accepts_message_id_without_text(app: Flask, monkeypatc
     assert response == {"audio": "ok"}
     assert calls["text"] == ""
     assert calls["message_ref"] == MessageRef(
-        "tenant-1",
-        "app-1",
+        AppRef("tenant-1", "app-1"),
         "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e",
         account_id="account-1",
     )

@@ -219,7 +219,13 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app() -> None:
 def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables: list[VariableEntity]) -> None:
     workflow_converter = WorkflowConverter()
     graph = {"nodes": [workflow_converter._convert_to_start_node(default_variables)], "edges": []}
-    model_config = ModelConfigEntity(provider="openai", model="gpt-4", mode=LLMMode.CHAT.value, parameters={}, stop=[])
+    model_config = ModelConfigEntity(
+        provider="openai",
+        model="gpt-4",
+        mode=LLMMode.CHAT.value,
+        parameters={"temperature": 0.2},
+        stop=["END"],
+    )
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
         simple_prompt_template="You are a helper for {{text_input}} and {{paragraph}}",
@@ -237,6 +243,8 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables: l
     assert node["data"]["memory"] is not None
     assert node["data"]["prompt_template"][0]["role"] == "user"
     assert "{{#start.text_input#}}" in node["data"]["prompt_template"][0]["text"]
+    assert node["data"]["model"]["completion_params"] == {"temperature": 0.2, "stop": ["END"]}
+    assert model_config.parameters == {"temperature": 0.2}
 
 
 def test__convert_to_llm_node_for_chatbot_simple_chat_model_with_empty_template(

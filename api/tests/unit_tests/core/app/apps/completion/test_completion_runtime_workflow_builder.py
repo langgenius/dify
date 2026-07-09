@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from core.app.apps.completion.runtime_workflow_builder import RuntimeCompletionWorkflowBuilder
+from core.app.apps.completion.runtime_workflow_builder import build_runtime_completion_workflow
 from graphon.nodes import BuiltinNodeTypes
 from models.model import AppMode
 
@@ -15,10 +15,11 @@ def test_builder_returns_runtime_graph_without_workflow_record() -> None:
     )
     session = MagicMock()
 
-    result = RuntimeCompletionWorkflowBuilder(workflow_converter=workflow_converter).build(
+    result = build_runtime_completion_workflow(
         app_model=app_model,
         app_config=app_config,
         session=session,
+        workflow_converter=workflow_converter,
     )
 
     assert result.workflow_id.startswith("completion-runtime-")
@@ -57,10 +58,11 @@ def test_builder_routes_api_based_variable_query_to_runtime_sys_query() -> None:
     )
     session = MagicMock()
 
-    result = RuntimeCompletionWorkflowBuilder(workflow_converter=workflow_converter).build(
+    result = build_runtime_completion_workflow(
         app_model=app_model,
         app_config=app_config,
         session=session,
+        workflow_converter=workflow_converter,
     )
 
     http_node = result.graph_dict["nodes"][0]

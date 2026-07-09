@@ -6,7 +6,6 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.prompt.utils.prompt_message_util import SavedPrompt
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.entities import WorkflowStartReason
@@ -274,7 +273,6 @@ class QueueMessageEndEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.MESSAGE_END
     llm_result: LLMResult | None = None
-    saved_prompt: list[SavedPrompt] | None = None
 
 
 class QueueAdvancedChatMessageEndEvent(AppQueueEvent):

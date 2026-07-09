@@ -95,7 +95,7 @@ if TYPE_CHECKING:
 
 
 DIFY_BEFORE_LLM_INVOKE_KEY = "_dify_before_llm_invoke"
-BeforeLLMInvoke = Callable[[Sequence[PromptMessage]], None]
+BeforeLLMInvoke = Callable[[Sequence[PromptMessage], Mapping[str, Any]], Mapping[str, Any]]
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -201,9 +201,14 @@ class DifyPreparedLLM(LLMProtocol):
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
-    def _run_before_invoke(self, prompt_messages: Sequence[PromptMessage]) -> None:
-        if self._before_invoke is not None:
-            self._before_invoke(prompt_messages)
+    def _run_before_invoke(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        if self._before_invoke is None:
+            return model_parameters
+        return self._before_invoke(prompt_messages, model_parameters)
 
     @overload
     def invoke_llm(
@@ -237,7 +242,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
-        self._run_before_invoke(prompt_messages)
+        model_parameters = self._run_before_invoke(prompt_messages, model_parameters)
         return self._model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=dict(model_parameters),
@@ -279,7 +284,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
-        self._run_before_invoke(prompt_messages)
+        model_parameters = self._run_before_invoke(prompt_messages, model_parameters)
         return invoke_llm_with_structured_output(
             provider=self.provider,
             model_schema=self.get_model_schema(),
@@ -328,7 +333,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
-        self._run_before_invoke(prompt_messages)
+        model_parameters = self._run_before_invoke(prompt_messages, model_parameters)
         return self._plugin_model_runtime.start_llm_polling(
             provider=self.provider,
             model=self.model_name,
