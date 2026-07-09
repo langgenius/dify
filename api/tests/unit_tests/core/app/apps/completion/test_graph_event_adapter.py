@@ -16,18 +16,23 @@ from graphon.graph_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunSucceededEvent,
-    NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from graphon.node_events import NodeRunResult
 
 
-def _adapter() -> tuple[CompletionGraphEventAdapter, MagicMock]:
+def _adapter(*, show_retrieve_source: bool = True) -> tuple[CompletionGraphEventAdapter, MagicMock]:
     queue_manager = MagicMock()
-    entity = SimpleNamespace(model_conf=SimpleNamespace(model="model"))
+    entity = SimpleNamespace(
+        model_conf=SimpleNamespace(model="model"),
+        app_config=SimpleNamespace(
+            additional_features=SimpleNamespace(show_retrieve_source=show_retrieve_source),
+        ),
+    )
     return (
         CompletionGraphEventAdapter(application_generate_entity=entity, queue_manager=queue_manager),
         queue_manager,
@@ -36,6 +41,8 @@ def _adapter() -> tuple[CompletionGraphEventAdapter, MagicMock]:
 
 def test_stream_chunk_event_publishes_llm_chunk() -> None:
     adapter, queue_manager = _adapter()
+    prompt_message = UserPromptMessage(content="prompt")
+    adapter.set_prompt_messages([prompt_message])
 
     adapter.handle_event(
         NodeRunStreamChunkEvent(
@@ -50,6 +57,7 @@ def test_stream_chunk_event_publishes_llm_chunk() -> None:
     event = queue_manager.publish.call_args.args[0]
     assert isinstance(event, QueueLLMChunkEvent)
     assert event.chunk.delta.message.content == "hello"
+    assert event.chunk.prompt_messages == [prompt_message]
     assert queue_manager.publish.call_args.args[1] == PublishFrom.APPLICATION_MANAGER
 
 
@@ -88,10 +96,27 @@ def test_retriever_resource_event_publishes_legacy_retriever_resources() -> None
     assert event.retriever_resources[0].dataset_id == "dataset"
 
 
-def test_llm_success_then_graph_success_publishes_message_end_with_saved_prompt() -> None:
+def test_retriever_resource_event_is_hidden_when_feature_is_disabled() -> None:
+    adapter, queue_manager = _adapter(show_retrieve_source=False)
+
+    adapter.handle_event(
+        NodeRunRetrieverResourceEvent(
+            id="run",
+            node_id="knowledge_retrieval",
+            node_type=BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+            retriever_resources=[{"dataset_id": "dataset", "content": "hit"}],
+            context="hit",
+        )
+    )
+
+    queue_manager.publish.assert_not_called()
+
+
+def test_llm_success_then_graph_success_publishes_message_end() -> None:
     adapter, queue_manager = _adapter()
     usage = LLMUsage.empty_usage()
-    saved_prompt = [{"role": "user", "text": "saved prompt"}]
+    prompt_message = UserPromptMessage(content="prompt")
+    adapter.set_prompt_messages([prompt_message])
     adapter.handle_event(
         NodeRunSucceededEvent(
             id="run",
@@ -101,7 +126,6 @@ def test_llm_success_then_graph_success_publishes_message_end_with_saved_prompt(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": "final"},
-                process_data={"prompts": saved_prompt},
                 llm_usage=usage,
             ),
         )
@@ -113,8 +137,8 @@ def test_llm_success_then_graph_success_publishes_message_end_with_saved_prompt(
     assert isinstance(event, QueueMessageEndEvent)
     assert event.llm_result is not None
     assert event.llm_result.message.content == "final"
+    assert event.llm_result.prompt_messages == [prompt_message]
     assert event.llm_result.usage is usage
-    assert event.saved_prompt == saved_prompt
 
 
 def test_graph_success_uses_outputs_result_when_llm_success_was_not_seen() -> None:
@@ -126,25 +150,6 @@ def test_graph_success_uses_outputs_result_when_llm_success_was_not_seen() -> No
     assert isinstance(event, QueueMessageEndEvent)
     assert event.llm_result is not None
     assert event.llm_result.message.content == "final from graph"
-    assert event.saved_prompt == []
-
-
-def test_failed_node_publishes_error() -> None:
-    adapter, queue_manager = _adapter()
-
-    adapter.handle_event(
-        NodeRunFailedEvent(
-            id="run",
-            node_id="llm",
-            node_type=BuiltinNodeTypes.LLM,
-            error="node boom",
-            start_at=datetime.now(UTC),
-        )
-    )
-
-    event = queue_manager.publish.call_args.args[0]
-    assert isinstance(event, QueueErrorEvent)
-    assert str(event.error) == "node boom"
 
 
 def test_failed_graph_publishes_error() -> None:
