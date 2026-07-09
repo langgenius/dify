@@ -1024,7 +1024,8 @@ describe('StepByStepTourMount', () => {
       expect(mockRouterPush).toHaveBeenCalledWith('/')
       expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
       expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
-      expect(screen.queryByText('1 of 2')).not.toBeInTheDocument()
+      expect(screen.getByText('1 of 2')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       await waitFor(() => {
         const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('home')
@@ -1174,9 +1175,10 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
       expect(await screen.findByText('Pick a lesson to see how it works.')).toBeInTheDocument()
+      expect(screen.getByText('1 of 2')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Skip tour' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(4)
 
@@ -1264,6 +1266,8 @@ describe('StepByStepTourMount', () => {
       expect(Array.from(document.body.children).indexOf(tourPortalRoot!)).toBeGreaterThan(
         Array.from(document.body.children).indexOf(existingDialogLayer),
       )
+      expect(screen.getByText('2 of 2')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(coachmarkRegion).toHaveClass('bg-state-accent-hover', 'border-state-accent-hover-alt')
       expect(highlightOverlay?.parentElement).toBe(tourPortalRoot)
       expect(backdropOverlay?.parentElement).toBe(tourPortalRoot)

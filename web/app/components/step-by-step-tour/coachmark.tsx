@@ -26,6 +26,7 @@ const VERTICAL_ARROW_EDGE_OFFSET = VERTICAL_ARROW_LENGTH - VERTICAL_ARROW_DOT_SI
 const VERTICAL_ARROW_DOT_STYLE: CSSProperties = {
   top: -VERTICAL_ARROW_DOT_OVERHANG,
 }
+const SKIP_BUTTON_CLASS_NAME = 'shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-left system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const getStepByStepTourVerticalArrowStyle = (
   placement: StepByStepTourCoachmarkPlacement,
@@ -283,12 +284,24 @@ export function StepByStepTourCoachmark({
               aria-label={isActionGuide ? stableOverlay.guide.description : stableOverlay.guide.title}
               className={cn(
                 'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
-                !isActionGuide && 'min-h-[158px]',
+                isActionGuide ? 'min-h-[118px]' : 'min-h-[158px]',
               )}
             >
               {isActionGuide
                 ? (
-                    <p className="system-md-medium text-text-primary">{stableOverlay.guide.description}</p>
+                    <>
+                      <div className="pb-0.5 system-2xs-semibold-uppercase text-text-tertiary">{stableOverlay.stepLabel}</div>
+                      <p className="mt-1 system-md-medium text-text-primary">{stableOverlay.guide.description}</p>
+                      <div className="mt-auto flex h-12 items-end justify-start pt-4">
+                        <button
+                          type="button"
+                          className={SKIP_BUTTON_CLASS_NAME}
+                          onClick={stableOverlay.onSkip}
+                        >
+                          {stableOverlay.skipLabel}
+                        </button>
+                      </div>
+                    </>
                   )
                 : (
                     <>
@@ -298,7 +311,7 @@ export function StepByStepTourCoachmark({
                       <div className="mt-auto flex h-12 items-center justify-between gap-3 pt-4">
                         <button
                           type="button"
-                          className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-left system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                          className={SKIP_BUTTON_CLASS_NAME}
                           onClick={stableOverlay.onSkip}
                         >
                           {stableOverlay.skipLabel}
