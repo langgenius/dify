@@ -34,6 +34,7 @@ import {
 } from './configure-helpers'
 
 const BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS = 180_000
+const BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS = 30_000
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 const BUILD_NOTE_MARKER = 'E2E_BUILD_DRAFT_PASS'
 const BUILD_NOTE_GENERATED_BADGE = 'Generated'
@@ -144,6 +145,7 @@ Given(
 
 When(
   'I generate an Agent v2 Build draft from the fixed instruction',
+  { timeout: BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS },
   async function (this: DifyWorld) {
     const page = this.getPage()
     const agentId = getCurrentAgentId(this)
@@ -307,6 +309,7 @@ Then(
     try {
       await expect.poll(
         async () => getConfigNote(await getAgentBuildDraft(getCurrentAgentId(this))),
+        { timeout: BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS },
       ).toContain(BUILD_NOTE_MARKER)
     }
     catch (error) {
