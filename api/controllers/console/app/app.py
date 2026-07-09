@@ -40,9 +40,9 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
-from core.rbac import RBACResourceWhitelistScope
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -691,9 +691,8 @@ class AppListApi(Resource):
         )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, params, current_user)
-        if dify_config.RBAC_ENABLED:
-            _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
+        app = app_service.create_app(current_tenant_id, params, current_user, session=db.session())
+        _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
