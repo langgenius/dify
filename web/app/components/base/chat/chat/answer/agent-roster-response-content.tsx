@@ -92,10 +92,6 @@ function getCompletedTitle(latency: NonNullable<ChatItem['more']>['latency'] | u
   return t('agentDetail.configure.answer.workFinished')
 }
 
-function hasThoughtAnswer(thought: ThoughtItem) {
-  return !!thought.answer?.trim()
-}
-
 function useWorkingDuration(enabled?: boolean) {
   const startedAtRef = useRef<number | null>(null)
   const [now, setNow] = useState(0)
@@ -402,7 +398,6 @@ export function AgentRosterResponseContent({
     annotation,
     agent_thoughts,
   } = item
-  const hasAgentThoughtAnswer = agent_thoughts?.some(hasThoughtAnswer)
 
   if (annotation?.logAnnotation) {
     return (
@@ -423,13 +418,7 @@ export function AgentRosterResponseContent({
       )}
       {!item.agent_response_parts?.length && (
         <>
-          {!!agent_thoughts?.length && hasAgentThoughtAnswer && (
-            <AgentThoughtsProcessList
-              item={item}
-              responding={responding}
-            />
-          )}
-          {!!agent_thoughts?.length && !hasAgentThoughtAnswer && (
+          {!!agent_thoughts?.length && (
             <AgentThoughtsProcessGroup
               item={item}
               responding={responding}

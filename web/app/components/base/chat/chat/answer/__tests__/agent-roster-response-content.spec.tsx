@@ -1,5 +1,5 @@
 import type { ChatItem } from '../../../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 describe('AgentRosterResponseContent', () => {
@@ -24,6 +24,11 @@ describe('AgentRosterResponseContent', () => {
     } satisfies ChatItem
 
     render(<AgentRosterResponseContent item={item} />)
+
+    expect(screen.getByRole('button', { name: /workFinished/i })).toBeInTheDocument()
+    expect(screen.queryByText('history answer')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /workFinished/i }))
 
     await waitFor(() => {
       expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('history answer')
