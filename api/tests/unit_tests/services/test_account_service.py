@@ -252,7 +252,6 @@ class TestAccountService:
         assert account.status == AccountStatus.ACTIVE
         assert account.initialized_at is not None
 
-
     # ==================== Account Creation Tests ====================
 
     def test_create_account_success(
@@ -286,7 +285,6 @@ class TestAccountService:
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
 
-
     def test_create_account_uses_explicit_timezone(
         self, sqlite_session: Session, mock_password_dependencies, mock_external_service_dependencies
     ):
@@ -308,7 +306,6 @@ class TestAccountService:
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
         assert persisted_account.timezone == "Asia/Shanghai"
-
 
     def test_create_account_registration_disabled(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account creation when registration is disabled."""
@@ -368,7 +365,6 @@ class TestAccountService:
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
 
-
     # ==================== Password Management Tests ====================
 
     def test_update_account_password_success(self, sqlite_session: Session, mock_password_dependencies):
@@ -400,7 +396,6 @@ class TestAccountService:
         mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
 
         # Verify database operations
-
 
     def test_update_account_password_current_password_incorrect(
         self, sqlite_session: Session, mock_password_dependencies
@@ -530,7 +525,7 @@ class TestAccountService:
             assert available_tenant_join.current is True
             assert available_tenant_join.last_opened_at == mock_now
             mock_set_tenant_id.assert_called_once_with(tenant.id)
-    
+
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_no_tenants(self, sqlite_session: Session):
@@ -1279,7 +1274,6 @@ class TestRegisterService:
                 )
                 mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
                 assert sqlite_session.scalar(select(DifySetup)) is not None
-        
 
     def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test setup failure with proper rollback."""
@@ -1455,7 +1449,6 @@ class TestRegisterService:
                 mock_create_tenant.assert_called_once_with("Test User's Workspace", session=sqlite_session)
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, sqlite_session, role="owner")
                 mock_event.send.assert_called_once_with(mock_tenant)
-        
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
         self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
@@ -1639,7 +1632,6 @@ class TestRegisterService:
                 # Verify results
                 assert result == mock_account
                 mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
-        
 
     def test_register_with_pending_status(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account registration with pending status."""
@@ -1682,7 +1674,6 @@ class TestRegisterService:
                 # Verify results
                 assert result == mock_account
                 assert result.status == "pending"
-        
 
     def test_register_workspace_not_allowed(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test registration when workspace creation is not allowed."""
