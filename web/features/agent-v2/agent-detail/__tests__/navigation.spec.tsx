@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
-  pathname: '/roster/agent/agent-1/configure',
+  pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
 }))
 
@@ -93,7 +93,7 @@ function renderAgentDetailSection(expand = true) {
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
-    mocks.pathname = '/roster/agent/agent-1/configure'
+    mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
 
@@ -144,7 +144,7 @@ describe('AgentDetailTop', () => {
     render(<AgentDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'common.menus.roster' })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: 'common.menus.roster' })).toHaveAttribute('href', '/agents')
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 })

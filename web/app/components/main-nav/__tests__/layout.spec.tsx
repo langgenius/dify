@@ -171,7 +171,7 @@ describe('MainNavLayout', () => {
   it.each([
     {
       label: 'agent detail route for dataset operators',
-      pathname: '/roster/agent/agent-1/configure',
+      pathname: '/agents/agent-1/configure',
       appContext: {
         isCurrentWorkspaceDatasetOperator: true,
         isCurrentWorkspaceEditor: true,

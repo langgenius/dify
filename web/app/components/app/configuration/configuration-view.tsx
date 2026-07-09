@@ -70,7 +70,7 @@ function LegacyAgentBadge() {
       >
         <div>{description}</div>
         <Link
-          href="/roster"
+          href="/agents"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-1 inline-flex items-center gap-0.5 rounded-md system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"

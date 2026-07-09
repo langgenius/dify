@@ -120,7 +120,7 @@ export function AgentDetailTop({
         <span className="shrink-0 system-md-regular text-text-quaternary">
           /
         </span>
-        <Link href="/roster" className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
+        <Link href="/agents" className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
           {tCommon('menus.roster')}
         </Link>
       </div>

@@ -324,7 +324,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /common.menus.roster common.menus.status/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
@@ -516,7 +516,7 @@ describe('MainNav', () => {
 
   it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
-    mockPathname = '/roster/agent/agent-1/configure'
+    mockPathname = '/agents/agent-1/configure'
 
     renderMainNav()
 
@@ -566,7 +566,7 @@ describe('MainNav', () => {
   })
 
   it('marks roster active on roster routes', () => {
-    mockPathname = '/roster'
+    mockPathname = '/agents'
 
     renderMainNav()
 

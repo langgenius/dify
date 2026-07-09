@@ -54,9 +54,9 @@ export const MAIN_NAV_ROUTES = [
   },
   {
     key: 'roster',
-    href: '/roster',
+    href: '/agents',
     labelKey: 'menus.roster',
-    active: (path: string) => isPathUnderRoute(path, '/roster'),
+    active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-roster',
     activeIcon: 'i-custom-vender-main-nav-roster-active',
     visibility: 'notDatasetOperator',
@@ -137,9 +137,9 @@ function isDatasetDetailPathname(pathname: string) {
 }
 
 function isAgentDetailPathname(pathname: string) {
-  const [section, type, agentId] = pathname.split('/').filter(Boolean)
+  const [section, agentId] = pathname.split('/').filter(Boolean)
 
-  return section === 'roster' && type === 'agent' && !!agentId
+  return section === 'agents' && !!agentId
 }
 
 function isDeploymentDetailPathname(pathname: string) {

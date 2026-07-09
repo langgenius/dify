@@ -96,7 +96,7 @@ export function MainNav({
         <nav className="isolate flex flex-col gap-px p-2">
           {navItems.map(item => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
-              {item.href === '/roster' && (
+              {item.href === '/agents' && (
                 <Badge
                   size="xs"
                   variant="dimm"
