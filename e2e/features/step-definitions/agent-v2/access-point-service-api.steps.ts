@@ -151,7 +151,7 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const apiReferenceLink = page.getByRole('link', { name: 'API Reference' })
 
   await expect(apiReferenceLink).toBeVisible()
-  await expect(apiReferenceLink).toHaveAttribute('href', /\/use-dify\/publish\/developing-with-apis/)
+  await expect(apiReferenceLink).toHaveAttribute('href', /\/api-reference\/guides\/get-started/)
   await expect(apiReferenceLink).toHaveAttribute('target', '_blank')
 
   const [apiReferencePage] = await Promise.all([
@@ -167,7 +167,7 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   if (!apiReferencePage)
     throw new Error('No Agent v2 API Reference page was opened.')
 
-  await expect(apiReferencePage).toHaveURL(/developing-with-apis/)
+  await expect(apiReferencePage).toHaveURL(/\/api-reference\/guides\/get-started/)
   await apiReferencePage.close()
   this.agentBuilder.accessPoint.apiReferencePage = undefined
 })

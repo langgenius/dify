@@ -154,7 +154,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#swagger-api')
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
