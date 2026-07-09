@@ -193,8 +193,10 @@ export type JsonValue
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -203,11 +205,15 @@ export type ExploreMessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type JsonObject = {
@@ -247,6 +253,7 @@ export type InstalledAppInfoResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -409,6 +416,12 @@ export type InstalledAppListResponseWritable = {
   installed_apps: Array<InstalledAppResponseWritable>
 }
 
+export type ExploreMessageInfiniteScrollPaginationWritable = {
+  data: Array<ExploreMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
 export type InstalledAppResponseWritable = {
   app: InstalledAppInfoResponseWritable
   app_owner_tenant_id: string
@@ -417,6 +430,31 @@ export type InstalledAppResponseWritable = {
   is_pinned: boolean
   last_used_at?: number | null
   uninstallable: boolean
+}
+
+export type ExploreMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type InstalledAppInfoResponseWritable = {

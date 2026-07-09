@@ -2,11 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
 type IEditWorkspaceModalProps = {
@@ -14,7 +15,8 @@ type IEditWorkspaceModalProps = {
 }
 const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputId = useId()
@@ -82,7 +84,6 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
             </label>
             <Input
               id={inputId}
-              autoFocus
               value={name}
               placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
               onChange={(e) => {

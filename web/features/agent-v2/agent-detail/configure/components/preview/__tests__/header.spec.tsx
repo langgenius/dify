@@ -41,12 +41,17 @@ describe('AgentPreviewHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('should emit refresh from the restart button', async () => {
+  it('should confirm before emitting refresh from the restart button', async () => {
     const user = userEvent.setup()
     const onRefresh = vi.fn()
     renderHeader({ mode: 'build', onRefresh })
 
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+
+    expect(onRefresh).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog', { name: 'agentV2.agentDetail.configure.clearSessionConfirm.title' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })

@@ -15,8 +15,9 @@ import {
   ComboboxItem,
   ComboboxItemText,
 } from '@langgenius/dify-ui/combobox'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 
 export function SubjectItem({
@@ -154,7 +155,7 @@ type MemberItemProps = {
 }
 
 function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
-  const currentUser = useSelector(s => s.userProfile)
+  const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
   const isChecked = selectedMembers.some(selectedMember => selectedMember.id === member.id)
   return (

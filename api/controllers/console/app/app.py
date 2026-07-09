@@ -584,6 +584,7 @@ class AppListApi(Resource):
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user_id,
+            session=db.session(),
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
@@ -595,7 +596,7 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, session)
         if not app_pagination:
             response = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return response.model_dump(mode="json"), 200
@@ -643,11 +644,12 @@ class AppListApi(Resource):
         )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, params, current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user, session=db.session())
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session(),
         )
         app_detail = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
@@ -681,7 +683,7 @@ class StarredAppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
-        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, db.session)
+        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -705,7 +707,7 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, current_user_id: str, app_model: App):
-        AppService.star_app(session, app=app_model, account_id=current_user_id)
+        AppService.star_app(app=app_model, account_id=current_user_id, session=session)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.doc("unstar_app")
@@ -721,7 +723,7 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def delete(self, session: Session, current_user_id: str, app_model: App):
-        AppService.unstar_app(session, app=app_model, account_id=current_user_id)
+        AppService.unstar_app(app=app_model, account_id=current_user_id, session=session)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
@@ -753,6 +755,7 @@ class AppApi(Resource):
             str(current_tenant_id),
             current_user.id,
             app_id=str(app_model.id),
+            session=db.session(),
         )
         permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
 
@@ -789,7 +792,7 @@ class AppApi(Resource):
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
             "max_active_requests": args.max_active_requests or 0,
         }
-        app_model = app_service.update_app(app_model, args_dict)
+        app_model = app_service.update_app(app_model, args_dict, session=db.session())
         return dump_response(AppDetailWithSite, app_model)
 
     @console_ns.doc("delete_app")
@@ -806,7 +809,7 @@ class AppApi(Resource):
     def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
-        app_service.delete_app(app_model)
+        app_service.delete_app(app_model, session=db.session())
 
         return "", 204
 
@@ -835,7 +838,7 @@ class AppCopyApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
-            yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
+            yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
             result = import_service.import_app(
                 account=current_user,
                 import_mode=ImportMode.YAML_CONTENT,
@@ -877,6 +880,7 @@ class AppCopyApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session(),
         )
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
@@ -905,6 +909,7 @@ class AppExportApi(Resource):
         response = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
+                session=db.session(),
                 include_secret=args.include_secret,
                 workflow_id=args.workflow_id,
             )
@@ -929,7 +934,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"error": "Creators Platform features are not enabled"}, 403
 
-        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_content = AppDslService.export_dsl(app_model=app_model, session=db.session(), include_secret=False)
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)
@@ -955,7 +960,7 @@ class AppNameApi(Resource):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args.name)
+        app_model = app_service.update_app_name(app_model, args.name, session=db.session())
         return dump_response(AppDetail, app_model)
 
 
@@ -982,6 +987,7 @@ class AppIconApi(Resource):
             args.icon or "",
             args.icon_background or "",
             args.icon_type,
+            session=db.session(),
         )
         return dump_response(AppDetail, app_model)
 
@@ -1004,7 +1010,7 @@ class AppSiteStatus(Resource):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args.enable_site)
+        app_model = app_service.update_app_site_status(app_model, args.enable_site, session=db.session())
         return dump_response(AppDetail, app_model)
 
 
@@ -1026,7 +1032,7 @@ class AppApiStatus(Resource):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args.enable_api)
+        app_model = app_service.update_app_api_status(app_model, args.enable_api, session=db.session())
         return dump_response(AppDetail, app_model)
 
 

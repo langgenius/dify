@@ -359,8 +359,12 @@ export const get5 = oc
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
 
+/**
+ * Update external knowledge API template
+ */
 export const patch = oc
   .route({
+    description: 'Update external knowledge API template',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
@@ -397,8 +401,12 @@ export const get6 = oc
   .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
+/**
+ * Create external knowledge API template
+ */
 export const post4 = oc
   .route({
+    description: 'Create external knowledge API template',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsExternalKnowledgeApi',
@@ -444,7 +452,6 @@ export const post6 = oc
     method: 'POST',
     operationId: 'postDatasetsInit',
     path: '/datasets/init',
-    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ body: zPostDatasetsInitBody }))
@@ -1184,12 +1191,13 @@ export const segments = {
  * - generating: Number of summaries being generated
  * - error: Number of summaries with errors
  * - not_started: Number of segments without summary records
+ * - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
  */
 export const get22 = oc
   .route({
     description:
-      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n- summaries: List of summary records with status and content preview',
+      'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n  - timeout: Number of summaries that timed out\n- summaries: List of summary records with status and content preview',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatus',

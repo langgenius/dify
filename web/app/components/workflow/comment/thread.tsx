@@ -11,13 +11,14 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom, userProfileIdAtom } from '@/context/account-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { useStore } from '../store'
@@ -52,8 +53,7 @@ const ThreadMessage: FC<{
   className?: string
 }> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { userProfile } = useAppContext()
-  const currentUserId = userProfile?.id
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const isCurrentUser = authorId === currentUserId
   const userColor = isCurrentUser ? undefined : getUserColor(authorId)
 
@@ -175,7 +175,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const appId = params.appId as string
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const currentUserId = userProfile.id
   const { t } = useTranslation()
   const [replyContent, setReplyContent] = useState('')
   const [editingCommentContent, setEditingCommentContent] = useState('')
@@ -369,7 +370,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [editingReply, onReplyEdit])
 
   const replies = comment.replies || []
-  const isOwnComment = comment.created_by_account?.id === userProfile?.id
+  const isOwnComment = comment.created_by_account?.id === currentUserId
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
@@ -604,7 +605,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className="mt-2 space-y-3 pt-3">
               {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
-                const isOwnReply = reply.created_by_account?.id === userProfile?.id
+                const isOwnReply = reply.created_by_account?.id === currentUserId
                 return (
                   <div
                     key={reply.id}

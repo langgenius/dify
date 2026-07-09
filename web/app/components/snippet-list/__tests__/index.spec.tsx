@@ -71,32 +71,63 @@ vi.mock('@/service/client', () => ({
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => {
-    const state = {
-      isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-      isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-      isLoadingCurrentWorkspace: false,
-      userProfile: { id: 'creator-1' },
-      workspacePermissionKeys: mockWorkspacePermissionKeys(),
-    }
 
-    return state
-  },
-  useSelector: <T,>(selector: (state: {
-    isCurrentWorkspaceEditor: boolean
-    isCurrentWorkspaceDatasetOperator: boolean
-    isLoadingCurrentWorkspace: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => T): T => selector({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-    isLoadingCurrentWorkspace: false,
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({

@@ -41,6 +41,7 @@ import { getWebAppPassport } from './webapp-auth'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
+  event?: string
   conversationId?: string
   taskId?: string
   messageId: string
@@ -303,6 +304,7 @@ export const handleStream = (
             if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
               // can not use format here. Because message is splitted.
               onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
+                event: bufferObj.event,
                 conversationId: bufferObj.conversation_id,
                 taskId: bufferObj.task_id,
                 messageId: bufferObj.id,

@@ -26,6 +26,7 @@ type NavObject = {
   tabs?: NavItem[]
   menu?: NavItem[]
   versions?: NavItem[]
+  root?: string
   openapi?: string
   [key: string]: unknown
 }
@@ -51,14 +52,8 @@ type OpenAPISpec = {
   [key: string]: unknown
 }
 
-type Redirect = {
-  source: string
-  destination: string
-}
-
 type DocsJson = {
   navigation?: NavItem
-  redirects?: Redirect[]
   [key: string]: unknown
 }
 
@@ -204,6 +199,9 @@ function extractPaths(item: NavItem | undefined, paths: Set<string> = new Set())
   }
 
   if (typeof item === 'object') {
+    if (item.root)
+      paths.add(item.root)
+
     // Handle pages array
     if (item.pages)
       extractPaths(item.pages, paths)
@@ -318,7 +316,6 @@ function generateTypeDefinitions(
   groups: Record<string, Set<string>>,
   productAvailability: ProductAvailability,
   apiReferencePaths: string[],
-  apiPathTranslations: Record<string, { zh?: string, ja?: string }>,
 ): string {
   const lines: string[] = [
     '// GENERATE BY script',
@@ -363,13 +360,13 @@ function generateTypeDefinitions(
   // Generate API reference type (English paths only)
   if (apiReferencePaths.length > 0) {
     const sortedPaths = [...apiReferencePaths].sort()
-    lines.push('// API Reference paths (English, use apiReferencePathTranslations for other languages)')
-    lines.push('type ApiReferencePath =')
+    lines.push('// API Reference endpoint paths')
+    lines.push('type ApiEndpointReferencePath =')
     for (const p of sortedPaths) {
       lines.push(`  | '${p}'`)
     }
     lines.push('')
-    typeNames.push('ApiReferencePath')
+    typeNames.push('ApiEndpointReferencePath')
   }
 
   // Generate base combined type
@@ -398,23 +395,6 @@ function generateTypeDefinitions(
   lines.push('}')
   lines.push('')
 
-  // Generate API reference path translations map
-  lines.push('// API Reference path translations (English -> other languages)')
-  lines.push('export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {')
-  const sortedEnPaths = Object.keys(apiPathTranslations).sort()
-  for (const enPath of sortedEnPaths) {
-    const translations = apiPathTranslations[enPath]
-    const parts: string[] = []
-    if (translations!.zh)
-      parts.push(`zh: '${translations!.zh}'`)
-    if (translations!.ja)
-      parts.push(`ja: '${translations!.ja}'`)
-    if (parts.length > 0)
-      lines.push(`  '${enPath}': { ${parts.join(', ')} },`)
-  }
-  lines.push('}')
-  lines.push('')
-
   return lines.join('\n')
 }
 
@@ -438,60 +418,25 @@ async function main(): Promise<void> {
 
   console.log(`Found ${openApiPaths.size} OpenAPI specs to process`)
 
-  // Fetch OpenAPI specs and extract API reference paths with endpoint keys
-  // Group by OpenAPI file name (without language prefix) to match endpoints across languages
-  const endpointMapsByLang: Record<string, Map<string, EndpointPathMap>> = {
-    en: new Map(),
-    zh: new Map(),
-    ja: new Map(),
-  }
+  // Fetch English OpenAPI specs and extract API reference paths.
+  // API reference URLs are language-prefixed by useDocLink at runtime.
+  const enApiPaths: string[] = []
 
   for (const openapiPath of openApiPaths) {
-    // Determine language from path
     const langMatch = /^(en|zh|ja)\//.exec(openapiPath)
-    if (!langMatch)
+    if (langMatch?.[1] !== 'en')
       continue
-
-    const lang = langMatch[1]
-    // Get file name without language prefix (e.g., "api-reference/openapi_knowledge.json")
-    const fileKey = openapiPath.replace(/^(en|zh|ja)\//, '')
 
     console.log(`Fetching OpenAPI spec: ${openapiPath}`)
     const pathMap = await fetchOpenAPIAndExtractPaths(openapiPath)
-    endpointMapsByLang[lang!]!.set(fileKey, pathMap)
-  }
-
-  // Build English paths and mapping to other languages
-  const enApiPaths: string[] = []
-  const apiPathTranslations: Record<string, { zh?: string, ja?: string }> = {}
-
-  // Iterate through English endpoint maps
-  for (const [fileKey, enPathMap] of endpointMapsByLang.en!) {
-    const zhPathMap = endpointMapsByLang.zh!.get(fileKey)
-    const jaPathMap = endpointMapsByLang.ja!.get(fileKey)
-
-    for (const [endpointKey, enPath] of enPathMap) {
+    for (const enPath of pathMap.values())
       enApiPaths.push(enPath)
-
-      const zhPath = zhPathMap?.get(endpointKey)
-      const jaPath = jaPathMap?.get(endpointKey)
-
-      if (zhPath || jaPath) {
-        apiPathTranslations[enPath] = {}
-        if (zhPath)
-          apiPathTranslations[enPath].zh = zhPath
-        if (jaPath)
-          apiPathTranslations[enPath].ja = jaPath
-      }
-    }
   }
 
   // Deduplicate English API paths
   const uniqueEnApiPaths = [...new Set(enApiPaths)]
 
   console.log(`Extracted ${uniqueEnApiPaths.length} unique English API reference paths`)
-
-  console.log(`Generated ${Object.keys(apiPathTranslations).length} API path translations`)
 
   // Group by section
   const { groups, productAvailability } = groupPathsBySection(allPaths)
@@ -500,7 +445,11 @@ async function main(): Promise<void> {
   console.log(`Found ${Object.keys(productAvailability).length} product-aware paths`)
 
   // Generate TypeScript
-  const tsContent = generateTypeDefinitions(groups, productAvailability, uniqueEnApiPaths, apiPathTranslations)
+  const tsContent = generateTypeDefinitions(
+    groups,
+    productAvailability,
+    uniqueEnApiPaths,
+  )
 
   // Write to file
   await writeFile(OUTPUT_PATH, tsContent, 'utf-8')

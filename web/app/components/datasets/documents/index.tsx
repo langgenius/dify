@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -31,8 +33,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isFreePlan = plan.type === 'sandbox'
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,

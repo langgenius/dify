@@ -49,9 +49,32 @@ let mockAppContextState = {
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
-}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
@@ -71,6 +94,12 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
     onConfirmDelete: vi.fn(),
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,

@@ -533,7 +533,7 @@ class AgentAppListApi(Resource):
             status="normal",
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session)
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session())
         if app_pagination is None:
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
@@ -566,7 +566,7 @@ class AgentAppListApi(Resource):
             icon_background=args.icon_background,
         )
 
-        app = AppService().create_app(current_tenant_id, params, current_user)
+        app = AppService().create_app(current_tenant_id, params, current_user, session=db.session())
         return _serialize_agent_app_detail(app, current_user=current_user), 201
 
 
@@ -606,7 +606,7 @@ class AgentAppApi(Resource):
             "max_active_requests": args.max_active_requests or 0,
             "role": args.role,
         }
-        updated = AppService().update_app(app_model, args_dict)
+        updated = AppService().update_app(app_model, args_dict, session=db.session())
         return _serialize_agent_app_detail(updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
@@ -618,7 +618,7 @@ class AgentAppApi(Resource):
     @with_current_tenant_id
     def delete(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model)
+        AppService().delete_app(app_model, session=db.session())
         return "", 204
 
 
@@ -667,6 +667,7 @@ class AgentPublishApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             version_note=args.version_note,
+            session=db.session(),
         )
 
 
@@ -687,6 +688,7 @@ class AgentBuildDraftCheckoutApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             force=args.force,
+            session=db.session(),
         )
 
 
@@ -704,6 +706,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -721,6 +724,7 @@ class AgentBuildDraftApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=payload,
+            session=db.session(),
         )
 
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
@@ -735,6 +739,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
 
@@ -752,6 +757,7 @@ class AgentBuildDraftApplyApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session(),
         )
 
 
@@ -809,7 +815,7 @@ class AgentApiStatusApi(Resource):
     def post(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         args = AgentApiStatusPayload.model_validate(console_ns.payload)
-        app_model = AppService().update_app_api_status(app_model, args.enable_api)
+        app_model = AppService().update_app_api_status(app_model, args.enable_api, session=db.session())
         return _serialize_agent_api_access(app_model)
 
 

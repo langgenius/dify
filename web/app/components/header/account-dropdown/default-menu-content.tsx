@@ -10,15 +10,18 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -119,7 +122,9 @@ export function DefaultMenuContent({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 

@@ -7,6 +7,7 @@ import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
@@ -18,7 +19,8 @@ import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -42,8 +44,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const queryClient = useQueryClient()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,

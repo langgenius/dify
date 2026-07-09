@@ -16,11 +16,13 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -69,8 +71,8 @@ const DropDown = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {

@@ -7,6 +7,7 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,14 +16,15 @@ import UsageInfo from '@/app/components/billing/usage-info'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useModalContextSelector } from '@/context/modal-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
-import { Loading } from '../../base/icons/src/public/thought'
+import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import { Plan, SelfHostedPlan } from '../type'
@@ -41,7 +43,8 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const path = usePathname()
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
   const {
@@ -181,7 +184,7 @@ const PlanComp: FC<Props> = ({
       </div>
       <VerifyStateModal
         showLink
-        email={userProfile.email}
+        email={userProfileEmail}
         isShow={showModal}
         title={t('rejectTitle', { ns: 'education' })}
         content={t('rejectContent', { ns: 'education' })}

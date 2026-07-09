@@ -29,6 +29,17 @@ type WorkflowStoreState = {
   setListeningTriggerNodeId?: (value: string | null) => void
 }
 
+type WorkflowRunFailedTrackingEvent = {
+  workflow_id: string
+  reason?: string
+  node_type?: string
+  data: {
+    workflow_status?: string
+    workflow_tracing_count?: number
+    workflow_data_chunks?: string[]
+  }
+}
+
 const mocks = vi.hoisted(() => {
   const appStoreState = {
     appDetail: {
@@ -445,8 +456,7 @@ describe('useWorkflowRun', () => {
       data: {
         workflow_status: WorkflowRunningStatus.Running,
         workflow_tracing_count: 1,
-        workflow_data: workflowData,
-        workflow_data_json: JSON.stringify(workflowData),
+        workflow_data_chunks: [JSON.stringify(workflowData)],
       },
     })
 
@@ -460,10 +470,52 @@ describe('useWorkflowRun', () => {
       data: {
         workflow_status: WorkflowRunningStatus.Running,
         workflow_tracing_count: 1,
-        workflow_data: workflowData,
-        workflow_data_json: JSON.stringify(workflowData),
+        workflow_data_chunks: [JSON.stringify(workflowData)],
       },
     })
+  })
+
+  it('should split serialized workflow data into chunks when it exceeds the amplitude string limit', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+    const workflowData = {
+      result: {
+        status: WorkflowRunningStatus.Running,
+        outputs: {
+          text: 'x'.repeat(2200),
+        },
+      },
+      tracing: [{ node_id: 'node-1', status: 'running' }],
+    }
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed({ error: 'failed', node_type: 'llm' }, workflowData)
+
+    const trackingEvent = mocks.mockTrackEvent.mock.calls.at(-1)?.[1] as WorkflowRunFailedTrackingEvent
+    const chunks = trackingEvent.data.workflow_data_chunks
+    if (!chunks)
+      throw new Error('Expected workflow data chunks to be tracked')
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'failed',
+      node_type: 'llm',
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data_chunks: chunks,
+      },
+    })
+    expect(chunks.length).toBeGreaterThan(1)
+    expect(chunks.every(chunk => chunk.length <= 900)).toBe(true)
+    expect(chunks.join('')).toBe(JSON.stringify(workflowData))
+    expect(trackingEvent.data).not.toHaveProperty('workflow_data')
   })
 
   it('should track workflow failures when the error or workflow data is malformed', async () => {
@@ -486,8 +538,6 @@ describe('useWorkflowRun', () => {
       data: {
         workflow_status: undefined,
         workflow_tracing_count: undefined,
-        workflow_data: undefined,
-        workflow_data_json: undefined,
       },
     })
 
@@ -507,8 +557,6 @@ describe('useWorkflowRun', () => {
       data: {
         workflow_status: undefined,
         workflow_tracing_count: undefined,
-        workflow_data: circularWorkflowData,
-        workflow_data_json: undefined,
       },
     })
   })

@@ -44,11 +44,11 @@ When(
     const page = this.getPage()
     const agent = getPreseededResource(this, agentName, 'agent')
 
-    await page.goto('/roster')
+    await page.goto('/agents')
     await page.getByRole('link', { name: agentName }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/configure(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/configure(?:\\?.*)?$`))
     await page.getByRole('link', { name: 'Access Point' }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/access(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/access(?:\\?.*)?$`))
     await expect(page.getByRole('region', { name: 'Access Point' })).toBeVisible({
       timeout: 30_000,
     })
@@ -60,7 +60,7 @@ When('I switch to the Agent v2 Access Point section', async function (this: Dify
   const agentId = getCurrentAgentId(this)
 
   await page.getByRole('link', { name: 'Access Point' }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/access(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/access(?:\\?.*)?$`))
   await expect(page.getByRole('region', { name: 'Access Point' })).toBeVisible()
 })
 

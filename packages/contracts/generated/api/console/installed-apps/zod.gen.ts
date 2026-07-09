@@ -266,6 +266,7 @@ export const zInstalledAppListResponse = z.object({
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -511,19 +512,28 @@ export const zHumanInputContent = z.object({
 export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -531,6 +541,44 @@ export const zExploreMessageListItem = z.object({
  */
 export const zExploreMessageInfiniteScrollPagination = z.object({
   data: z.array(zExploreMessageListItem),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
+ * ExploreMessageListItem
+ */
+export const zExploreMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+})
+
+/**
+ * ExploreMessageInfiniteScrollPagination
+ */
+export const zExploreMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zExploreMessageListItemWritable),
   has_more: z.boolean(),
   limit: z.int(),
 })

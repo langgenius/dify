@@ -1474,16 +1474,20 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
- * Update an existing document by uploading a file
+ * Update Document by File
+ *
+ * Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const patch4 = oc
   .route({
-    description: 'Update an existing document by uploading a file',
+    description:
+      'Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
-    tags: ['service_api'],
+    summary: 'Update Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({

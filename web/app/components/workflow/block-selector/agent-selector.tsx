@@ -280,7 +280,7 @@ function AgentSelectorActionItem({
   return (
     <ComboboxItem
       value={option}
-      render={isStartFromScratch ? undefined : <Link href="/roster" target="_blank" rel="noopener noreferrer" />}
+      render={isStartFromScratch ? undefined : <Link href="/agents" target="_blank" rel="noopener noreferrer" />}
       className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
     >
       <ComboboxItemText className="flex items-center gap-2 px-0 system-sm-regular text-text-secondary">

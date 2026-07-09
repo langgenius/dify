@@ -16,12 +16,14 @@ import {
   RiTerminalWindowLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
@@ -74,7 +76,8 @@ const AppDetailSection = ({
   const { t } = useTranslation()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore(state => state.appDetail)
   const appInfoActions = useAppInfoActions({
@@ -89,7 +92,7 @@ const AppDetailSection = ({
     const isWorkflowApp = appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
     const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
-      currentUserId: userProfile?.id,
+      currentUserId,
       resourceMaintainer: appDetail.maintainer,
       workspacePermissionKeys,
       isRbacEnabled,
@@ -148,7 +151,7 @@ const AppDetailSection = ({
         : []
       ),
     ]
-  }, [appDetail, t, userProfile?.id, workspacePermissionKeys, isRbacEnabled])
+  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled])
 
   if (!appDetail)
     return null

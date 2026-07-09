@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
@@ -52,7 +53,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleGetPayUrl = useCallback(() => {

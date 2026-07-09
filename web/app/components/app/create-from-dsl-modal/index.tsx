@@ -9,13 +9,15 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
@@ -60,7 +62,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const setNeedRefresh = useSetNeedRefreshAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -136,8 +139,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id) {
           await handleCheckPluginDependencies(app_id)
           getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
-            currentUserId: userProfile?.id,
-            resourceMaintainer: userProfile?.id,
+            currentUserId,
+            resourceMaintainer: currentUserId,
             workspacePermissionKeys,
             isRbacEnabled,
           })
@@ -196,8 +199,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         invalidateAppList()
         if (app_id) {
           getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
-            currentUserId: userProfile?.id,
-            resourceMaintainer: userProfile?.id,
+            currentUserId,
+            resourceMaintainer: currentUserId,
             workspacePermissionKeys,
             isRbacEnabled,
           })

@@ -3,7 +3,7 @@ import json
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -31,6 +31,7 @@ from controllers.console.datasets.datasets import (
     DatasetUseCheckApi,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -63,6 +64,18 @@ def dataset_model_property_defaults():
         for name, value in properties.items():
             property_mock = stack.enter_context(patch.object(Dataset, name, new_callable=PropertyMock))
             property_mock.return_value = value
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=enterprise_rbac_service.MyPermissionsResponse(),
+            )
+        )
+        stack.enter_context(
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetPermissions.batch_get",
+                return_value={},
+            )
+        )
         yield
 
 
@@ -245,7 +258,7 @@ class TestDatasetList:
             ):
                 resp, status = method(api, "tenant-1", current_user)
 
-        get_permissions.assert_called_once_with("tenant-1", current_user.id)
+        get_permissions.assert_called_once_with("tenant-1", current_user.id, session=ANY)
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
@@ -742,7 +755,7 @@ class TestDatasetApiGet:
 
             data, status = method(api, tenant_id, user, dataset_id)
 
-        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id)
+        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id, session=ANY)
         assert status == 200
         assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
@@ -1379,8 +1392,7 @@ class TestDatasetIndexingEstimateApi:
 
         mock_file = self._upload_file()
 
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {"tokens": 100}
+        mock_response = IndexingEstimate(total_segments=100, preview=[])
 
         with (
             app.test_request_context("/"),
@@ -1406,7 +1418,13 @@ class TestDatasetIndexingEstimateApi:
             response, status = method(api, "tenant-1")
 
         assert status == 200
-        assert response == {"tokens": 100}
+        assert response == {
+            "tokens": 0,
+            "total_price": 0,
+            "currency": "USD",
+            "total_segments": 100,
+            "preview": [],
+        }
 
     def test_post_file_not_found(self, app: Flask):
         api = DatasetIndexingEstimateApi()

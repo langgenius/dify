@@ -2,11 +2,12 @@
 import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import AppListContext from '@/context/app-list-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
@@ -26,7 +27,7 @@ const Apps = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)

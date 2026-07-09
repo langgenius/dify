@@ -1,4 +1,6 @@
 import type { WorkflowProps } from '@/app/components/workflow'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useMemo,
@@ -6,8 +8,9 @@ import {
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
@@ -30,8 +33,8 @@ const RagPipelineMain = ({
 }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(dataset?.permission_keys, {
       currentUserId,
@@ -41,7 +44,12 @@ const RagPipelineMain = ({
     [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
-  const handleWorkflowDataUpdate = useCallback((payload: any) => {
+  type WorkflowDataUpdatePayload = {
+    rag_pipeline_variables?: Parameters<NonNullable<ReturnType<typeof workflowStore.getState>['setRagPipelineVariables']>>[0]
+    environment_variables?: Parameters<ReturnType<typeof workflowStore.getState>['setEnvironmentVariables']>[0]
+  }
+
+  const handleWorkflowDataUpdate = useCallback((payload: WorkflowDataUpdatePayload) => {
     const {
       rag_pipeline_variables,
       environment_variables,
@@ -179,7 +187,7 @@ const RagPipelineMain = ({
       nodes={nodes}
       edges={edges}
       viewport={viewport}
-      hooksStore={hooksStore as any}
+      hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
     >
       <RagPipelineChildren />

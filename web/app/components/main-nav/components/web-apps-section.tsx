@@ -20,13 +20,14 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useAtomValue } from 'jotai'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { hasPermission } from '@/utils/permission'
@@ -301,7 +302,7 @@ const WebAppsSectionContent = () => {
 }
 
 const WebAppsSection = () => {
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canAccessAppLibrary = hasPermission(workspacePermissionKeys, 'app_library.access')
 
   if (!canAccessAppLibrary)

@@ -1,6 +1,8 @@
+import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
-import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from './app-context'
+import type { LangGeniusVersionInfo } from './app-context-types'
+import type { ICurrentWorkspace } from '@/models/common'
+import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from './app-context-defaults'
 
 const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
 
@@ -64,8 +66,8 @@ export function getLangGeniusVersionInfo({
   versionData,
 }: {
   meta: ProfileMeta
-  versionData?: Omit<LangGeniusVersionResponse, 'current_version' | 'latest_version' | 'current_env'>
-}): LangGeniusVersionResponse {
+  versionData?: GetVersionResponse
+}): LangGeniusVersionInfo {
   if (!meta.currentVersion || !versionData)
     return initialLangGeniusVersionInfo
 

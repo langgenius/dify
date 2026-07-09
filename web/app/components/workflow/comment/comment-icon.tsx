@@ -2,10 +2,11 @@
 
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import CommentPreview from './comment-preview'
 
 type CommentIconProps = {
@@ -18,8 +19,8 @@ type CommentIconProps = {
 export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false, onPositionUpdate }) => {
   const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
   const viewport = useViewport()
-  const { userProfile } = useAppContext()
-  const isAuthor = comment.created_by_account?.id === userProfile?.id
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isAuthor = comment.created_by_account?.id === currentUserId
   const [showPreview, setShowPreview] = useState(false)
   const [dragPosition, setDragPosition] = useState<{ x: number, y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)

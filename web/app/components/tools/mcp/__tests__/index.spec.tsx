@@ -15,7 +15,10 @@ const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockIsLoadingToolProviders = false
-let mockWorkspacePermissionKeys = ['mcp.manage']
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (enabled?: boolean) => {
@@ -28,10 +31,29 @@ vi.mock('@/service/use-tools', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
@@ -89,7 +111,7 @@ describe('MCPList', () => {
     vi.useFakeTimers()
     mockProviders = []
     mockIsLoadingToolProviders = false
-    mockWorkspacePermissionKeys = ['mcp.manage']
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -111,7 +133,7 @@ describe('MCPList', () => {
     })
 
     it('should render providers read-only when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+      mockAppContextState.workspacePermissionKeys = []
       mockProviders = [
         { id: '1', name: 'Provider 1', type: 'mcp' },
       ]

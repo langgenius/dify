@@ -2,10 +2,11 @@ import type { ScheduleTriggerNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useAppContext } from '@/context/app-context'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import { BlockEnum } from '../../../types'
 import useConfig from '../use-config'
+
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: vi.fn(),
@@ -16,13 +17,8 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseAppContext = vi.mocked(useAppContext)
 
 const setInputs = vi.fn()
 
@@ -48,7 +44,7 @@ describe('trigger-schedule/use-config', () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
     mockUseAppContext.mockReturnValue({
       userProfile: { timezone: 'Asia/Shanghai' },
-    } as ReturnType<typeof useAppContext>)
+    })
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs,

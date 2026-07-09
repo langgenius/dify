@@ -7,12 +7,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { userProfileAtom } from '@/context/account-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import Item from './permission-item'
@@ -35,8 +35,8 @@ const PermissionSelector = ({
   onMemberSelect,
 }: RoleSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const userProfile = useAtomValue(userProfileAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const [open, setOpen] = useState(false)
 
   const [keywords, setKeywords] = useState('')
@@ -89,7 +89,7 @@ const PermissionSelector = ({
   const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
   const isPartialMembers = permission === DatasetPermission.partialMembers
   const selectedMemberNames = selectedMembers.map(member => member.name).join(', ')
-  const isDisabledByRBAC = systemFeatures.rbac_enabled
+  const isDisabledByRBAC = isRbacEnabled
   const isDisabled = disabled || isDisabledByRBAC
 
   return (

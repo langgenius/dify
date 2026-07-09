@@ -1,30 +1,49 @@
-import type { AppContextValue } from '@/context/app-context'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { useSelector } from '@/context/app-context'
 import Tips from '../tips'
 
-// Mock AppContext's useSelector to control user profile data
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useSelector: vi.fn(),
-  }
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    email: 'test@example.com',
+  },
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
 })
 
 describe('Tips', () => {
-  const mockEmail = 'test@example.com'
-
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useSelector).mockImplementation((selector: (value: AppContextValue) => unknown) => {
-      return selector({
-        userProfile: {
-          email: mockEmail,
-        },
-      } as AppContextValue)
-    })
+    mockAppContextState.userProfile.email = 'test@example.com'
   })
 
   it('should render email tip in normal mode', () => {

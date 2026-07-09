@@ -14,6 +14,8 @@ from models.model import AccountTrialAppRecord, TrialApp
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
 
+pytestmark = pytest.mark.usefixtures("db_session_with_containers")
+
 
 class RecommendedAppPayload(TypedDict, total=False):
     id: str
@@ -118,13 +120,13 @@ class TestRecommendedAppServiceGetApps:
         mock_factory = MagicMock(return_value=mock_instance)
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == expected
         assert len(result["recommended_apps"]) == 2
         assert len(result["categories"]) == 3
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
-        mock_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
+        mock_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=db.session())
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
@@ -143,7 +145,7 @@ class TestRecommendedAppServiceGetApps:
         mock_builtin_instance.fetch_recommended_apps_from_builtin.return_value = builtin_response
         mock_factory_class.get_buildin_recommend_app_retrieval.return_value = mock_builtin_instance
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "zh-CN")
+        result = RecommendedAppService.get_recommended_apps_and_categories("zh-CN", session=db.session())
 
         assert result == builtin_response
         assert result["recommended_apps"][0]["id"] == "builtin-1"
@@ -164,7 +166,7 @@ class TestRecommendedAppServiceGetApps:
         mock_builtin_instance.fetch_recommended_apps_from_builtin.return_value = builtin_response
         mock_factory_class.get_buildin_recommend_app_retrieval.return_value = mock_builtin_instance
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == builtin_response
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once()
@@ -182,10 +184,10 @@ class TestRecommendedAppServiceGetApps:
             mock_instance.get_recommended_apps_and_categories.return_value = lang_response
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            result = RecommendedAppService.get_recommended_apps_and_categories(db.session, language)
+            result = RecommendedAppService.get_recommended_apps_and_categories(language, session=db.session())
 
             assert result["recommended_apps"][0]["id"] == f"app-{language}"
-            mock_instance.get_recommended_apps_and_categories.assert_called_with(language)
+            mock_instance.get_recommended_apps_and_categories.assert_called_with(language, session=db.session())
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
@@ -197,7 +199,7 @@ class TestRecommendedAppServiceGetApps:
             mock_instance.get_recommended_apps_and_categories.return_value = response
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+            RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
@@ -237,10 +239,10 @@ class TestRecommendedAppServiceGetDetail:
             mock_instance.get_recommend_app_detail.return_value = expected
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            result = RecommendedAppService.get_recommend_app_detail(db.session, app_id)
+            result = RecommendedAppService.get_recommend_app_detail(app_id, session=db.session())
 
             assert result == expected
-            mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
+            mock_instance.get_recommend_app_detail.assert_called_once_with(app_id, session=db.session())
 
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
@@ -256,10 +258,10 @@ class TestRecommendedAppServiceGetDetail:
             mock_instance.get_recommend_app_detail.return_value = detail
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            result = RecommendedAppService.get_recommend_app_detail(db.session, "test-app")
+            result = RecommendedAppService.get_recommend_app_detail("test-app", session=db.session())
 
             assert result is not None
-            mock_instance.get_recommend_app_detail.assert_called_with("test-app")
+            mock_instance.get_recommend_app_detail.assert_called_with("test-app", session=db.session())
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
 
@@ -283,11 +285,11 @@ class TestRecommendedAppServiceGetLearnDifyApps:
         }
         mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-        result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
+        result = RecommendedAppService.get_learn_dify_apps("en-US", session=db.session())
 
         assert result == {"recommended_apps": [expected_app]}
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
-        mock_instance.get_learn_dify_apps.assert_called_once_with("en-US")
+        mock_instance.get_learn_dify_apps.assert_called_once_with("en-US", session=db.session())
 
     @patch("services.recommended_app_service.dify_config")
     def test_sets_can_trial_when_trial_feature_enabled(
@@ -314,10 +316,10 @@ class TestRecommendedAppServiceGetLearnDifyApps:
         can_trial_mock = MagicMock(return_value=True)
         monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
 
-        result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
+        result = RecommendedAppService.get_learn_dify_apps("en-US", session=db.session())
 
         assert result["recommended_apps"][0]["can_trial"] is True
-        can_trial_mock.assert_called_once_with(db.session, "app-1")
+        can_trial_mock.assert_called_once_with(db.session(), "app-1")
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -333,10 +335,10 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=False)),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == expected
-        retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
+        retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=db.session())
         builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
 
     def test_get_apps_should_enrich_can_trial_when_enabled(
@@ -364,7 +366,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "ja-JP")
+        result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=db.session())
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
         assert result["recommended_apps"][0]["can_trial"] is True
@@ -400,7 +402,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = RecommendedAppService.get_recommend_app_detail(db.session, app_id)
+        result = RecommendedAppService.get_recommend_app_detail(app_id, session=db.session())
         assert result is not None
         detail_result = cast(RecommendedAppPayload, result)
 
@@ -421,10 +423,10 @@ class TestRecommendedAppServiceTrialFeatures:
         mock_instance.get_recommend_app_detail.return_value = None
         mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-        result = RecommendedAppService.get_recommend_app_detail(db.session, "nonexistent")
+        result = RecommendedAppService.get_recommend_app_detail("nonexistent", session=db.session())
 
         assert result is None
-        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
+        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent", session=db.session())
         mock_feature_service.get_system_features.assert_not_called()
 
     def test_add_trial_app_record_increments_count_for_existing(self, db_session_with_containers: Session) -> None:
@@ -434,7 +436,7 @@ class TestRecommendedAppServiceTrialFeatures:
         db_session_with_containers.add(AccountTrialAppRecord(app_id=app_id, account_id=account_id, count=3))
         db_session_with_containers.commit()
 
-        RecommendedAppService.add_trial_app_record(db.session, app_id, account_id)
+        RecommendedAppService.add_trial_app_record(app_id, account_id, session=db.session())
 
         db_session_with_containers.expire_all()
         record = db_session_with_containers.scalar(
@@ -449,7 +451,7 @@ class TestRecommendedAppServiceTrialFeatures:
         app_id = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        RecommendedAppService.add_trial_app_record(db.session, app_id, account_id)
+        RecommendedAppService.add_trial_app_record(app_id, account_id, session=db.session())
 
         db_session_with_containers.expire_all()
         record = db_session_with_containers.scalar(

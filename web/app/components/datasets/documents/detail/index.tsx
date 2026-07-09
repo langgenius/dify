@@ -4,6 +4,7 @@ import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/mode
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +12,9 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -49,8 +51,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(dataset?.permission_keys, {

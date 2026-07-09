@@ -11,15 +11,15 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getNodeByKey, $getRoot } from 'lexical'
-import { memo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { $createAgentOutputBlockNode, $isAgentOutputBlockNode } from './node'
+import { $isAgentOutputBlockNode } from './node'
 import {
   AGENT_OUTPUT_NAME_PATTERN,
   AGENT_OUTPUT_TYPE_OPTIONS,
   createAgentOutputConfig,
   getAgentOutputTypeOption,
-  inferAgentOutputType,
+  replaceAgentOutputName,
 } from './utils'
 
 type AgentOutputBlockComponentProps = {
@@ -27,6 +27,8 @@ type AgentOutputBlockComponentProps = {
   name: string
   outputType: AgentOutputTypeOptionValue
   isEditing: boolean
+  selectNameOnEdit?: boolean
+  openTypeSelectOnEdit?: boolean
   outputs: DeclaredOutputConfig[]
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
   onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
@@ -42,13 +44,12 @@ function upsertOutput(
   if (!AGENT_OUTPUT_NAME_PATTERN.test(trimmedName))
     return null
 
-  const nextOutputType = inferAgentOutputType(trimmedName, outputType)
   const existingIndex = outputs.findIndex(output => output.name === oldName)
   const duplicateIndex = outputs.findIndex(output => output.name === trimmedName && output.name !== oldName)
   if (duplicateIndex >= 0)
     return null
 
-  const nextOutput = createAgentOutputConfig(trimmedName, nextOutputType)
+  const nextOutput = createAgentOutputConfig(trimmedName, outputType)
   if (existingIndex >= 0)
     return outputs.map((output, index) => index === existingIndex ? nextOutput : output)
 
@@ -60,6 +61,8 @@ const AgentOutputBlockComponent = ({
   name,
   outputType,
   isEditing,
+  selectNameOnEdit = isEditing,
+  openTypeSelectOnEdit = false,
   outputs,
   onChange,
   onEdit,
@@ -69,8 +72,30 @@ const AgentOutputBlockComponent = ({
   const selected = getAgentOutputTypeOption(outputType)
   const [draftName, setDraftName] = useState(name)
   const [lastNodeName, setLastNodeName] = useState(name)
+  const [typeSelectOpen, setTypeSelectOpen] = useState(openTypeSelectOnEdit)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const skipNextBlurCommitRef = useRef(false)
   const latestDraftNameRef = useRef(name)
+  const skipNameFocusRef = useRef(false)
+
+  useEffect(() => {
+    if (!isEditing)
+      return
+    if (skipNameFocusRef.current) {
+      skipNameFocusRef.current = false
+      return
+    }
+
+    const input = nameInputRef.current
+    if (!input)
+      return
+
+    input.focus()
+    if (selectNameOnEdit)
+      input.setSelectionRange(0, input.value.length)
+    else
+      input.setSelectionRange(input.value.length, input.value.length)
+  }, [isEditing, selectNameOnEdit])
 
   if (name !== lastNodeName) {
     setLastNodeName(name)
@@ -78,7 +103,20 @@ const AgentOutputBlockComponent = ({
     latestDraftNameRef.current = name
   }
 
-  const commitOutput = (nextName: string, nextType: AgentOutputTypeOptionValue, selectAfterCommit = false) => {
+  const commitOutput = (
+    nextName: string,
+    nextType: AgentOutputTypeOptionValue,
+    options: {
+      keepEditing?: boolean
+      openTypeSelectOnEdit?: boolean
+      selectAfterCommit?: boolean
+    } = {},
+  ) => {
+    const {
+      keepEditing = false,
+      openTypeSelectOnEdit = false,
+      selectAfterCommit = false,
+    } = options
     const trimmedName = nextName.trim()
     const nextOutputs = upsertOutput(outputs, name, trimmedName, nextType)
     if (!nextOutputs) {
@@ -93,11 +131,11 @@ const AgentOutputBlockComponent = ({
       if (!$isAgentOutputBlockNode(node))
         return
 
-      const nextOutputType = inferAgentOutputType(trimmedName, nextType)
-      const nextNode = node.replace($createAgentOutputBlockNode(trimmedName, nextOutputType, false, nextOutputs, onChange, onEdit))
+      const currentPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      node.setOutput(trimmedName, nextType, keepEditing, nextOutputs, onChange, onEdit, false, openTypeSelectOnEdit)
       if (selectAfterCommit)
-        nextNode.selectNext()
-      nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+        node.selectNext()
+      nextPrompt = replaceAgentOutputName(currentPrompt, name, trimmedName)
       didCommit = true
     })
 
@@ -105,16 +143,44 @@ const AgentOutputBlockComponent = ({
       return false
 
     onChange?.(nextOutputs, nextPrompt)
+    setDraftName(trimmedName)
+    latestDraftNameRef.current = trimmedName
 
     return true
+  }
+
+  const handleTypeSelectOpenChange = (open: boolean) => {
+    setTypeSelectOpen(open)
+    if (!open) {
+      skipNextBlurCommitRef.current = false
+      editor.update(() => {
+        const node = $getNodeByKey(nodeKey)
+        if ($isAgentOutputBlockNode(node))
+          node.setOpenTypeSelectOnEdit(false)
+      })
+    }
+  }
+
+  const handleEditRequest = () => {
+    onEdit?.(name, outputType)
   }
 
   if (!isEditing) {
     return (
       <span
+        role="button"
+        tabIndex={0}
+        aria-label={t('nodes.agent.outputVars.edit', { ns: 'workflow', name })}
         contentEditable={false}
-        className="group/agent-output inline-flex min-w-[18px] items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
-        onMouseEnter={() => onEdit?.(name, outputType)}
+        className="group/agent-output inline-flex min-w-[18px] cursor-pointer items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+        onClick={handleEditRequest}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ')
+            return
+
+          event.preventDefault()
+          handleEditRequest()
+        }}
       >
         <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:hidden" />
         <span aria-hidden="true" className="i-ri-edit-2-line hidden size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:inline-block" />
@@ -136,6 +202,7 @@ const AgentOutputBlockComponent = ({
       <span className="flex min-w-0 items-center gap-0.5 pl-0.5">
         <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700" />
         <input
+          ref={nameInputRef}
           aria-label={t('nodes.agent.outputVars.nameLabel', { ns: 'workflow' })}
           value={draftName}
           className="h-4 max-w-28 min-w-5 border-0 bg-transparent p-0 text-center system-xs-regular text-util-colors-violet-violet-700 outline-hidden placeholder:text-util-colors-violet-violet-700/50 focus:w-24"
@@ -145,12 +212,25 @@ const AgentOutputBlockComponent = ({
           onKeyDown={(event) => {
             event.stopPropagation()
             event.nativeEvent.stopImmediatePropagation?.()
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' || event.key === 'Tab') {
               event.preventDefault()
               skipNextBlurCommitRef.current = true
-              const didCommit = commitOutput(event.currentTarget.value, outputType, true)
+              const isTabCommit = event.key === 'Tab'
+              const didCommit = commitOutput(event.currentTarget.value, outputType, {
+                keepEditing: isTabCommit,
+                openTypeSelectOnEdit: isTabCommit,
+                selectAfterCommit: !isTabCommit,
+              })
               if (!didCommit) {
                 skipNextBlurCommitRef.current = false
+                return
+              }
+
+              if (isTabCommit) {
+                skipNameFocusRef.current = true
+                event.currentTarget.setSelectionRange(event.currentTarget.value.length, event.currentTarget.value.length)
+                event.currentTarget.blur()
+                setTypeSelectOpen(true)
                 return
               }
 
@@ -179,9 +259,12 @@ const AgentOutputBlockComponent = ({
         />
       </span>
       <Select<AgentOutputTypeOptionValue>
+        open={typeSelectOpen}
+        onOpenChange={handleTypeSelectOpenChange}
         value={outputType}
         onValueChange={(nextType) => {
           skipNextBlurCommitRef.current = false
+          setTypeSelectOpen(false)
           if (nextType)
             commitOutput(latestDraftNameRef.current, nextType)
         }}

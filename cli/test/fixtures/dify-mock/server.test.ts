@@ -111,15 +111,15 @@ describe('dify-mock fixture server', () => {
     expect(body.data.map(r => r.id).sort()).toEqual(['app-3', 'app-4'])
   })
 
-  it('GET /openapi/v1/apps/:id/describe returns 404 for unknown id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/nope/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
+  it('GET /openapi/v1/apps/:id returns 404 for unknown id', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/nope?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(404)
   })
 
-  it('GET /openapi/v1/apps/:id/describe returns the app for known id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
+  it('GET /openapi/v1/apps/:id returns the app for known id', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
@@ -127,8 +127,8 @@ describe('dify-mock fixture server', () => {
     expect(body.info.id).toBe('app-1')
   })
 
-  it('POST /openapi/v1/apps/:id/run returns SSE stream for chat app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/run`, {
+  it('POST /openapi/v1/apps/:id:run returns SSE stream for chat app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1:run`, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer dfoa_test',
@@ -142,8 +142,8 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"answer":"echo: "')
   })
 
-  it('POST /openapi/v1/apps/:id/run returns SSE stream for workflow app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2/run`, {
+  it('POST /openapi/v1/apps/:id:run returns SSE stream for workflow app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2:run`, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer dfoa_test',
@@ -157,8 +157,8 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"workflow_finished"')
   })
 
-  it('GET /openapi/v1/apps/:id/describe?fields=info returns slim payload', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000&fields=info`, {
+  it('GET /openapi/v1/apps/:id?fields=info returns slim payload', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000&fields=info`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
@@ -168,8 +168,8 @@ describe('dify-mock fixture server', () => {
     expect(body.input_schema).toBeNull()
   })
 
-  it('GET /openapi/v1/apps/:id/describe full returns parameters when present', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
+  it('GET /openapi/v1/apps/:id full returns parameters when present', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)

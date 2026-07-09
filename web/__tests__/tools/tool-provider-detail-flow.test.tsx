@@ -44,14 +44,46 @@ vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: true,
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
     workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const mockSetShowModelModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({

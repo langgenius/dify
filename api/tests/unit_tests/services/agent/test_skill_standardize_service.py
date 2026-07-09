@@ -50,6 +50,7 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
         tenant_id="tenant-1",
         user_id="user-1",
         agent_id="agent-1",
+        session=MagicMock(),
     )
 
     # ToolFiles: SKILL.md and the full archive. Archive members stay lazy.
