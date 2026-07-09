@@ -8,7 +8,7 @@ Do not add deeper `AGENTS.md` files unless an Agent v2 submodule becomes indepen
 
 Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
 
-The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
+The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/agents` routes are guarded by that feature flag.
 
 Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior. Published Web app runtime is not Builder Preview; keep it as a separate `@web-app-runtime` slice because it exercises the public app surface and real model-backed responses after publish.
 
