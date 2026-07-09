@@ -142,12 +142,16 @@ def _start_native_readonly_transaction(session: Session) -> Connection:
     connection.info[READONLY_CONNECTION_FLAG] = True
     dialect_name = connection.dialect.name
 
-    if dialect_name == "sqlite":
-        connection.exec_driver_sql("PRAGMA query_only = ON")
-    elif dialect_name == "postgresql":
-        connection.exec_driver_sql("BEGIN READ ONLY")
-    elif dialect_name in {"mysql", "mariadb"}:
-        connection.exec_driver_sql("START TRANSACTION READ ONLY")
+    try:
+        if dialect_name == "sqlite":
+            connection.exec_driver_sql("PRAGMA query_only = ON")
+        elif dialect_name == "postgresql":
+            connection.exec_driver_sql("BEGIN READ ONLY")
+        elif dialect_name in {"mysql", "mariadb"}:
+            connection.exec_driver_sql("START TRANSACTION READ ONLY")
+    except Exception:
+        connection.info.pop(READONLY_CONNECTION_FLAG, None)
+        raise
 
     return connection
 
@@ -195,7 +199,7 @@ def create_session() -> Session:
 
 
 @contextmanager
-def create_readonly_session() -> Generator[GuardedSession]:
+def create_readonly_session() -> Generator[GuardedSession, None, None]:
     """Create a session that is read-only for both runtime checks and DB-native guards."""
     session = _get_readonly_session_maker()()
     old_autoflush = session.autoflush
