@@ -420,6 +420,36 @@ class TestParagraphIndexProcessor:
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
         assert any("Failed to deduct quota for summary generation" in record.message for record in caplog.records)
 
+    def test_generate_summary_strips_reasoning_block(self) -> None:
+        model_instance = Mock()
+        model_instance.credentials = {"k": "v"}
+        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+        model_instance.invoke_llm.return_value = self._llm_result(
+            "<think>\nLet me consider the key points.\n</think>\nFinal summary text."
+        )
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
+            ) as mock_provider_manager,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
+                return_value=model_instance,
+            ),
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota",
+            ),
+        ):
+            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            summary, _ = ParagraphIndexProcessor.generate_summary(
+                "tenant-1",
+                "text content",
+                {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                document_language="English",
+            )
+
+        assert summary == "Final summary text."
+
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}

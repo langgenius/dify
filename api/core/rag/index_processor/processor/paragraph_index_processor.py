@@ -461,6 +461,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             raise ValueError("Expected LLMResult when stream=False")
 
         summary_content = result.message.get_text_content()
+        # Strip reasoning/thinking blocks emitted by reasoning models (e.g. deepseek-r1, qwen3)
+        # so only the final summary text is persisted.
+        summary_content = re.sub(r"<think>.*?</think>", "", summary_content, flags=re.IGNORECASE | re.DOTALL).strip()
         usage = result.usage
 
         # Deduct quota for summary generation (same as workflow nodes)
