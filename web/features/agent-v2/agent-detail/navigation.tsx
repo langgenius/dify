@@ -121,7 +121,7 @@ export function AgentDetailTop({
           /
         </span>
         <Link href="/agents" className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
-          {tCommon('menus.roster')}
+          Agents
         </Link>
       </div>
       <Tooltip>

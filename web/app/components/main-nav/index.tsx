@@ -50,7 +50,7 @@ export function MainNav({
     }))
     .map(route => ({
       href: route.href,
-      label: t(route.labelKey, { ns: 'common' }),
+      label: 'label' in route ? route.label : t(route.labelKey, { ns: 'common' }),
       active: route.active,
       icon: route.icon,
       activeIcon: route.activeIcon,

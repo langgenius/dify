@@ -9,13 +9,15 @@ const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 export type MainNavRouteConfig = {
   key: string
   href: string
-  labelKey: string
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
   feature?: 'agentV2' | 'marketplace'
-}
+} & (
+  | { label: string, labelKey?: never }
+  | { label?: never, labelKey: string }
+)
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
@@ -55,7 +57,7 @@ export const MAIN_NAV_ROUTES = [
   {
     key: 'roster',
     href: '/agents',
-    labelKey: 'menus.roster',
+    label: 'Agents',
     active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-roster',
     activeIcon: 'i-custom-vender-main-nav-roster-active',
