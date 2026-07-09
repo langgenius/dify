@@ -1,14 +1,4 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
-
-export const userProfilePlaceholder: GetAccountProfileResponse = {
-  id: '',
-  name: '',
-  email: '',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: false,
-}
 
 export const initialLangGeniusVersionInfo: LangGeniusVersionResponse = {
   current_env: '',
