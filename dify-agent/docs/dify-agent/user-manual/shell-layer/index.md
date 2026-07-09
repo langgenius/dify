@@ -56,8 +56,9 @@ with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
+# This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
 # Replace this development default in production.
-# Generate one with: openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
+# Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
 DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
@@ -70,7 +71,7 @@ The supplied Docker and `.example.env` configs use a development
 text for exactly 32 decoded bytes. One way to generate it is:
 
 ```bash
-openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
 ## Client request shape
