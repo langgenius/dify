@@ -5,7 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.schema import (
     query_params_from_model,
     register_enum_models,
@@ -28,7 +28,6 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
@@ -63,7 +62,7 @@ class ParserDeleteModels(BaseModel):
 
 
 class LoadBalancingPayload(BaseModel):
-    configs: list[dict[str, Any]] | None = Field(default=None)
+    configs: list[dict[str, Any]] | None = None
     enabled: bool | None = None
 
 
@@ -140,33 +139,38 @@ class DefaultModelDataResponse(ResponseModel):
     data: DefaultModelResponse | None = None
 
 
-class ModelWithProviderListResponse(ResponseModel):
+class ProviderModelListResponse(ResponseModel):
     data: list[ModelWithProviderEntityResponse]
 
 
-class ProviderWithModelsDataResponse(ResponseModel):
+class AvailableModelListResponse(ResponseModel):
     data: list[ProviderWithModelsResponse]
 
 
-class ModelCredentialLoadBalancingResponse(ResponseModel):
+class ModelLoadBalancingConfigResponse(ResponseModel):
+    id: str
+    name: str
+    credentials: dict[str, Any]
+    credential_id: str | None = None
     enabled: bool
-    configs: list[dict[str, Any]] = Field(default_factory=list)
+    in_cooldown: bool
+    ttl: int
+
+
+class ModelLoadBalancingResponse(ResponseModel):
+    enabled: bool
+    configs: list[ModelLoadBalancingConfigResponse]
 
 
 class ModelCredentialResponse(ResponseModel):
-    credentials: dict[str, Any] = Field(default_factory=dict)
+    credentials: dict[str, Any]
     current_credential_id: str | None = None
     current_credential_name: str | None = None
-    load_balancing: ModelCredentialLoadBalancingResponse
+    load_balancing: ModelLoadBalancingResponse
     available_credentials: list[CredentialConfiguration]
 
 
-class ModelCredentialValidateResponse(ResponseModel):
-    result: str
-    error: str | None = None
-
-
-class ModelParameterRulesResponse(ResponseModel):
+class ModelParameterRuleListResponse(ResponseModel):
     data: list[ParameterRule]
 
 
@@ -187,12 +191,12 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     SimpleResultResponse,
+    ValidationResultResponse,
     DefaultModelDataResponse,
-    ModelWithProviderListResponse,
-    ProviderWithModelsDataResponse,
+    ProviderModelListResponse,
     ModelCredentialResponse,
-    ModelCredentialValidateResponse,
-    ModelParameterRulesResponse,
+    ModelParameterRuleListResponse,
+    AvailableModelListResponse,
 )
 
 register_enum_models(console_ns, ModelType)
@@ -201,7 +205,9 @@ register_enum_models(console_ns, ModelType)
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserGetDefault))
-    @console_ns.response(200, "Success", console_ns.models[DefaultModelDataResponse.__name__])
+    @console_ns.response(
+        200, "Default model retrieved successfully", console_ns.models[DefaultModelDataResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -214,7 +220,7 @@ class DefaultModelApi(Resource):
             tenant_id=tenant_id, model_type=args.model_type
         )
 
-        return jsonable_encoder({"data": default_model_entity})
+        return DefaultModelDataResponse(data=default_model_entity).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
@@ -247,12 +253,14 @@ class DefaultModelApi(Resource):
                 )
                 raise ex
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ModelWithProviderListResponse.__name__])
+    @console_ns.response(
+        200, "Provider models retrieved successfully", console_ns.models[ProviderModelListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -261,10 +269,10 @@ class ModelProviderModelApi(Resource):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
-        return jsonable_encoder({"data": models})
+        return ProviderModelListResponse(data=models).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserPostModels.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(200, "Model updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -310,7 +318,7 @@ class ModelProviderModelApi(Resource):
                     tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
                 )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @console_ns.response(204, "Model deleted successfully")
@@ -334,7 +342,11 @@ class ModelProviderModelApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
-    @console_ns.response(200, "Success", console_ns.models[ModelCredentialResponse.__name__])
+    @console_ns.response(
+        200,
+        "Model credentials retrieved successfully",
+        console_ns.models[ModelCredentialResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -379,22 +391,23 @@ class ModelProviderModelCredentialApi(Resource):
                 model=args.model,
             )
 
-        return jsonable_encoder(
-            {
-                "credentials": current_credential.get("credentials") if current_credential else {},
-                "current_credential_id": current_credential.get("current_credential_id")
-                if current_credential
-                else None,
-                "current_credential_name": current_credential.get("current_credential_name")
-                if current_credential
-                else None,
-                "load_balancing": {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs},
-                "available_credentials": available_credentials,
-            }
-        )
+        credentials: dict[str, Any] = {}
+        # TODO: make this throw error when type mismatches?
+        if current_credential and isinstance(current_credential.get("credentials"), dict):
+            credentials = cast(dict[str, Any], current_credential["credentials"])
+
+        return ModelCredentialResponse(
+            credentials=credentials,
+            current_credential_id=current_credential.get("current_credential_id") if current_credential else None,
+            current_credential_name=current_credential.get("current_credential_name") if current_credential else None,
+            load_balancing=ModelLoadBalancingResponse.model_validate(
+                {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs}
+            ),
+            available_credentials=available_credentials,
+        ).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserCreateCredential.__name__])
-    @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(201, "Model credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -424,10 +437,10 @@ class ModelProviderModelCredentialApi(Resource):
             )
             raise ValueError(str(ex))
 
-        return {"result": "success"}, 201
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
     @console_ns.expect(console_ns.models[ParserUpdateCredential.__name__])
-    @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(200, "Model credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -452,7 +465,7 @@ class ModelProviderModelCredentialApi(Resource):
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[ParserDeleteCredential.__name__])
     @console_ns.response(204, "Credential deleted successfully")
@@ -498,7 +511,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
             model=args.model,
             credential_id=args.credential_id,
         )
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route(
@@ -520,7 +533,7 @@ class ModelProviderModelEnableApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route(
@@ -542,7 +555,7 @@ class ModelProviderModelDisableApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 class ParserValidate(BaseModel):
@@ -559,8 +572,8 @@ class ModelProviderModelValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserValidate.__name__])
     @console_ns.response(
         200,
-        "Credential validation result",
-        console_ns.models[ModelCredentialValidateResponse.__name__],
+        "Model credentials validated successfully",
+        console_ns.models[ValidationResultResponse.__name__],
     )
     @setup_required
     @login_required
@@ -586,18 +599,20 @@ class ModelProviderModelValidateApi(Resource):
             result = False
             error = str(ex)
 
-        response = {"result": "success" if result else "error"}
-
         if not result:
-            response["error"] = error or ""
+            return ValidationResultResponse(result="error", error=error or "").model_dump(mode="json")
 
-        return response
+        return ValidationResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserParameter))
-    @console_ns.response(200, "Success", console_ns.models[ModelParameterRulesResponse.__name__])
+    @console_ns.response(
+        200,
+        "Model parameter rules retrieved successfully",
+        console_ns.models[ModelParameterRuleListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -610,12 +625,14 @@ class ModelProviderModelParameterRuleApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model
         )
 
-        return jsonable_encoder({"data": parameter_rules})
+        return ModelParameterRuleListResponse(data=parameter_rules).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ProviderWithModelsDataResponse.__name__])
+    @console_ns.response(
+        200, "Available models retrieved successfully", console_ns.models[AvailableModelListResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -624,4 +641,4 @@ class ModelProviderAvailableModelApi(Resource):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 
-        return jsonable_encoder({"data": models})
+        return AvailableModelListResponse(data=models).model_dump(mode="json")
