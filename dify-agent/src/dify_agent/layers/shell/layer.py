@@ -141,7 +141,18 @@ shell_run script rules:
 
 Tips:
 
-- When using Python, prefer a uv script with a PEP 723 dependency header.
+- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.
+- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:
+  `uv run --with <package> python <script-or--c>`.
+- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.
+  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.
+- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH
+  when you need console scripts.
+- For reusable Node.js CLIs, use user-level global installs:
+  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.
+  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.
+- For one-off Node.js CLIs, prefer `pnx <command> [args]`.
+- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.
 - If you need MCP, install the MCP server in the shell environment and start that server when you use it.
 
 Example shell_run script:
