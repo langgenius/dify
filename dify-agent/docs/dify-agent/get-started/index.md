@@ -75,8 +75,9 @@ See `.example.env` for the full server settings template.
 
 If you plan to run `dify.shell`, also configure `DIFY_AGENT_SHELLCTL_ENTRYPOINT`
 and, when shell jobs need to call back with the `dify-agent` command, set
-`DIFY_AGENT_STUB_API_BASE_URL` plus a 32-byte base64url
-`DIFY_AGENT_SERVER_SECRET_KEY` as documented in `.example.env`.
+`DIFY_AGENT_STUB_API_BASE_URL`. `DIFY_AGENT_SERVER_SECRET_KEY` has a development
+default, but production deployments should override it with a unique 32-byte
+base64url value as documented in `.example.env`.
 
 ## Start the Dify Agent server
 

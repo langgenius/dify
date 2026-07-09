@@ -56,15 +56,16 @@ with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
-DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
+DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
 HTTP `DIFY_AGENT_STUB_API_BASE_URL` may be either the service root or the
 explicit `/agent-stub` API root; the server normalizes the service root to
 `/agent-stub`. Other HTTP paths are rejected at startup.
 
-`DIFY_AGENT_SERVER_SECRET_KEY` must be unpadded base64url text for exactly 32
-decoded bytes. One way to generate it is:
+`DIFY_AGENT_SERVER_SECRET_KEY` defaults to a development key. Override it in
+production with unpadded base64url text for exactly 32 decoded bytes. One way to
+generate it is:
 
 ```bash
 python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
