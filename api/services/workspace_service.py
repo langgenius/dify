@@ -1,5 +1,3 @@
-from typing import Protocol
-
 from flask_login import current_user
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,22 +9,12 @@ from services.account_service import TenantService
 from services.feature_service import FeatureService
 
 
-class _CreditPoolLike(Protocol):
-    quota_limit: int
-    quota_used: int
-
-
 def _set_credit_pool_info(
-    tenant_info: dict[str, object], pool: _CreditPoolLike, exhausted_at: int | None = None
+    tenant_info: dict[str, object], *, quota_limit: int, quota_used: int, exhausted_at: int | None = None
 ) -> None:
-    tenant_info["trial_credits"] = pool.quota_limit
-    tenant_info["trial_credits_used"] = pool.quota_used
-    if (
-        isinstance(exhausted_at, int)
-        and exhausted_at > 0
-        and pool.quota_limit > 0
-        and pool.quota_used >= pool.quota_limit
-    ):
+    tenant_info["trial_credits"] = quota_limit
+    tenant_info["trial_credits_used"] = quota_used
+    if isinstance(exhausted_at, int) and exhausted_at > 0 and quota_limit > 0 and quota_used >= quota_limit:
         tenant_info["trial_credits_exhausted_at"] = exhausted_at
 
 
@@ -85,11 +73,21 @@ class WorkspaceService:
                 and (paid_pool.quota_limit == -1 or paid_pool.quota_limit > paid_pool.quota_used)
             ):
                 exhausted_at = paid_pool.exhausted_at if isinstance(paid_pool, CreditPoolBalance) else None
-                _set_credit_pool_info(tenant_info, paid_pool, exhausted_at)
+                _set_credit_pool_info(
+                    tenant_info,
+                    quota_limit=paid_pool.quota_limit,
+                    quota_used=paid_pool.quota_used,
+                    exhausted_at=exhausted_at,
+                )
             else:
                 trial_pool = CreditPoolService.get_pool(tenant_id=tenant.id, pool_type="trial", session=session)
                 if trial_pool:
                     exhausted_at = trial_pool.exhausted_at if isinstance(trial_pool, CreditPoolBalance) else None
-                    _set_credit_pool_info(tenant_info, trial_pool, exhausted_at)
+                    _set_credit_pool_info(
+                        tenant_info,
+                        quota_limit=trial_pool.quota_limit,
+                        quota_used=trial_pool.quota_used,
+                        exhausted_at=exhausted_at,
+                    )
 
         return tenant_info

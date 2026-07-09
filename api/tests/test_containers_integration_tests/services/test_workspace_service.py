@@ -7,6 +7,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
 
 
@@ -720,7 +721,13 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         paid_pool = MagicMock(quota_limit=500, quota_used=500)
-        trial_pool = MagicMock(quota_limit=100, quota_used=100, exhausted_at=1748908800)
+        trial_pool = CreditPoolBalance(
+            tenant_id=tenant.id,
+            pool_type="trial",
+            quota_limit=100,
+            quota_used=100,
+            exhausted_at=1748908800,
+        )
 
         with (
             patch("services.workspace_service.current_user", account),
