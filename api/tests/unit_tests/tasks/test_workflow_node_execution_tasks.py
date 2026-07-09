@@ -118,9 +118,8 @@ def test_save_workflow_node_execution_data_task_uses_sqlalchemy_repository(mock_
         creator_user_id="user-id",
         creator_user_role=CreatorUserRole.ACCOUNT.value,
     )
-    saved_execution = repository.save.call_args.args[0]
+    repository.save.assert_not_called()
     saved_data_execution = repository.save_execution_data.call_args.args[0]
-    assert saved_execution.model_dump() == execution.model_dump()
     assert saved_data_execution.model_dump() == execution.model_dump()
 
 
@@ -197,6 +196,31 @@ def test_save_workflow_node_execution_task_updates_metadata_without_payloads(moc
     assert existing_execution.inputs == '{"old_input": true}'
     assert existing_execution.process_data == '{"old_process": true}'
     assert existing_execution.outputs == '{"old_output": true}'
+    assert existing_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+
+@patch("tasks.workflow_node_execution_tasks.session_factory.create_session")
+def test_save_workflow_node_execution_task_ignores_stale_nonterminal_snapshot(mock_create_session: Mock) -> None:
+    existing_execution = WorkflowNodeExecutionModel()
+    existing_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    existing_execution.finished_at = datetime(2026, 1, 1)
+    session = _TaskSession(existing_execution=existing_execution)
+    mock_create_session.return_value = session
+    execution = _execution()
+    execution.status = WorkflowNodeExecutionStatus.RUNNING
+    execution.finished_at = None
+
+    result = save_workflow_node_execution_task.run(
+        execution_data=execution.model_dump(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+
+    assert result is True
+    assert session.committed is False
     assert existing_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
 
@@ -303,6 +327,9 @@ class _Session:
 
     def get(self, model, _id: str):
         return self._users.get(model)
+
+    def scalar(self, _stmt):
+        return self._users.get(EndUser)
 
 
 class _TaskSession:
