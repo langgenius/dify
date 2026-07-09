@@ -261,6 +261,7 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   id: thought.id,
   tool: thought.tool ?? '',
   thought: thought.thought ?? '',
+  answer: thought.answer ?? '',
   tool_input: thought.tool_input ?? '',
   message_id: thought.message_id,
   conversation_id: conversationId,
