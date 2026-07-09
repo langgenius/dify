@@ -315,6 +315,40 @@ describe('useAgentConfigureSync', () => {
     })
   })
 
+  it('should save the latest dirty draft when Configure unmounts before autosave runs', async () => {
+    const { store, unmount } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Route leave prompt',
+      })
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
+    await act(async () => {
+      unmount()
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: expect.objectContaining({
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Route leave prompt',
+          }),
+        }),
+      }),
+    }))
+  })
+
   it('should include Agent Soul files when autosaving file changes', async () => {
     const { store } = renderUseAgentConfigureSync()
 
