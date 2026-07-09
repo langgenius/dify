@@ -157,14 +157,6 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
-    def _assert_database_operations_called(self, sqlite_session: Session):
-        """The service methods under test use a real SQLite session."""
-        assert isinstance(sqlite_session, Session)
-
-    def _assert_database_operations_not_called(self, sqlite_session: Session):
-        """The service methods under test use a real SQLite session."""
-        assert isinstance(sqlite_session, Session)
-
     def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
         """Helper method to verify that specific exception is raised."""
         with pytest.raises(exception_type):
@@ -188,7 +180,6 @@ class TestAccountService:
         result = AccountService.authenticate("test@example.com", "password", session=sqlite_session)
 
         assert result is account
-        self._assert_database_operations_called(sqlite_session)
 
     def test_authenticate_account_not_found(self, sqlite_session: Session):
         """Test authentication when account does not exist."""
@@ -260,7 +251,7 @@ class TestAccountService:
         assert result is account
         assert account.status == AccountStatus.ACTIVE
         assert account.initialized_at is not None
-        self._assert_database_operations_called(sqlite_session)
+
 
     # ==================== Account Creation Tests ====================
 
@@ -294,7 +285,7 @@ class TestAccountService:
 
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
-        self._assert_database_operations_called(sqlite_session)
+
 
     def test_create_account_uses_explicit_timezone(
         self, sqlite_session: Session, mock_password_dependencies, mock_external_service_dependencies
@@ -317,7 +308,7 @@ class TestAccountService:
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
         assert persisted_account.timezone == "Asia/Shanghai"
-        self._assert_database_operations_called(sqlite_session)
+
 
     def test_create_account_registration_disabled(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account creation when registration is disabled."""
@@ -376,7 +367,7 @@ class TestAccountService:
 
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
-        self._assert_database_operations_called(sqlite_session)
+
 
     # ==================== Password Management Tests ====================
 
@@ -409,7 +400,7 @@ class TestAccountService:
         mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
 
         # Verify database operations
-        self._assert_database_operations_called(sqlite_session)
+
 
     def test_update_account_password_current_password_incorrect(
         self, sqlite_session: Session, mock_password_dependencies
@@ -539,7 +530,7 @@ class TestAccountService:
             assert available_tenant_join.current is True
             assert available_tenant_join.last_opened_at == mock_now
             mock_set_tenant_id.assert_called_once_with(tenant.id)
-            self._assert_database_operations_called(sqlite_session)
+    
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_no_tenants(self, sqlite_session: Session):
@@ -655,10 +646,6 @@ class TestTenantService:
                 "feature_service": mock_feature_service,
                 "billing_service": mock_billing_service,
             }
-
-    def _assert_database_operations_called(self, mock_db):
-        """Helper method to verify database operations were called."""
-        mock_db.session.commit.assert_called()
 
     def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
         """Helper method to verify that specific exception is raised."""
@@ -1254,14 +1241,6 @@ class TestRegisterService:
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
             yield mock_send_mail
 
-    def _assert_database_operations_called(self, sqlite_session: Session):
-        """The service methods under test use a real SQLite session."""
-        assert isinstance(sqlite_session, Session)
-
-    def _assert_database_operations_not_called(self, sqlite_session: Session):
-        """The service methods under test use a real SQLite session."""
-        assert isinstance(sqlite_session, Session)
-
     def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
         """Helper method to verify that specific exception is raised."""
         with pytest.raises(exception_type):
@@ -1300,7 +1279,7 @@ class TestRegisterService:
                 )
                 mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
                 assert sqlite_session.scalar(select(DifySetup)) is not None
-                self._assert_database_operations_called(sqlite_session)
+        
 
     def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test setup failure with proper rollback."""
@@ -1476,7 +1455,7 @@ class TestRegisterService:
                 mock_create_tenant.assert_called_once_with("Test User's Workspace", session=sqlite_session)
                 mock_create_member.assert_called_once_with(mock_tenant, mock_account, sqlite_session, role="owner")
                 mock_event.send.assert_called_once_with(mock_tenant)
-                self._assert_database_operations_called(sqlite_session)
+        
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
         self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
@@ -1660,7 +1639,7 @@ class TestRegisterService:
                 # Verify results
                 assert result == mock_account
                 mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
-                self._assert_database_operations_called(sqlite_session)
+        
 
     def test_register_with_pending_status(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account registration with pending status."""
@@ -1703,7 +1682,7 @@ class TestRegisterService:
                 # Verify results
                 assert result == mock_account
                 assert result.status == "pending"
-                self._assert_database_operations_called(sqlite_session)
+        
 
     def test_register_workspace_not_allowed(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test registration when workspace creation is not allowed."""
