@@ -195,6 +195,32 @@ describe('CreateAppModal', () => {
     )
   })
 
+  it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    let resolveTracking: (() => void) | undefined
+    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockTrackCreateApp.mockReturnValue(new Promise<void>((resolve) => {
+      resolveTracking = resolve
+    }))
+    renderModal()
+
+    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+      target: { value: 'Tracked App' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+
+    await waitFor(() => {
+      expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+    })
+    expect(mockGetRedirection).not.toHaveBeenCalled()
+
+    resolveTracking?.()
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, expect.any(Object))
+    })
+  })
+
   it('shows error toast when creation fails', async () => {
     mockCreateApp.mockRejectedValue(new Error('boom'))
     const { onClose } = renderModal()

@@ -95,7 +95,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      try {
+        await trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      }
+      catch {
+        // Analytics should not turn a successful app creation into a failed flow.
+      }
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()

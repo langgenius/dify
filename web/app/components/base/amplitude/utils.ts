@@ -6,10 +6,16 @@ import { isAmplitudeEnabled } from '@/config'
  * @param eventName Event name
  * @param eventProperties Event properties (optional)
  */
-export const trackEvent = (eventName: string, eventProperties?: Record<string, any>) => {
+export const trackEvent = (eventName: string, eventProperties?: Record<string, unknown>) => {
   if (!isAmplitudeEnabled)
     return
-  amplitude.track(eventName, eventProperties)
+  return amplitude.track(eventName, eventProperties)
+}
+
+export const flushEvents = () => {
+  if (!isAmplitudeEnabled)
+    return
+  return amplitude.flush()
 }
 
 /**
@@ -26,7 +32,7 @@ export const setUserId = (userId: string) => {
  * Set user properties
  * @param properties User properties
  */
-export const setUserProperties = (properties: Record<string, any>) => {
+export const setUserProperties = (properties: Record<string, amplitude.Types.ValidPropertyType>) => {
   if (!isAmplitudeEnabled)
     return
   const identifyEvent = new amplitude.Identify()
