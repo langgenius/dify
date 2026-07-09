@@ -85,11 +85,19 @@ const mockLangGeniusVersionState = vi.hoisted(() => ({
     version: '1.0.1',
     release_date: '',
     release_notes: '',
+    features: {
+      can_replace_logo: false,
+      model_load_balancing_enabled: false,
+    },
     can_auto_update: false,
   } as {
     version: string
     release_date: string
     release_notes: string
+    features: {
+      can_replace_logo: boolean
+      model_load_balancing_enabled: boolean
+    }
     can_auto_update: boolean
   } | undefined,
 }))
@@ -140,6 +148,22 @@ vi.mock('@/service/client', () => ({
             ...options,
           }),
         },
+      },
+    },
+    version: {
+      get: {
+        queryOptions: (options: {
+          enabled?: boolean
+          input?: {
+            query: {
+              current_version: string
+            }
+          }
+        }) => ({
+          queryKey: ['version', options.input?.query.current_version],
+          queryFn: async () => mockLangGeniusVersionState.data,
+          ...options,
+        }),
       },
     },
   },
@@ -311,6 +335,10 @@ describe('Console bootstrap', () => {
       version: '1.0.1',
       release_date: '',
       release_notes: '',
+      features: {
+        can_replace_logo: false,
+        model_load_balancing_enabled: false,
+      },
       can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
