@@ -28,7 +28,7 @@ DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
 
 
 class ServerSettings(BaseSettings):
-    """Environment-backed settings for Redis, scheduling, outbound HTTP, shell access, and Agent Stub."""
+    """Environment-backed settings for Redis, scheduling, outbound HTTP, and shell access."""
 
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str = "dify-agent"

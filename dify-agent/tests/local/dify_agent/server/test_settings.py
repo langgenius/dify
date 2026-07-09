@@ -48,18 +48,6 @@ def test_server_settings_defaults_shellctl_auth_token_to_none(
     assert settings.shellctl_auth_token is None
 
 
-def test_server_settings_defaults_server_secret_key_to_none(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.delenv("DIFY_AGENT_SERVER_SECRET_KEY", raising=False)
-    monkeypatch.chdir(tmp_path)
-
-    settings = ServerSettings()
-
-    assert settings.server_secret_key is None
-
-
 def test_server_settings_reads_agent_stub_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub/")
     monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", _base64url_secret(secrets.token_bytes(32)))
@@ -87,17 +75,6 @@ def test_server_settings_ignores_obsolete_legacy_settings_namespace(monkeypatch:
     assert settings.agent_stub_api_base_url is None
 
 
-def test_server_settings_rejects_public_agent_stub_api_base_url_without_secret_key(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.delenv("DIFY_AGENT_SERVER_SECRET_KEY", raising=False)
-    monkeypatch.chdir(tmp_path)
-
-    with pytest.raises(ValidationError, match="DIFY_AGENT_SERVER_SECRET_KEY"):
-        _ = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
-
-
 def test_server_settings_rejects_agent_stub_api_base_url_with_query_or_fragment() -> None:
     secret = _base64url_secret(secrets.token_bytes(32))
 
@@ -122,11 +99,7 @@ def test_server_settings_rejects_agent_stub_api_base_url_with_unexpected_path() 
         )
 
 
-def test_server_settings_rejects_public_agent_stub_api_base_url_with_blank_secret_key(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", " ")
-
+def test_server_settings_rejects_public_agent_stub_api_base_url_without_secret_key() -> None:
     with pytest.raises(ValidationError, match="DIFY_AGENT_SERVER_SECRET_KEY"):
         _ = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
 

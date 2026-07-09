@@ -64,9 +64,9 @@ DIFY_AGENT_INNER_API_URL=http://localhost:5001
 DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
 DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
-# The example value below is for local development only.
-# For production, generate with: python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
+# Replace this development default in production.
+# Generate one with: openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
 DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
