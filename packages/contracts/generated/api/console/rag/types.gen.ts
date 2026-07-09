@@ -590,9 +590,9 @@ export type DatasourceEntity = {
 
 export type DatasourceProviderIdentity = {
   author: string
-  description: I18nObject
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
   icon: string
-  label: I18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -674,6 +674,13 @@ export type DatasourceParameter = {
   scope?: string | null
   template?: PluginParameterTemplate | null
   type: DatasourceParameterType
+}
+
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
 }
 
 export type ToolLabelEnum
