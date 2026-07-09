@@ -77,7 +77,7 @@ export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathM
       if (!targetPath) {
         targetPath = getDocHomePath()
       }
-      else if (!targetPath.startsWith('/api-reference/')) {
+      else {
         targetPath = getProductAwarePath(targetPath)
       }
 
