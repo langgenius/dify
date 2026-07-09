@@ -66,7 +66,6 @@ class MessageListItem(ResponseModel):
     extra_contents: list[ExecutionExtraContentDomainModel]
 
     @computed_field
-    @property
     def total_tokens(self) -> int:
         return self.message_tokens + self.answer_tokens
 

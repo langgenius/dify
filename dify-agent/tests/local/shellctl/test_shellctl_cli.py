@@ -39,7 +39,11 @@ def _click_command(command_name: str) -> click.Command:
 
 def _command_option_names(command_name: str) -> set[str]:
     command = _click_command(command_name)
-    return {option for parameter in command.params for option in getattr(parameter, "opts", [])}
+    return {
+        option
+        for parameter in command.params
+        for option in getattr(parameter, "opts", [])  # noqa: no-new-getattr click option introspection
+    }
 
 
 def _command_option(command_name: str, option_name: str) -> click.Option:
