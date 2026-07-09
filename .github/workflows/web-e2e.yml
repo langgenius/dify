@@ -63,7 +63,7 @@ jobs:
         run: vp run e2e:full
 
       - name: Run external runtime E2E tests
-        if: ${{ inputs.run-external-runtime }}
+        if: ${{ inputs.run-external-runtime || github.ref == 'refs/heads/feat/agent-v2-e2e-test' }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
