@@ -1240,6 +1240,8 @@ export type PublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
+  marked_comment?: string | null
+  marked_name?: string | null
 }
 
 export type WorkflowPublishResponse = {
