@@ -490,6 +490,23 @@ describe('chat utils - url params and answer helpers', () => {
       expect(a1!.children![1]!.children![0]!.siblingIndex).toBe(1)
     })
 
+    it('buildChatItemTree keeps out-of-order children under their parent when the parent appears later', () => {
+      const list: IChatItem[] = [
+        { id: 'q2', isAnswer: false, parentMessageId: 'a1' } as IChatItem,
+        { id: 'a2', isAnswer: true } as IChatItem,
+        { id: 'q1', isAnswer: false, parentMessageId: null } as IChatItem,
+        { id: 'a1', isAnswer: true } as IChatItem,
+      ]
+
+      const tree = buildChatItemTree(list)
+
+      expect(tree).toHaveLength(1)
+      expect(tree[0]!.id).toBe('q1')
+      expect(tree[0]!.children![0]!.id).toBe('a1')
+      expect(tree[0]!.children![0]!.children![0]!.id).toBe('q2')
+      expect(tree[0]!.children![0]!.children![0]!.children![0]!.id).toBe('a2')
+    })
+
     it('getThreadMessages node without children', () => {
       const tree = [{ id: 'q1', isAnswer: false }]
       const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'q1')
