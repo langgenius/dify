@@ -99,7 +99,6 @@ jobs:
               - '.nvmrc'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
-              - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
             vdb:
@@ -327,8 +326,6 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
     uses: ./.github/workflows/web-e2e.yml
-    with:
-      run-external-runtime: true
     secrets: inherit
 
   web-e2e-skip:
