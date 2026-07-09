@@ -702,7 +702,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.38.1
+    image: cr.weaviate.io/semitechnologies/weaviate:1.38.2
     profiles:
       - weaviate
     restart: always

@@ -1,5 +1,10 @@
 # Weaviate Migration Guide: v1.19 → v1.27
 
+> **Looking for the newer upgrade?** See **[1.27 → 1.38](./1.27-to-1.38.md)**
+> ([PR #38214](https://github.com/langgenius/dify/pull/38214)) for the
+> `1.27 → 1.38` server / `4.20.5 → 4.22.0` client migration, including the
+> recommended one-minor-at-a-time upgrade ladder.
+
 ## Overview
 
 Dify has upgraded from Weaviate v1.19 to v1.27 with the Python client updated from v3.24 to v4.17.
