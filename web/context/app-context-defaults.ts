@@ -1,12 +1,17 @@
-import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from './app-context-types'
+import type { ICurrentWorkspace } from '@/models/common'
 
-export const initialLangGeniusVersionInfo: LangGeniusVersionResponse = {
+export const initialLangGeniusVersionInfo: LangGeniusVersionInfo = {
   current_env: '',
   current_version: '',
   latest_version: '',
   release_date: '',
   release_notes: '',
   version: '',
+  features: {
+    can_replace_logo: false,
+    model_load_balancing_enabled: false,
+  },
   can_auto_update: false,
 }
 

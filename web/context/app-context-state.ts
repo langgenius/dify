@@ -6,7 +6,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
-import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
 import { atomWithResolvedSuspenseQuery } from '@/utils/query-atoms'
 import {
   initialLangGeniusVersionInfo,
@@ -108,7 +107,14 @@ const versionQueryAtom = atomWithQuery((get) => {
   const systemFeaturesQuery = get(systemFeaturesQueryAtom)
   const enabled = Boolean(meta.currentVersion && !systemFeaturesQuery.data.branding.enabled)
 
-  return langGeniusVersionQueryOptions(meta.currentVersion, enabled)
+  return consoleQuery.version.get.queryOptions({
+    input: {
+      query: {
+        current_version: meta.currentVersion ?? '',
+      },
+    },
+    enabled,
+  })
 })
 
 export const langGeniusVersionInfoAtom = atom((get) => {
