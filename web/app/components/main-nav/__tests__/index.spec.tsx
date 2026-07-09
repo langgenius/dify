@@ -44,7 +44,6 @@ const mockStepByStepTour = vi.hoisted(() => {
   const createState = (
     overrides: Partial<StepByStepTourStateResponse> = {},
   ): StepByStepTourStateResponse => ({
-    eligible: true,
     first_workspace_id: 'workspace-1',
     skipped: false,
     completed_task_ids: [],
@@ -379,6 +378,7 @@ type MainNavSystemFeatures = Exclude<NonNullable<Parameters<typeof renderWithSys
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   branding: { enabled: false },
   enable_marketplace: true,
+  enable_step_by_step_tour: true,
 }
 
 const renderMainNav = (
@@ -818,6 +818,33 @@ describe('MainNav', () => {
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('shows Step-by-step Tour switch off for existing accounts without a default workspace', async () => {
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    expect(await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }))
+      .toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('hides Step-by-step Tour switch when the feature is disabled', async () => {
+    renderMainNav({
+      enable_learn_app: true,
+      enable_step_by_step_tour: false,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    await screen.findByText('common.mainNav.help.docs')
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })).not.toBeInTheDocument()
   })
 
   it('restores the expanded Step-by-step Tour after toggling it off and on again', async () => {

@@ -28,7 +28,6 @@ const normalizeWorkspaceIds = (workspaceIds: string[] | undefined) => workspaceI
 const normalizePersistentState = (
   state: StepByStepTourStateResponse | undefined,
 ): StepByStepTourPersistentState => ({
-  eligible: Boolean(state?.eligible),
   firstWorkspaceId: state?.first_workspace_id ?? undefined,
   updatedAt: state?.updated_at ?? null,
   manuallyEnabledWorkspaceIds: normalizeWorkspaceIds(state?.manually_enabled_workspace_ids),
@@ -40,7 +39,6 @@ const normalizePersistentState = (
 const toStepByStepTourStateResponse = (
   state: StepByStepTourPersistentState,
 ): StepByStepTourStateResponse => ({
-  eligible: state.eligible,
   first_workspace_id: state.firstWorkspaceId ?? null,
   updated_at: state.updatedAt ?? null,
   manually_enabled_workspace_ids: state.manuallyEnabledWorkspaceIds,
@@ -77,11 +75,10 @@ type StepByStepTourStateActionOptions = {
 export const getStepByStepTourEnabledForCurrentWorkspace = (
   accountState: Pick<
     StepByStepTourAccountState,
-    'eligible' | 'firstWorkspaceId' | 'manuallyDisabledWorkspaceIds' | 'manuallyEnabledWorkspaceIds' | 'skipped'
+    'firstWorkspaceId' | 'manuallyDisabledWorkspaceIds' | 'manuallyEnabledWorkspaceIds' | 'skipped'
   >,
   currentWorkspaceId: string,
-) => accountState.eligible
-  && !accountState.skipped
+) => !accountState.skipped
   && !accountState.manuallyDisabledWorkspaceIds.includes(currentWorkspaceId)
   && (
     accountState.firstWorkspaceId === currentWorkspaceId

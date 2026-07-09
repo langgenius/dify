@@ -39,7 +39,6 @@ const mockStepByStepTour = vi.hoisted(() => {
     activeGuideIndexes: undefined,
     activeTaskId: undefined,
     completedTaskIds: ['home'],
-    eligible: true,
     firstWorkspaceId: 'workspace-1',
     manuallyDisabledWorkspaceIds: [],
     manuallyEnabledWorkspaceIds: ['workspace-1'],

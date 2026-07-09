@@ -49,7 +49,6 @@ const mockStepByStepTour = vi.hoisted(() => {
   const createState = (
     overrides: Partial<StepByStepTourStateResponse> = {},
   ): StepByStepTourStateResponse => ({
-    eligible: true,
     first_workspace_id: 'workspace-1',
     skipped: false,
     completed_task_ids: [],
@@ -1080,13 +1079,10 @@ describe('AppList', () => {
         throw new Error('Step-by-step tour state should be ready before restarting the home tour.')
       unmount()
       mockStepByStepTour.setState({
-        active_task_id: 'home',
-        active_guide_index: 0,
         completed_task_ids: abandonedTourState.completedTaskIds,
         first_workspace_id: abandonedTourState.firstWorkspaceId,
         manually_disabled_workspace_ids: abandonedTourState.manuallyDisabledWorkspaceIds,
         manually_enabled_workspace_ids: abandonedTourState.manuallyEnabledWorkspaceIds,
-        minimized: true,
         skipped: abandonedTourState.skipped,
       })
       mockStepByStepTour.setUiState({

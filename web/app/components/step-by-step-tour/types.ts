@@ -17,7 +17,6 @@ export type StepByStepTourGuideGroup
     | 'integrationLimitedAccess'
 
 export type StepByStepTourAccountState = {
-  eligible: boolean
   firstWorkspaceId?: string
   updatedAt?: string | null
   manuallyEnabledWorkspaceIds: string[]
@@ -27,7 +26,6 @@ export type StepByStepTourAccountState = {
 } & StepByStepTourUiState
 
 export type StepByStepTourPersistentState = {
-  eligible: boolean
   firstWorkspaceId?: string
   updatedAt?: string | null
   manuallyEnabledWorkspaceIds: string[]

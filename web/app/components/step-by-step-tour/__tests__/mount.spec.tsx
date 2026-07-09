@@ -45,6 +45,9 @@ const mockCurrentWorkspaceRole = vi.hoisted(() => ({
 const mockEnableLearnApp = vi.hoisted(() => ({
   value: true,
 }))
+const mockEnableStepByStepTour = vi.hoisted(() => ({
+  value: true,
+}))
 const mockHasBlockingModalOpen = vi.hoisted(() => ({
   value: false,
 }))
@@ -53,8 +56,7 @@ const mockStepByStepTour = vi.hoisted(() => {
   const createState = (
     overrides: Partial<StepByStepTourStateResponse> = {},
   ): StepByStepTourStateResponse => ({
-    eligible: overrides.eligible ?? true,
-    first_workspace_id: overrides.first_workspace_id ?? 'workspace-1',
+    first_workspace_id: overrides.first_workspace_id === undefined ? 'workspace-1' : overrides.first_workspace_id,
     skipped: overrides.skipped ?? false,
     completed_task_ids: overrides.completed_task_ids ?? [],
     manually_enabled_workspace_ids: overrides.manually_enabled_workspace_ids ?? [],
@@ -80,7 +82,6 @@ const mockStepByStepTour = vi.hoisted(() => {
     activeGuideIndexes: uiState.activeGuideIndexes,
     activeTaskId: uiState.activeTaskId,
     completedTaskIds: (state.completed_task_ids ?? []).filter(Boolean),
-    eligible: Boolean(state.eligible),
     firstWorkspaceId: state.first_workspace_id ?? undefined,
     manuallyDisabledWorkspaceIds: state.manually_disabled_workspace_ids ?? [],
     manuallyEnabledWorkspaceIds: state.manually_enabled_workspace_ids ?? [],
@@ -159,7 +160,6 @@ const mockStepByStepTour = vi.hoisted(() => {
     setTestState(nextState: Partial<StepByStepTourAccountState>) {
       state = createState({
         completed_task_ids: nextState.completedTaskIds,
-        eligible: nextState.eligible,
         first_workspace_id: nextState.firstWorkspaceId,
         manually_disabled_workspace_ids: nextState.manuallyDisabledWorkspaceIds,
         manually_enabled_workspace_ids: nextState.manuallyEnabledWorkspaceIds,
@@ -437,6 +437,7 @@ const renderStepByStepTourMount = () => {
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
     ...defaultSystemFeatures,
     enable_learn_app: mockEnableLearnApp.value,
+    enable_step_by_step_tour: mockEnableStepByStepTour.value,
   })
   const jotaiStore = createStore()
 
@@ -468,6 +469,7 @@ describe('StepByStepTourMount', () => {
     mockIsCurrentWorkspaceManager.value = true
     mockCurrentWorkspaceRole.value = 'owner'
     mockEnableLearnApp.value = true
+    mockEnableStepByStepTour.value = true
     mockHasBlockingModalOpen.value = false
     mockPathname = '/apps'
     localStorage.clear()
@@ -489,6 +491,32 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       const state = mockStepByStepTour.observedState
       expect(state.firstWorkspaceId).toBe('workspace-1')
+    })
+  })
+
+  it('does not render the checklist when the Step-by-step Tour feature is disabled', async () => {
+    mockEnableStepByStepTour.value = false
+
+    renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps existing accounts hidden by default without a first workspace or manual enable', async () => {
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+      completed_task_ids: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
   })
 

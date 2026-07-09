@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import {
+  getStepByStepTourEnabledForCurrentWorkspace,
   useSetStepByStepTourAccountState,
   useStepByStepTourAccountStateValue,
   useStepByStepTourStateActions,
@@ -79,7 +80,6 @@ vi.mock('@/service/client', () => ({
 const createStepByStepTourState = (
   overrides: Partial<StepByStepTourStateResponse> = {},
 ): StepByStepTourStateResponse => ({
-  eligible: true,
   first_workspace_id: 'workspace-1',
   skipped: false,
   completed_task_ids: [],
@@ -118,6 +118,29 @@ describe('step-by-step tour storage', () => {
     queryClient = createTestQueryClient()
     jotaiStore = createStore()
     queryClient.setQueryData(stepByStepTourStateQueryKey, mockStepByStepTourState)
+  })
+
+  it('derives the current workspace switch state from persisted workspace overrides', () => {
+    expect(getStepByStepTourEnabledForCurrentWorkspace({
+      firstWorkspaceId: undefined,
+      manuallyDisabledWorkspaceIds: [],
+      manuallyEnabledWorkspaceIds: [],
+      skipped: false,
+    }, 'workspace-1')).toBe(false)
+
+    expect(getStepByStepTourEnabledForCurrentWorkspace({
+      firstWorkspaceId: undefined,
+      manuallyDisabledWorkspaceIds: [],
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      skipped: false,
+    }, 'workspace-1')).toBe(true)
+
+    expect(getStepByStepTourEnabledForCurrentWorkspace({
+      firstWorkspaceId: 'workspace-1',
+      manuallyDisabledWorkspaceIds: [],
+      manuallyEnabledWorkspaceIds: [],
+      skipped: true,
+    }, 'workspace-1')).toBe(false)
   })
 
   it('combines backend persistent state with Jotai UI state', () => {

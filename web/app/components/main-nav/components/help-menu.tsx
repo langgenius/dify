@@ -91,6 +91,7 @@ const HelpMenu = ({
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
+  const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const currentWorkspaceId = currentWorkspace.id
   const stepByStepTourEnabled = getStepByStepTourEnabledForCurrentWorkspace(
     stepByStepTourAccountState,
@@ -181,7 +182,7 @@ const HelpMenu = ({
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && stepByStepTourAccountState.eligible && (
+              {IS_CLOUD_EDITION && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={false}

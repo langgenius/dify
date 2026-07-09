@@ -171,6 +171,7 @@ export default function StepByStepTourMount({
   const enabledForCurrentWorkspace = getStepByStepTourEnabledForCurrentWorkspace(accountState, currentWorkspaceId)
   const completedTaskIds = accountState.completedTaskIds
   const learnDifyEnabled = systemFeatures?.enable_learn_app ?? true
+  const stepByStepTourFeatureEnabled = Boolean(systemFeatures?.enable_step_by_step_tour)
   const availableTasks = learnDifyEnabled
     ? STEP_BY_STEP_TOUR_TASKS
     : STEP_BY_STEP_TOUR_TASKS.filter(task => task.id !== 'home')
@@ -213,6 +214,7 @@ export default function StepByStepTourMount({
       }
     : undefined
   const visible = IS_CLOUD_EDITION
+    && stepByStepTourFeatureEnabled
     && enabledForCurrentWorkspace
     && (hasActiveGuide || !shouldHideOnPathname(pathname))
   const overlayVisible = visible && !hasBlockingModalOpen
