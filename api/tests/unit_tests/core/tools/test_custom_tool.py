@@ -86,6 +86,10 @@ def test_assembling_request_auth_header_assembly():
     tool.runtime.credentials = {"auth_type": "api_key_header", "api_key_header_prefix": "basic", "api_key_value": "abc"}
     headers = tool.assembling_request(parameters={})
     assert headers["Authorization"] == "Basic abc"
+    assert tool.runtime.credentials["api_key_value"] == "abc"
+
+    headers = tool.assembling_request(parameters={})
+    assert headers["Authorization"] == "Basic abc"
 
     tool.runtime.credentials = {"auth_type": "api_key_query", "api_key_value": "abc"}
     assert tool.assembling_request(parameters={}) == {}
