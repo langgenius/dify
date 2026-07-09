@@ -967,11 +967,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/amplitude/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/app-icon-picker/ImageInput.tsx": {
     "react/no-create-ref": {
       "count": 1
