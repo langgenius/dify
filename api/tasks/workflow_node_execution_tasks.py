@@ -16,7 +16,7 @@ from core.db.session_factory import session_factory
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account, CreatorUserRole, EndUser, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -50,17 +50,27 @@ def save_workflow_node_execution_task(
         creator_user_role: Role of the user who created the execution
 
     Returns:
-        True if successful, False otherwise
+        True when the snapshot is persisted or safely ignored as stale.
     """
     try:
         with session_factory.create_session() as session:
             execution = WorkflowNodeExecution.model_validate(execution_data)
 
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
+                select(WorkflowNodeExecutionModel)
+                .where(
+                    WorkflowNodeExecutionModel.id == execution.id,
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                )
+                .with_for_update()
             )
 
             if existing_execution:
+                if existing_execution.finished_at is not None and (
+                    execution.finished_at is None or execution.finished_at < existing_execution.finished_at
+                ):
+                    logger.debug("Ignored stale workflow node execution metadata: %s", execution.id)
+                    return True
                 _update_node_execution_metadata(existing_execution, execution)
                 logger.debug("Updated existing workflow node execution metadata: %s", execution.id)
             else:
@@ -108,7 +118,6 @@ def save_workflow_node_execution_data_task(
             creator_user_id=creator_user_id,
             creator_user_role=creator_user_role,
         )
-        repository.save(execution)
         repository.save_execution_data(execution)
         return True
     except Exception as e:
@@ -137,7 +146,12 @@ def _create_sqlalchemy_repository(
             if user is not None:
                 user.set_tenant_id(tenant_id)
         else:
-            user = session.get(EndUser, creator_user_id)
+            user = session.scalar(
+                select(EndUser).where(
+                    EndUser.id == creator_user_id,
+                    EndUser.tenant_id == tenant_id,
+                )
+            )
 
     if user is None:
         raise ValueError(f"Creator user {creator_user_id} not found for workflow node execution persistence")
@@ -179,14 +193,7 @@ def _create_node_execution_from_domain(
     node_execution.process_data = "{}"
     node_execution.outputs = "{}"
 
-    json_converter = WorkflowRuntimeTypeConverter()
-    if execution.metadata:
-        metadata_for_json = {
-            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-        }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-    else:
-        node_execution.execution_metadata = "{}"
+    node_execution.execution_metadata = json.dumps(jsonable_encoder(execution.metadata)) if execution.metadata else "{}"
 
     node_execution.status = execution.status
     node_execution.error = execution.error
@@ -203,14 +210,7 @@ def _update_node_execution_metadata(node_execution: WorkflowNodeExecutionModel, 
     """
     Update WorkflowNodeExecutionModel metadata without changing persisted data payload fields.
     """
-    json_converter = WorkflowRuntimeTypeConverter()
-    if execution.metadata:
-        metadata_for_json = {
-            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-        }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-    else:
-        node_execution.execution_metadata = "{}"
+    node_execution.execution_metadata = json.dumps(jsonable_encoder(execution.metadata)) if execution.metadata else "{}"
 
     node_execution.status = execution.status
     node_execution.error = execution.error

@@ -166,6 +166,44 @@ class TestSave:
             assert saved.status == WorkflowNodeExecutionStatus.SUCCEEDED
             assert saved.elapsed_time == 2.5
 
+    def test_save_execution_data_ignores_stale_snapshot(self, db_session_with_containers: Session) -> None:
+        account = _create_account_with_tenant(db_session_with_containers)
+        repo = _make_repo(db_session_with_containers, account, str(uuid4()))
+        created_at = datetime(2026, 1, 1, 12, 0, 0)
+        finished_at = datetime(2026, 1, 1, 12, 0, 1)
+        execution = WorkflowNodeExecution(
+            id=str(uuid4()),
+            workflow_id=str(uuid4()),
+            node_execution_id=str(uuid4()),
+            workflow_execution_id=str(uuid4()),
+            index=1,
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.START,
+            title="Test Node",
+            inputs={"value": "final"},
+            outputs={"result": "final"},
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_at=created_at,
+            finished_at=finished_at,
+        )
+        repo.save(execution)
+        repo.save_execution_data(execution)
+
+        stale_execution = execution.model_copy(deep=True)
+        stale_execution.status = WorkflowNodeExecutionStatus.RETRY
+        stale_execution.inputs = {"value": "stale"}
+        stale_execution.finished_at = None
+        repo.save_execution_data(stale_execution)
+
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        with sessionmaker(bind=engine, expire_on_commit=False)() as verify_session:
+            saved = verify_session.get(WorkflowNodeExecutionModel, execution.id)
+            assert saved is not None
+            assert saved.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert saved.inputs_dict == {"value": "final"}
+            assert saved.finished_at == finished_at
+
 
 class TestGetByWorkflowExecution:
     def test_returns_executions_ordered(self, db_session_with_containers: Session) -> None:

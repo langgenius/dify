@@ -48,7 +48,6 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass(frozen=True)
 class _InputsOutputsTruncationResult:
     truncated_value: Mapping[str, Any]
-    file: UploadFile
     offload: WorkflowNodeExecutionOffload
 
 
@@ -326,7 +325,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         )
         return _InputsOutputsTruncationResult(
             truncated_value=truncated_values,
-            file=upload_file,
             offload=offload,
         )
 
@@ -392,7 +390,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
-    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
+    def _persist_to_database(self, db_model: WorkflowNodeExecutionModel) -> None:
         """
         Persist the database model to the database.
 
@@ -406,6 +404,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                if existing.tenant_id != self._tenant_id:
+                    raise ValueError("Unauthorized access to workflow node execution")
                 # Update existing record by copying all non-private attributes
                 for key, value in db_model.__dict__.items():
                     if not key.startswith("_"):
@@ -416,29 +416,34 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             session.commit()
 
-            # Update the in-memory cache for faster subsequent lookups
-            # Only cache if we have a node_execution_id to use as the cache key
-            if db_model.node_execution_id:
-                self._node_execution_cache[db_model.node_execution_id] = db_model
-
     @override
-    def save_execution_data(self, execution: WorkflowNodeExecution):
+    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Persist node payload fields without letting an older task overwrite newer state.
+
+        Storage uploads happen before the short row-locked transaction. The transaction updates
+        only payload/offload fields, plus terminal metadata needed to make task retries monotonic.
+        """
         if self._use_async_persistence:
             self._queue_async_save_execution_data(execution)
             return
 
         domain_model = execution
-        with self._session_factory(expire_on_commit=False) as session:
-            query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
-                WorkflowNodeExecutionModel.id == domain_model.id
+        with self._session_factory() as session:
+            query = select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.id == domain_model.id,
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
             )
-            db_model: WorkflowNodeExecutionModel | None = session.execute(query).scalars().first()
+            existing_model = session.scalar(query)
+            if existing_model is not None and existing_model.finished_at is not None:
+                if domain_model.finished_at is None or domain_model.finished_at < existing_model.finished_at:
+                    return
 
-        if db_model is not None:
-            offload_data = db_model.offload_data
-        else:
-            db_model = self._to_db_model(domain_model)
-            offload_data = db_model.offload_data
+        inputs: str | None = None
+        outputs: str | None = None
+        process_data: str | None = None
+        inputs_offload: WorkflowNodeExecutionOffload | None = None
+        outputs_offload: WorkflowNodeExecutionOffload | None = None
+        process_data_offload: WorkflowNodeExecutionOffload | None = None
 
         if domain_model.inputs is not None:
             result = self._truncate_and_upload(
@@ -447,11 +452,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.INPUTS,
             )
             if result is not None:
-                db_model.inputs = self._json_encode(result.truncated_value)
+                inputs = self._json_encode(result.truncated_value)
                 domain_model.set_truncated_inputs(result.truncated_value)
-                offload_data = _replace_or_append_offload(offload_data, result.offload)
+                inputs_offload = result.offload
             else:
-                db_model.inputs = self._json_encode(domain_model.inputs)
+                inputs = self._json_encode(domain_model.inputs)
 
         if domain_model.outputs is not None:
             result = self._truncate_and_upload(
@@ -460,11 +465,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.OUTPUTS,
             )
             if result is not None:
-                db_model.outputs = self._json_encode(result.truncated_value)
+                outputs = self._json_encode(result.truncated_value)
                 domain_model.set_truncated_outputs(result.truncated_value)
-                offload_data = _replace_or_append_offload(offload_data, result.offload)
+                outputs_offload = result.offload
             else:
-                db_model.outputs = self._json_encode(domain_model.outputs)
+                outputs = self._json_encode(domain_model.outputs)
 
         if domain_model.process_data is not None:
             result = self._truncate_and_upload(
@@ -473,15 +478,64 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                db_model.process_data = self._json_encode(result.truncated_value)
+                process_data = self._json_encode(result.truncated_value)
                 domain_model.set_truncated_process_data(result.truncated_value)
-                offload_data = _replace_or_append_offload(offload_data, result.offload)
+                process_data_offload = result.offload
             else:
-                db_model.process_data = self._json_encode(domain_model.process_data)
+                process_data = self._json_encode(domain_model.process_data)
 
-        db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
-            session.merge(db_model)
+            query = WorkflowNodeExecutionModel.preload_offload_data(
+                select(WorkflowNodeExecutionModel)
+                .where(
+                    WorkflowNodeExecutionModel.id == domain_model.id,
+                    WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                )
+                .with_for_update()
+            )
+            db_model = session.execute(query).scalars().first()
+
+            if db_model is not None and db_model.finished_at is not None:
+                if domain_model.finished_at is None or domain_model.finished_at < db_model.finished_at:
+                    return
+
+            if db_model is None:
+                db_model = self._to_db_model(domain_model)
+                session.add(db_model)
+
+            if domain_model.inputs is not None:
+                db_model.inputs = inputs
+                db_model.offload_data = _replace_offload(
+                    db_model.offload_data,
+                    ExecutionOffLoadType.INPUTS,
+                    inputs_offload,
+                )
+            if domain_model.outputs is not None:
+                db_model.outputs = outputs
+                db_model.offload_data = _replace_offload(
+                    db_model.offload_data,
+                    ExecutionOffLoadType.OUTPUTS,
+                    outputs_offload,
+                )
+            if domain_model.process_data is not None:
+                db_model.process_data = process_data
+                db_model.offload_data = _replace_offload(
+                    db_model.offload_data,
+                    ExecutionOffLoadType.PROCESS_DATA,
+                    process_data_offload,
+                )
+
+            # The terminal data task may run before its metadata-only sibling. Persisting
+            # the terminal markers here prevents a delayed retry snapshot from winning later.
+            if domain_model.finished_at is not None:
+                db_model.status = domain_model.status
+                db_model.error = domain_model.error
+                db_model.elapsed_time = domain_model.elapsed_time
+                db_model.execution_metadata = (
+                    json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None
+                )
+                db_model.finished_at = domain_model.finished_at
+
             session.flush()
 
     def _queue_async_save(self, execution: WorkflowNodeExecution) -> None:
@@ -493,7 +547,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             raise ValueError("created_by_role is required in repository constructor")
 
         save_workflow_node_execution_task.delay(
-            execution_data=execution.model_dump(),
+            execution_data=execution.model_dump(exclude={"inputs", "process_data", "outputs"}),
             tenant_id=self._tenant_id,
             app_id=self._app_id or "",
             triggered_from=self._triggered_from.value,
@@ -627,19 +681,12 @@ def _filter_by_offload_type(offload_type: ExecutionOffLoadType) -> Callable[[Wor
     return f
 
 
-def _replace_or_append_offload(
-    seq: list[WorkflowNodeExecutionOffload], elem: WorkflowNodeExecutionOffload
+def _replace_offload(
+    seq: list[WorkflowNodeExecutionOffload],
+    type_: ExecutionOffLoadType,
+    elem: WorkflowNodeExecutionOffload | None,
 ) -> list[WorkflowNodeExecutionOffload]:
-    """Replace all elements in `seq` that satisfy the equality condition defined by `eq_func` with `elem`.
-
-    Args:
-        seq: The sequence of elements to process.
-        elem: The new element to insert.
-        eq_func: A function that determines equality between elements.
-
-    Returns:
-        A new sequence with the specified elements replaced or appended.
-    """
-    ls = [i for i in seq if i.type_ != elem.type_]
-    ls.append(elem)
-    return ls
+    result = [item for item in seq if item.type_ != type_]
+    if elem is not None:
+        result.append(elem)
+    return result

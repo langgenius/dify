@@ -9,7 +9,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.workflow.layers.persistence import (
     PersistenceWorkflowInfo,
     WorkflowPersistenceLayer,
-    should_use_async_workflow_persistence,
 )
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
@@ -114,18 +113,6 @@ def _make_layer(
 
 
 class TestWorkflowPersistenceLayer:
-    @pytest.mark.parametrize(
-        ("invoke_from", "expected"),
-        [
-            (InvokeFrom.DEBUGGER, False),
-            (InvokeFrom.WEB_APP, True),
-            (InvokeFrom.SERVICE_API, True),
-            (InvokeFrom.TRIGGER, True),
-        ],
-    )
-    def test_should_use_async_workflow_persistence(self, invoke_from: InvokeFrom, expected: bool):
-        assert should_use_async_workflow_persistence(invoke_from) is expected
-
     def test_configures_repositories_for_debug_synchronous_persistence(self):
         _, exec_repo, node_repo, _ = _make_layer(invoke_from=InvokeFrom.DEBUGGER)
 

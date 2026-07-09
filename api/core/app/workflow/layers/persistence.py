@@ -67,18 +67,13 @@ class PersistenceWorkflowInfo:
     graph_data: Mapping[str, Any]
 
 
-def should_use_async_workflow_persistence(invoke_from: InvokeFrom) -> bool:
-    """Return whether workflow execution state should be persisted through Celery."""
-    return invoke_from != InvokeFrom.DEBUGGER
-
-
 @runtime_checkable
-class AsyncPersistenceConfigurable(Protocol):
+class _AsyncPersistenceConfigurable(Protocol):
     def set_async_persistence(self, enabled: bool) -> None: ...
 
 
 def _configure_async_persistence(repository: object, enabled: bool) -> None:
-    if isinstance(repository, AsyncPersistenceConfigurable):
+    if isinstance(repository, _AsyncPersistenceConfigurable):
         repository.set_async_persistence(enabled)
 
 
@@ -112,9 +107,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
-        use_async_persistence = should_use_async_workflow_persistence(
-            invoke_from or application_generate_entity.invoke_from
-        )
+        effective_invoke_from = invoke_from if invoke_from is not None else application_generate_entity.invoke_from
+        use_async_persistence = effective_invoke_from != InvokeFrom.DEBUGGER
         _configure_async_persistence(self._workflow_execution_repository, use_async_persistence)
         _configure_async_persistence(self._workflow_node_execution_repository, use_async_persistence)
         self._trace_manager = trace_manager
