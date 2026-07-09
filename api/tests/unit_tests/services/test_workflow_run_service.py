@@ -172,6 +172,41 @@ class TestWorkflowRunServiceQueries:
         # Exactly one message query for the whole page, independent of run count.
         assert fake_session.scalars.call_count == 1
 
+    def test_get_paginate_advanced_chat_workflow_runs_dedups_one_message_per_run_in_sql(
+        self,
+        repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The 'one message per run' selection is pushed into SQL (DISTINCT ON)
+        with an explicit ordering, so extra Message rows are not loaded and the
+        chosen row does not depend on the database's row return order.
+        """
+        from sqlalchemy.dialects import postgresql
+
+        service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
+        app_model = _app_model(tenant_id="tenant-1", id="app-1")
+        pagination = SimpleNamespace(data=[SimpleNamespace(id="run-1", status="succeeded")])
+        monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
+
+        captured: dict[str, Any] = {}
+
+        def fake_scalars(stmt: Any) -> Any:
+            captured["stmt"] = stmt
+            result = MagicMock()
+            result.all.return_value = []
+            return result
+
+        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=SimpleNamespace(scalars=fake_scalars)))
+
+        service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={})
+
+        compiled = str(captured["stmt"].compile(dialect=postgresql.dialect()))
+        # De-duplication happens in SQL, not in Python.
+        assert "DISTINCT ON" in compiled
+        assert "workflow_run_id" in compiled
+        # The aggregation rule is explicit: most recent message per run.
+        assert "created_at DESC" in compiled
+
     def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
         self,
         repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
