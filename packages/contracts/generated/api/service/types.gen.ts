@@ -20,7 +20,7 @@ export type AgentThought = {
 }
 
 export type Annotation = {
-  content?: string | null
+  answer?: string | null
   created_at?: number | null
   hit_count?: number | null
   id: string
@@ -32,10 +32,15 @@ export type AnnotationCreatePayload = {
   question: string
 }
 
-export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
   job_id: string
-  job_status: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusResponse = {
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationList = {
@@ -1776,7 +1781,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
@@ -1910,7 +1915,9 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -1955,7 +1962,9 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostCompletionMessagesResponse
