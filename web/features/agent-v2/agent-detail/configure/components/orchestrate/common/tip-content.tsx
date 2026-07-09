@@ -33,7 +33,7 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
           i18nKey="agentDetail.configure.skills.richTip"
           ns="agentV2"
           components={{
-            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#skills')} />,
+            docLink: <DocsLink href={docLink('/use-dify/build/agent#skills')} />,
           }}
         />
       </span>
@@ -47,7 +47,7 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
           i18nKey="agentDetail.configure.tools.richTip"
           ns="agentV2"
           components={{
-            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#tools')} />,
+            docLink: <DocsLink href={docLink('/use-dify/build/agent#tools')} />,
           }}
         />
       </span>
@@ -60,7 +60,7 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
         i18nKey="agentDetail.configure.knowledgeRetrieval.richTip"
         ns="agentV2"
         components={{
-          docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#knowledge-retrieval')} />,
+          docLink: <DocsLink href={docLink('/use-dify/build/agent#knowledge-retrieval')} />,
         }}
       />
     )

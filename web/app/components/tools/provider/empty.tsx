@@ -95,7 +95,7 @@ const Empty = ({
           </Link>
         </div>
         <Link
-          href={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#workflow-tool`}
+          href={docLink('/use-dify/workspace/tools#workflow' as DocPathWithoutLang)}
           target="_blank"
           rel="noreferrer"
           className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary hover:text-text-accent"

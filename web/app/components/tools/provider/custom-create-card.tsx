@@ -91,7 +91,7 @@ const Contribute = ({ onRefreshData }: Props) => {
           className="min-w-0"
           title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
           linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
-          linkUrl={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#custom-tool`}
+          linkUrl={docLink('/use-dify/workspace/tools#swagger-api' as DocPathWithoutLang)}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />
       )}

@@ -45,7 +45,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   const docLink = useDocLink()
   const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
   const repository = sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
-  const apiDocLink = docLink('/use-dify/publish/developing-with-apis')
+  const apiDocLink = docLink('/api-reference/guides/get-started')
 
   return (
     <Dialog open={isShow} onOpenChange={open => !open && onClose()}>

@@ -330,7 +330,7 @@ function AgentBuildNoteInfotip() {
           i18nKey="agentDetail.configure.files.buildNote.richTooltip"
           ns="agentV2"
           components={{
-            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+            docLink: <DocsLink href={docLink('/use-dify/build/agent#the-build-note')} />,
           }}
         />
       </p>

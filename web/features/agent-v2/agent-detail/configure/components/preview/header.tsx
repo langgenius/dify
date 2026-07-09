@@ -169,7 +169,7 @@ export function AgentPreviewHeader({
                   {buildTipBody}
                   {' '}
                   <a
-                    href={docLink('/use-dify/build/new-agent/build#build-by-chatting')}
+                    href={docLink('/use-dify/build/agent#build-by-chatting')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="body-xs-regular text-text-accent hover:underline"
