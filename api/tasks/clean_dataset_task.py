@@ -36,7 +36,7 @@ def clean_dataset_task(
     indexing_technique: str,
     index_struct: str,
     collection_binding_id: str,
-    doc_form: str,
+    doc_form: str | None,
     pipeline_id: str | None = None,
 ):
     """
@@ -46,7 +46,7 @@ def clean_dataset_task(
     :param indexing_technique: indexing technique
     :param index_struct: index struct dict
     :param collection_binding_id: collection binding id
-    :param doc_form: dataset form
+    :param doc_form: dataset form, which may be missing for migrated datasets
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
