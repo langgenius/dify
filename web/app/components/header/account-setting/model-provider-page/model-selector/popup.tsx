@@ -70,6 +70,7 @@ export type PopupProps = {
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onOpenMarketplace?: () => void
+  onOpenProviderSettings?: () => void
   onHide: () => void
 }
 function Popup({
@@ -84,6 +85,7 @@ function Popup({
   onConfigureEmptyState,
   onInputValueChange,
   onOpenMarketplace,
+  onOpenProviderSettings,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
@@ -250,11 +252,16 @@ function Popup({
 
   const handleOpenSettings = useCallback(() => {
     onHide()
+    if (onOpenProviderSettings) {
+      onOpenProviderSettings()
+      return
+    }
+
     openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
       source: providerSettingsSource,
     })
-  }, [onHide, openIntegrationsSetting, providerSettingsSource])
+  }, [onHide, onOpenProviderSettings, openIntegrationsSetting, providerSettingsSource])
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
