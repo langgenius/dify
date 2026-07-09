@@ -46,6 +46,7 @@ from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
 from services.agent_drive_service import DriveFileRef
+from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
 class AgentConfigVersionKind(StrEnum):
@@ -98,6 +99,7 @@ class ConfigPushPayload(BaseModel):
 
 @dataclass(slots=True)
 class AgentConfigTarget:
+    tenant_id: str
     agent_id: str
     version_id: str
     kind: AgentConfigVersionKind
@@ -146,6 +148,7 @@ class AgentConfigService:
                 user_id=user_id,
             )
             return AgentConfigTarget(
+                tenant_id=tenant_id,
                 agent_id=target.agent_id,
                 version_id=target.version_id,
                 kind=target.kind,
@@ -191,7 +194,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": self._config_version_payload(target),
-            "items": [self._serialize_skill_item(skill) for skill in target.agent_soul.config_skills],
+            "items": self._skill_items_for_target(target),
         }
 
     def list_files(
@@ -233,9 +236,26 @@ class AgentConfigService:
             config_version_kind=config_version_kind,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
-        return ConfigDownload(filename=f"{skill.name}.zip", mime_type=mime_type or "application/zip", payload=payload)
+        try:
+            skill = self._require_skill(target.agent_soul, name=name)
+            payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
+            return ConfigDownload(
+                filename=f"{skill.name}.zip",
+                mime_type=mime_type or "application/zip",
+                payload=payload,
+            )
+        except AgentConfigServiceError as exc:
+            if exc.code != "config_skill_not_found":
+                raise
+        try:
+            result = SkillManagementService().pull_runtime_agent_skill(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                name=name,
+            )
+            return ConfigDownload(filename=result.filename, mime_type=result.mime_type, payload=result.payload)
+        except SkillManagementServiceError as exc:
+            raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404) from exc
 
     def download_skill_url(
         self,
@@ -277,8 +297,44 @@ class AgentConfigService:
             config_version_kind=config_version_kind,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
+        try:
+            skill = self._require_skill(target.agent_soul, name=name)
+            archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
+            skill_item = self._serialize_skill_item(skill)
+        except AgentConfigServiceError as exc:
+            if exc.code != "config_skill_not_found":
+                raise
+            try:
+                workspace_archive = SkillManagementService().pull_runtime_agent_skill(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    name=name,
+                )
+            except SkillManagementServiceError as skill_exc:
+                raise AgentConfigServiceError(
+                    "config_skill_not_found",
+                    "config skill not found",
+                    status_code=404,
+                ) from skill_exc
+            archive_bytes = workspace_archive.payload
+            skill_item = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                    )
+                    if item["name"] == name
+                ),
+                {
+                    "id": name,
+                    "name": name,
+                    "description": "",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": "application/zip",
+                },
+            )
         try:
             archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
         except (OSError, ValueError, zipfile.BadZipFile) as exc:
@@ -288,7 +344,7 @@ class AgentConfigService:
                 status_code=500,
             ) from exc
         return {
-            **self._serialize_skill_item(skill),
+            **skill_item,
             "source": "config_skill_zip",
             "files": archive_items,
             "skill_md": skill_md,
@@ -830,6 +886,7 @@ class AgentConfigService:
                 status_code=404,
             )
         return AgentConfigTarget(
+            tenant_id=tenant_id,
             agent_id=agent_id,
             version_id=version.id,
             kind=config_version_kind,
@@ -1124,9 +1181,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
-            "skills": {
-                "items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
-            },
+            "skills": {"items": AgentConfigService._skill_items_for_target(target)},
             "files": {
                 "items": [
                     AgentConfigService._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files
@@ -1135,6 +1190,20 @@ class AgentConfigService:
             "env_keys": AgentConfigService._env_keys(target.agent_soul),
             "note": target.agent_soul.config_note,
         }
+
+    @staticmethod
+    def _skill_items_for_target(target: AgentConfigTarget) -> list[dict[str, object]]:
+        items = [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+        seen_names = {str(item["name"]) for item in items}
+        for item in SkillManagementService().list_runtime_agent_skills(
+            tenant_id=target.tenant_id,
+            agent_id=target.agent_id,
+        ):
+            if item["name"] in seen_names:
+                continue
+            seen_names.add(str(item["name"]))
+            items.append(item)
+        return items
 
     @staticmethod
     def _config_version_payload(target: AgentConfigTarget) -> dict[str, object]:

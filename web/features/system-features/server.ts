@@ -21,13 +21,13 @@ export const serverSystemFeaturesQueryOptions = () => {
 
   return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
+    staleTime: 0,
     queryFn: async () => {
       try {
         return await serverConsoleClient.systemFeatures.get(undefined, {
           context: await getServerConsoleClientContext(),
         })
-      }
-      catch (err) {
+      } catch (err) {
         console.error('[systemFeatures] server fetch failed', err)
         return defaultSystemFeatures
       }

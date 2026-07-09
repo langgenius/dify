@@ -15,8 +15,9 @@ import { cloudSystemFeatures, defaultSystemFeatures } from './config'
  *
  * For Cloud, this query is intentionally local-only and uses `staleTime:
  * 'static'`: the payload comes from frontend config/defaults, so invalidation
- * should not re-run the same local merge. For non-Cloud, do not override
- * `staleTime`: inherit the 5-minute default from query-client-server.ts.
+ * should not re-run the same local merge. For non-Cloud, keep the query stale
+ * so a server-side fallback does not hide API-enabled features until the shared
+ * query cache expires.
  */
 export const systemFeaturesQueryOptions = () => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
@@ -31,11 +32,11 @@ export const systemFeaturesQueryOptions = () => {
 
   return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
+    staleTime: 0,
     queryFn: async () => {
       try {
         return await consoleClient.systemFeatures.get()
-      }
-      catch (err) {
+      } catch (err) {
         console.error('[systemFeatures] fetch failed, using defaults', err)
         return defaultSystemFeatures
       }

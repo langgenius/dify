@@ -1,3 +1,4 @@
+import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -39,7 +40,16 @@ type ConfigSkillDownloadQueryOptionsInput = {
 }
 
 const mocks = vi.hoisted(() => ({
-  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
+  agentSkillBindingsKey: vi.fn((_options: unknown): unknown[] => ['workspace-agent-skills']),
+  agentSkillBindingsQueryOptions: vi.fn((_options: unknown) => ({})),
+  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({
+    removed_names: ['Tender Analyzer'],
+    result: 'success',
+  })),
+  replaceAgentSkillBindingsMutationFn: vi.fn(async (input: { body: { skill_ids?: string[] } }) => ({
+    agent_id: 'agent-1',
+    skill_ids: input.body.skill_ids ?? [],
+  })),
   uploadSkillMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
     skill: {
@@ -56,6 +66,8 @@ const mocks = vi.hoisted(() => ({
   inspectQueryOptions: vi.fn((_options: ConfigSkillInspectQueryOptionsInput) => ({})),
   previewQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
   downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
+  workspaceSkillsQueryOptions: vi.fn((_options: unknown) => ({})),
+  workspaceSkillsInfiniteOptions: vi.fn((_options: unknown) => ({})),
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
 }))
@@ -156,18 +168,65 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    workspaces: {
+      current: {
+        agents: {
+          byAgentId: {
+            skills: {
+              get: {
+                key: mocks.agentSkillBindingsKey,
+                queryOptions: mocks.agentSkillBindingsQueryOptions,
+              },
+              put: {
+                mutationOptions: () => ({ mutationFn: mocks.replaceAgentSkillBindingsMutationFn }),
+              },
+            },
+          },
+        },
+        skills: {
+          get: {
+            queryOptions: mocks.workspaceSkillsQueryOptions,
+            infiniteOptions: mocks.workspaceSkillsInfiniteOptions,
+          },
+        },
+      },
+    },
   },
 }))
+
+async function openUploadSkillDialog(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(
+    screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+  )
+  await user.click(
+    screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
+    }),
+  )
+}
 
 function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return (
-    <pre data-testid="config-snapshot-probe">
-      {JSON.stringify(configSnapshot)}
-    </pre>
-  )
+  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
+}
+
+function createWorkspaceSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
+  return {
+    id: 'workspace-skill-1',
+    name: 'refund-approval',
+    display_name: 'Refund approval',
+    description: 'Handle refund requests.',
+    icon: '💳',
+    latest_published_version_id: 'version-1',
+    reference_count: 0,
+    tags: [],
+    visibility: 'workspace',
+    created_at: 1,
+    updated_at: 1,
+    ...overrides,
+  }
 }
 
 function renderAgentSkills({
@@ -213,6 +272,22 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.agentSkillBindingsKey.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+      return ['workspace-agent-skills', input]
+    })
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: [],
+          data: [],
+        }),
+      }
+    })
     mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['inspect-skill', input],
       queryFn: async () => ({
@@ -267,6 +342,38 @@ describe('AgentSkills', () => {
         url: `https://example.com/${input.params.name}.skill`,
       }),
     }))
+    mocks.workspaceSkillsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { query?: { keyword?: string } } }
+
+      return {
+        queryKey: ['workspace-skills', input],
+        queryFn: async () => ({
+          data: [],
+        }),
+      }
+    })
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => {
+          query?: { keyword?: string; limit?: number; page?: number }
+        }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 0,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
   })
 
   it('should delete a configured skill by config name', async () => {
@@ -298,7 +405,7 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await openUploadSkillDialog(user)
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -307,7 +414,9 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
@@ -340,12 +449,426 @@ describe('AgentSkills', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('should bind workspace skills without adding them to inline config skills', async () => {
+    const user = userEvent.setup()
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => {
+          query?: { keyword?: string; limit?: number; page?: number }
+        }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [
+            {
+              id: 'workspace-skill-1',
+              name: 'refund-approval',
+              display_name: 'Refund approval',
+              description: 'Handle refund requests.',
+              icon: '💳',
+              latest_published_version_id: 'version-1',
+              reference_count: 0,
+              tags: [],
+              visibility: 'workspace',
+              created_at: 1,
+              updated_at: 1,
+            },
+          ],
+          has_more: false,
+          limit: 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    await waitFor(() => {
+      expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          skill_ids: ['workspace-skill-1'],
+        },
+      })
+    })
+
+    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    expect(snapshot.config_skills).toEqual([])
+  })
+
+  it('should allow workflow agent nodes to bind workspace skills', async () => {
+    const user = userEvent.setup()
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => {
+          query?: { keyword?: string; limit?: number; page?: number }
+        }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [
+            {
+              id: 'workspace-skill-1',
+              name: 'refund-approval',
+              display_name: 'Refund approval',
+              description: 'Handle refund requests.',
+              icon: '💳',
+              latest_published_version_id: 'version-1',
+              reference_count: 0,
+              tags: [],
+              visibility: 'workspace',
+              created_at: 1,
+              updated_at: 1,
+            },
+          ],
+          has_more: false,
+          limit: 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({
+      initialDraft: defaultAgentSoulConfigFormState,
+      apiContext: {
+        agentId: 'workflow-agent-1',
+        draftType: 'draft',
+        workflow: {
+          appId: 'workflow-app-1',
+          nodeId: 'agent-node-1',
+        },
+      },
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    const workspaceMenuItem = screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+    })
+    expect(workspaceMenuItem).not.toBeDisabled()
+
+    await user.click(workspaceMenuItem)
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    await waitFor(() => {
+      expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'workflow-agent-1',
+        },
+        body: {
+          skill_ids: ['workspace-skill-1'],
+        },
+      })
+    })
+  })
+
+  it('should mark already bound workspace skills as added and prevent duplicate binding', async () => {
+    const user = userEvent.setup()
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: ['workspace-skill-1'],
+          data: [
+            {
+              ...createWorkspaceSkill(),
+              priority: 0,
+              status: 'published',
+              file_count: 1,
+              latest_published_at: 1,
+            },
+          ],
+        }),
+      }
+    })
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => {
+          query?: { keyword?: string; limit?: number; page?: number }
+        }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [
+            createWorkspaceSkill(),
+            createWorkspaceSkill({
+              id: 'draft-skill',
+              name: 'draft-skill',
+              display_name: 'Draft skill',
+              latest_published_version_id: null,
+            }),
+          ],
+          has_more: false,
+          limit: 20,
+          page: pageParam,
+          total: 2,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.skills.workspaceSelector.added'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft'),
+    ).toBeInTheDocument()
+
+    const addedSkillButton = screen
+      .getByText('agentV2.agentDetail.configure.skills.workspaceSelector.added')
+      .closest('button')
+    const draftSkillButton = screen
+      .getByText('agentV2.agentDetail.configure.skills.workspaceSelector.draft')
+      .closest('button')
+    expect(addedSkillButton).toBeDisabled()
+    expect(draftSkillButton).toBeDisabled()
+
+    expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('should fetch the next workspace skill page when scrolling the selector', async () => {
+    const user = userEvent.setup()
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => {
+          query?: { keyword?: string; limit?: number; page?: number }
+        }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data:
+            pageParam === 1
+              ? [createWorkspaceSkill()]
+              : [
+                  createWorkspaceSkill({
+                    id: 'workspace-skill-2',
+                    name: 'sales-follow-up',
+                    display_name: 'Sales follow-up',
+                  }),
+                ],
+          has_more: pageParam === 1,
+          limit: 20,
+          page: pageParam,
+          total: 2,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+    await waitFor(() => {
+      expect(screen.getAllByText('Refund approval').length).toBeGreaterThan(1)
+    })
+
+    const scrollContainer = document.querySelector('.overflow-y-auto')
+    expect(scrollContainer).not.toBeNull()
+    Object.defineProperties(scrollContainer!, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 160 },
+      scrollTop: { configurable: true, value: 80 },
+    })
+    fireEvent.scroll(scrollContainer!)
+
+    expect(await screen.findByText('Sales follow-up')).toBeInTheDocument()
+  })
+
+  it('should remove workspace skill bindings from the configured agent', async () => {
+    const user = userEvent.setup()
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: ['workspace-skill-1'],
+          data: [
+            {
+              ...createWorkspaceSkill(),
+              priority: 0,
+              status: 'published',
+              file_count: 1,
+              latest_published_at: 1,
+            },
+          ],
+        }),
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('agentV2.agentDetail.configure.skills.removeAction'))
+
+    await waitFor(() => {
+      expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          skill_ids: [],
+        },
+      })
+    })
+    expect(toast.success).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.workspaceSelector.removeSuccess',
+    )
+  })
+
+  it('should open workspace skill details in a new tab from the row menu', async () => {
+    const user = userEvent.setup()
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: ['workspace-skill-1'],
+          data: [
+            {
+              ...createWorkspaceSkill(),
+              priority: 0,
+              status: 'published',
+              file_count: 1,
+              latest_published_at: 1,
+            },
+          ],
+        }),
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('agentV2.agentDetail.configure.skills.openInLibrary'))
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/skills/workspace-skill-1',
+      '_blank',
+      'noopener,noreferrer',
+    )
+  })
+
+  it('should hide skill package guidance before an upload fails', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await openUploadSkillDialog(user)
+
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.skills.upload.warning.specification'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should show skill package guidance after failure and hide it when retrying', async () => {
+    const user = userEvent.setup()
+    mocks.uploadSkillMutationFn
+      .mockRejectedValueOnce(new Error('Backend upload error'))
+      .mockImplementationOnce(() => new Promise<never>(() => undefined))
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await openUploadSkillDialog(user)
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    await user.upload(
+      input,
+      new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' }),
+    )
+    const uploadButton = screen.getByRole('button', {
+      name: /agentDetail\.configure\.skills\.upload\.action/i,
+    })
+
+    await user.click(uploadButton)
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.skills.upload.warning.files'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.upload.warning.specification'),
+    ).toBeInTheDocument()
+
+    await user.click(uploadButton)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.skills.upload.warning.files'),
+      ).not.toBeInTheDocument()
+    })
+  })
+
   it('should not show the frontend fallback error when skill upload fails', async () => {
     const user = userEvent.setup()
     mocks.uploadSkillMutationFn.mockRejectedValueOnce(new Error('Backend upload error'))
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await openUploadSkillDialog(user)
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -354,13 +877,17 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
     })
 
-    expect(toast.error).not.toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.failed')
+    expect(toast.error).not.toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.upload.failed',
+    )
   })
 
   it('should use workflow config skill endpoints with node_id for uploads and skill member queries', async () => {
@@ -377,7 +904,7 @@ describe('AgentSkills', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await openUploadSkillDialog(user)
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
       expect(element).not.toBeNull()
@@ -385,7 +912,9 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn.mock.calls[0]?.[0]).toEqual({
@@ -406,19 +935,21 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            app_id: 'app-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              version_id: 'draft-1',
+            },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -426,23 +957,27 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills()
 
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*Tender Analyzer/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*Tender Analyzer/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            version_id: undefined,
-          },
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              version_id: undefined,
+            },
+          }),
         }),
-      }))
+      )
     })
     expect(mocks.downloadUrl).toHaveBeenCalledWith({
       url: 'https://example.com/Tender Analyzer.skill',
@@ -464,24 +999,28 @@ describe('AgentSkills', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*Tender Analyzer/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*Tender Analyzer/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            app_id: 'app-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              version_id: 'draft-1',
+            },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -492,31 +1031,35 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+          }),
         }),
-      }))
+      )
     })
 
     await user.click(screen.getByText('references').closest('button')!)
     await user.click(screen.getByText('guide.md').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: expect.objectContaining({
-            path: 'references/guide.md',
+      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: expect.objectContaining({
+              path: 'references/guide.md',
+            }),
           }),
         }),
-      }))
+      )
     })
   })
 
@@ -542,22 +1085,26 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
     await user.click(await screen.findByText('references'))
     await user.click(screen.getByText('guide.md').closest('button')!)
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*guide\.md/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*guide\.md/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: expect.objectContaining({
-            path: 'references/guide.md',
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: expect.objectContaining({
+              path: 'references/guide.md',
+            }),
           }),
         }),
-      }))
+      )
     })
     expect(mocks.downloadUrl).toHaveBeenCalledWith({
       url: 'https://example.com/references/guide.md',
@@ -570,9 +1117,11 @@ describe('AgentSkills', () => {
     renderAgentSkills()
 
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
-    await user.click(await screen.findByRole('button', {
-      name: /common\.operation\.download.*SKILL\.md/,
-    }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*SKILL\.md/,
+      }),
+    )
 
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: expect.any(Blob),
@@ -580,19 +1129,23 @@ describe('AgentSkills', () => {
     })
     const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
     await expect(blob.text()).resolves.toBe('# Skill\n')
-    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({
-        query: expect.objectContaining({
-          path: 'SKILL.md',
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          query: expect.objectContaining({
+            path: 'SKILL.md',
+          }),
         }),
       }),
-    }))
+    )
   })
 
   it('should disable add and remove actions when the section is read only', () => {
     const { container } = renderAgentSkills({ readOnly: true })
 
-    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    ).not.toBeInTheDocument()
     expect(container.querySelector('[data-agent-skill-remove-button]')).toBeNull()
   })
 })
