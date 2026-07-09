@@ -49,7 +49,7 @@ def __getattr__(name: str) -> Any:
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     module = import_module(_EXPORTS[name])
-    value = getattr(module, name)
+    value = getattr(module, name)  # noqa: no-new-getattr lazy export proxy
     globals()[name] = value
     return value
 

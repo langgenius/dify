@@ -149,7 +149,7 @@ class ShellctlService:
         """Stop background work and close the SQLite engine."""
 
         for task_name in ("_gc_task", "_monitor_task"):
-            task = getattr(self, task_name)
+            task = getattr(self, task_name)  # noqa: no-new-getattr dynamic task cleanup
             if task is not None:
                 task.cancel()
                 with anyio.CancelScope(shield=True):
@@ -281,7 +281,7 @@ class ShellctlService:
                     JobStatusName.RUNNING,
                 },
                 target=JobStatusName.FAILED,
-                reason=getattr(exc, "code", "start_failed"),
+                reason=getattr(exc, "code", "start_failed"),  # noqa: no-new-getattr exception code fallback
                 message=str(exc),
             )
             await self._tmux.cleanup_session(job_id=job_id)
