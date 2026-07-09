@@ -74,7 +74,27 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
@@ -193,6 +213,32 @@ describe('CreateAppModal', () => {
         isRbacEnabled: false,
       }),
     )
+  })
+
+  it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    let resolveTracking: (() => void) | undefined
+    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockTrackCreateApp.mockReturnValue(new Promise<void>((resolve) => {
+      resolveTracking = resolve
+    }))
+    renderModal()
+
+    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+      target: { value: 'Tracked App' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+
+    await waitFor(() => {
+      expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+    })
+    expect(mockGetRedirection).not.toHaveBeenCalled()
+
+    resolveTracking?.()
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, expect.any(Object))
+    })
   })
 
   it('shows error toast when creation fails', async () => {

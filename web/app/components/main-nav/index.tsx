@@ -9,11 +9,8 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import {
-  isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
-  langGeniusVersionInfoAtom,
-} from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { isCurrentWorkspaceDatasetOperatorAtom, isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'

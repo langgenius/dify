@@ -49,9 +49,7 @@ class SavedMessageListApi(WebApiResource):
         adapter = TypeAdapter(SavedMessageItem)
         items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
         return SavedMessageInfiniteScrollPagination(
-            limit=pagination.limit,
-            has_more=pagination.has_more,
-            data=items,
+            limit=pagination.limit, has_more=pagination.has_more, data=items
         ).model_dump(mode="json")
 
     @web_ns.doc("Save Message")
@@ -102,6 +100,7 @@ class SavedMessageApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(204, "Message removed successfully")
     def delete(self, app_model: App, end_user: EndUser, message_id: UUID):
         message_id_str = str(message_id)
 

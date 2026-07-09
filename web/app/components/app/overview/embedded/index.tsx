@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,

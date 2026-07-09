@@ -10,7 +10,6 @@ import { Plan } from '@/app/components/billing/type'
 import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
-  userProfilePlaceholder,
 } from '@/context/app-context-defaults'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -60,6 +59,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
 
+const testUserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
+
 const createProviderContext = ({
   enableBilling = false,
   planType = Plan.professional,
@@ -77,7 +85,7 @@ const createProviderContext = ({
 }
 
 const createAppContextValue = (): AppContextStateMockState => ({
-  userProfile: userProfilePlaceholder,
+  userProfile: testUserProfile,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
     ...initialWorkspaceInfo,

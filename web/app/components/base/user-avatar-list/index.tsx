@@ -4,7 +4,7 @@ import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/ava
 import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 
 type User = {
   id: string

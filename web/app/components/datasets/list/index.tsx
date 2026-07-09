@@ -6,11 +6,9 @@ import { useAtomValue } from 'jotai'
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  isCurrentWorkspaceOwnerAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
