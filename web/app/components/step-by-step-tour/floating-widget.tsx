@@ -72,7 +72,7 @@ export function FloatingChecklist({
     <section
       aria-label={title}
       className={cn(
-        'flex max-h-[calc(100vh-16px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-[#101828]/8 bg-white/95 bg-clip-padding shadow-[0_8px_8px_-4px_rgba(9,9,11,0.03),0_20px_24px_-4px_rgba(9,9,11,0.08)] backdrop-blur-[10px]',
+        'flex max-h-[calc(100vh-16px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur bg-clip-padding shadow-[0_8px_8px_-4px_var(--color-shadow-shadow-1),0_20px_24px_-4px_var(--color-shadow-shadow-5)] backdrop-blur-[10px]',
         className,
       )}
     >

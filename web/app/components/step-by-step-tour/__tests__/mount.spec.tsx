@@ -683,7 +683,7 @@ describe('StepByStepTourMount', () => {
     expect(popoverPositioner).toHaveAttribute('data-align', 'start')
     expect(popoverPopup).toHaveClass('overflow-visible', 'bg-transparent', 'shadow-none')
     expect(checklist).toHaveClass('max-h-[calc(100vh-16px)]', 'overflow-y-auto')
-    expect(checklist).toHaveClass('bg-white/95', 'bg-clip-padding', 'backdrop-blur-[10px]', 'border-[#101828]/8')
+    expect(checklist).toHaveClass('bg-components-panel-bg-blur', 'bg-clip-padding', 'backdrop-blur-[10px]', 'border-components-panel-border')
     expect(screen.getByRole('button', { name: 'Skip tour' })).toHaveClass('h-6', 'px-1.5')
     expect(screen.getByRole('button', { name: 'Minimize tour' }).querySelector('span[aria-hidden="true"]'))
       .toHaveClass('i-ri-arrow-left-down-line', 'size-4')

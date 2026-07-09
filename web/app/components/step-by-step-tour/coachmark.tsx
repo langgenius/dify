@@ -249,7 +249,7 @@ export function StepByStepTourCoachmark({
           <div
             aria-hidden="true"
             data-step-by-step-tour-highlight=""
-            className="pointer-events-none fixed z-50 rounded-xl shadow-[0_0_0_9999px_rgb(15_23_42/0.58)]"
+            className="pointer-events-none fixed z-50 rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)]"
             style={highlightStyle}
           />
           <div
