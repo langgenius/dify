@@ -29,6 +29,7 @@ import { useSetStepByStepTourSkipRecoveryVisible, useStepByStepTourSkipRecoveryV
 import { StepByStepTourCoachmark } from './coachmark'
 import { STEP_BY_STEP_TOUR_TASKS } from './constants'
 import { FloatingChecklist } from './floating-widget'
+import { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue } from './shell-storage'
 import {
   getStepByStepTourEnabledForCurrentWorkspace,
   useSetStepByStepTourAccountState as useSetStepByStepTourAccount,
@@ -145,6 +146,8 @@ export default function StepByStepTourMount({
   const stepByStepTourActions = useStepByStepTourStateActions()
   const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
   const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
+  const shellMode = useStepByStepTourShellModeValue()
+  const setShellMode = useSetStepByStepTourShellMode()
   const anchorRef = useRef<HTMLDivElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(accountState.skipped)
@@ -194,7 +197,7 @@ export default function StepByStepTourMount({
   const activeGuideIndex = accountState.activeGuideIndex ?? 0
   const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
-  const minimized = Boolean(activeTask) || accountState.minimized
+  const minimized = Boolean(activeTask) || shellMode === 'collapsed'
   const activeGuideIndexes = activeGuides.length > 0
     ? getActiveGuideIndexes(activeGuides, accountState.activeGuideIndexes)
         .filter(index => isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences))
@@ -522,8 +525,9 @@ export default function StepByStepTourMount({
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
       activeGuideIndexes: undefined,
-      minimized: true,
+      minimized: false,
     })
+    setShellMode('expanded')
   }
 
   const getNextVisibleActiveGuideIndex = (startIndex: number) => {
@@ -596,6 +600,7 @@ export default function StepByStepTourMount({
           activeGuideIndexes: undefined,
           minimized: false,
         })
+        setShellMode('expanded')
         return
       }
 
@@ -633,6 +638,7 @@ export default function StepByStepTourMount({
       activeGuideIndexes: undefined,
       minimized: false,
     })
+    setShellMode('expanded')
   }
 
   const dismissCompletedTour = () => {
@@ -647,6 +653,7 @@ export default function StepByStepTourMount({
       activeGuideIndexes: undefined,
       minimized: false,
     })
+    setShellMode('expanded')
   }
 
   const floatingChecklist = (
@@ -677,8 +684,14 @@ export default function StepByStepTourMount({
       restoreLabel={t('stepByStepTour.restore')}
       getTaskCompleteLabel={taskTitle => t('stepByStepTour.markTaskComplete', { title: taskTitle })}
       getTaskIncompleteLabel={taskTitle => t('stepByStepTour.markTaskIncomplete', { title: taskTitle })}
-      onMinimize={() => updateAccountState({ ...accountState, minimized: true })}
-      onRestore={() => updateAccountState({ ...accountState, minimized: false })}
+      onMinimize={() => {
+        updateAccountState({ ...accountState, minimized: true })
+        setShellMode('collapsed')
+      }}
+      onRestore={() => {
+        updateAccountState({ ...accountState, minimized: false })
+        setShellMode('expanded')
+      }}
       onSkip={skipTour}
       onCompleteTask={(taskId) => {
         const guides = getStepByStepTourGuides(taskId, accountState.activeGuideGroup)
@@ -722,6 +735,7 @@ export default function StepByStepTourMount({
             activeGuideIndexes: undefined,
             minimized: false,
           })
+          setShellMode('expanded')
           return
         }
 
@@ -786,7 +800,7 @@ export default function StepByStepTourMount({
       {visible && (!allTasksCompleted || completionPromptVisible) && (
         <Popover open={overlayVisible && expanded}>
           <div ref={anchorRef} aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-0 w-full" />
-          {minimized && floatingChecklist}
+          {checklistMinimized && floatingChecklist}
           {overlayVisible && (
             <PopoverContent
               placement="top-start"

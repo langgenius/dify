@@ -22,6 +22,7 @@ import {
   StepByStepTourTestStateObserver,
   StepByStepTourTestUiStateHydrator,
 } from '@/app/components/step-by-step-tour/__tests__/test-utils'
+import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/shell-storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -542,6 +543,7 @@ describe('MainNav', () => {
 
   it('places the step-by-step tour entry above the profile footer without a local z-index override', async () => {
     mockStepByStepTour.setUiState({ minimized: true })
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
 
     renderMainNav()
 
@@ -840,6 +842,7 @@ describe('MainNav', () => {
   })
 
   it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     mockStepByStepTour.setState({
       first_workspace_id: null,
       manually_enabled_workspace_ids: [],
@@ -859,6 +862,7 @@ describe('MainNav', () => {
         body: { action: 'enable_current_workspace' },
       })
       expect(mockStepByStepTour.observedState?.manuallyEnabledWorkspaceIds).toEqual(['workspace-1'])
+      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))

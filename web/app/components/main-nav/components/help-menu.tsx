@@ -29,6 +29,7 @@ import {
   trackStepByStepTourEvent,
 } from '@/app/components/step-by-step-tour/analytics'
 import { useSetStepByStepTourSkipRecoveryVisible, useStepByStepTourSkipRecoveryVisible } from '@/app/components/step-by-step-tour/atoms'
+import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/shell-storage'
 import {
   getStepByStepTourEnabledForCurrentWorkspace,
   useStepByStepTourAccountStateValue,
@@ -97,6 +98,7 @@ const HelpMenu = ({
   const stepByStepTourActions = useStepByStepTourStateActions()
   const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
   const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
+  const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
@@ -125,10 +127,13 @@ const HelpMenu = ({
       })
     }
 
-    if (checked)
+    if (checked) {
+      setStepByStepTourShellMode('expanded')
       stepByStepTourActions.enableCurrentWorkspace(currentWorkspaceId, { onSuccess: trackVisibilityToggled })
-    else
+    }
+    else {
       stepByStepTourActions.disableCurrentWorkspace(currentWorkspaceId, { onSuccess: trackVisibilityToggled })
+    }
 
     if (checked)
       setOpen(false)

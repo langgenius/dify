@@ -13,7 +13,7 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppCard from '@/app/components/explore/app-card'
@@ -251,6 +251,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const isCurrentTryAppFromLearnDifyRef = useRef(false)
   const shouldCompleteHomeTourOnCreateRef = useRef(false)
   const isSubmittingHomeTourCreateRef = useRef(false)
+  const wasHomeTryAppCreateGuideActiveRef = useRef(false)
   const isShowTryAppPanel = !!currentTryApp
   const shouldForceShowLearnDifyForTour = stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
     && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
@@ -330,8 +331,28 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
 
   const hideTryAppPanel = useCallback(() => {
     abandonHomeTourCreate()
+    // eslint-disable-next-line react/set-state-in-effect -- Also called from the tour-state sync effect when the Learn Dify action guide is skipped.
     setCurrentTryApp(undefined)
   }, [abandonHomeTourCreate])
+  const homeTryAppCreateGuideActive = stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
+    && stepByStepTourAccountState.activeGuideIndex === 1
+    && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+  useEffect(() => {
+    if (!isCurrentTryAppFromLearnDifyRef.current || !currentTryApp || isShowCreateModal) {
+      wasHomeTryAppCreateGuideActiveRef.current = false
+      return
+    }
+
+    if (homeTryAppCreateGuideActive) {
+      wasHomeTryAppCreateGuideActiveRef.current = true
+      return
+    }
+
+    if (wasHomeTryAppCreateGuideActiveRef.current) {
+      wasHomeTryAppCreateGuideActiveRef.current = false
+      hideTryAppPanel()
+    }
+  }, [currentTryApp, hideTryAppPanel, homeTryAppCreateGuideActive, isShowCreateModal])
   const handleTryApp = useCallback((params: TryAppSelection) => {
     isCurrentTryAppFromLearnDifyRef.current = false
     setCurrentTryApp(params)

@@ -16,6 +16,10 @@ import {
   StepByStepTourTestStateObserver,
   StepByStepTourTestUiStateHydrator,
 } from '@/app/components/step-by-step-tour/__tests__/test-utils'
+import {
+  useSetStepByStepTourAccountState,
+  useStepByStepTourAccountStateValue,
+} from '@/app/components/step-by-step-tour/storage'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -438,6 +442,7 @@ const mockAppCreatePermission = (hasEditPermission: boolean) => {
 type RenderOptions = {
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
+  extra?: ReactNode
   isCloudEdition?: boolean
 }
 
@@ -495,6 +500,7 @@ const renderAppList = (
         <StepByStepTourTestUiStateHydrator initialState={mockStepByStepTour.uiState}>
           <StepByStepTourTestStateObserver onChange={mockStepByStepTour.setObservedState} />
           {children}
+          {options.extra}
         </StepByStepTourTestUiStateHydrator>
       </SystemFeaturesWrapper>
     </JotaiProvider>
@@ -504,6 +510,30 @@ const renderAppList = (
     { searchParams },
   )
   return { ...rendered, queryClient }
+}
+
+function SkipHomeGuideProbe() {
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+
+  return (
+    <button
+      type="button"
+      data-testid="skip-home-guide"
+      onClick={() => setStepByStepTourAccountState({
+        ...stepByStepTourAccountState,
+        activeTaskId: undefined,
+        activeGuideIndex: undefined,
+        activeGuideGroup: undefined,
+        activeGuideIndexes: undefined,
+        minimized: false,
+      })}
+    >
+      skip home guide
+    </button>
+  )
 }
 
 describe('AppList', () => {
@@ -902,6 +932,45 @@ describe('AppList', () => {
         expect(state?.activeGuideIndex).toBe(1)
         expect(state?.completedTaskIds).toEqual([])
       })
+    })
+
+    it('should close the Learn Dify detail when the home action guide is skipped', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockStepByStepTour.setUiState({
+        activeTaskId: 'home',
+        activeGuideIndex: 0,
+        activeGuideIndexes: [0, 1],
+        minimized: true,
+      })
+
+      renderAppList(true, undefined, undefined, {
+        extra: <SkipHomeGuideProbe />,
+        isCloudEdition: true,
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
+
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('try-app-create')).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
+      )
+      await waitFor(() => {
+        expect(mockStepByStepTour.observedState?.activeGuideIndex).toBe(1)
+      })
+
+      fireEvent.click(screen.getByTestId('skip-home-guide'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
+      })
+      expect(mockStepByStepTour.observedState?.activeTaskId).toBeUndefined()
+      expect(mockStepByStepTour.observedState?.activeGuideIndex).toBeUndefined()
+      expect(mockStepByStepTour.observedState?.completedTaskIds).toEqual([])
     })
 
     it('should complete the Learn Dify tour when a no-create user opens a lesson detail', async () => {
