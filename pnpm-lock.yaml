@@ -405,6 +405,9 @@ catalogs:
     jotai:
       specifier: 2.20.1
       version: 2.20.1
+    jotai-effect:
+      specifier: 2.3.1
+      version: 2.3.1
     jotai-scope:
       specifier: 0.11.0
       version: 0.11.0
@@ -1252,6 +1255,9 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      jotai-effect:
+        specifier: 'catalog:'
+        version: 2.3.1(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))
       jotai-scope:
         specifier: 'catalog:'
         version: 0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
@@ -7363,6 +7369,12 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jotai-effect@2.3.1:
+    resolution: {integrity: sha512-FBBVXDM2podbbxJsZ19+uDv45LxeXoVA5yh6CfkQ35AVCuRHj7Lanlcjiea3b67Q7+/MMGXWf8+GeB73JcbeMg==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      jotai: '>=2.20.0'
 
   jotai-scope@0.11.0:
     resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
@@ -16663,6 +16675,10 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jotai-effect@2.3.1(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)):
+    dependencies:
+      jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+
   jotai-scope@0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
     dependencies:
       jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
@@ -20034,6 +20050,7 @@ time:
   i18next@26.3.3: '2026-06-26T11:23:58.220Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.8: '2026-05-08T15:09:33.021Z'
+  jotai-effect@2.3.1: '2026-05-13T18:51:15.911Z'
   jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
   jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
   jotai@2.20.1: '2026-06-11T06:30:45.782Z'

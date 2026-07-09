@@ -10,18 +10,20 @@ Feature: Agent v2 build draft
     Then Agent v2 Build chat should be blocked until a model is configured
     And the Agent v2 Build draft should not be checked out
 
-  @external-model @agent-backend-runtime @stable-model
-  Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
+  @external-model @agent-backend-runtime @agent-decision-model
+  Scenario: Generating a Build note draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    And the Agent Builder agent-decision chat model is available
     And the Agent v2 runtime backend is available
-    And a runnable Agent v2 test agent has been created via API
+    And a runnable Agent v2 test agent using the agent-decision model has been created via API
     When I open the Agent v2 configure page
     And I generate an Agent v2 Build draft from the fixed instruction
     Then I should see the Agent v2 Build draft pending changes
     And I should see the Agent v2 Build mode confirmation state
+    And the Agent v2 Build draft should include the generated build note
+    And I should see the generated Agent v2 build note in Configure
     And the normal Agent v2 draft should still use the normal E2E prompt
-    And the normal Agent v2 draft should not include the e2e-summary-skill Skill
+    And the normal Agent v2 draft should not include the generated build note
 
   @core
   Scenario: Discarding a Build draft keeps the original Agent configuration
