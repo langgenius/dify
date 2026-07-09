@@ -96,8 +96,11 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "ARG UV_VERSION=0.8.9" in dockerfile
     assert "ARG DIFY_AGENT_TOOL_SPEC=.[grpc,shellctl-server]" in dockerfile
     assert "SHELL_SESSION_MANAGER_TOOL_SPEC" not in dockerfile
+    assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" not in dockerfile
+    assert 'ENV PATH="${UV_TOOL_BIN_DIR}:${PATH}"' not in dockerfile
     assert "UV_TOOL_DIR=/opt/dify-agent-tools/envs" in dockerfile
     assert "UV_TOOL_BIN_DIR=/opt/dify-agent-tools/bin" in dockerfile
+    assert 'ENV PATH="/opt/dify-agent-tools/bin:${PATH}"' in dockerfile
     assert "bash" in dockerfile
     assert "git" in dockerfile
     assert "jq" in dockerfile
@@ -110,9 +113,8 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "uv export --frozen --no-dev --all-extras --no-emit-project --no-hashes" in dockerfile
     assert "> /tmp/dify-agent-constraints.txt" in dockerfile
     assert '--constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${DIFY_AGENT_TOOL_SPEC}"' in dockerfile
-    assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" in dockerfile
-    assert "COPY --from=tools ${UV_TOOL_DIR} ${UV_TOOL_DIR}" in dockerfile
-    assert "COPY --from=tools ${UV_TOOL_BIN_DIR} ${UV_TOOL_BIN_DIR}" in dockerfile
+    assert "COPY --from=tools /opt/dify-agent-tools/envs /opt/dify-agent-tools/envs" in dockerfile
+    assert "COPY --from=tools /opt/dify-agent-tools/bin /opt/dify-agent-tools/bin" in dockerfile
     assert "VIRTUAL_ENV" not in dockerfile
     assert "uv sync" not in dockerfile
     assert "mkdir -p /mnt/drive" in dockerfile

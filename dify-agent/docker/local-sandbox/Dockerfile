@@ -16,11 +16,7 @@ ARG DIFY_AGENT_TOOL_SPEC=.[grpc,shellctl-server]
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive \
-    UV_TOOL_DIR=/opt/dify-agent-tools/envs \
-    UV_TOOL_BIN_DIR=/opt/dify-agent-tools/bin
-ENV PATH="${UV_TOOL_BIN_DIR}:${PATH}"
+    PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -68,15 +64,19 @@ COPY src ./src
 
 RUN uv export --frozen --no-dev --all-extras --no-emit-project --no-hashes \
         > /tmp/dify-agent-constraints.txt \
-    && uv tool install --force --python /usr/local/bin/python --no-python-downloads \
+    && UV_TOOL_DIR=/opt/dify-agent-tools/envs \
+        UV_TOOL_BIN_DIR=/opt/dify-agent-tools/bin \
+        uv tool install --force --python /usr/local/bin/python --no-python-downloads \
         --constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${DIFY_AGENT_TOOL_SPEC}" \
     && rm -f /tmp/dify-agent-constraints.txt
 
 
 FROM base AS production
 
-COPY --from=tools ${UV_TOOL_DIR} ${UV_TOOL_DIR}
-COPY --from=tools ${UV_TOOL_BIN_DIR} ${UV_TOOL_BIN_DIR}
+ENV PATH="/opt/dify-agent-tools/bin:${PATH}"
+
+COPY --from=tools /opt/dify-agent-tools/envs /opt/dify-agent-tools/envs
+COPY --from=tools /opt/dify-agent-tools/bin /opt/dify-agent-tools/bin
 
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
