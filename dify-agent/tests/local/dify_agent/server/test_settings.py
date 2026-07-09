@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
-from dify_agent.server.settings import DEFAULT_SERVER_SECRET_KEY, ServerSettings
+from dify_agent.server.settings import ServerSettings
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -48,7 +48,7 @@ def test_server_settings_defaults_shellctl_auth_token_to_none(
     assert settings.shellctl_auth_token is None
 
 
-def test_server_settings_defaults_server_secret_key(
+def test_server_settings_defaults_server_secret_key_to_none(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -57,7 +57,7 @@ def test_server_settings_defaults_server_secret_key(
 
     settings = ServerSettings()
 
-    assert settings.server_secret_key == DEFAULT_SERVER_SECRET_KEY
+    assert settings.server_secret_key is None
 
 
 def test_server_settings_reads_agent_stub_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -87,17 +87,15 @@ def test_server_settings_ignores_obsolete_legacy_settings_namespace(monkeypatch:
     assert settings.agent_stub_api_base_url is None
 
 
-def test_server_settings_uses_default_secret_key_for_agent_stub_base_url(
+def test_server_settings_rejects_public_agent_stub_api_base_url_without_secret_key(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.delenv("DIFY_AGENT_SERVER_SECRET_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
-    settings = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
-
-    assert settings.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
-    assert settings.server_secret_key == DEFAULT_SERVER_SECRET_KEY
+    with pytest.raises(ValidationError, match="DIFY_AGENT_SERVER_SECRET_KEY"):
+        _ = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
 
 
 def test_server_settings_rejects_agent_stub_api_base_url_with_query_or_fragment() -> None:
@@ -199,13 +197,7 @@ def test_server_settings_rejects_inner_api_url_with_query_or_fragment() -> None:
 
 
 def test_server_settings_create_agent_stub_token_codec_returns_none_without_secret() -> None:
-    assert ServerSettings(server_secret_key=None).create_agent_stub_token_codec() is None
-
-
-def test_server_settings_create_agent_stub_token_codec_returns_codec_with_default_secret() -> None:
-    codec = ServerSettings().create_agent_stub_token_codec()
-
-    assert isinstance(codec, AgentStubTokenCodec)
+    assert ServerSettings().create_agent_stub_token_codec() is None
 
 
 def test_server_settings_create_agent_stub_token_codec_returns_codec_when_secret_is_configured() -> None:

@@ -25,7 +25,6 @@ from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bin
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
 
 DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
-DEFAULT_SERVER_SECRET_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY"
 
 
 class ServerSettings(BaseSettings):
@@ -43,7 +42,7 @@ class ServerSettings(BaseSettings):
     shellctl_auth_token: str | None = None
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
-    server_secret_key: str | None = DEFAULT_SERVER_SECRET_KEY
+    server_secret_key: str | None = None
     outbound_http_connect_timeout: float = Field(default=10.0, ge=0)
     outbound_http_read_timeout: float = Field(default=600.0, ge=0)
     outbound_http_write_timeout: float = Field(default=30.0, ge=0)
@@ -181,4 +180,4 @@ class ServerSettings(BaseSettings):
         )
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "DEFAULT_SERVER_SECRET_KEY", "ServerSettings"]
+__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]
