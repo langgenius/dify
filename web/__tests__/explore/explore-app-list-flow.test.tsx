@@ -10,7 +10,6 @@ import type { App } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createTestQueryClient, renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import AppList from '@/app/components/explore/app-list'
-import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
@@ -119,10 +118,37 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: vi.fn(),
@@ -198,15 +224,15 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 })
 
 const mockMemberRole = (hasEditPermission: boolean) => {
-  ;(useAppContext as Mock).mockReturnValue({
+  mockUseAppContext.mockReturnValue({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
-  ;(useMembers as Mock).mockReturnValue({
+  vi.mocked(useMembers).mockReturnValue({
     data: {
       accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
     },
-  })
+  } as unknown as ReturnType<typeof useMembers>)
 }
 
 const localeInput = { query: { language: 'en' } }

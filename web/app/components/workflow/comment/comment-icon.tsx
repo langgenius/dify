@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import CommentPreview from './comment-preview'
 
 type CommentIconProps = {

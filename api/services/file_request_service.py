@@ -45,6 +45,7 @@ class FileRequestService:
         user_from: UserFrom | str,
         invoke_from: InvokeFrom | str,
         file_mapping: Mapping[str, Any],
+        for_external: bool = True,
     ) -> DownloadFileRequestResult:
         """Resolve one file mapping into signed download metadata.
 
@@ -61,7 +62,7 @@ class FileRequestService:
         )
         with bind_file_access_scope(scope):
             file = self._build_file(mapping=file_mapping, tenant_id=tenant_id)
-            download_url = file_helpers.resolve_file_url(file, for_external=True)
+            download_url = file_helpers.resolve_file_url(file, for_external=for_external)
 
         if not download_url:
             raise ValueError("file does not support signed download")

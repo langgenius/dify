@@ -12,7 +12,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useMembers } from '@/service/use-common'
 
 type CreatorsFilterProps = {

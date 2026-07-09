@@ -29,8 +29,9 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import ConfigContext from '@/context/debug-configuration'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'

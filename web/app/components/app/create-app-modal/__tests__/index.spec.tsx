@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
@@ -21,6 +20,7 @@ const mockAppContextState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -74,10 +74,27 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
@@ -100,7 +117,6 @@ const mockCreateApp = vi.mocked(createApp)
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
 const mockUseProviderContext = vi.mocked(useProviderContext)
-const mockUseAppContext = vi.mocked(useAppContext)
 const { mockToastSuccess, mockToastError } = toastMocks
 
 const defaultPlanUsage = {
@@ -148,7 +164,7 @@ describe('CreateAppModal', () => {
     mockUseAppContext.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
-    } as unknown as ReturnType<typeof useAppContext>)
+    })
     mockAppContextState.userProfile = { id: 'user-1' }
     mockAppContextState.workspacePermissionKeys = ['app.create_and_management']
     mockSetItem.mockClear()
@@ -197,6 +213,32 @@ describe('CreateAppModal', () => {
         isRbacEnabled: false,
       }),
     )
+  })
+
+  it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    let resolveTracking: (() => void) | undefined
+    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockTrackCreateApp.mockReturnValue(new Promise<void>((resolve) => {
+      resolveTracking = resolve
+    }))
+    renderModal()
+
+    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+      target: { value: 'Tracked App' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+
+    await waitFor(() => {
+      expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+    })
+    expect(mockGetRedirection).not.toHaveBeenCalled()
+
+    resolveTracking?.()
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, expect.any(Object))
+    })
   })
 
   it('shows error toast when creation fails', async () => {

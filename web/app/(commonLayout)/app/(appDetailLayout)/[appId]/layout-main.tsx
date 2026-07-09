@@ -10,13 +10,9 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import {
-  currentWorkspaceAtom,
-  currentWorkspaceLoadingAtom,
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'

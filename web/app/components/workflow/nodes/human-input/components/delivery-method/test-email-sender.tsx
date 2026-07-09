@@ -25,7 +25,8 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { currentWorkspaceAtom, userProfileEmailAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'

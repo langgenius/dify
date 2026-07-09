@@ -2,6 +2,7 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useAtomValue } from 'jotai'
 import {
   useEffect,
   useMemo,
@@ -19,7 +20,9 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
@@ -45,16 +48,19 @@ const WorkflowAppWithAdditionalContext = () => {
     fileUploadConfigResponse,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
-  const { isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const appId = appDetail?.id
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
@@ -78,8 +84,8 @@ const WorkflowAppWithAdditionalContext = () => {
       // Cancel any pending debounced sync operations
       const { debouncedSyncWorkflowDraft } = workflowStore.getState()
       // The debounced function from lodash has a cancel method
-      if (debouncedSyncWorkflowDraft && 'cancel' in debouncedSyncWorkflowDraft)
-        (debouncedSyncWorkflowDraft as any).cancel()
+      const cancellableSyncWorkflowDraft = debouncedSyncWorkflowDraft as { cancel?: () => void } | undefined
+      cancellableSyncWorkflowDraft?.cancel?.()
     }
   }, [workflowStore])
 

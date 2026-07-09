@@ -31,14 +31,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      timezone: 'Asia/Shanghai',
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,

@@ -9,7 +9,6 @@ import hyoban from 'eslint-plugin-hyoban'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
-import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
   GENERATED_IGNORES,
@@ -105,16 +104,6 @@ export default antfu(
   },
   storybook.configs['flat/recommended'],
   ...pluginQuery.configs['flat/recommended'],
-  // sonar
-  {
-    rules: {
-      // Manually pick rules that are actually useful and not slow.
-      // Or we can just drop the plugin entirely.
-    },
-    plugins: {
-      sonarjs: sonar,
-    },
-  },
   {
     files: [GLOB_TS, GLOB_TSX],
     ignores: GLOB_TESTS,
@@ -150,7 +139,6 @@ export default antfu(
   {
     files: ['i18n/**/*.json'],
     rules: {
-      'sonarjs/max-lines': 'off',
       'max-lines': 'off',
       'jsonc/sort-keys': 'error',
 

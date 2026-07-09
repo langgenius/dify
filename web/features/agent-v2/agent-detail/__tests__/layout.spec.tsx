@@ -76,7 +76,7 @@ describe('AgentDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/roster')
+      expect(mockReplace).toHaveBeenCalledWith('/agents')
     })
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })

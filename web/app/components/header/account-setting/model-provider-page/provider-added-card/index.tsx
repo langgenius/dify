@@ -15,7 +15,7 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'

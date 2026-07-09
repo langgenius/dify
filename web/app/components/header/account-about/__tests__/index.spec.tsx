@@ -1,4 +1,4 @@
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import AccountAbout from '../index'
@@ -13,12 +13,16 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 describe('AccountAbout', () => {
-  const mockVersionInfo: LangGeniusVersionResponse = {
+  const mockVersionInfo: LangGeniusVersionInfo = {
     current_version: '0.6.0',
     latest_version: '0.6.0',
     release_notes: 'https://github.com/langgenius/dify/releases/tag/0.6.0',
     version: '0.6.0',
     release_date: '2024-01-01',
+    features: {
+      can_replace_logo: false,
+      model_load_balancing_enabled: false,
+    },
     can_auto_update: false,
     current_env: 'production',
   }

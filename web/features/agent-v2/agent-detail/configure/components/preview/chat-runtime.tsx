@@ -25,6 +25,7 @@ import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -35,7 +36,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -260,6 +261,7 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   id: thought.id,
   tool: thought.tool ?? '',
   thought: thought.thought ?? '',
+  answer: thought.answer ?? '',
   tool_input: thought.tool_input ?? '',
   message_id: thought.message_id,
   conversation_id: conversationId,
@@ -449,6 +451,7 @@ export type AgentChatRuntimeProps = {
   conversationId?: string | null
   draftType?: 'debug_build'
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -470,6 +473,7 @@ export function AgentChatRuntime({
   conversationId,
   draftType,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -534,6 +538,7 @@ export function AgentChatRuntime({
       draftType={draftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
+      inputAutoFocus={inputAutoFocus}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={handleClearChatListChange}
@@ -558,6 +563,7 @@ function AgentPreviewChatSession({
   draftType,
   initialChatTree,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -578,6 +584,7 @@ function AgentPreviewChatSession({
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -634,6 +641,7 @@ function AgentPreviewChatSession({
     clearChatList,
     onClearChatListChange,
     conversationId ?? undefined,
+    { isNewAgent: true },
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -754,6 +762,9 @@ function AgentPreviewChatSession({
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
+        // Build chat opts out so it does not steal focus from the configure editor.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={inputAutoFocus}
         sendButtonLoading={sendButtonLoading}
         showFileUpload={false}
         visionConfig={config.file_upload}
@@ -804,6 +815,7 @@ function AgentPreviewChatSession({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      renderAgentContent={AgentRosterResponseContent}
       noSpacing
     />
   )

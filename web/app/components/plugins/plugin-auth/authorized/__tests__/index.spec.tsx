@@ -79,14 +79,36 @@ const mockAppContext = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: {
-    userProfile: typeof mockAppContext.userProfile
-    workspacePermissionKeys: string[]
-  }) => unknown) => selector(mockAppContext),
-}))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: mockAppContext.userProfile,

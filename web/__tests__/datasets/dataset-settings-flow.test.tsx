@@ -28,16 +28,6 @@ const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockUpdateDatasetSetting = vi.fn().mockResolvedValue({})
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: {
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => T): T => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }),
-}))
-
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDatasetSetting(...args),
 }))

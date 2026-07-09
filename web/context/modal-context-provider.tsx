@@ -11,6 +11,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_ACCOUNT_SETTING_TAB,
@@ -20,8 +21,8 @@ import {
   isWorkspaceSettingTab,
 } from '@/app/components/header/account-setting/constants'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import {
   useAccountSettingModal,
   usePricingModal,
@@ -103,7 +104,7 @@ export const ModalContextProvider = ({
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
-  const { currentWorkspace } = useAppContext()
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const setEducationVerifying = useSetEducationVerifying()
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
@@ -146,7 +147,7 @@ export const ModalContextProvider = ({
   } = useTriggerEventsLimitModal({
     plan,
     isFetchedPlan,
-    currentWorkspaceId: currentWorkspace?.id,
+    currentWorkspaceId,
   })
 
   const handleCancelModerationSettingModal = () => {

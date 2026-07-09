@@ -87,6 +87,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
     <AgentChatRuntime
       {...props}
       inputPlaceholder={t('agentDetail.configure.build.inputPlaceholder')}
+      inputAutoFocus={false}
       sendButtonLabel={t('agentDetail.configure.build.startBuild')}
       renderEmptyState={(emptyStateProps: AgentChatRuntimeEmptyStateProps) => (
         <AgentBuildChatEmptyState {...emptyStateProps} />

@@ -8,7 +8,7 @@ Do not add deeper `AGENTS.md` files unless an Agent v2 submodule becomes indepen
 
 Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
 
-The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
+The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/agents` routes are guarded by that feature flag.
 
 Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior. Published Web app runtime is not Builder Preview; keep it as a separate `@web-app-runtime` slice because it exercises the public app surface and real model-backed responses after publish.
 
@@ -28,7 +28,7 @@ Use tags in three layers:
 - `@build` — Build mode and Build draft behavior.
 - `@build-unavailable-resources` — feature-gated Build chat recovery when the user requests unavailable Skills or Tools.
 - `@files` — Files section upload, display, and fixture behavior.
-- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format, size, count, and in-progress upload recovery remain feature-gated until their product contracts are stable.
+- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format and size rejection remain feature-gated until their product contracts are stable.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-create` — Agent Roster creation and initial Configure navigation.
@@ -225,6 +225,6 @@ Order blocked steps by the real owner of the first unresolved condition. If a sc
 
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
 
-Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format, size, count, and in-progress upload limit cases remain feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
+Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format and size rejection remain feature-gated until the product exposes stable Agent config file restrictions and user-visible error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
 
 Do not mark a scenario as complete if it only proves setup state and does not assert the user-visible behavior or persisted product contract required by the case.

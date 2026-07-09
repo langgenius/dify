@@ -57,6 +57,12 @@ type SettingsSiteInfo = Pick<
   | 'use_icon_as_answer_icon'
 >
 
+type SettingsAppIconSelection = AppIconSelection | {
+  type: 'link'
+  icon: string
+  url: string
+}
+
 export type SettingsAppInfo = {
   id: string
   mode: AppModeEnum
@@ -128,12 +134,16 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
   }
 }
 
-const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): AppIconSelection => {
+const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIconSelection => {
   const { icon_type, icon, icon_background, icon_url } = appInfo.site
 
-  return icon_type === 'image'
-    ? { type: 'image', url: icon_url!, fileId: icon }
-    : { type: 'emoji', icon, background: icon_background! }
+  if (icon_type === 'image')
+    return { type: 'image', url: icon_url!, fileId: icon }
+
+  if (icon_type === 'link')
+    return { type: 'link', icon, url: icon }
+
+  return { type: 'emoji', icon, background: icon_background! }
 }
 
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) => JSON.stringify([
@@ -175,7 +185,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { t } = useTranslation()
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(nextAppIcon)
+  const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
@@ -302,7 +312,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         ? ''
         : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+      icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
@@ -366,10 +376,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   size="xxl"
                   onClick={() => { setShowAppIconPicker(true) }}
                   className="mt-2 cursor-pointer"
-                  iconType={appIcon.type}
+                  iconType={appIcon.type === 'link' ? 'image' : appIcon.type}
                   icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                  background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+                  imageUrl={appIcon.type === 'emoji' ? undefined : appIcon.url}
                 />
               </div>
               {/* description */}

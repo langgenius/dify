@@ -37,17 +37,47 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: unknown) => unknown) => {
-    const state = {
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }
-    return selector(state)
-  },
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => ({

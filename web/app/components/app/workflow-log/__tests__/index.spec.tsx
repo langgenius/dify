@@ -78,16 +78,6 @@ vi.mock('@/hooks/use-theme', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string, timezone: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }),
-}))
-
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (

@@ -39,8 +39,9 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
@@ -57,10 +58,72 @@ vi.mock('@/context/app-context', () => ({
       'plugin.delete',
       'plugin.plugin_preferences',
     ],
-  }),
-}))
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: false,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.delete',
+      'plugin.plugin_preferences',
+    ],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: false,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.delete',
+      'plugin.plugin_preferences',
+    ],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: false,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.delete',
+      'plugin.plugin_preferences',
+    ],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: false,

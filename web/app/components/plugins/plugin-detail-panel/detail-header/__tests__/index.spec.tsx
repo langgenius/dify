@@ -21,12 +21,6 @@ const render = (ui: ReactElement) => {
   })
 }
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
   useLocale: () => 'en-US',

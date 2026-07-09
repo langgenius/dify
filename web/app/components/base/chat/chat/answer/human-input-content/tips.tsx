@@ -1,7 +1,8 @@
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { useSelector as useAppSelector } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 
 type TipsProps = {
   showEmailTip: boolean
@@ -15,7 +16,7 @@ const Tips = ({
   showDebugModeTip,
 }: TipsProps) => {
   const { t } = useTranslation()
-  const email = useAppSelector(s => s.userProfile.email)
+  const email = useAtomValue(userProfileEmailAtom)
 
   return (
     <>

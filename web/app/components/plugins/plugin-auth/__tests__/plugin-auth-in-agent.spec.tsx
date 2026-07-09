@@ -37,20 +37,40 @@ vi.mock('@/service/use-tools', () => ({
 
 const mockIsCurrentWorkspaceManager = vi.fn()
 const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  // Item renders useAppContextWithSelector(state => state.userProfile) for the
-  // borrowed-row heuristic. Provide a minimal stub so the selector runs.
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-    }),
-}))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: mockUserProfile,

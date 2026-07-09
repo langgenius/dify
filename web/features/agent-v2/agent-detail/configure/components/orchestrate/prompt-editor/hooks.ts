@@ -5,7 +5,7 @@ import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { API_PREFIX } from '@/config'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
 import {
   useAllBuiltInTools,

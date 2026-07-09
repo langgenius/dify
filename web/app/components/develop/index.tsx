@@ -1,9 +1,11 @@
 'use client'
+import { useAtomValue } from 'jotai'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import ApiServer from '@/app/components/develop/ApiServer'
 import Doc from '@/app/components/develop/doc'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type IDevelopMainProps = {
@@ -12,8 +14,8 @@ type IDevelopMainProps = {
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
   const appDetail = useAppStore(state => state.appDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,

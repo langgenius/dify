@@ -91,7 +91,7 @@ describe('CreateAgentDialog', () => {
     })
 
     expect(toastMock.success).toHaveBeenCalledWith('agentV2.roster.createSuccess')
-    expect(routerPushMock).toHaveBeenCalledWith('/roster/agent/agent-1/configure')
+    expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
   })
 
   it('shows a field error when creating with an empty name', async () => {

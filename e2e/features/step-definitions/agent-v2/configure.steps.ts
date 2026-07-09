@@ -180,15 +180,15 @@ When('I switch to the Agent v2 Configure section', async function (this: DifyWor
   const agentId = getCurrentAgentId(this)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
 When('I leave the Agent v2 configure page immediately after editing', async function (this: DifyWorld) {
   const page = this.getPage()
 
-  await page.goto('/roster')
-  await expect(page).toHaveURL(/\/roster(?:\?.*)?$/)
+  await page.goto('/agents')
+  await expect(page).toHaveURL(/\/agents(?:\?.*)?$/)
 })
 
 When('I open the Agent v2 configure page from the Agent Roster', async function (this: DifyWorld) {
@@ -198,9 +198,9 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
   if (!agentName)
     throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
-  await page.goto('/roster')
+  await page.goto('/agents')
   await page.getByRole('link', { name: agentName }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
@@ -210,9 +210,9 @@ When(
     const page = this.getPage()
     const agent = getPreseededAgent(this, agentName)
 
-    await page.goto('/roster')
+    await page.goto('/agents')
     await page.getByRole('link', { name: agentName }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/configure(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/configure(?:\\?.*)?$`))
     await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   },
 )
@@ -235,7 +235,7 @@ When('I open the same Agent v2 configure page in another tab', async function (t
   this.agentBuilder.configure.concurrentPage = concurrentPage
 
   await concurrentPage.goto(getAgentConfigurePath(agentId))
-  await expect(concurrentPage).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(concurrentPage).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
   await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
@@ -276,16 +276,19 @@ Then('I should be on the Agent v2 configure page', async function (this: DifyWor
   const agentId = getCurrentAgentId(this)
 
   await expect(this.getPage()).toHaveURL(
-    new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`),
+    new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`),
   )
 })
 
 Then('I should see the Agent v2 configure workspace', async function (this: DifyWorld) {
   const page = this.getPage()
+  const agentName = this.lastCreatedAgentName
+  if (!agentName)
+    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
-  await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
+  await expect(page.getByText(agentName, { exact: true })).toBeVisible()
 })
 
 Then(

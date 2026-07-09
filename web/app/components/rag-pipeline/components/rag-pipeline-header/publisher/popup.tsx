@@ -15,6 +15,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -24,9 +25,10 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -64,9 +66,9 @@ const Popup = ({
   const pipelineId = useStore(s => s.pipelineId)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(s => s.mutateDatasetRes)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()

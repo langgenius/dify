@@ -1240,6 +1240,8 @@ export type PublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
+  marked_comment?: string | null
+  marked_name?: string | null
 }
 
 export type WorkflowPublishResponse = {
@@ -1648,6 +1650,7 @@ export type ConversationVariableResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>

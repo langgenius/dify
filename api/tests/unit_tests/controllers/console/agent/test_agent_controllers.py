@@ -1576,6 +1576,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
+    assert args[completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG] == "delete"
     assert args["external_trace_id"] == "trace-1"
 
 
@@ -1662,6 +1663,51 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
+
+
+def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    current_user = SimpleNamespace(id=account_id)
+    captured: dict[str, object] = {}
+
+    def generate(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(
+        completion_controller,
+        "_resolve_current_user_agent_debug_conversation_id",
+        lambda **kwargs: "debug-conversation-1",
+    )
+    monkeypatch.setattr(
+        completion_controller.helper,
+        "compact_generate_response",
+        lambda response: {"response": response},
+    )
+
+    with app.test_request_context(
+        json={
+            "inputs": {},
+            "query": "hello",
+            "response_mode": "streaming",
+            completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
+        }
+    ):
+        result = completion_controller._create_chat_message(
+            current_user=current_user,
+            app_model=app_model,
+            session=Mock(),
+        )
+
+    assert result == {"response": {"answer": "ok"}}
+    assert captured["streaming"] is True
+    args = cast(dict[str, object], captured["args"])
+    assert args["response_mode"] == "streaming"
+    assert args["conversation_id"] == "debug-conversation-1"
+    assert completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG not in args
 
 
 def test_agent_chat_helper_rejects_foreign_debug_conversation(

@@ -7,7 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/app-context-state'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
 type IEditWorkspaceModalProps = {

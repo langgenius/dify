@@ -84,7 +84,12 @@ class FakeClient:
         self.locators.append(locator)
         self.calls.append(("upload", path))
         return SandboxUploadResponse(
-            path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+            path=path,
+            file={
+                "transfer_method": "tool_file",
+                "reference": "dify-file-ref:file-1",
+                "download_url": "https://files.example/report.txt?token=1",
+            },
         )
 
 
@@ -151,7 +156,11 @@ def test_agent_app_sandbox_service_upload_returns_download_url(monkeypatch: pyte
     assert store.scope == ("tenant-1", "app-1", "conv-1")
     assert captured == {
         "tenant_id": "tenant-1",
-        "file_mapping": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+        "file_mapping": {
+            "transfer_method": "tool_file",
+            "reference": "dify-file-ref:file-1",
+            "download_url": "https://files.example/report.txt?token=1",
+        },
     }
 
 
@@ -265,7 +274,11 @@ def test_workflow_sandbox_service_resolves_locator_and_returns_download_url(
     assert client.calls == [("upload", "report.txt")]
     assert captured == {
         "tenant_id": "tenant-1",
-        "file_mapping": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+        "file_mapping": {
+            "transfer_method": "tool_file",
+            "reference": "dify-file-ref:file-1",
+            "download_url": "https://files.example/report.txt?token=1",
+        },
     }
 
 
