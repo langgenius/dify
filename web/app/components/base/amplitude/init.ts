@@ -1,6 +1,5 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { AMPLITUDE_API_KEY } from '@/config'
 
 export type AmplitudeInitializationOptions = {
   sessionReplaySampleRate?: number
@@ -55,7 +54,7 @@ export const ensureAmplitudeInitialized = ({
   // isAmplitudeInitialized = true
 
   try {
-    amplitude.init(AMPLITUDE_API_KEY, {
+    amplitude.init('83d4855862d9264e505e359aac17289e', {
       defaultTracking: {
         sessions: true,
         pageViews: true,
