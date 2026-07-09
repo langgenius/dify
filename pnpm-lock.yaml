@@ -357,9 +357,6 @@ catalogs:
     eslint-plugin-react-refresh:
       specifier: 0.5.3
       version: 0.5.3
-    eslint-plugin-sonarjs:
-      specifier: 4.1.0
-      version: 4.1.0
     eslint-plugin-storybook:
       specifier: 10.4.6
       version: 10.4.6
@@ -626,7 +623,6 @@ overrides:
   esbuild@<0.27.2: 0.27.2
   esbuild@>=0.17.0 <0.28.1: ^0.28.1
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
-  eslint-plugin-sonarjs>typescript: npm:@typescript/typescript6@6.0.2
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.4
@@ -1587,9 +1583,6 @@ importers:
       eslint-plugin-react-refresh:
         specifier: 'catalog:'
         version: 0.5.3(eslint@10.6.0(jiti@2.7.0))
-      eslint-plugin-sonarjs:
-        specifier: 'catalog:'
-        version: 4.1.0(eslint@10.6.0(jiti@2.7.0))
       eslint-plugin-storybook:
         specifier: 'catalog:'
         version: 10.4.6(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0))(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@19.2.17)(react@19.2.7)(vite-plus@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)))
@@ -5671,10 +5664,6 @@ packages:
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
 
-  builtin-modules@3.3.0:
-    resolution: {integrity: sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==}
-    engines: {node: '>=6'}
-
   builtin-modules@5.3.0:
     resolution: {integrity: sha512-hMQUl2bUFG339QygPM97E+mc8OY1IAchORZxm4a/frcYwKzozMzRVDBwHW0NjOqGElLm2O37AVQE8ikxlZHrMQ==}
     engines: {node: '>=18.20'}
@@ -5682,10 +5671,6 @@ packages:
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
     engines: {node: '>=18'}
-
-  bytes@3.1.2:
-    resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
-    engines: {node: '>= 0.8'}
 
   c12@3.3.4:
     resolution: {integrity: sha512-cM0ApFQSBXuourJejzwv/AuPRvAxordTyParRVcHjjtXirtkzM0uK2L9TTn9s0cXZbG7E55jCivRQzoxYmRAlA==}
@@ -6659,11 +6644,6 @@ packages:
     peerDependencies:
       eslint: '>=9.38.0'
 
-  eslint-plugin-sonarjs@4.1.0:
-    resolution: {integrity: sha512-rh+FlVz0yfd2RNIb6WqSkuGh0addX/Qi5scwQ5FphXDFrM6fZKcxP1+attJ78yUKcyYfiu6MTaISPpAFPzqRJw==}
-    peerDependencies:
-      eslint: ^8.0.0 || ^9.0.0 || ^10.0.0
-
   eslint-plugin-storybook@10.4.6:
     resolution: {integrity: sha512-CfGSXn6zFspeYTU8R7v797MOmJFj8xc6MWf/oGuRwbKeMoSwnliR+OlXSjMZYM1D6gfmwiuH1VX58LSHdn+ZPg==}
     peerDependencies:
@@ -6956,9 +6936,6 @@ packages:
   function.prototype.name@1.2.0:
     resolution: {integrity: sha512-jObKIik1P2QjPHP5nz5BaOtUlfgS0fWo8IUByNXkM+o+02sJOi94em77GwJKQSJ3gfPHdgzLNrHc1uokV4P/ew==}
     engines: {node: '>= 0.4'}
-
-  functional-red-black-tree@1.0.1:
-    resolution: {integrity: sha512-dsKNQNdj6xA3T+QlADDA7mOSlX0qiMINjn0cgr+eGHGsbSHzTabcIogz2+p/iqP1Xs6EP/sS2SbqH+brGTbq0g==}
 
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
@@ -7556,10 +7533,6 @@ packages:
 
   jsonschema@1.5.0:
     resolution: {integrity: sha512-K+A9hhqbn0f3pJX17Q/7H6yQfD/5OXgdrR5UE12gMXCiN9D5Xq2o5mddV2QEcX/bjla99ASsAAQUyMCCRWAEhw==}
-
-  jsx-ast-utils-x@0.1.0:
-    resolution: {integrity: sha512-eQQBjBnsVtGacsG9uJNB8qOr3yA8rga4wAaGG1qRcBzSIvfhERLrWxMAM1hp5fcS6Abo8M4+bUBTekYR0qTPQw==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   jsx-ast-utils@3.3.5:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
@@ -14369,15 +14342,11 @@ snapshots:
       ieee754: 1.2.1
     optional: true
 
-  builtin-modules@3.3.0: {}
-
   builtin-modules@5.3.0: {}
 
   bundle-name@4.1.0:
     dependencies:
       run-applescript: 7.1.0
-
-  bytes@3.1.2: {}
 
   c12@3.3.4(magicast@0.5.3):
     dependencies:
@@ -15857,23 +15826,6 @@ snapshots:
       regexp-ast-analysis: 0.7.1
       scslre: 0.3.0
 
-  eslint-plugin-sonarjs@4.1.0(eslint@10.6.0(jiti@2.7.0)):
-    dependencies:
-      '@eslint-community/regexpp': 4.12.2
-      builtin-modules: 3.3.0
-      bytes: 3.1.2
-      eslint: 10.6.0(jiti@2.7.0)
-      functional-red-black-tree: 1.0.1
-      globals: 17.7.0
-      jsx-ast-utils-x: 0.1.0
-      lodash.merge: 4.6.2
-      minimatch: 10.2.5
-      scslre: 0.3.0
-      semver: 7.8.5
-      ts-api-utils: 2.5.0(@typescript/typescript6@6.0.2)
-      typescript: '@typescript/typescript6@6.0.2'
-      yaml: 2.9.0
-
   eslint-plugin-storybook@10.4.6(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0))(storybook@10.4.6(@testing-library/dom@10.4.1)(@types/react@19.2.17)(react@19.2.7)(vite-plus@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))):
     dependencies:
       '@typescript-eslint/utils': 8.62.0(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0))
@@ -16314,8 +16266,6 @@ snapshots:
       hasown: 2.0.4
       is-callable: 1.2.7
       is-document.all: 1.0.0
-
-  functional-red-black-tree@1.0.1: {}
 
   functions-have-names@1.2.3: {}
 
@@ -16930,8 +16880,6 @@ snapshots:
       graceful-fs: 4.2.11
 
   jsonschema@1.5.0: {}
-
-  jsx-ast-utils-x@0.1.0: {}
 
   jsx-ast-utils@3.3.5:
     dependencies:
@@ -20523,7 +20471,6 @@ time:
   eslint-plugin-markdown-preferences@0.41.1: '2026-04-09T23:28:41.552Z'
   eslint-plugin-no-barrel-files@1.3.1: '2026-04-12T18:28:18.653Z'
   eslint-plugin-react-refresh@0.5.3: '2026-06-14T12:46:34.395Z'
-  eslint-plugin-sonarjs@4.1.0: '2026-06-18T17:14:11.087Z'
   eslint-plugin-storybook@10.4.6: '2026-06-16T11:43:14.113Z'
   eslint@10.6.0: '2026-06-26T20:09:18.001Z'
   eventsource-parser@3.1.0: '2026-05-27T20:55:51.466Z'

@@ -23,7 +23,6 @@
   ],
   "scripts": {
     "analyze": "next experimental-analyze",
-    "analyze-component": "node ./scripts/analyze-component.js",
     "build": "next build",
     "build:vinext": "vinext build",
     "dev": "next dev",
@@ -39,7 +38,6 @@
     "knip:production-unused-check": "node ./scripts/check-production-unused-after-knip-fix.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
-    "refactor-component": "node ./scripts/refactor-component.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",
     "storybook": "storybook dev -p 6006",
@@ -219,7 +217,6 @@
     "eslint-plugin-markdown-preferences": "catalog:",
     "eslint-plugin-no-barrel-files": "catalog:",
     "eslint-plugin-react-refresh": "catalog:",
-    "eslint-plugin-sonarjs": "catalog:",
     "eslint-plugin-storybook": "catalog:",
     "happy-dom": "catalog:",
     "knip": "catalog:",
