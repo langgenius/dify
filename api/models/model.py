@@ -24,6 +24,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
+from libs.datetime_utils import naive_utc_now
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
@@ -1144,9 +1145,20 @@ class Conversation(Base):
     read_at = mapped_column(sa.DateTime)
     read_account_id = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    # Keep conversation timestamps on the same naive-UTC convention as the
+    # application write paths instead of mixing DB-local current_timestamp().
+    created_at = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
     updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+        onupdate=naive_utc_now,
     )
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
@@ -1491,9 +1503,19 @@ class Message(Base):
     )
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
+    # Messages share the same timestamp contract as conversations so MySQL
+    # DATETIME rows do not mix DB-local creation times with UTC updates.
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        default=naive_utc_now,
+        server_default=func.current_timestamp(),
+        onupdate=naive_utc_now,
     )
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)

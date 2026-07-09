@@ -5,6 +5,7 @@ import pytest
 
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
+from libs.datetime_utils import naive_utc_now
 from models.model import Conversation, Message
 
 
@@ -121,3 +122,19 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
 
     assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
     assert restored_file.remote_url == "https://example.com/report.pdf"
+
+
+@pytest.mark.parametrize("owner_cls", [Conversation, Message])
+def test_timestamp_columns_use_naive_utc_defaults(owner_cls: type[Conversation] | type[Message]) -> None:
+    created_at_column = owner_cls.__table__.c.created_at
+    updated_at_column = owner_cls.__table__.c.updated_at
+
+    assert created_at_column.default is not None
+    assert created_at_column.default.arg.__name__ == naive_utc_now.__name__
+    assert created_at_column.default.arg.__module__ == naive_utc_now.__module__
+    assert updated_at_column.default is not None
+    assert updated_at_column.default.arg.__name__ == naive_utc_now.__name__
+    assert updated_at_column.default.arg.__module__ == naive_utc_now.__module__
+    assert updated_at_column.onupdate is not None
+    assert updated_at_column.onupdate.arg.__name__ == naive_utc_now.__name__
+    assert updated_at_column.onupdate.arg.__module__ == naive_utc_now.__module__
