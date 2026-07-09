@@ -36,8 +36,13 @@ class TestWorkflowCollaborationService:
 
         # Assert
         assert result == ("u-1", True)
-        repository.set_session_info.assert_called_once()
-        session_info = repository.set_session_info.call_args.args[1]
+        workflow_id, session_info = repository.set_session_info.call_args.args
+        assert workflow_id == "wf-1"
+        assert session_info["user_id"] == "u-1"
+        assert session_info["username"] == "Jane"
+        assert session_info["avatar"] is None
+        assert session_info["sid"] == "sid-1"
+        assert isinstance(session_info["connected_at"], int)
         assert session_info["server_id"] == "server-1"
         repository.refresh_server_heartbeat.assert_called_once_with("server-1")
         socketio.start_background_task.assert_called_once()
@@ -114,7 +119,12 @@ class TestWorkflowCollaborationService:
         result = collaboration_service._can_access_workflow("wf-1", "tenant-1", session=session)
 
         assert result is True
-        session.scalar.assert_called_once()
+        stmt = session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        assert "apps.id" in str(compiled)
+        assert "apps.tenant_id" in str(compiled)
+        assert "wf-1" in compiled.params.values()
+        assert "tenant-1" in compiled.params.values()
 
     def test_relay_collaboration_event_unauthorized(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
