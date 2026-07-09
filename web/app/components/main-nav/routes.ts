@@ -65,6 +65,16 @@ export const MAIN_NAV_ROUTES = [
     feature: 'agentV2',
   },
   {
+    key: 'skills',
+    href: '/skills',
+    labelKey: 'mainNav.skills',
+    active: (path: string) => isPathUnderRoute(path, '/skills'),
+    icon: 'i-ri-box-3-line',
+    activeIcon: 'i-ri-box-3-fill',
+    visibility: 'notDatasetOperator',
+    feature: 'agentV2',
+  },
+  {
     key: 'datasets',
     href: '/datasets',
     labelKey: 'menus.datasets',

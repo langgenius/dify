@@ -9,13 +9,14 @@ import { basePath } from '@/utils/var'
 export default function useDocumentTitle(title: string) {
   const { data, isPending } = useQuery(systemFeaturesQueryOptions())
   const systemFeatures = data ?? defaultSystemFeatures
+  const branding = systemFeatures.branding ?? defaultSystemFeatures.branding
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''
   let favicon = ''
   if (isPending === false) {
-    if (systemFeatures.branding.enabled) {
-      titleStr = `${prefix}${systemFeatures.branding.application_title}`
-      favicon = systemFeatures.branding.favicon
+    if (branding.enabled) {
+      titleStr = `${prefix}${branding.application_title}`
+      favicon = branding.favicon
     } else {
       titleStr = `${prefix}Dify`
       favicon = `${basePath}/favicon.ico`
@@ -24,7 +25,7 @@ export default function useDocumentTitle(title: string) {
   useTitle(titleStr)
   useEffect(() => {
     let apple: HTMLLinkElement | null = null
-    if (systemFeatures.branding.favicon) {
+    if (branding.favicon) {
       document
         .querySelectorAll(
           "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon'], link[rel='mask-icon']",
@@ -33,13 +34,13 @@ export default function useDocumentTitle(title: string) {
 
       apple = document.createElement('link')
       apple.rel = 'apple-touch-icon'
-      apple.href = systemFeatures.branding.favicon
+      apple.href = branding.favicon
       document.head.appendChild(apple)
     }
 
     return () => {
       apple?.remove()
     }
-  }, [systemFeatures.branding.favicon])
+  }, [branding.favicon])
   useFavicon(favicon)
 }
