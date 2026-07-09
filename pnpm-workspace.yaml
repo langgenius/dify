@@ -33,6 +33,7 @@ overrides:
   esbuild@<0.27.2: 0.27.2
   esbuild@>=0.17.0 <0.28.1: ^0.28.1
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
+  eslint-plugin-sonarjs>typescript: npm:@typescript/typescript6@6.0.2
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.4
@@ -131,7 +132,7 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/eslint-plugin': 8.62.0
   '@typescript-eslint/parser': 8.62.0
-  '@typescript/native-preview': 7.0.0-dev.20260627.2
+  '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.0.3
   '@vitejs/plugin-rsc': 0.5.27
   '@vitest/browser': 4.1.9
@@ -242,7 +243,7 @@ catalog:
   tailwindcss: 4.3.1
   tldts: 7.4.4
   tsx: 4.22.4
-  typescript: 6.0.3
+  typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.28.0
   unist-util-visit: 5.1.0
