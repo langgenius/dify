@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
@@ -41,6 +42,10 @@ class WorkflowResumptionContext(BaseModel):
     # Only workflow / chatflow could be paused.
     generate_entity: _GenerateEntityUnion
     serialized_graph_runtime_state: str
+    # Optional so that a workflow run paused before this field existed still
+    # loads: it just degrades to fresh-filter behavior on resume for that one
+    # stale run.
+    serialized_response_stream_filter_state: str | None = None
 
     def dumps(self) -> str:
         return self.model_dump_json()
@@ -51,6 +56,12 @@ class WorkflowResumptionContext(BaseModel):
 
     def get_generate_entity(self) -> WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity:
         return self.generate_entity.entity
+
+    def get_response_stream_filter(self) -> ResponseStreamFilter:
+        response_stream_filter = ResponseStreamFilter()
+        if self.serialized_response_stream_filter_state is not None:
+            response_stream_filter.loads(self.serialized_response_stream_filter_state)
+        return response_stream_filter
 
 
 @dataclass(frozen=True)
@@ -67,11 +78,17 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         session_factory: Engine | sessionmaker[Session],
         generate_entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity,
         state_owner_user_id: str,
+        response_stream_filter: ResponseStreamFilter,
     ):
         """Create a PauseStatePersistenceLayer.
 
         The `state_owner_user_id` is used when creating state file for pause.
         It generally should id of the creator of workflow.
+
+        `response_stream_filter` must be the exact same instance that
+        `WorkflowEntry` is using to stream this run's events — this layer
+        dumps its state on pause, and a different instance would silently
+        persist the wrong (empty) filter state.
         """
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(session_factory)
@@ -79,6 +96,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self._session_maker = session_factory
         self._state_owner_user_id = state_owner_user_id
         self._generate_entity = generate_entity
+        self._response_stream_filter = response_stream_filter
 
     def _get_repo(self) -> APIWorkflowRunRepository:
         return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
@@ -119,6 +137,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         state = WorkflowResumptionContext(
             serialized_graph_runtime_state=self.graph_runtime_state.dumps(),
             generate_entity=entity_wrapper,
+            serialized_response_stream_filter_state=self._response_stream_filter.dumps(),
         )
 
         workflow_run_id = get_system_text(
