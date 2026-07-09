@@ -47,14 +47,9 @@ export const zAppPermissionQuery = z.object({
 })
 
 /**
- * AudioBinaryResponse
+ * AudioToTextResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
-
-/**
- * AudioTranscriptResponse
- */
-export const zAudioTranscriptResponse = z.object({
+export const zAudioToTextResponse = z.object({
   text: z.string(),
 })
 
@@ -302,6 +297,7 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -835,19 +831,28 @@ export const zWebAppCustomConfigResponse = z.object({
 export const zWebMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -948,6 +953,44 @@ export const zGeneratedAppResponseWritable = zJsonValue
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
+ * WebMessageListItem
+ */
+export const zWebMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+})
+
+/**
+ * WebMessageInfiniteScrollPagination
+ */
+export const zWebMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zWebMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
  * WebSiteResponse
  */
 export const zWebSiteResponseWritable = z.object({
@@ -997,7 +1040,7 @@ export const zHumanInputFormDefinitionResponseWritable = z.object({
 /**
  * Success
  */
-export const zPostAudioToTextResponse = zAudioTranscriptResponse
+export const zPostAudioToTextResponse = zAudioToTextResponse
 
 export const zPostChatMessagesBody = zChatMessagePayload
 
@@ -1314,7 +1357,7 @@ export const zPostTextToAudioBody = zTextToAudioPayload
 /**
  * Success
  */
-export const zPostTextToAudioResponse = zAudioBinaryResponse
+export const zPostTextToAudioResponse = z.record(z.string(), z.unknown())
 
 export const zGetWebappAccessModeQuery = z.object({
   appCode: z.string().optional(),

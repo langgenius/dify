@@ -5623,7 +5623,7 @@ Initialize dataset with documents
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
+| 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [GET] /datasets/metadata/built-in
@@ -5659,7 +5659,7 @@ Get dataset document processing rules
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Process rules retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Process rules retrieved successfully | **application/json**: [ProcessRuleResponse](#processruleresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
 Get dataset retrieval settings
@@ -5780,7 +5780,7 @@ Get dataset auto disable logs
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
 #### Parameters
@@ -5868,9 +5868,9 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | ZIP archive generated successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | ZIP archive downloaded successfully |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
 **Generate summary index for specified documents**
@@ -5963,7 +5963,7 @@ Get document details
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
 | 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
@@ -5996,7 +5996,7 @@ Estimate document indexing cost
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 | 400 | Document already finished |  |
 | 404 | Document not found |  |
 
@@ -6067,7 +6067,7 @@ Update document metadata
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document pipeline execution log retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Pipeline execution log retrieved successfully | **application/json**: [DocumentPipelineExecutionLogResponse](#documentpipelineexecutionlogresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
 **pause document**
@@ -6390,6 +6390,7 @@ Returns:
   - generating: Number of summaries being generated
   - error: Number of summaries with errors
   - not_started: Number of segments without summary records
+  - timeout: Number of summaries that timed out
 - summaries: List of summary records with status and content preview
 
 #### Parameters
@@ -6403,7 +6404,7 @@ Returns:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Summary status retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Summary status retrieved successfully | **application/json**: [DocumentSummaryStatusResponse](#documentsummarystatusresponse)<br> |
 | 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/website-sync
@@ -17034,6 +17035,42 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
+#### DocumentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | No |
+| average_segment_length | number |  | No |
+| completed_at | integer |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| created_from | string |  | No |
+| data_source_detail_dict |  |  | No |
+| data_source_info |  |  | No |
+| data_source_type | string |  | No |
+| dataset_process_rule |  |  | No |
+| dataset_process_rule_id | string |  | No |
+| disabled_at | integer |  | No |
+| disabled_by | string |  | No |
+| display_status | string |  | No |
+| doc_form | string |  | No |
+| doc_language | string |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_type | string |  | No |
+| document_process_rule |  |  | No |
+| enabled | boolean |  | No |
+| error | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | Yes |
+| indexing_latency | number |  | No |
+| indexing_status | string |  | No |
+| name | string |  | No |
+| need_summary | boolean |  | No |
+| position | integer |  | No |
+| segment_count | integer |  | No |
+| tokens | integer |  | No |
+| updated_at | integer |  | No |
+
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
@@ -17057,6 +17094,15 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_metadata |  |  | No |
 | doc_type | string |  | No |
+
+#### DocumentPipelineExecutionLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasource_info | [JsonValue](#jsonvalue) |  | No |
+| datasource_node_id | string |  | No |
+| datasource_type | string |  | No |
+| input_data | [JsonValue](#jsonvalue) |  | No |
 
 #### DocumentRenamePayload
 
@@ -17121,6 +17167,14 @@ Request payload for bulk downloading documents as a zip archive.
 | splitting_completed_at | integer |  | Yes |
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
+
+#### DocumentSummaryStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| summaries | [ [SummaryEntryResponse](#summaryentryresponse) ] |  | Yes |
+| summary_status | [SummaryStatusResponse](#summarystatusresponse) |  | Yes |
+| total_segments | integer |  | Yes |
 
 #### DocumentWithSegmentsListResponse
 
@@ -17600,19 +17654,25 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | ---- | ---- | ----------- | -------- |
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
+| answer_tokens | integer |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
+| currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| provider_response_latency | number |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
+| total_price | string |  | No |
+| total_tokens | integer |  | Yes |
 
 #### ExternalApiTemplateListQuery
 
@@ -18205,27 +18265,15 @@ Query parameter for including secret variables in export.
 | info_list | object |  | Yes |
 | process_rule | object |  | Yes |
 
-#### IndexingEstimatePreviewItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| child_chunks | [ string ] |  | No |
-| content | string |  | Yes |
-| summary | string |  | No |
-
-#### IndexingEstimateQaPreviewItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| answer | string |  | Yes |
-| question | string |  | Yes |
-
 #### IndexingEstimateResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| preview | [ [IndexingEstimatePreviewItemResponse](#indexingestimatepreviewitemresponse) ] |  | Yes |
-| qa_preview | [ [IndexingEstimateQaPreviewItemResponse](#indexingestimateqapreviewitemresponse) ] |  | No |
+| currency | string |  | Yes |
+| preview | [ [PreviewDetail](#previewdetail) ] |  | Yes |
+| qa_preview | [ [QAPreviewDetail](#qapreviewdetail) ] |  | No |
+| tokens | integer |  | Yes |
+| total_price | number<br>integer |  | Yes |
 | total_segments | integer |  | Yes |
 
 #### InfoList
@@ -19220,12 +19268,6 @@ OAuth schema
 | grant_type | string |  | Yes |
 | redirect_uri | string |  | No |
 | refresh_token | string |  | No |
-
-#### OpaqueObjectResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| OpaqueObjectResponse | object |  |  |
 
 #### Option
 
@@ -20282,6 +20324,14 @@ Dataset Process Rule Mode
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
+#### ProcessRuleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limits | object |  | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
+| rules | [Rule](#rule) |  | No |
+
 #### ProviderConfig
 
 Model class for common provider settings like credentials
@@ -21257,14 +21307,6 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### SnippetAccountResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
@@ -21394,7 +21436,7 @@ Payload for running a loop node in snippet draft workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
-| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | Yes |
 | description | string |  | Yes |
 | graph | object |  | Yes |
 | icon_info | object |  | Yes |
@@ -21405,7 +21447,7 @@ Payload for running a loop node in snippet draft workflow.
 | tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
 | type | [SnippetType](#snippettype) |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | Yes |
 | use_count | integer |  | Yes |
 | version | integer |  | Yes |
 
@@ -21573,6 +21615,28 @@ The subscription constructor of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
+
+#### SummaryEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| error | string |  | No |
+| segment_id | string |  | Yes |
+| segment_position | integer |  | Yes |
+| status | string |  | Yes |
+| summary_preview | string |  | No |
+| updated_at | integer |  | No |
+
+#### SummaryStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | No |
+| error | integer |  | No |
+| generating | integer |  | No |
+| not_started | integer |  | No |
+| timeout | integer |  | No |
 
 #### SwitchWorkspacePayload
 
@@ -22510,11 +22574,11 @@ Payload for updating a snippet.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_image_file_size_limit | integer |  | No |
+| attachment_image_file_size_limit | integer |  | Yes |
 | audio_file_size_limit | integer |  | Yes |
 | batch_count_limit | integer |  | Yes |
 | file_size_limit | integer |  | Yes |
-| file_upload_limit | integer |  | No |
+| file_upload_limit | integer |  | Yes |
 | image_file_batch_limit | integer |  | Yes |
 | image_file_size_limit | integer |  | Yes |
 | single_chunk_attachment_limit | integer |  | Yes |

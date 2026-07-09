@@ -144,8 +144,11 @@ export type IndexingEstimatePayload = {
 }
 
 export type IndexingEstimateResponse = {
-  preview: Array<IndexingEstimatePreviewItemResponse>
-  qa_preview?: Array<IndexingEstimateQaPreviewItemResponse> | null
+  currency: string
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  tokens: number
+  total_price: number | number
   total_segments: number
 }
 
@@ -197,8 +200,12 @@ export type IndexingEstimate = {
   total_segments: number
 }
 
-export type OpaqueObjectResponse = {
-  [key: string]: unknown
+export type ProcessRuleResponse = {
+  limits: {
+    [key: string]: unknown
+  }
+  mode: ProcessRuleMode
+  rules?: Rule | null
 }
 
 export type RetrievalSettingResponse = {
@@ -298,14 +305,46 @@ export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
 
 export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
+}
+
+export type DocumentDetailResponse = {
+  archived?: boolean | null
+  average_segment_length?: number | null
+  completed_at?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule?: unknown
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_language?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_type?: string | null
+  document_process_rule?: unknown
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string | null
+  name?: string | null
+  need_summary?: boolean | null
+  position?: number | null
+  segment_count?: number | null
+  tokens?: number | null
+  updated_at?: number | null
 }
 
 export type UrlResponse = {
@@ -335,6 +374,13 @@ export type DocumentMetadataUpdatePayload = {
 export type SimpleResultMessageResponse = {
   message: string
   result: string
+}
+
+export type DocumentPipelineExecutionLogResponse = {
+  datasource_info?: JsonValue | null
+  datasource_node_id?: string | null
+  datasource_type?: string | null
+  input_data?: JsonValue | null
 }
 
 export type DocumentRenamePayload = {
@@ -423,6 +469,12 @@ export type ChildChunkDetailResponse = {
 
 export type ChildChunkUpdatePayload = {
   content: string
+}
+
+export type DocumentSummaryStatusResponse = {
+  summaries: Array<SummaryEntryResponse>
+  summary_status: SummaryStatusResponse
+  total_segments: number
 }
 
 export type ErrorDocsResponse = {
@@ -604,13 +656,13 @@ export type ExternalKnowledgeApiBindingResponse = {
   name: string
 }
 
-export type IndexingEstimatePreviewItemResponse = {
+export type PreviewDetail = {
   child_chunks?: Array<string> | null
   content: string
   summary?: string | null
 }
 
-export type IndexingEstimateQaPreviewItemResponse = {
+export type QaPreviewDetail = {
   answer: string
   question: string
 }
@@ -652,15 +704,13 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
-export type PreviewDetail = {
-  child_chunks?: Array<string> | null
-  content: string
-  summary?: string | null
-}
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
-export type QaPreviewDetail = {
-  answer: string
-  question: string
+export type Rule = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<PreProcessingRule> | null
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
 }
 
 export type DocumentWithSegmentsResponse = {
@@ -706,6 +756,8 @@ export type DocumentMetadataResponse = {
   value?: string | number | number | boolean | null
 }
 
+export type JsonValue = unknown
+
 export type SegmentResponse = {
   answer: string | null
   attachments: Array<SegmentAttachmentResponse>
@@ -750,6 +802,24 @@ export type ChildChunkResponse = {
 export type ChildChunkUpdateArgs = {
   content: string
   id?: string | null
+}
+
+export type SummaryEntryResponse = {
+  created_at?: number | null
+  error?: string | null
+  segment_id: string
+  segment_position: number
+  status: string
+  summary_preview?: string | null
+  updated_at?: number | null
+}
+
+export type SummaryStatusResponse = {
+  completed?: number
+  error?: number
+  generating?: number
+  not_started?: number
+  timeout?: number
 }
 
 export type ExternalHitTestingQueryResponse = {
@@ -824,15 +894,6 @@ export type InfoList = {
   website_info_list?: WebsiteInfo | null
 }
 
-export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
-
-export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph' | null
-  pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation | null
-  subchunk_segmentation?: Segmentation | null
-}
-
 export type MetadataFilteringCondition = {
   conditions?: Array<Condition> | null
   logical_operator?: 'and' | 'or' | null
@@ -853,6 +914,17 @@ export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null
   vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
+}
+
+export type PreProcessingRule = {
+  enabled: boolean
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+}
+
+export type Segmentation = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
 }
 
 export type MetadataDetail = {
@@ -943,17 +1015,6 @@ export type WebsiteInfo = {
   only_main_content?: boolean
   provider: string
   urls: Array<string>
-}
-
-export type PreProcessingRule = {
-  enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
-}
-
-export type Segmentation = {
-  chunk_overlap?: number
-  max_tokens: number
-  separator?: string
 }
 
 export type Condition = {
@@ -1304,7 +1365,7 @@ export type PostDatasetsInitErrors = {
 }
 
 export type PostDatasetsInitResponses = {
-  201: DatasetAndDocumentResponse
+  200: DatasetAndDocumentResponse
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
@@ -1347,7 +1408,7 @@ export type GetDatasetsProcessRuleData = {
 }
 
 export type GetDatasetsProcessRuleResponses = {
-  200: OpaqueObjectResponse
+  200: ProcessRuleResponse
 }
 
 export type GetDatasetsProcessRuleResponse
@@ -1489,7 +1550,7 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+  200: IndexingEstimateResponse
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse
@@ -1577,7 +1638,9 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: BinaryFileResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
@@ -1672,7 +1735,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentDetailResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -1711,7 +1774,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+  200: IndexingEstimateResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
@@ -1788,7 +1851,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentPipelineExecutionLogResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
@@ -2133,7 +2196,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentSummaryStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
