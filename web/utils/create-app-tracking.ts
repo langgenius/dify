@@ -4,17 +4,15 @@ import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
 
-// Keep source grouping available for future reporting, but do not use this map as
-// an attribution gate. Any non-empty utm_source should preserve slug attribution.
-export const EXTERNAL_UTM_SOURCE_MAP = {
-  'blog': 'blog',
-  'dify_blog': 'blog',
-  'linkedin': 'linkedin',
-  'newsletter': 'blog',
-  'twitter': 'twitter/x',
-  'twitter/x': 'twitter/x',
-  'x': 'twitter/x',
-} as const
+// const EXTERNAL_UTM_SOURCE_MAP = {
+//   'blog': 'blog',
+//   'dify_blog': 'blog',
+//   'linkedin': 'linkedin',
+//   'newsletter': 'blog',
+//   'twitter': 'twitter/x',
+//   'twitter/x': 'twitter/x',
+//   'x': 'twitter/x',
+// } as const
 
 type SearchParamReader = {
   get: (name: string) => string | null
