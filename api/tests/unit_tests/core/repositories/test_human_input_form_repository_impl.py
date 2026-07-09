@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from sqlalchemy.orm import Session
@@ -76,21 +75,23 @@ def _stub_selectinload(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.repositories.human_input_repository.select", lambda *args, **kwargs: _FakeSelect())
 
 
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 class TestHumanInputFormRepositoryImplHelpers:
-    def test_build_email_recipients_with_member_and_external(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_build_email_recipients_with_member_and_external(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             assert restrict_to_user_ids == ["member-1"]
             return [_WorkspaceMemberInfo(user_id="member-1", email="member@example.com")]
 
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
-            session=session_stub,
+            session=sqlite_session,
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
@@ -113,20 +114,21 @@ class TestHumanInputFormRepositoryImplHelpers:
         external_payload = EmailExternalRecipientPayload.model_validate_json(external_recipient.recipient_payload)
         assert external_payload.email == "external@example.com"
 
-    def test_build_email_recipients_skips_unknown_members(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_build_email_recipients_skips_unknown_members(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         created = _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             assert restrict_to_user_ids == ["missing-member"]
             return []
 
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
-            session=session_stub,
+            session=sqlite_session,
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
@@ -142,13 +144,14 @@ class TestHumanInputFormRepositoryImplHelpers:
         assert recipients[0].recipient_type == RecipientType.EMAIL_EXTERNAL
         assert len(created) == 1  # only external recipient created via factory
 
-    def test_build_email_recipients_whole_workspace_uses_all_members(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_build_email_recipients_whole_workspace_uses_all_members(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             return [
                 _WorkspaceMemberInfo(user_id="member-1", email="member1@example.com"),
                 _WorkspaceMemberInfo(user_id="member-2", email="member2@example.com"),
@@ -157,7 +160,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_all_workspace_members", fake_query)
 
         recipients = repo._build_email_recipients(
-            session=session_stub,
+            session=sqlite_session,
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
@@ -170,20 +173,21 @@ class TestHumanInputFormRepositoryImplHelpers:
         emails = {EmailMemberRecipientPayload.model_validate_json(r.recipient_payload).email for r in recipients}
         assert emails == {"member1@example.com", "member2@example.com"}
 
-    def test_build_email_recipients_dedupes_external_by_email(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_build_email_recipients_dedupes_external_by_email(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         created = _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             assert restrict_to_user_ids == []
             return []
 
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
-            session=session_stub,
+            session=sqlite_session,
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
@@ -199,21 +203,20 @@ class TestHumanInputFormRepositoryImplHelpers:
         assert len(created) == 1
 
     def test_build_email_recipients_prefers_member_over_external_by_email(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session, restrict_to_user_ids):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             assert restrict_to_user_ids == ["member-1"]
             return [_WorkspaceMemberInfo(user_id="member-1", email="shared@example.com")]
 
         monkeypatch.setattr(HumanInputFormRepositoryImpl, "_query_workspace_members_by_ids", fake_query)
 
         recipients = repo._build_email_recipients(
-            session=session_stub,
+            session=sqlite_session,
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
@@ -231,13 +234,13 @@ class TestHumanInputFormRepositoryImplHelpers:
     def test_delivery_method_to_model_includes_external_recipients_with_whole_workspace(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ) -> None:
         repo = _build_repository()
-        session_stub = cast(Session, object())
         _patch_recipient_factory(monkeypatch)
 
         def fake_query(self, session):  # type: ignore[no-untyped-def]
-            assert session is session_stub
+            assert session is sqlite_session
             return [
                 _WorkspaceMemberInfo(user_id="member-1", email="member1@example.com"),
                 _WorkspaceMemberInfo(user_id="member-2", email="member2@example.com"),
@@ -256,7 +259,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             )
         )
 
-        result = repo._delivery_method_to_model(session=session_stub, form_id="form-id", delivery_method=method)
+        result = repo._delivery_method_to_model(session=sqlite_session, form_id="form-id", delivery_method=method)
 
         assert len(result.recipients) == 3
         member_emails = {
