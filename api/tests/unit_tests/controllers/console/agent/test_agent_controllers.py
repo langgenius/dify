@@ -60,6 +60,16 @@ from controllers.console.app.message import (
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
+@pytest.fixture
+def roster_session() -> SimpleNamespace:
+    return SimpleNamespace()
+
+
+def _call_roster(method, api_instance, session, *args, **kwargs):
+    """Invoke an unwrapped roster handler with an injected session first."""
+    return unwrap(method)(api_instance, session, *args, **kwargs)
+
+
 def _version_response(version_id: str = "version-1") -> dict:
     return {
         "id": version_id,
@@ -529,7 +539,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
             captured.update(kwargs)
             return copied_app
 
-    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda: FakeRosterService())
+    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda _session: FakeRosterService())
     monkeypatch.setattr(
         roster_controller,
         "_serialize_agent_app_detail",
@@ -575,7 +585,7 @@ def test_agent_debug_conversation_refresh_uses_current_user(
             captured.update(kwargs)
             return "new-debug-conversation-id"
 
-    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda: FakeRosterService())
+    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda _session: FakeRosterService())
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh",
@@ -919,7 +929,9 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
     assert cast(dict[str, object], update_call["args"])["role"] == ""
 
 
-def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invite_options_get_parses_app_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace
+) -> None:
     captured: dict[str, object] = {}
 
     def list_invite_options(_self: object, **kwargs: object) -> dict[str, object]:
@@ -929,13 +941,15 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr(roster_controller.AgentRosterService, "list_invite_options", list_invite_options)
 
     with app.test_request_context("/console/api/agent/invite-options?page=1&limit=10&app_id=app-1"):
-        result = unwrap(AgentInviteOptionsApi.get)(AgentInviteOptionsApi(), "tenant-1")
+        result = _call_roster(AgentInviteOptionsApi.get, AgentInviteOptionsApi(), roster_session, "tenant-1")
 
     assert result == {"data": [], "page": 1, "limit": 10, "total": 0, "has_more": False}
     assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
 
 
-def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_versions_call_services(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace
+) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
     monkeypatch.setattr(
@@ -974,11 +988,18 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore_agent_version)
 
     assert (
-        unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), "tenant-1", agent_id)["data"][0]["id"]
+        _call_roster(AgentRosterVersionsApi.get, AgentRosterVersionsApi(), roster_session, "tenant-1", agent_id)[
+            "data"
+        ][0]["id"]
         == "version-1"
     )
-    version_detail = unwrap(AgentRosterVersionDetailApi.get)(
-        AgentRosterVersionDetailApi(), "tenant-1", agent_id, version_id
+    version_detail = _call_roster(
+        AgentRosterVersionDetailApi.get,
+        AgentRosterVersionDetailApi(),
+        roster_session,
+        "tenant-1",
+        agent_id,
+        version_id,
     )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id

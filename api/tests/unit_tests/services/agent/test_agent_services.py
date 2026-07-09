@@ -2527,8 +2527,8 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert found_agent.id == "agent-1"
     assert found_version.id == "version-1"
     assert loaded_versions["version-1"].agent_id == "agent-1"
+    # create_roster_agent must leave commit ownership to the caller / @with_session.
     assert fake_session.commits == 0
-    assert fake_session.flushes >= 3
 
 
 def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inline_agent():

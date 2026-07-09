@@ -287,6 +287,13 @@ class AgentRosterService:
         payload: RosterAgentCreatePayload,
         source: AgentSource = AgentSource.ROSTER,
     ) -> Agent:
+        """Create a roster Agent and flush it into the caller's transaction.
+
+        This method flushes rather than commits so `@with_session` (or another
+        outer transaction owner) can commit atomically. Callers that catch
+        `AgentNameConflictError` must not reuse the same session until it has
+        been rolled back.
+        """
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
 
         agent = Agent(
@@ -356,11 +363,11 @@ class AgentRosterService:
     ) -> Agent:
         """Create the roster Agent that backs an Agent App, linked via ``app_id``.
 
-        Unlike :meth:`create_roster_agent`, this does not commit: the caller
-        (``AppService.create_app``) owns the surrounding transaction so the App
-        row and its backing Agent are persisted atomically. A default (empty)
-        Agent Soul is seeded; the user configures model/prompt/tools afterward in
-        the Composer.
+        Like :meth:`create_roster_agent`, this flushes rather than commits: the
+        caller (``AppService.create_app``) owns the surrounding transaction so
+        the App row and its backing Agent are persisted atomically. A default
+        (empty) Agent Soul is seeded; the user configures model/prompt/tools
+        afterward in the Composer.
         """
         agent = Agent(
             tenant_id=tenant_id,
@@ -1069,6 +1076,7 @@ class AgentRosterService:
     def update_roster_agent(
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
     ) -> dict[str, Any]:
+        """Update roster Agent metadata and flush into the caller's transaction."""
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         if agent.status == AgentStatus.ARCHIVED:
             raise AgentArchivedError()
@@ -1085,6 +1093,7 @@ class AgentRosterService:
         return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
 
     def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
+        """Archive a roster Agent and flush into the caller's transaction."""
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         if agent.status == AgentStatus.ARCHIVED:
             return
