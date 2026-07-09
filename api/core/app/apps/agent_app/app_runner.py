@@ -437,12 +437,15 @@ class _AgentProcessRecorder:
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
         if tool_call_id and tool_call_id in self._tool_by_call_id:
             return self._tool_by_call_id[tool_call_id]
+        if index < 0:
+            return None
         return self._tool_by_index.get(index)
 
     def _remember_tool_thought(
         self, *, index: int, tool_call_id: str | None, tool_name: str | None, thought_id: str
     ) -> None:
-        self._tool_by_index[index] = thought_id
+        if index >= 0:
+            self._tool_by_index[index] = thought_id
         if tool_call_id:
             self._tool_by_call_id[tool_call_id] = thought_id
         if tool_name:
@@ -458,6 +461,10 @@ class _AgentProcessRecorder:
         return None
 
     def _mark_tool_observed(self, thought_id: str) -> None:
+        self._tool_by_index = {index: value for index, value in self._tool_by_index.items() if value != thought_id}
+        self._tool_by_call_id = {
+            tool_call_id: value for tool_call_id, value in self._tool_by_call_id.items() if value != thought_id
+        }
         for open_thought_ids in self._open_tool_by_name.values():
             open_thought_ids.discard(thought_id)
 
@@ -555,7 +562,12 @@ def _event_index(data: dict[str, Any]) -> int:
 
 
 def _string_or_none(value: Any) -> str | None:
-    return value if isinstance(value, str) and value else None
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized or normalized.lower() in {"none", "null"}:
+        return None
+    return normalized
 
 
 def _json_or_text(value: Any) -> str | None:
