@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
@@ -347,7 +348,10 @@ def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails
     )
 
 
-def test_check_and_deduct_credits_logs_when_billing_release_fails() -> None:
+def test_check_and_deduct_credits_logs_when_billing_release_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.WARNING, logger="services.credit_pool_service")
     with (
         patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
@@ -355,7 +359,6 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails() -> None:
         patch(
             "services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed")
         ) as quota_release,
-        patch("services.credit_pool_service.logger.warning") as logger_warning,
     ):
         quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
 
@@ -368,9 +371,12 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails() -> None:
         bucket="trial",
         reservation_id="reservation-1",
     )
-    logger_warning.assert_called_once()
-    assert logger_warning.call_args.args[3] == "reservation-1"
-    assert logger_warning.call_args.kwargs["exc_info"] is True
+    warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_records) == 1
+    record = warning_records[0]
+    assert record.args[2] == "reservation-1"
+    assert record.exc_info is not None
+    assert record.exc_info[0] is not None
 
 
 def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
