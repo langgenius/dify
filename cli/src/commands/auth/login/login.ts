@@ -31,6 +31,10 @@ export type LoginOptions = {
   readonly browserEnv?: BrowserEnv
   readonly browserOpener?: BrowserOpener
   readonly clock?: Clock
+  // Version guard for the freshly-authenticated host; wired to enforceDifyVersion
+  // at the command boundary. Runs before the session is persisted so we never
+  // save credentials for a server too old for this difyctl. Defaults to a no-op.
+  readonly verifyServer?: (host: string) => Promise<void>
 }
 
 export async function runLogin(opts: LoginOptions): Promise<Registry> {
@@ -40,7 +44,7 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
   const host = await resolveLoginHost(opts, insecure)
   const label = opts.deviceLabel ?? defaultDeviceLabel()
 
-  const api = opts.api ?? new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(host) }))
+  const api = opts.api ?? new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(host), insecure }))
   const code = await api.requestCode({ device_label: label })
 
   renderCodePrompt(opts.io.err, cs, code)
@@ -70,6 +74,9 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
     spinner.stop()
   }
 
+  // Refuse to persist a session to a server too old for this difyctl.
+  await (opts.verifyServer ?? (async () => {}))(host)
+
   const storeBundle = opts.store ?? await detectTokenStore()
   const display = bareHost(host)
   const email = accountEmail(success)
@@ -81,6 +88,7 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
   reg.token_storage = storeBundle.mode
   reg.activate(display, email, ctx)
   applyScheme(reg, display, host)
+  reg.setInsecureTls(display, insecure)
   await reg.save()
 
   renderLoggedIn(opts.io.out, cs, host, success)

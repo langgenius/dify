@@ -7,10 +7,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
-}))
-
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: vi.fn(() => 'https://api.example.com/docs'),
 }))

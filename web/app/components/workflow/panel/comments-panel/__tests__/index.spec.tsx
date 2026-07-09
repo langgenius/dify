@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CommentsPanel from '../index'
 
@@ -7,6 +7,9 @@ const mockHandleCommentResolve = vi.hoisted(() => vi.fn())
 const mockSetActiveCommentId = vi.hoisted(() => vi.fn())
 const mockSetControlMode = vi.hoisted(() => vi.fn())
 const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+}))
 
 const commentFixtures: WorkflowCommentList[] = [
   {
@@ -68,11 +71,15 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1' },
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) => selector({

@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommentIcon } from './comment-icon'
@@ -6,6 +6,13 @@ import { CommentIcon } from './comment-icon'
 type Position = { x: number, y: number }
 
 let mockUserId = 'user-1'
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'User',
+    avatar_url: 'avatar',
+  },
+}))
 
 const mockFlowToScreenPosition = vi.fn((position: Position) => position)
 const mockScreenToFlowPosition = vi.fn((position: Position) => position)
@@ -22,15 +29,21 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    ...mockAppContextState,
     userProfile: {
+      ...mockAppContextState.userProfile,
       id: mockUserId,
-      name: 'User',
-      avatar_url: 'avatar',
     },
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (
@@ -56,6 +69,7 @@ const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCo
     id: 'user-1',
     name: 'Alice',
     email: 'alice@example.com',
+    avatar_url: null,
   },
   created_at: 1,
   updated_at: 2,

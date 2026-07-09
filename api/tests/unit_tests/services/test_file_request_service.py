@@ -5,7 +5,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope
-from core.workflow.file_reference import build_file_reference
 from services.file_request_service import FileRequestService
 
 
@@ -25,14 +24,15 @@ def test_request_download_url_builds_file_under_bound_scope(
     fake_file = MagicMock(filename="report.pdf", mime_type="application/pdf", size=123)
     access_controller = MagicMock()
     service = FileRequestService(access_controller=access_controller)
-    reference = build_file_reference(record_id="tool-file-1")
+    reference = "dify-file-ref:tool-file-1"
 
     with (
         patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()) as bind_scope,
         patch.object(service, "_build_file", return_value=fake_file) as build_file,
         patch(
-            "services.file_request_service.file_helpers.resolve_file_url", return_value="https://files.example.com/x"
-        ),
+            "services.file_request_service.file_helpers.resolve_file_url",
+            return_value="https://files.example.com/x",
+        ) as resolve_file_url,
     ):
         result = service.request_download_url(
             tenant_id="tenant-1",
@@ -52,6 +52,7 @@ def test_request_download_url_builds_file_under_bound_scope(
     build_file.assert_called_once_with(
         mapping={"transfer_method": "tool_file", "reference": reference}, tenant_id="tenant-1"
     )
+    resolve_file_url.assert_called_once_with(fake_file, for_external=True)
     assert result.filename == "report.pdf"
     assert result.mime_type == "application/pdf"
     assert result.size == 123

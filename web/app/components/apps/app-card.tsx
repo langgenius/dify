@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -39,7 +40,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
@@ -90,6 +91,11 @@ const ACCESS_MODE_LABEL_KEYS = {
   [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
 } as const
 
+const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppModeEnum>([
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.WORKFLOW,
+])
+
 type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
@@ -102,6 +108,10 @@ type AppAccessModeIconProps = {
 }
 
 const getAppResourceMaintainer = (app: App) => app.maintainer
+
+function requiresPublishedWorkflowInExplore(app: App) {
+  return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
+}
 
 function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
   const { t } = useTranslation()
@@ -182,12 +192,17 @@ function AppCardOperationsMenu({
   async function handleOpenInstalledApp(e: MouseEvent<HTMLElement>) {
     e.stopPropagation()
     e.preventDefault()
+    if (requiresPublishedWorkflowInExplore(app) && !app.workflow?.id) {
+      toast.error(t('notPublishedYet', { ns: 'app' }))
+      return
+    }
+
     try {
       await openAsyncWindow(async () => {
         const { installed_apps } = await fetchInstalledAppList(app.id)
         if (installed_apps?.length > 0)
           return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-        throw new Error('No app found in Explore')
+        throw new Error(t('notPublishedYet', { ns: 'app' }))
       }, {
         onError: (err) => {
           toast.error(`${err.message || err}`)
@@ -272,10 +287,12 @@ function AppCardOperationsMenuContent(props: AppCardOperationsMenuContentProps) 
     appId: props.app.id,
     enabled: systemFeatures.webapp_auth.enabled,
   })
+  const needsPublishBeforeExplore = requiresPublishedWorkflowInExplore(props.app) && !props.app.workflow?.id
 
   const shouldShowOpenInExploreOption = !props.app.has_draft_trigger
     && (
-      !systemFeatures.webapp_auth.enabled
+      needsPublishBeforeExplore
+      || !systemFeatures.webapp_auth.enabled
       || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
     )
 
@@ -295,8 +312,8 @@ type AppCardActionBarProps = {
 export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -728,8 +745,8 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
 export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -1058,11 +1075,20 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
         </div>
       </div>
       <div className="flex h-[26px] shrink-0 items-start px-3" />
-      <div className="flex min-w-0 shrink-0 items-center pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+      <div
+        className={cn(
+          'flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
+          app.access_mode ? 'pr-9' : 'pr-4',
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-          <div className="truncate">{app.author_name}</div>
-          <div className="shrink-0">·</div>
-          <div className="truncate">{editTimeText}</div>
+          {app.author_name && (
+            <>
+              <div className="min-w-0 truncate">{app.author_name}</div>
+              <div className="shrink-0">·</div>
+            </>
+          )}
+          <div className="min-w-0 truncate">{editTimeText}</div>
         </div>
       </div>
     </>

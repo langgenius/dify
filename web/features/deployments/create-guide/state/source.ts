@@ -5,8 +5,10 @@ import type { WorkflowSourceApp } from './types'
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { dslAppName, isWorkflowDsl } from '@/features/deployments/shared/domain/dsl'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { dslFileAtom, dslFileReadVersionAtom, effectiveMethodAtom, selectedAppAtom, sourceSearchTextAtom } from './primitives'
 import { SOURCE_APPS_PAGE_SIZE } from './utils'
@@ -71,7 +73,7 @@ export const importDslReadyAtom = atom((get) => {
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
-  return consoleQuery.apps.list.infiniteOptions({
+  return consoleQuery.apps.get.infiniteOptions({
     input: pageParam => ({
       query: {
         page: Number(pageParam),
@@ -83,8 +85,25 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
     placeholderData: keepPreviousData,
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
+    }),
     enabled: get(effectiveMethodAtom) === 'bindApp',
   })
+})
+
+const sourceAppsDataAtom = selectAtom(sourceAppsQueryAtom, query => query.data)
+export const sourceAppsErrorAtom = selectAtom(sourceAppsQueryAtom, query => query.error)
+export const sourceAppsFetchNextPageAtom = selectAtom(sourceAppsQueryAtom, query => query.fetchNextPage)
+export const sourceAppsHasNextPageAtom = selectAtom(sourceAppsQueryAtom, query => query.hasNextPage)
+export const sourceAppsIsFetchingAtom = selectAtom(sourceAppsQueryAtom, query => query.isFetching)
+export const sourceAppsIsFetchingNextPageAtom = selectAtom(sourceAppsQueryAtom, query => query.isFetchingNextPage)
+export const sourceAppsIsLoadingAtom = selectAtom(sourceAppsQueryAtom, query => query.isLoading)
+export const sourceAppsIsPlaceholderDataAtom = selectAtom(sourceAppsQueryAtom, query => query.isPlaceholderData)
+
+export const sourceAppsAtom = atom((get) => {
+  return (get(sourceAppsDataAtom)?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
 })
 
 export const effectiveSelectedAppAtom = atom((get) => {
@@ -92,13 +111,10 @@ export const effectiveSelectedAppAtom = atom((get) => {
   if (selectedApp)
     return selectedApp
 
-  const sourceAppsQuery = get(sourceAppsQueryAtom)
-  if (sourceAppsQuery.isPlaceholderData)
+  if (get(sourceAppsIsPlaceholderDataAtom))
     return undefined
 
-  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-
-  return sourceApps[0]
+  return get(sourceAppsAtom)[0]
 })
 
 export function sourceReady(get: Getter) {

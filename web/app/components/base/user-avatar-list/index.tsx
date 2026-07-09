@@ -1,9 +1,10 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/app-context-state'
 
 type User = {
   id: string
@@ -37,7 +38,7 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   className = '',
   showCount = true,
 }) => {
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
   if (!users.length)
     return null
 
@@ -45,8 +46,6 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   const actualMaxVisible = shouldShowCount ? Math.max(1, maxVisible - 1) : maxVisible
   const visibleUsers = users.slice(0, actualMaxVisible)
   const remainingCount = users.length - actualMaxVisible
-
-  const currentUserId = userProfile?.id
 
   return (
     <div className={`flex items-center -space-x-1 ${className}`}>

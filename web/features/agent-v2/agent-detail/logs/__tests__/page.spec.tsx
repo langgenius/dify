@@ -1,4 +1,4 @@
-import type { AgentLogListResponse, AgentLogSourceListResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentLogListResponse, AgentLogMessageListResponse, AgentLogSourceListResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,6 +16,7 @@ type AgentLogsQueryInput = {
 const mocks = vi.hoisted(() => ({
   logsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
+  messagesQueryFn: vi.fn(),
   logsQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-logs', input],
     queryFn: () => mocks.logsQueryFn(input),
@@ -23,6 +24,10 @@ const mocks = vi.hoisted(() => ({
   logSourcesQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-log-sources', input],
     queryFn: () => mocks.logSourcesQueryFn(input),
+  })),
+  messagesQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
+    queryKey: ['agent-log-messages', input],
+    queryFn: () => mocks.messagesQueryFn(input),
   })),
 }))
 
@@ -48,6 +53,13 @@ vi.mock('@/service/client', () => ({
         logs: {
           get: {
             queryOptions: mocks.logsQueryOptions,
+          },
+          byConversationId: {
+            messages: {
+              get: {
+                queryOptions: mocks.messagesQueryOptions,
+              },
+            },
           },
         },
       },
@@ -133,6 +145,34 @@ const logSourcesResponse: AgentLogSourceListResponse = {
   ],
 }
 
+const messagesResponse: AgentLogMessageListResponse = {
+  data: [
+    {
+      answer: 'Translated chapter summary',
+      answer_tokens: 12,
+      conversation_id: 'conversation-1',
+      created_at: 1781660001,
+      currency: 'USD',
+      error: null,
+      from_account_id: null,
+      from_end_user_id: 'end-user-1',
+      id: 'message-1',
+      latency: 1.234,
+      message_id: 'message-1',
+      message_tokens: 8,
+      query: 'Translate this chapter',
+      status: 'success',
+      total_price: '0.001',
+      total_tokens: 20,
+      updated_at: 1781660002,
+    },
+  ],
+  has_more: false,
+  limit: 100,
+  page: 1,
+  total: 1,
+}
+
 const renderPage = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -165,6 +205,7 @@ describe('AgentLogsPage', () => {
     vi.clearAllMocks()
     mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
+    mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
   })
 
   describe('Query contract', () => {
@@ -260,11 +301,44 @@ describe('AgentLogsPage', () => {
         expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
           sources: ['webapp:webapp-app-id'],
         }))
+        expect(mocks.logsQueryFn).toHaveBeenCalledTimes(2)
       })
 
       expect(screen.getByText('Previous conversation')).toBeInTheDocument()
 
       resolveNextLogs(emptyLogsResponse)
+
+      await waitFor(() => {
+        expect(screen.queryByText('Previous conversation')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should open chatbot-style log detail drawer with generated messages contract when a row is clicked', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(populatedLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+              conversation_id: 'conversation-1',
+            },
+            query: {
+              limit: 100,
+              page: 1,
+              sort_by: 'created_at',
+              sort_order: 'asc',
+              sources: ['webapp:webapp-app-id'],
+            },
+          },
+        })
+      })
+      expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
     })
   })
 })

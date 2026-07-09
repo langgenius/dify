@@ -71,32 +71,23 @@ vi.mock('@/service/client', () => ({
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => {
-    const state = {
-      isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-      isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-      isLoadingCurrentWorkspace: false,
-      userProfile: { id: 'creator-1' },
-      workspacePermissionKeys: mockWorkspacePermissionKeys(),
-    }
 
-    return state
-  },
-  useSelector: <T,>(selector: (state: {
-    isCurrentWorkspaceEditor: boolean
-    isCurrentWorkspaceDatasetOperator: boolean
-    isLoadingCurrentWorkspace: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => T): T => selector({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-    isLoadingCurrentWorkspace: false,
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -268,6 +259,18 @@ describe('SnippetList', () => {
     expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
+  })
+
+  it('lays out snippet cards with auto-fill grid columns', () => {
+    renderList()
+
+    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
+    const grid = card?.parentElement
+
+    expect(grid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+    )
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {

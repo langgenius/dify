@@ -28,6 +28,8 @@
   "accessRule.noDescription": "無描述",
   "accessRule.noRules": "暫無訪問規則",
   "accessRule.noUserAccessSettings": "暫無個人權限設定",
+  "accessRule.onlyMe": "僅自己",
+  "accessRule.onlyMeDescription": "僅你自己可以存取此資源。",
   "accessRule.permission": "權限",
   "accessRule.resourceOpenScope": "訪問範圍",
   "accessRule.resourceOpenScopeDescription": "選擇此資源對哪些成員開放。角色權限仍決定每位成員可執行的操作。",

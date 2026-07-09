@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { AgentChatRuntime } from './chat-runtime'
 
@@ -26,6 +27,7 @@ function AgentBuildChatEmptyState({
   inputNode,
 }: AgentChatRuntimeEmptyStateProps) {
   const { t } = useTranslation('agentV2')
+  const communityEditionBuildModeTip = t('agentDetail.configure.build.empty.communityEditionTip')
 
   return (
     <div className="flex h-full items-center justify-center">
@@ -42,8 +44,32 @@ function AgentBuildChatEmptyState({
           </div>
           <span aria-hidden className="absolute i-ri-hammer-line size-5 text-saas-dify-blue-inverted" />
         </div>
-        <div className="mt-3 max-w-full truncate system-md-medium text-text-secondary">
-          {t('agentDetail.configure.build.empty.title')}
+        <div className="mt-3 flex max-w-full items-center gap-1.5">
+          <div className="min-w-0 truncate system-md-medium text-text-secondary">
+            {t('agentDetail.configure.build.empty.title')}
+          </div>
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              delay={300}
+              closeDelay={200}
+              aria-label={communityEditionBuildModeTip}
+              render={(
+                <button
+                  type="button"
+                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  <span aria-hidden className="i-custom-vender-line-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
+                </button>
+              )}
+            />
+            <PopoverContent
+              placement="top"
+              popupClassName="max-w-[340px] px-3 py-2 system-xs-regular text-text-tertiary"
+            >
+              {communityEditionBuildModeTip}
+            </PopoverContent>
+          </Popover>
         </div>
         <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
           {t('agentDetail.configure.build.empty.description')}
@@ -61,6 +87,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
     <AgentChatRuntime
       {...props}
       inputPlaceholder={t('agentDetail.configure.build.inputPlaceholder')}
+      inputAutoFocus={false}
       sendButtonLabel={t('agentDetail.configure.build.startBuild')}
       renderEmptyState={(emptyStateProps: AgentChatRuntimeEmptyStateProps) => (
         <AgentBuildChatEmptyState {...emptyStateProps} />

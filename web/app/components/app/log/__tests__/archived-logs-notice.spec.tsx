@@ -1,12 +1,16 @@
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
+
+const mockAppContextState = vi.hoisted(() => ({
+  current: null as AppContextStateMockState | null,
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -22,9 +26,15 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -42,7 +52,6 @@ vi.mock('@/context/modal-context', async (importOriginal) => {
   }
 })
 
-const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContextSelector = vi.mocked(useModalContextSelector)
 
@@ -61,9 +70,9 @@ describe('ArchivedLogsNotice', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAppContext.mockReturnValue({
+    mockAppContextState.current = {
       isCurrentWorkspaceManager: true,
-    } as ReturnType<typeof useAppContext>)
+    }
     mockProviderPlan(Plan.professional)
     mockUseModalContextSelector.mockImplementation(selector =>
       selector({

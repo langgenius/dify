@@ -179,15 +179,23 @@ def _make_unknown_provider(name: str):
 
 def _patched_isinstance(obj, cls):
     """
-    Reroute isinstance checks the catalogue uses to the fake providers built
-    above. Anything else falls through to the real isinstance.
-    """
-    from core.tools.builtin_tool.provider import BuiltinToolProviderController
-    from core.tools.plugin_tool.provider import PluginToolProviderController
+    Reroute the isinstance checks ``build_tool_catalogue`` makes onto the fake
+    providers built above.
 
-    if cls is BuiltinToolProviderController:
+    Match the provider classes by ``__name__`` rather than by identity (``is``).
+    In the full test suite a sibling test that reloads or stubs
+    ``core.tools.*.provider`` (e.g. via ``sys.modules``) gives the catalogue a
+    DIFFERENT class object than a fresh ``import`` here would; an ``is`` check
+    would then miss, every fake provider would fall through to the real
+    ``isinstance`` and fail it, and the catalogue would come back empty — which
+    is exactly how this test flaked in CI under parallel execution. A name match
+    is immune to those reloads. Anything we don't recognise (including tuple
+    ``cls`` args) defers to the real ``isinstance``.
+    """
+    cls_name = getattr(cls, "__name__", "")
+    if cls_name == "BuiltinToolProviderController":
         return bool(getattr(obj, "_is_builtin", False))
-    if cls is PluginToolProviderController:
+    if cls_name == "PluginToolProviderController":
         return bool(getattr(obj, "_is_plugin", False))
     import builtins as _b
 

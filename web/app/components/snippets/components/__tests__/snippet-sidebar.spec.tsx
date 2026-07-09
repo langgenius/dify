@@ -144,10 +144,25 @@ describe('SnippetSidebarContent', () => {
     expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
     expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
     expect(screen.getByText(snippet.name)).toHaveClass('truncate')
+    if (!snippet.description)
+      throw new Error('snippet.description is required for this test')
     expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
     expect(screen.getByText(snippet.description)).toHaveClass('truncate')
     expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()
     expect(capturedVarListProps?.readonly).toBe(true)
+  })
+
+  it('should render the orchestrate route menu item', () => {
+    render(
+      <SnippetSidebarContent
+        snippet={snippet}
+        fields={fields}
+        readonly={false}
+        onFieldsChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'snippet.sectionOrchestrate' })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
   })
 
   it('should add a new input field from the config variable modal', () => {

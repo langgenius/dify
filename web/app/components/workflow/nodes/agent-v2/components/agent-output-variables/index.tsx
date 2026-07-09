@@ -109,9 +109,14 @@ function ChildOutputFrame({ children, depth }: { children: ReactNode, depth: num
 export function AgentOutputVariables({
   outputs,
   onChange,
+  collapsed,
+  onCollapse,
 }: AgentOutputVariablesProps) {
   const { t } = useTranslation()
   const [editingState, setEditingState] = useState<EditingState | null>(null)
+  const [internalCollapsed, setInternalCollapsed] = useState(true)
+  const isCollapsed = collapsed ?? internalCollapsed
+  const handleCollapseChange = onCollapse ?? setInternalCollapsed
   function handleNewOutput() {
     setEditingState({ draft: createDraft() })
   }
@@ -213,7 +218,7 @@ export function AgentOutputVariables({
     )
   }
   return (
-    <OutputVars>
+    <OutputVars collapsed={isCollapsed} onCollapse={handleCollapseChange}>
       <div className="pb-2">
         <div className="flex flex-col">
           {outputs.map((output, index) => {

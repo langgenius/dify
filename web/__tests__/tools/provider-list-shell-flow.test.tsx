@@ -20,18 +20,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
-    langGeniusVersionInfo: { current_version: '1.0.0' },
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
-    }),
-}))
-
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({
     data: [

@@ -1,16 +1,23 @@
 import type { PluginCategoryEnum } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import {
+  currentWorkspaceLoadingAtom,
+  langGeniusVersionInfoAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+  workspaceRoleFlagsAtom,
+} from '@/context/app-context-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
 
 const useCanSetPluginSettings = () => {
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: rbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.rbac_enabled,
@@ -25,7 +32,14 @@ const useCanSetPluginSettings = () => {
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const {
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+  } = useAtomValue(workspaceRoleFlagsAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const { data: rbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.rbac_enabled,
@@ -68,7 +82,7 @@ export const usePluginSettingsAccess = () => {
     canDebugger: canDebugPlugin,
     canSetPermissions,
     currentDifyVersion: langGeniusVersionInfo?.current_version,
-    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching,
+    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching || !!isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys,
     permissionError: permissionQuery.error,
     isPermissionUpdatePending,
   }
@@ -118,7 +132,11 @@ export const useCanInstallPluginFromMarketplace = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const marketplaceAccess = systemFeatures.enable_marketplace
   const rbacEnabled = systemFeatures.rbac_enabled
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const {
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+  } = useAtomValue(workspaceRoleFlagsAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({

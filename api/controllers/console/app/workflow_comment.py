@@ -189,14 +189,14 @@ class WorkflowCommentReplyUpdate(ResponseModel):
 
 register_schema_models(
     console_ns,
-    AccountWithRole,
-    WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
     WorkflowCommentReplyPayload,
 )
 register_response_schema_models(
     console_ns,
+    AccountWithRole,
+    WorkflowCommentMentionUsersPayload,
     WorkflowCommentAccount,
     WorkflowCommentReply,
     WorkflowCommentMention,
@@ -490,7 +490,7 @@ class WorkflowCommentMentionUsersApi(Resource):
         current_tenant = current_user.current_tenant  # need the tenant object here
         if current_tenant is None:
             raise ValueError("current tenant is required")
-        members = TenantService.get_tenant_members(current_tenant, session=db.session)
+        members = TenantService.get_tenant_members(current_tenant, session=db.session())
         users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = WorkflowCommentMentionUsersPayload(users=users)
         return response.model_dump(mode="json"), 200

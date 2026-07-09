@@ -2,8 +2,10 @@ import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type SelectOption = {
-  value: string | number
+export type SegmentStatusFilterValue = 'all' | 0 | 1
+
+export type SegmentStatusFilterOption = {
+  value: SegmentStatusFilterValue
   name: string
 }
 
@@ -11,10 +13,10 @@ type UseSearchFilterReturn = {
   inputValue: string
   searchValue: string
   selectedStatus: boolean | 'all'
-  statusList: SelectOption[]
-  selectDefaultValue: 'all' | 0 | 1
+  statusList: SegmentStatusFilterOption[]
+  selectDefaultValue: SegmentStatusFilterValue
   handleInputChange: (value: string) => void
-  onChangeStatus: (item: SelectOption) => void
+  onChangeStatus: (item: SegmentStatusFilterOption) => void
   onClearFilter: () => void
   resetPage: () => void
 }
@@ -31,7 +33,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   const [searchValue, setSearchValue] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all')
 
-  const statusList = useRef<SelectOption[]>([
+  const statusList = useRef<SegmentStatusFilterOption[]>([
     { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
     { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
     { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
@@ -47,7 +49,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
     handleSearch()
   }, [handleSearch])
 
-  const onChangeStatus = useCallback(({ value }: SelectOption) => {
+  const onChangeStatus = useCallback(({ value }: SegmentStatusFilterOption) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
     onPageChange(1)
   }, [onPageChange])

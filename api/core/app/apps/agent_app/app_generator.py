@@ -1,21 +1,25 @@
-"""Agent App generator: orchestrate one conversation turn for an Agent App.
+"""Agent App generator: orchestrate Agent App chat and finalize executions.
 
-Mirrors the agent_chat generator (conversation + message + queue + streamed
-response over the EasyUI chat pipeline), but the backing config comes from the
-bound Agent Soul and the answer is produced by ``AgentAppRunner`` calling the
-dify-agent backend rather than an in-process LLM/ReAct loop.
+Agent App turns mirror the agent_chat generator (conversation + message +
+queue + streamed response over the EasyUI chat pipeline), but the backing
+config comes from the bound Agent Soul and the answer is produced by
+``AgentAppRunner`` calling the dify-agent backend rather than an in-process
+LLM/ReAct loop. Build-chat finalization uses this same streamed path and only
+changes the runtime exit policy carried to the backend.
 """
 
 from __future__ import annotations
 
 import contextvars
+import json
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping
-from typing import Any
+from collections.abc import Generator, Mapping, Sequence
+from typing import Any, Literal
 
 from flask import Flask, current_app
+from pydantic import JsonValue
 from sqlalchemy import and_, or_, select
 
 from clients.agent_backend import AgentBackendRunEventAdapter
@@ -25,6 +29,7 @@ from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
@@ -33,13 +38,16 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
+    AGENT_RUNTIME_EXIT_INTENT_ARG,
     AgentAppGenerateEntity,
+    AgentRuntimeExitIntent,
     DifyRunContext,
     InvokeFrom,
     UserFrom,
 )
 from core.app.llm.model_access import build_dify_model_access
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
 from models import Account, App, EndUser, Message
 from models.agent import (
@@ -56,9 +64,68 @@ from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
 
+_REFERENCE_FILE_TRANSFER_METHODS = {"local_file", "tool_file", "datasource_file"}
 
-class AgentAppGeneratorError(ValueError):
-    """Raised when an Agent App turn cannot be set up."""
+
+def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
+    """Append labeled, prompt-safe file locators to the backend user prompt."""
+    prompt_files = _prompt_file_locators(prompt_file_mappings)
+    if not prompt_files:
+        return query
+    payload = json.dumps(prompt_files, ensure_ascii=False, separators=(",", ":"))
+    return (
+        f"{query}\n"
+        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+        "to get the files and investigate them\n"
+        f"{payload}"
+    )
+
+
+def _prompt_file_locators(prompt_file_mappings: Sequence[JsonValue]) -> list[dict[str, str]]:
+    locators: list[dict[str, str]] = []
+    for file_mapping in prompt_file_mappings:
+        if not isinstance(file_mapping, Mapping):
+            continue
+        locator = _prompt_file_locator(file_mapping)
+        if locator is not None:
+            locators.append(locator)
+    return locators
+
+
+def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] | None:
+    transfer_method = _string_value(file_mapping, "transfer_method")
+    if transfer_method == "remote_url":
+        url = _string_value(file_mapping, "url") or _string_value(file_mapping, "remote_url")
+        if url is None:
+            return None
+        return {"transfer_method": "remote_url", "url": url}
+    elif transfer_method in _REFERENCE_FILE_TRANSFER_METHODS:
+        if transfer_method is None:
+            return None
+        reference = _canonical_file_reference(
+            _string_value(file_mapping, "reference")
+            or _string_value(file_mapping, "upload_file_id")
+            or _string_value(file_mapping, "file_id")
+            or _string_value(file_mapping, "id")
+        )
+        if reference is None:
+            return None
+        return {"transfer_method": transfer_method, "reference": reference}
+    else:
+        return None
+
+
+def _canonical_file_reference(reference: str | None) -> str | None:
+    if reference is None:
+        return None
+    if reference.startswith("dify-file-ref:"):
+        return reference if is_canonical_file_reference(reference) else None
+    return build_file_reference(record_id=reference)
+
+
+def _string_value(mapping: Mapping[str, object], key: str) -> str | None:
+    value = mapping.get(key)
+    return value if isinstance(value, str) and value else None
 
 
 class AgentAppGenerator(MessageBasedAppGenerator):
@@ -74,14 +141,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 
-        query = args.get("query")
-        if not isinstance(query, str) or not query.strip():
-            raise AgentAppGeneratorError("query is required")
-        query = query.replace("\x00", "")
+        query = self._require_query(args)
         inputs = args["inputs"]
+        prompt_file_mappings = args.get("files") or []
 
         # Resolve the bound roster Agent + its current Agent Soul snapshot.
-        agent, agent_config_id, agent_soul = self._resolve_agent(
+        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
             draft_type=args.get("draft_type"),
@@ -96,7 +161,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
@@ -111,6 +176,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         model_conf = ModelConfigConverter.convert(app_config)
 
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        agent_runtime_exit_intent = self._resolve_agent_runtime_exit_intent(args)
 
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -122,6 +188,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             ),
             query=query,
             files=[],
+            prompt_file_mappings=prompt_file_mappings,
             parent_message_id=(
                 args.get("parent_message_id")
                 if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
@@ -137,7 +204,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
+            agent_config_version_kind=agent_config_version_kind,
             agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
+            agent_runtime_exit_intent=agent_runtime_exit_intent,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -192,14 +261,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         persisted to the conversation. Live streaming to a reconnected client is
         out of scope here — the message is persisted and can be re-fetched.
         """
-        agent, agent_config_id, agent_soul = self._resolve_agent(
+        conversation = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
+        )
+        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
-            draft_type="draft",
+            draft_type=self._resume_draft_type(app_model=app_model, conversation=conversation, user=user),
             user=user,
-        )
-        conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
         )
 
         app_config = AgentAppConfigManager.get_app_config(
@@ -245,6 +314,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
+            agent_config_version_kind=agent_config_version_kind,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -284,6 +354,30 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user=user,
             stream=False,
         )
+
+    @staticmethod
+    def _resume_draft_type(*, app_model: App, conversation: Any, user: Account | EndUser) -> str | None:
+        if conversation.invoke_from != InvokeFrom.DEBUGGER:
+            return None
+        active_session = AgentAppRuntimeSessionStore().load_active_session_for_conversation(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            conversation_id=conversation.id,
+        )
+        snapshot_id = active_session.scope.agent_config_snapshot_id if active_session is not None else None
+        if snapshot_id and isinstance(user, Account):
+            draft = db.session.scalar(
+                select(AgentConfigDraft).where(
+                    AgentConfigDraft.tenant_id == app_model.tenant_id,
+                    AgentConfigDraft.id == snapshot_id,
+                )
+            )
+            if draft is not None:
+                if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD and draft.account_id == user.id:
+                    return AgentConfigDraftType.DEBUG_BUILD.value
+                if draft.draft_type == AgentConfigDraftType.DRAFT and draft.account_id is None:
+                    return AgentConfigDraftType.DRAFT.value
+        return AgentConfigDraftType.DRAFT.value
 
     def _generate_worker(
         self,
@@ -329,6 +423,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     )
                     if handled:
                         return
+                    query = _append_prompt_file_mappings(
+                        query=query,
+                        prompt_file_mappings=application_generate_entity.prompt_file_mappings,
+                    )
 
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
@@ -337,27 +435,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
                 )
-                credentials_provider, _ = build_dify_model_access(dify_context)
                 _, _, agent_soul = self._resolve_agent_by_id(
                     tenant_id=app_config.tenant_id,
                     agent_id=application_generate_entity.agent_id,
                     snapshot_id=application_generate_entity.agent_config_snapshot_id,
                 )
 
-                runner = AgentAppRunner(
-                    request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
-                    agent_backend_client=create_agent_backend_run_client(
-                        base_url=dify_config.AGENT_BACKEND_BASE_URL,
-                        use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
-                        fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
-                    ),
-                    event_adapter=AgentBackendRunEventAdapter(),
-                    session_store=AgentAppRuntimeSessionStore(),
-                )
+                runner = self._build_runner(dify_context)
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
                     agent_config_snapshot_id=application_generate_entity.agent_config_snapshot_id,
+                    agent_config_version_kind=application_generate_entity.agent_config_version_kind,
                     agent_soul=agent_soul,
                     conversation_id=conversation.id,
                     query=query,
@@ -365,6 +454,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
                     session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
+                    agent_runtime_exit_intent=application_generate_entity.agent_runtime_exit_intent,
                 )
             except GenerateTaskStoppedError:
                 pass
@@ -373,6 +463,40 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
+
+    @staticmethod
+    def _require_query(args: Mapping[str, Any]) -> str:
+        query = args.get("query")
+        if not isinstance(query, str) or not query.strip():
+            raise AgentAppGeneratorError("query is required")
+        return query.replace("\x00", "")
+
+    @staticmethod
+    def _resolve_agent_runtime_exit_intent(args: Mapping[str, Any]) -> AgentRuntimeExitIntent:
+        """Resolve API-internal runtime exit policy from controller-owned args.
+
+        Only the private controller-injected "delete" value changes behavior.
+        Normal chat and resume flows default/fallback to "suspend" so public
+        payloads and invalid internal values preserve existing semantics.
+        """
+        if args.get(AGENT_RUNTIME_EXIT_INTENT_ARG) == "delete":
+            return "delete"
+        return "suspend"
+
+    @staticmethod
+    def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
+        credentials_provider, _ = build_dify_model_access(dify_context)
+        return AgentAppRunner(
+            request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
+            agent_backend_client=create_agent_backend_run_client(
+                base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+            ),
+            event_adapter=AgentBackendRunEventAdapter(),
+            session_store=AgentAppRuntimeSessionStore(),
+            text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
+        )
 
     def _run_input_guards(
         self,
@@ -446,7 +570,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         draft_type: Any,
         user: Account | EndUser,
-    ) -> tuple[Agent, str, AgentSoulConfig]:
+    ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
         agent = db.session.scalar(
             select(Agent)
             .where(
@@ -474,13 +598,20 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 account_id=user.id if isinstance(user, Account) else None,
             )
             agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-            return agent, draft.id, agent_soul
+            config_version_kind: Literal["snapshot", "draft", "build_draft"] = (
+                "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
+            )
+            return agent, draft.id, config_version_kind, agent_soul
+        # active_config_is_published tracks whether the editable draft matches the active snapshot.
+        # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
+        if not agent.active_config_snapshot_id:
+            raise AgentAppNotPublishedError("Agent has not been published")
         _, snapshot, agent_soul = self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
         )
-        return agent, snapshot.id, agent_soul
+        return agent, snapshot.id, "snapshot", agent_soul
 
     @staticmethod
     def _runtime_session_snapshot_id(*, invoke_from: InvokeFrom, snapshot_id: str) -> str | None:
@@ -570,4 +701,4 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return agent, draft, agent_soul
 
 
-__all__ = ["AgentAppGenerator", "AgentAppGeneratorError"]
+__all__ = ["AgentAppGenerator", "AgentAppGeneratorError", "AgentAppNotPublishedError"]

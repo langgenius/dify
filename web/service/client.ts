@@ -1,5 +1,7 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,
@@ -8,10 +10,9 @@ import type {
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { RouterUtils } from '@orpc/tanstack-query'
+import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
-import type { Tag } from '@/contract/console/tags'
-import type { consoleRouterContract } from '@/contract/router'
+import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
@@ -21,11 +22,11 @@ import {
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { marketplaceRouterContract } from '@/contract/marketplace'
 import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
 import { createConsoleDynamicLink } from './console-link'
+import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 function getMarketplaceHeaders() {
   return new Headers({
@@ -58,19 +59,23 @@ export function getBaseURL(path: string) {
   return url
 }
 
-type ConsoleClientContext = Record<never, never>
+export type ConsoleClientContext = TanstackQueryOperationContext & {
+  silent?: boolean
+}
+
 type ConsoleClientLink = ClientLink<ConsoleClientContext>
 
 function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
-    fetch: (input, init) => {
+    fetch: (input, init, options) => {
       return request(
-        input.url,
+        normalizeConsoleOpenAPIURL(input.url),
         init,
         {
           fetchCompat: true,
           request: input,
+          silent: options.context.silent,
         },
       )
     },
@@ -118,7 +123,11 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
+type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>>>
+
+function isTagType(type: string | null | undefined): type is TagType {
+  return type === 'app' || type === 'knowledge' || type === 'snippet'
+}
 
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
@@ -349,7 +358,7 @@ async function invalidateReleaseMutationQueries(
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
-export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
@@ -449,6 +458,16 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       byAgentId: {
+        get: {
+          queryOptions: {
+            retry: (failureCount, error) => {
+              if (error instanceof Response && error.status === 404)
+                return false
+
+              return failureCount < 3
+            },
+          },
+        },
         copy: {
           post: {
             mutationOptions: {
@@ -527,12 +546,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           put: {
             mutationOptions: {
               onSuccess: (_composerState, variables, _onMutateResult, context) => {
-                if (variables.body.save_strategy !== 'save_as_new_version')
-                  return
-
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.get.key(),
                 })
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.inviteOptions.get.key(),
                 })
@@ -612,22 +631,6 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
     },
-    explore: {
-      updateAppAccessMode: {
-        mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            return Promise.all([
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.explore.appAccessMode.key({ type: 'query' }),
-              }),
-              context.client.invalidateQueries({
-                queryKey: ['access-control', 'app-whitelist-subjects'],
-              }),
-            ])
-          },
-        },
-      },
-    },
     apiBasedExtension: {
       post: {
         mutationOptions: {
@@ -668,11 +671,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       },
     },
     tags: {
-      create: {
+      post: {
         mutationOptions: {
           onSuccess: (tag, _variables, _onMutateResult, context) => {
+            if (!isTagType(tag.type))
+              return
+
             context.client.setQueryData(
-              consoleQuery.tags.list.queryKey({
+              consoleQuery.tags.get.queryKey({
                 input: {
                   query: {
                     type: tag.type,
@@ -684,29 +690,31 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
-      update: {
-        mutationOptions: {
-          onSuccess: (updatedTag, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tagId
-                ? updatedTag
-                : tag),
-            )
+      byTagId: {
+        patch: {
+          mutationOptions: {
+            onSuccess: (updatedTag, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tag_id
+                  ? updatedTag
+                  : tag),
+              )
+            },
           },
         },
-      },
-      delete: {
-        mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tagId),
-            )
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tag_id),
+              )
+            },
           },
         },
       },

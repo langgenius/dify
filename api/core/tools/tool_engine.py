@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, Union, cast
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -47,6 +47,7 @@ class ToolEngine:
 
     @staticmethod
     def agent_invoke(
+        session: Session,
         tool: Tool,
         tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
@@ -82,7 +83,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
+            messages = ToolEngine._invoke(session, tool, tool_parameters, user_id, conversation_id, app_id, message_id)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
@@ -111,7 +112,7 @@ class ToolEngine:
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
             )
 
-            plain_text = ToolEngine._convert_tool_response_to_str(message_list)
+            plain_text = ToolEngine.tool_response_to_str(message_list)
 
             meta = invocation_meta_dict["meta"]
 
@@ -157,6 +158,7 @@ class ToolEngine:
 
     @staticmethod
     def generic_invoke(
+        session: Session,
         tool: Tool,
         tool_parameters: dict[str, Any],
         user_id: str,
@@ -180,6 +182,7 @@ class ToolEngine:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
 
             response = tool.invoke(
+                session=session,
                 user_id=user_id,
                 tool_parameters=tool_parameters,
                 conversation_id=conversation_id,
@@ -201,6 +204,7 @@ class ToolEngine:
 
     @staticmethod
     def _invoke(
+        session: Session,
         tool: Tool,
         tool_parameters: dict[str, Any],
         user_id: str,
@@ -224,7 +228,7 @@ class ToolEngine:
             },
         )
         try:
-            yield from tool.invoke(user_id, tool_parameters, conversation_id, app_id, message_id)
+            yield from tool.invoke(session, user_id, tool_parameters, conversation_id, app_id, message_id)
         except Exception as e:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)
@@ -234,10 +238,8 @@ class ToolEngine:
             yield meta
 
     @staticmethod
-    def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
-        """
-        Handle tool response
-        """
+    def tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
+        """Convert tool invoke messages into the plain-text observation shown to the model/user."""
         parts: list[str] = []
         json_parts: list[str] = []
 

@@ -9,6 +9,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -17,7 +18,7 @@ import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-conf
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
@@ -25,6 +26,7 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -60,7 +62,7 @@ function getExploreAppListQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input }), language],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList(language)
       return {
@@ -72,9 +74,9 @@ function getExploreAppListQueryOptions(locale?: string) {
 }
 
 function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.list.queryOptions({
+  return consoleQuery.apps.get.queryOptions({
     input: homeContinueWorkAppsInput,
-    select: (response): WorkspaceApp[] => response.data ?? [],
+    select: (response): WorkspaceApp[] => normalizeAppPagination(response).data,
   })
 }
 
@@ -83,7 +85,7 @@ function getBannersQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<BannerType[]>({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.banners.get.queryKey({ input }), language],
     queryFn: () => fetchBanners(language),
   })
 }
@@ -100,7 +102,7 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )
@@ -245,9 +247,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     async ({ name, icon_type, icon, icon_background, description }) => {
       hideTryAppPanel()
 
-      const { export_data, mode } = await fetchAppDetail(
-        currApp?.app.id as string,
-      )
+      const appId = currApp?.app.id
+      if (!appId)
+        return
+
+      const { export_data, mode } = await fetchAppDetail(appId)
       currentCreateAppModeRef.current = mode
       const payload = {
         mode: DSLImportMode.YAML_CONTENT,

@@ -60,7 +60,10 @@ const mockStopTaskStatus = vi.fn()
 const mockHandleInstallTaskStart = vi.fn()
 let mockPluginDeclaration: { manifest: { meta: { minimum_dify_version: string } } } | undefined
 let mockCanInstall = true
-let mockLangGeniusVersionInfo = { current_version: '1.0.0' }
+const mockAppContextState = vi.hoisted(() => ({
+  langGeniusVersionInfoAtom: Symbol('langGeniusVersionInfoAtom'),
+  langGeniusVersionInfo: { current_version: '1.0.0' as string | null },
+}))
 
 // Mock useCheckInstalled
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
@@ -71,10 +74,17 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo,
-  }),
+vi.mock('@/context/app-context-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.langGeniusVersionInfoAtom)
+      return mockAppContextState.langGeniusVersionInfo
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 // Mock service hooks
@@ -104,7 +114,7 @@ vi.mock('../../../base/check-task-status', () => ({
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
   default: () => ({
     canInstallPlugin: true,
-    currentDifyVersion: mockLangGeniusVersionInfo.current_version,
+    currentDifyVersion: mockAppContextState.langGeniusVersionInfo.current_version,
   }),
 }))
 
@@ -170,7 +180,7 @@ describe('Install Component (steps/install.tsx)', () => {
     mockIsLoading = false
     mockPluginDeclaration = undefined
     mockCanInstall = true
-    mockLangGeniusVersionInfo = { current_version: '1.0.0' }
+    mockAppContextState.langGeniusVersionInfo = { current_version: '1.0.0' }
     mockInstallPackageFromMarketPlace.mockResolvedValue({
       all_installed: false,
       task_id: 'task-123',
@@ -281,7 +291,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should not show warning when dify version is compatible', () => {
-      mockLangGeniusVersionInfo = { current_version: '2.0.0' }
+      mockAppContextState.langGeniusVersionInfo = { current_version: '2.0.0' }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '1.0.0' } },
       }
@@ -291,7 +301,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should show warning when dify version is incompatible', () => {
-      mockLangGeniusVersionInfo = { current_version: '1.0.0' }
+      mockAppContextState.langGeniusVersionInfo = { current_version: '1.0.0' }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '2.0.0' } },
       }
@@ -749,7 +759,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should handle null current_version in langGeniusVersionInfo', () => {
-      mockLangGeniusVersionInfo = { current_version: null as unknown as string }
+      mockAppContextState.langGeniusVersionInfo = { current_version: null as unknown as string }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '1.0.0' } },
       }

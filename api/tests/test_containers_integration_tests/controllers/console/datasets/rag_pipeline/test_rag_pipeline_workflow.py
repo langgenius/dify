@@ -470,7 +470,7 @@ class TestPipelineRunApis:
                 return_value={"ok": True},
             ),
         ):
-            assert method(api, user, pipeline) == {"ok": True}
+            assert method(api, MagicMock(), user, pipeline) == {"ok": True}
 
     def test_draft_run_rate_limit(self, app: Flask) -> None:
         api = DraftRagPipelineRunApi()
@@ -498,7 +498,7 @@ class TestPipelineRunApis:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(), user, pipeline)
 
 
 class TestDraftNodeRun:
@@ -600,14 +600,18 @@ class TestMiscApis:
             app.test_request_context("/"),
         ):
             with pytest.raises(Forbidden):
-                method(api, user, "ds1")
+                method(api, MagicMock(spec=Session), user, "ds1")
 
     def test_recommended_plugins(self, app: Flask) -> None:
         api = RagPipelineRecommendedPluginApi()
         method = unwrap(api.get)
 
         service = MagicMock()
-        service.get_recommended_plugins.return_value = [{"id": "p1"}]
+        recommended_plugins = {
+            "installed_recommended_plugins": [{"id": "p1"}],
+            "uninstalled_recommended_plugins": [{"id": "p2"}],
+        }
+        service.get_recommended_plugins.return_value = recommended_plugins
         user = make_account()
         tenant_id = "tenant-1"
 
@@ -619,7 +623,7 @@ class TestMiscApis:
             ),
         ):
             result = method(api, tenant_id, user)
-            assert result == [{"id": "p1"}]
+            assert result == recommended_plugins
             service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
 
@@ -655,7 +659,7 @@ class TestPublishedRagPipelineRunApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, MagicMock(), user, pipeline)
             assert result == {"ok": True}
 
     def test_published_run_rate_limit(self, app: Flask) -> None:
@@ -681,7 +685,7 @@ class TestPublishedRagPipelineRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(), user, pipeline)
 
 
 class TestDefaultBlockConfigApi:

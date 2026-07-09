@@ -32,19 +32,30 @@ vi.mock('@/service/use-snippets', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: mockSyncDraftWorkflow,
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: mockSyncDraftWorkflow,
+          },
+        },
+      },
     },
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -123,7 +134,7 @@ describe('useCreateSnippet', () => {
         },
       })
       expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-123' },
+        params: { snippet_id: 'snippet-123' },
         body: {
           graph,
           input_fields: [

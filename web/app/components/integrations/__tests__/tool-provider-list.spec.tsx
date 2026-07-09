@@ -97,11 +97,18 @@ vi.mock('@/service/use-tools', () => ({
 const mockAppContextState = vi.hoisted(() => ({
   workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 let mockCheckedInstalledData: { plugins: { id: string, name: string }[] } | null = null
 const mockInvalidateInstalledPluginList = vi.fn()
@@ -466,18 +473,6 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
       expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
-    })
-
-    it('keeps the default plugin card border visible until a card is selected', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
-
-      fireEvent.click(screen.getByTestId('card-google-search'))
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('after:ring-[1.5px]', 'after:ring-components-option-card-option-selected-border', 'after:ring-inset')
     })
   })
 

@@ -1,6 +1,6 @@
 import time
 import uuid
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from faker import Faker
@@ -223,7 +223,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute authentication
-        result = WebAppAuthService.authenticate(account.email, password)
+        result = WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
 
         # Assert: Verify successful authentication
         assert result is not None
@@ -260,7 +260,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountNotFoundError):
-            WebAppAuthService.authenticate(non_existent_email, "any_password")
+            WebAppAuthService.authenticate(non_existent_email, "any_password", db_session_with_containers)
 
     def test_authenticate_account_banned(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -297,7 +297,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountLoginError) as exc_info:
-            WebAppAuthService.authenticate(account.email, password)
+            WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
 
         assert "Account is banned." in str(exc_info.value)
 
@@ -318,7 +318,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling with wrong password
         with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "wrong_password")
+            WebAppAuthService.authenticate(account.email, "wrong_password", db_session_with_containers)
 
         assert "Invalid email or password." in str(exc_info.value)
 
@@ -350,7 +350,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "any_password")
+            WebAppAuthService.authenticate(account.email, "any_password", db_session_with_containers)
 
         assert "Invalid email or password." in str(exc_info.value)
 
@@ -403,7 +403,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(account.email)
+        result = WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
 
         # Assert: Verify successful retrieval
         assert result is not None
@@ -430,7 +430,7 @@ class TestWebAppAuthService:
         non_existent_email = f"nonexistent_{uuid.uuid4().hex}@example.com"
 
         # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(non_existent_email)
+        result = WebAppAuthService.get_user_through_email(non_existent_email, db_session_with_containers)
 
         # Assert: Verify proper handling
         assert result is None
@@ -463,7 +463,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(Unauthorized) as exc_info:
-            WebAppAuthService.get_user_through_email(account.email)
+            WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
 
         assert "Account is banned." in str(exc_info.value)
 
@@ -659,7 +659,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute end user creation
-        result = WebAppAuthService.create_end_user(site.code, "test@example.com")
+        result = WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
         # Assert: Verify successful creation
         assert result is not None
@@ -694,7 +694,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(non_existent_code, "test@example.com")
+            WebAppAuthService.create_end_user(non_existent_code, "test@example.com", db_session_with_containers)
 
         assert "Site not found." in str(exc_info.value)
 
@@ -732,7 +732,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(site.code, "test@example.com")
+            WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
         assert "App not found." in str(exc_info.value)
 
@@ -750,7 +750,9 @@ class TestWebAppAuthService:
         # Arrange: Setup test with private access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(access_mode="private")
+        result = WebAppAuthService.is_app_require_permission_check(
+            access_mode="private", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is True
@@ -769,7 +771,9 @@ class TestWebAppAuthService:
         # Arrange: Setup test with public access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(access_mode="public")
+        result = WebAppAuthService.is_app_require_permission_check(
+            access_mode="public", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is False
@@ -789,13 +793,17 @@ class TestWebAppAuthService:
         mock_external_service_dependencies["app_service"].get_app_id_by_code.return_value = "mock_app_id"
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(app_code="mock_app_code")
+        result = WebAppAuthService.is_app_require_permission_check(
+            app_code="mock_app_code", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is True
 
         # Verify mock service was called correctly
-        mock_external_service_dependencies["app_service"].get_app_id_by_code.assert_called_once_with("mock_app_code")
+        mock_external_service_dependencies["app_service"].get_app_id_by_code.assert_called_once_with(
+            "mock_app_code", session=ANY
+        )
         mock_external_service_dependencies[
             "enterprise_service"
         ].WebAppAuth.get_app_access_mode_by_id.assert_called_once_with("mock_app_id")
@@ -814,7 +822,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.is_app_require_permission_check()
+            WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)
 
         assert "Either app_code or app_id must be provided." in str(exc_info.value)
 
@@ -832,7 +840,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with public access mode
 
         # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(access_mode="public")
+        result = WebAppAuthService.get_app_auth_type(access_mode="public", session=db_session_with_containers)
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.PUBLIC
@@ -851,7 +859,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with private access mode
 
         # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(access_mode="private")
+        result = WebAppAuthService.get_app_auth_type(access_mode="private", session=db_session_with_containers)
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.INTERNAL
@@ -875,7 +883,9 @@ class TestWebAppAuthService:
         ].WebAppAuth.get_app_access_mode_by_id.return_value = setting
 
         # Act: Execute authentication type determination
-        result: WebAppAuthType = WebAppAuthService.get_app_auth_type(app_code="mock_app_code")
+        result: WebAppAuthType = WebAppAuthService.get_app_auth_type(
+            app_code="mock_app_code", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.EXTERNAL
@@ -899,6 +909,6 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.get_app_auth_type()
+            WebAppAuthService.get_app_auth_type(session=db_session_with_containers)
 
         assert "Either app_code or access_mode must be provided." in str(exc_info.value)

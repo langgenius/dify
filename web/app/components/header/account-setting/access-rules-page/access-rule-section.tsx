@@ -3,11 +3,12 @@
 import type { AccessPolicyWithBindings } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleRow from './access-rule-row'
 
@@ -46,7 +47,7 @@ const AccessRuleSection = ({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const listRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const ruleCount = totalCount ?? rules.length
 

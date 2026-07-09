@@ -1,5 +1,5 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComponentProps } from 'react'
-import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagSelector } from '../components/tag-selector'
@@ -33,11 +33,19 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
@@ -54,12 +62,12 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
-      list: {
+      get: {
         queryOptions: () => ({}),
       },
-      create: {
+      post: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' | 'snippet' } }) => createTag(body.name, body.type),
         }),
       },
     },
@@ -98,8 +106,8 @@ const i18n = {
 }
 
 const appTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -113,7 +121,7 @@ describe('TagSelector', () => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
     mockUseQueryData.current = appTags
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
+    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: '' })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
   })
@@ -124,14 +132,14 @@ describe('TagSelector', () => {
   })
 
   it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {
-    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} />)
+    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: '' }]} />)
     expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
     expect(screen.queryByText(i18n.addTag)).not.toBeInTheDocument()
   })
 
   it('renders the add tag trigger when no current tag is visible and binding is available', () => {
-    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} canBindOrUnbindTags />)
+    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: '' }]} canBindOrUnbindTags />)
     expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
   })
@@ -315,13 +323,13 @@ describe('TagSelector', () => {
   it('opens snippet tag selector with snippets create-and-modify permission', async () => {
     const user = userEvent.setup()
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
-    mockUseQueryData.current = [{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]
+    mockUseQueryData.current = [{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]
 
     render(
       <TagSelector
         targetId="snippet-1"
         type="snippet"
-        value={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+        value={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]}
       />,
     )
 

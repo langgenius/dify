@@ -13,6 +13,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import {
   cloneElement,
@@ -69,7 +70,7 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -114,7 +115,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { t } = useTranslation()
   const language = useLanguage()
   const appId = useStore(s => s.appId)
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,

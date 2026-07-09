@@ -23,6 +23,7 @@ def _principal() -> AgentStubPrincipal:
             user_id="user-1",
             user_from="account",
             workflow_id="workflow-1",
+            conversation_id="conversation-1",
             agent_mode="workflow_run",
             invoke_from="service-api",
         ),
@@ -54,6 +55,7 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_upload(m
             "user_id": "user-1",
             "filename": "report.pdf",
             "mimetype": "application/pdf",
+            "conversation_id": "conversation-1",
         }
         return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
 

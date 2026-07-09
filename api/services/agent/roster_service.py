@@ -1,9 +1,12 @@
+import logging
 from typing import Any, TypedDict
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
 from constants.model_template import default_app_templates
+from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
@@ -24,7 +27,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -38,6 +41,9 @@ from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.feature_service import FeatureService
+from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
+
+logger = logging.getLogger(__name__)
 
 
 class AgentReferencingWorkflow(TypedDict):
@@ -571,10 +577,47 @@ class AgentRosterService:
             self._session.commit()
         return conversation_id
 
+    def load_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
+        """Return the current editor's existing debug conversation without creating or repairing rows."""
+
+        return self._session.scalar(
+            select(Conversation.id)
+            .join(AgentDebugConversation, AgentDebugConversation.conversation_id == Conversation.id)
+            .where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent_id,
+                AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.app_id == Conversation.app_id,
+                Conversation.from_source == ConversationFromSource.CONSOLE,
+                Conversation.from_account_id == account_id,
+                Conversation.is_deleted.is_(False),
+            )
+        )
+
+    def count_agent_app_debug_conversation_messages(self, *, conversation_id: str) -> int:
+        """Return the number of visible messages in an Agent App debug conversation."""
+
+        return (
+            self._session.scalar(
+                select(func.count(Message.id)).where(
+                    Message.conversation_id == conversation_id,
+                )
+            )
+            or 0
+        )
+
     def refresh_agent_app_debug_conversation_id(
         self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
     ) -> str:
-        """Start a new console debug conversation for the current Agent App editor."""
+        """Start a new console debug conversation for the current Agent App editor.
+
+        If this account already has a debug conversation mapping, the previous
+        conversation is abandoned first: any ACTIVE conversation-owned Agent
+        runtime sessions for that old conversation are sent through best-effort
+        backend cleanup and then retired locally even when enqueueing fails.
+        The debug mapping is then repointed to the freshly created
+        conversation.
+        """
 
         agent = self._session.scalar(
             select(Agent).where(
@@ -614,12 +657,100 @@ class AgentRosterService:
                 )
             )
         else:
+            previous_app_id = mapping.app_id
+            previous_conversation_id = mapping.conversation_id
+            if previous_conversation_id:
+                self._cleanup_debug_conversation_runtime_sessions(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    account_id=account_id,
+                    app_id=previous_app_id or backing_app_id,
+                    conversation_id=previous_conversation_id,
+                )
             mapping.app_id = backing_app_id
             mapping.conversation_id = conversation_id
         self._session.flush()
         if commit:
             self._session.commit()
         return conversation_id
+
+    def _cleanup_debug_conversation_runtime_sessions(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        app_id: str,
+        conversation_id: str,
+    ) -> None:
+        session_store = AgentAppRuntimeSessionStore()
+        try:
+            stored_sessions = session_store.list_active_sessions_for_conversation(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                conversation_id=conversation_id,
+            )
+        except Exception:
+            logger.warning(
+                "Failed to load Agent App runtime sessions for debug conversation refresh: "
+                "tenant_id=%s app_id=%s conversation_id=%s",
+                tenant_id,
+                app_id,
+                conversation_id,
+                exc_info=True,
+            )
+            return
+
+        for stored_session in stored_sessions:
+            try:
+                if stored_session.runtime_layer_specs:
+                    payload = AgentBackendSessionCleanupPayload(
+                        session_snapshot=stored_session.session_snapshot,
+                        runtime_layer_specs=stored_session.runtime_layer_specs,
+                        idempotency_key=(
+                            f"{tenant_id}:{agent_id}:{account_id}:{conversation_id}:debug-session-cleanup:"
+                            f"{stored_session.scope.agent_id}:"
+                            f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
+                            f"{stored_session.backend_run_id or 'no-run'}"
+                        ),
+                        metadata={
+                            "tenant_id": stored_session.scope.tenant_id,
+                            "app_id": stored_session.scope.app_id,
+                            "conversation_id": stored_session.scope.conversation_id,
+                            "agent_id": stored_session.scope.agent_id,
+                            "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
+                            "previous_agent_backend_run_id": stored_session.backend_run_id,
+                        },
+                    )
+                    cleanup_conversation_agent_runtime_session.delay(payload.model_dump(mode="json"))
+            except Exception:
+                logger.warning(
+                    "Failed to enqueue Agent backend cleanup for debug conversation refresh: "
+                    "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                    stored_session.scope.tenant_id,
+                    stored_session.scope.app_id,
+                    stored_session.scope.conversation_id,
+                    stored_session.scope.agent_id,
+                    stored_session.backend_run_id,
+                    exc_info=True,
+                )
+            finally:
+                try:
+                    session_store.mark_cleaned(
+                        scope=stored_session.scope,
+                        backend_run_id=stored_session.backend_run_id,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to retire Agent App runtime session for debug conversation refresh: "
+                        "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                        stored_session.scope.tenant_id,
+                        stored_session.scope.app_id,
+                        stored_session.scope.conversation_id,
+                        stored_session.scope.agent_id,
+                        stored_session.backend_run_id,
+                        exc_info=True,
+                    )
 
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         self, *, tenant_id: str, agents: list[Agent], account_id: str
@@ -797,6 +928,7 @@ class AgentRosterService:
                 max_active_requests=source_app.max_active_requests,
             ),
             account,
+            session=self._session,
         )
 
         target_app.enable_site = source_app.enable_site
@@ -992,9 +1124,10 @@ class AgentRosterService:
     def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
         """Return each Agent's stored normal-draft publish state.
 
-        The flag is maintained by write paths: normal shared draft writes mark it
-        dirty, while publish/version creation paths mark it clean. User-scoped
-        debug drafts intentionally do not affect this state.
+        The flag is maintained by write paths against the normal shared draft:
+        saves compare the draft content with the active snapshot, while publish
+        and version creation paths mark the new active snapshot clean.
+        User-scoped debug drafts intentionally do not affect this state.
         """
         agents = [agent for agent in agents if agent.id]
         if not agents:

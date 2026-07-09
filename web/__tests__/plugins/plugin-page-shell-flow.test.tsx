@@ -6,6 +6,9 @@ import PluginPage from '@/app/components/plugins/plugin-page'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockFetchManifestFromMarketPlace = vi.fn()
+const { mockRouterReplace } = vi.hoisted(() => ({
+  mockRouterReplace: vi.fn(),
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -26,24 +29,42 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+  }),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
     langGeniusVersionInfo: {
+      current_env: 'CLOUD',
       current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
     },
     workspacePermissionKeys: [
       'plugin.install',
       'plugin.delete',
       'plugin.plugin_preferences',
     ],
-  }),
-}))
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-plugins', () => ({
   hasPluginPermission: () => true,

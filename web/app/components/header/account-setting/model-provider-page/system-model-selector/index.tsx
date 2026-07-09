@@ -12,10 +12,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -38,6 +39,7 @@ type SystemModelSelectorProps = {
   notConfigured: boolean
   isLoading?: boolean
   hideProviderSettingsFooter?: boolean
+  onOpenMarketplace?: () => void
 }
 
 type SystemModelLabelKey
@@ -64,9 +66,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   notConfigured,
   isLoading,
   hideProviderSettingsFooter,
+  onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { textGenerationModelList } = useProviderContext()
   const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
@@ -189,6 +192,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
@@ -202,6 +206,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
@@ -215,6 +220,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
@@ -228,6 +234,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
@@ -241,6 +248,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}

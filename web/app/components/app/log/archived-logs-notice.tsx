@@ -1,16 +1,17 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { isCurrentWorkspaceManagerAtom } from '@/context/app-context-state'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 
 export function ArchivedLogsNotice() {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { enableBilling, plan } = useProviderContext()
   const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
 

@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from flask import request
 from flask_restx import Resource
@@ -7,7 +6,6 @@ from pydantic import BaseModel, Field, RootModel
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.fields import AudioBinaryResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -31,7 +29,9 @@ from controllers.console.wraps import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import dump_response
 from libs.login import current_user, login_required
 from models import App, AppMode
 from services.app_ref_service import AppRefService
@@ -57,16 +57,27 @@ class TextToSpeechVoiceQuery(BaseModel):
     language: str = Field(..., description="Language code")
 
 
-class AudioTranscriptResponse(BaseModel):
+class AudioTranscriptResponse(ResponseModel):
     text: str = Field(description="Transcribed text from audio")
 
 
-class TextToSpeechVoiceListResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]]
+class TextToSpeechVoiceResponse(ResponseModel):
+    # see api/core/plugin/impl/model.py
+    name: str = Field(description="Voice display name")
+    value: str = Field(description="Voice identifier")
 
 
-register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
-register_response_schema_models(console_ns, AudioBinaryResponse, TextToSpeechVoiceListResponse)
+class TextToSpeechVoiceListResponse(RootModel[list[TextToSpeechVoiceResponse]]):
+    root: list[TextToSpeechVoiceResponse] = Field(description="Available voices")
+
+
+register_schema_models(console_ns, TextToSpeechPayload, TextToSpeechVoiceQuery)
+register_response_schema_models(
+    console_ns,
+    AudioTranscriptResponse,
+    TextToSpeechVoiceResponse,
+    TextToSpeechVoiceListResponse,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
@@ -95,7 +106,7 @@ class ChatMessageAudioApi(Resource):
                 end_user=None,
             )
 
-            return response
+            return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
@@ -128,11 +139,8 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
-    @console_ns.response(
-        200,
-        "Text to speech conversion successful",
-        console_ns.models[AudioBinaryResponse.__name__],
-    )
+    # TTS returns provider audio bytes, so the success response is intentionally schema-less.
+    @console_ns.response(200, "Text to speech conversion successful")
     @console_ns.response(400, "Bad request - Invalid parameters")
     @setup_required
     @login_required
@@ -150,15 +158,15 @@ class ChatMessageTextApi(Resource):
                     account_id=current_user.id,
                 )
 
-            response = AudioService.transcript_tts(
+            # response-contract:ignore
+            return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session,
+                session=db.session(),
                 text=payload.text,
                 voice=payload.voice,
                 message_ref=message_ref,
                 is_draft=True,
             )
-            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
@@ -189,8 +197,7 @@ class ChatMessageTextApi(Resource):
 class TextModesApi(Resource):
     @console_ns.doc("get_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for a specific language")
-    @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.doc(params=query_params_from_model(TextToSpeechVoiceQuery))
+    @console_ns.doc(params={"app_id": "App ID", **query_params_from_model(TextToSpeechVoiceQuery)})
     @console_ns.response(
         200,
         "TTS voices retrieved successfully",
@@ -211,7 +218,7 @@ class TextModesApi(Resource):
                 language=args.language,
             )
 
-            return response
+            return dump_response(TextToSpeechVoiceListResponse, response)
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
             raise AppUnavailableError("Text to audio voices language parameter loss.")
         except NoAudioUploadedServiceError:

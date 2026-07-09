@@ -19,6 +19,7 @@ from typing import Any
 
 import json_repair
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy.orm import Session
 
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -91,8 +92,8 @@ class SkillToolInferenceService:
     def __init__(self, *, drive_service: AgentDriveService | None = None) -> None:
         self._drive = drive_service or AgentDriveService()
 
-    def infer(self, *, tenant_id: str, agent_id: str, slug: str) -> dict[str, Any]:
-        skill_md = self._load_skill_md(tenant_id=tenant_id, agent_id=agent_id, slug=slug)
+    def infer(self, *, tenant_id: str, agent_id: str, slug: str, session: Session) -> dict[str, Any]:
+        skill_md = self._load_skill_md(tenant_id=tenant_id, agent_id=agent_id, slug=slug, session=session)
 
         user_prompt = f"SKILL.md of skill '{slug}':\n\n{skill_md}"
 
@@ -115,9 +116,11 @@ class SkillToolInferenceService:
             tool.inferred_from = slug
         return result.model_dump(mode="json")
 
-    def _load_skill_md(self, *, tenant_id: str, agent_id: str, slug: str) -> str:
+    def _load_skill_md(self, *, tenant_id: str, agent_id: str, slug: str, session: Session) -> str:
         try:
-            preview = self._drive.preview(tenant_id=tenant_id, agent_id=agent_id, key=f"{slug}/SKILL.md")
+            preview = self._drive.preview(
+                tenant_id=tenant_id, agent_id=agent_id, key=f"{slug}/SKILL.md", session=session
+            )
         except AgentDriveError as exc:
             if exc.code == "drive_key_not_found":
                 raise SkillToolInferenceError(

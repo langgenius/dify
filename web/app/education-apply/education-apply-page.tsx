@@ -8,12 +8,13 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -52,7 +53,8 @@ const EducationApplyAgeContent = () => {
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
-  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -98,7 +100,7 @@ const EducationApplyAgeContent = () => {
     setIsOpeningBillingPortal(true)
     try {
       await openAsyncWindow(async () => {
-        const res = await consoleClient.billing.invoices()
+        const res = await consoleClient.billing.invoices.get()
         if (res.url)
           return res.url
 

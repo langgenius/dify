@@ -7,6 +7,11 @@ from agenton.layers import ExitIntent
 from agenton.layers.base import LifecycleState
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
+from dify_agent.layers.dify_core_tools import (
+    DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+    DifyCoreToolConfig,
+    DifyCoreToolsLayerConfig,
+)
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -29,6 +34,7 @@ from pydantic import ValidationError
 
 from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
@@ -82,6 +88,7 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
 
 def test_request_builder_outputs_dify_agent_create_run_request():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
+    dumped = request.model_dump(mode="json")
 
     assert isinstance(request, CreateRunRequest)
     assert [layer.name for layer in request.composition.layers] == [
@@ -96,6 +103,7 @@ def test_request_builder_outputs_dify_agent_create_run_request():
     assert request.on_exit.default is ExitIntent.SUSPEND
     assert request.idempotency_key == "workflow-run-1:node-execution-1"
     assert request.metadata == {"workflow_id": "workflow-1", "node_id": "node-1"}
+    assert "purpose" not in dumped
 
 
 def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
@@ -113,6 +121,59 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     assert workflow_job_config["user"] == "Review the previous node output."
     assert not workflow_job_config.get("prefix")
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
+
+
+@pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
+def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draft(
+    agent_config_version_kind: str,
+):
+    original_prompt = "  You are Iris.  \n"
+    run_input = _agent_app_input().model_copy(
+        update={
+            "agent_config_version_kind": agent_config_version_kind,
+            "agent_soul_prompt": original_prompt,
+        }
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    assert prompt_config.prefix == original_prompt
+
+
+def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
+    original_prompt = "  You are Iris.  \n"
+    run_input = _agent_app_input().model_copy(
+        update={
+            "agent_config_version_kind": "build_draft",
+            "agent_soul_prompt": original_prompt,
+        }
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    assert prompt_config.prefix != original_prompt
+    assert prompt_config.prefix.startswith("You are running in build mode.")
+    assert "```text\nYou are Iris.\n```" in prompt_config.prefix
+
+
+def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body():
+    run_input = _agent_app_input().model_copy(
+        update={
+            "agent_config_version_kind": "build_draft",
+            "agent_soul_prompt": "Keep this snippet:\n```python\nprint('hi')\n```",
+        }
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    assert "````text" in prompt_config.prefix
+    assert "```python" in prompt_config.prefix
 
 
 def test_request_builder_sets_model_and_output_layer_contract_ids():
@@ -158,6 +219,30 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     tools_config = cast(DifyPluginToolsLayerConfig, layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config)
     assert tools_config.tools[0].tool_name == "current_time"
+
+
+def test_request_builder_adds_dify_core_tools_layer_when_configured():
+    run_input = _run_input()
+    run_input.core_tools = DifyCoreToolsLayerConfig(
+        tools=[
+            DifyCoreToolConfig(
+                provider_type="builtin",
+                provider_id="audio",
+                tool_name="transcribe",
+                name="transcribe",
+                description="Transcribe audio.",
+                runtime_parameters={"language": "en"},
+                parameters=[],
+                parameters_json_schema={"type": "object", "properties": {}, "required": []},
+            )
+        ]
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert layers[DIFY_CORE_TOOLS_LAYER_ID].type == DIFY_CORE_TOOLS_LAYER_TYPE_ID
+    assert layers[DIFY_CORE_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
 
 
 def test_request_builder_adds_knowledge_layer_when_configured():
@@ -220,6 +305,7 @@ def test_request_builder_builds_cleanup_request_replays_persisted_layer_specs():
     assert request.on_exit.default is ExitIntent.DELETE
     assert request.idempotency_key == "run-1:node-1:binding-1:agent-session-cleanup"
     assert request.metadata["agent_backend_lifecycle"] == "session_cleanup"
+    assert "purpose" not in request.model_dump(mode="json")
 
 
 def test_request_builder_rejects_empty_runtime_layer_specs():
@@ -360,6 +446,19 @@ def test_workflow_request_builder_binds_drive_to_shell_when_configured():
 def test_agent_app_request_builder_omits_shell_layer_by_default():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
+
+
+def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank():
+    run_input = _agent_app_input().model_copy(
+        update={"agent_soul_prompt": "   ", "agent_config_version_kind": "build_draft"}
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    prompt_config = cast(PromptLayerConfig, layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
+    assert "You are running in build mode." in prompt_config.prefix
+    assert "No task prompt was provided." in prompt_config.prefix
 
 
 def test_agent_app_request_builder_adds_shell_layer_when_include_shell():

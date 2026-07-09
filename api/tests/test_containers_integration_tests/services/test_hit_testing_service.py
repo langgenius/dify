@@ -192,7 +192,7 @@ class TestHitTestingService:
         mock_format.return_value = [mock_record]
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.compact_retrieve_response(db_session_with_containers, query, [mock_doc])
+            HitTestingService.compact_retrieve_response(query, [mock_doc], session=db_session_with_containers)
         )
 
         assert response.query.content == query
@@ -246,18 +246,19 @@ class TestHitTestingService:
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.external_retrieve(
-                db_session_with_containers,
                 dataset=dataset,
                 query='test "query"',
                 account=account,
                 external_retrieval_model={"model": "test"},
                 metadata_filtering_conditions={"key": "val"},
+                session=db_session_with_containers,
             )
         )
 
         assert response.query.content == 'test "query"'
         assert response.records[0].content == "ext content"
         mock_ext_retrieve.assert_called_once_with(
+            session=db_session_with_containers,
             dataset_id=dataset.id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
@@ -275,7 +276,7 @@ class TestHitTestingService:
         account = MagicMock()
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.external_retrieve(db_session_with_containers, dataset, "test query", account)
+            HitTestingService.external_retrieve(dataset, "test query", account, session=db_session_with_containers)
         )
 
         assert response.query.content == "test query"
@@ -299,12 +300,12 @@ class TestHitTestingService:
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.retrieve(
-                db_session_with_containers,
                 dataset=dataset,
                 query="test query",
                 account=account,
                 retrieval_model=None,
                 external_retrieval_model=external_retrieval_model,
+                session=db_session_with_containers,
             )
         )
 
@@ -342,12 +343,12 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
-            db_session_with_containers,
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
+            session=db_session_with_containers,
         )
 
         mock_get_meta.assert_called_once()
@@ -379,12 +380,12 @@ class TestHitTestingService:
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.retrieve(
-                db_session_with_containers,
                 dataset=dataset,
                 query="test query",
                 account=account,
                 retrieval_model=retrieval_model,
                 external_retrieval_model=external_retrieval_model,
+                session=db_session_with_containers,
             )
         )
 
@@ -411,13 +412,13 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
-            db_session_with_containers,
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
             attachment_ids=attachment_ids,
+            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once_with(
@@ -471,12 +472,12 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
-            db_session_with_containers,
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
+            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once()

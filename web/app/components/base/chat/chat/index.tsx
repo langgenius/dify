@@ -12,10 +12,9 @@ import type {
 } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
-import type { Emoji } from '@/app/components/tools/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
-import type { AppData } from '@/models/share'
+import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -52,7 +51,7 @@ export type ChatProps = {
   showPromptLog?: boolean
   questionIcon?: ReactNode
   answerIcon?: ReactNode
-  allToolIcons?: Record<string, string | Emoji>
+  allToolIcons?: Record<string, ToolIcon>
   onAnnotationEdited?: (question: string, answer: string, index: number) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
@@ -73,9 +72,17 @@ export type ChatProps = {
   inputPlaceholder?: string
   inputPlaceholderBotName?: string
   sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  footerNotice?: ReactNode
+  footerNoticeTooltip?: ReactNode
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
+  renderAgentContent?: (props: {
+    item: ChatItem
+    responding?: boolean
+    content?: string
+  }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
@@ -122,9 +129,13 @@ const Chat: FC<ChatProps> = ({
   inputPlaceholder,
   inputPlaceholderBotName,
   sendButtonLabel,
+  sendButtonLoading,
+  footerNotice,
+  footerNoticeTooltip,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
+  renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -199,6 +210,7 @@ const Chat: FC<ChatProps> = ({
                       noChatInput={noChatInput}
                       switchSibling={switchSibling}
                       hideAvatar={hideAvatar}
+                      renderAgentContent={renderAgentContent}
                       onHumanInputFormSubmit={onHumanInputFormSubmit}
                     />
                   )
@@ -220,17 +232,20 @@ const Chat: FC<ChatProps> = ({
         </div>
         <div
           data-testid="chat-footer"
-          className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={cn(
+            'pointer-events-none absolute bottom-0 z-10 flex justify-center bg-chat-input-mask',
+            (hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName,
+          )}
           ref={chatFooterRef}
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
+            className={cn('pointer-events-none relative', chatFooterInnerClassName, isTryApp && 'px-0')}
           >
             {
               !noStopResponding && isResponding && (
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
-                  <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
+                  <Button className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
@@ -265,6 +280,9 @@ const Chat: FC<ChatProps> = ({
                   isResponding={isResponding}
                   readonly={readonly}
                   sendButtonLabel={sendButtonLabel}
+                  sendButtonLoading={sendButtonLoading}
+                  footerNotice={footerNotice}
+                  footerNoticeTooltip={footerNoticeTooltip}
                   sendOnEnter={sendOnEnter}
                 />
               )

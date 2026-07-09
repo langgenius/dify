@@ -5,9 +5,10 @@ import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { currentWorkspaceLoadingAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
@@ -56,8 +57,8 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 
 const SnippetList = () => {
   const { t } = useTranslation()
-  const isLoadingCurrentWorkspace = useAppContextWithSelector(state => state.isLoadingCurrentWorkspace)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
     query: { tagIDs, keywords, creatorIDs },
@@ -189,7 +190,7 @@ const SnippetList = () => {
         </div>
       </StudioListHeader>
       <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
         !hasAnySnippet && 'overflow-hidden',
       )}
       >

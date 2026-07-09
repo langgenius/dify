@@ -1,7 +1,8 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -9,7 +10,7 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/app-context-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const CommentsPanel = () => {
@@ -29,16 +30,16 @@ const CommentsPanel = () => {
     handleCommentIconClick(comment)
   }, [handleCommentIconClick])
 
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
 
   const filteredSorted = useMemo(() => {
     let data = comments
     if (!showResolvedComments)
       data = data.filter(c => !c.resolved)
     if (showOnlyMine)
-      data = data.filter(c => c.created_by === userProfile?.id)
+      data = data.filter(c => c.created_by === currentUserId)
     return data
-  }, [comments, showOnlyMine, showResolvedComments, userProfile?.id])
+  }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved)
@@ -163,7 +164,7 @@ const CommentsPanel = () => {
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="truncate system-sm-medium text-text-primary">{c.created_by_account?.name ?? ''}</div>
                     <div className="shrink-0 system-2xs-regular text-text-tertiary">
-                      {formatTimeFromNow(c.updated_at * 1000)}
+                      {formatTimeFromNow((c.updated_at ?? c.created_at ?? 0) * 1000)}
                     </div>
                   </div>
                 </div>

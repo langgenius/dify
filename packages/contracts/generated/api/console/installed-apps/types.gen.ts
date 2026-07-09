@@ -45,8 +45,6 @@ export type ChatMessagePayload = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type SimpleResultResponse = {
   result: string
 }
@@ -117,7 +115,11 @@ export type SuggestedQuestionsResponse = {
 
 export type ExploreAppMetaResponse = {
   tool_icons?: {
-    [key: string]: unknown
+    [key: string]:
+      | string
+      | {
+        [key: string]: unknown
+      }
   }
 }
 
@@ -237,6 +239,7 @@ export type InstalledAppInfoResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   mode?: string | null
   name?: string | null
@@ -244,6 +247,7 @@ export type InstalledAppInfoResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -402,6 +406,31 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
+export type InstalledAppListResponseWritable = {
+  installed_apps: Array<InstalledAppResponseWritable>
+}
+
+export type InstalledAppResponseWritable = {
+  app: InstalledAppInfoResponseWritable
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at?: number | null
+  uninstallable: boolean
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type GetInstalledAppsData = {
   body?: never
   path?: never
@@ -488,7 +517,9 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
@@ -521,7 +552,9 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
@@ -682,7 +715,9 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
@@ -815,7 +850,9 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse

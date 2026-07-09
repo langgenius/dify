@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
 import { render } from '@testing-library/react'
-import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../type'
@@ -15,6 +14,7 @@ type DialogProps = {
 }
 
 let latestOnOpenChange: DialogProps['onOpenChange']
+let mockAppCtx: Record<string, unknown> = {}
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
@@ -44,9 +44,15 @@ vi.mock('../footer', () => ({
   default: () => <div>footer</div>,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -70,10 +76,10 @@ describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestOnOpenChange = undefined
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppCtx = {
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['billing.manage'],
-    })
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,

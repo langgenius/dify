@@ -23,6 +23,6 @@ describe('AgentAdvancedSettings', () => {
     fireEvent.click(triggers[0]!)
 
     expect(screen.getByText('advanced-env-editor')).toBeInTheDocument()
-    expect(screen.getByText('advanced-content-moderation')).toBeInTheDocument()
+    expect(screen.queryByText('advanced-content-moderation')).not.toBeInTheDocument()
   })
 })

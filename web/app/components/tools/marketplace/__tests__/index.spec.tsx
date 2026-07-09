@@ -1,5 +1,5 @@
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { useMarketplace } from '../hooks'
-import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import { render, screen } from '@testing-library/react'

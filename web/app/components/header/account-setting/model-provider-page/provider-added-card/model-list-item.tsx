@@ -4,12 +4,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
@@ -32,11 +33,11 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
-  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+  const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
     input: {
       params: {
         provider: provider.provider,

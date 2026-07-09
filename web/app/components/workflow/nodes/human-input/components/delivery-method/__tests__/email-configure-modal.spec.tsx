@@ -3,7 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import EmailConfigureModal from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
-const mockUseAppContextSelector = vi.hoisted(() => vi.fn())
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    email: 'owner@example.com',
+  },
+}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -11,10 +15,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { email: string } }) => string) =>
-    mockUseAppContextSelector(selector),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('../mail-body-input', () => ({
   default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
@@ -80,11 +89,6 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
 describe('human-input/delivery-method/email-configure-modal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAppContextSelector.mockImplementation(selector => selector({
-      userProfile: {
-        email: 'owner@example.com',
-      },
-    }))
   })
 
   it('should save a valid email configuration with updated values', () => {

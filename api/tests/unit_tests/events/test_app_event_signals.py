@@ -44,7 +44,7 @@ def _make_collector(target: list):
 
 @pytest.mark.usefixtures("mock_db", "_mock_deps")
 class TestAppWasDeletedSignal:
-    def test_sends_signal(self, app_model):
+    def test_sends_signal(self, app_model, mock_db):
         from events.app_event import app_was_deleted
         from services.app_service import AppService
 
@@ -52,7 +52,7 @@ class TestAppWasDeletedSignal:
         handler = _make_collector(received)
         app_was_deleted.connect(handler)
         try:
-            AppService().delete_app(app_model)
+            AppService().delete_app(app_model, session=mock_db.session)
         finally:
             app_was_deleted.disconnect(handler)
 
@@ -71,7 +71,7 @@ class TestAppWasDeletedSignal:
         mock_db.session.delete.side_effect = lambda _: call_order.append("db_delete")
 
         try:
-            AppService().delete_app(app_model)
+            AppService().delete_app(app_model, session=mock_db.session)
         finally:
             app_was_deleted.disconnect(handler)
 
@@ -80,7 +80,7 @@ class TestAppWasDeletedSignal:
 
 @pytest.mark.usefixtures("mock_db")
 class TestAppWasUpdatedSignal:
-    def test_update_app(self, app_model):
+    def test_update_app(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -101,13 +101,14 @@ class TestAppWasUpdatedSignal:
                         "use_icon_as_answer_icon": False,
                         "max_active_requests": 0,
                     },
+                    session=mock_db.session,
                 )
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
 
-    def test_update_app_name(self, app_model):
+    def test_update_app_name(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -117,13 +118,13 @@ class TestAppWasUpdatedSignal:
 
         with patch("services.app_service.current_user", MagicMock(id="user-1")):
             try:
-                AppService().update_app_name(app_model, "New Name")
+                AppService().update_app_name(app_model, "New Name", session=mock_db.session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
 
-    def test_update_app_icon(self, app_model):
+    def test_update_app_icon(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -133,13 +134,13 @@ class TestAppWasUpdatedSignal:
 
         with patch("services.app_service.current_user", MagicMock(id="user-1")):
             try:
-                AppService().update_app_icon(app_model, "🎉", "#000")
+                AppService().update_app_icon(app_model, "🎉", "#000", session=mock_db.session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
 
-    def test_update_app_site_status_sends_when_changed(self, app_model):
+    def test_update_app_site_status_sends_when_changed(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -150,13 +151,13 @@ class TestAppWasUpdatedSignal:
         with patch("services.app_service.current_user", MagicMock(id="user-1")):
             try:
                 app_model.enable_site = False
-                AppService().update_app_site_status(app_model, True)
+                AppService().update_app_site_status(app_model, True, session=mock_db.session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
 
-    def test_update_app_site_status_skips_when_unchanged(self, app_model):
+    def test_update_app_site_status_skips_when_unchanged(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -166,13 +167,13 @@ class TestAppWasUpdatedSignal:
 
         try:
             app_model.enable_site = True
-            AppService().update_app_site_status(app_model, True)
+            AppService().update_app_site_status(app_model, True, session=mock_db.session)
         finally:
             app_was_updated.disconnect(handler)
 
         assert received == []
 
-    def test_update_app_api_status_sends_when_changed(self, app_model):
+    def test_update_app_api_status_sends_when_changed(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -183,13 +184,13 @@ class TestAppWasUpdatedSignal:
         with patch("services.app_service.current_user", MagicMock(id="user-1")):
             try:
                 app_model.enable_api = False
-                AppService().update_app_api_status(app_model, True)
+                AppService().update_app_api_status(app_model, True, session=mock_db.session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
 
-    def test_update_app_api_status_skips_when_unchanged(self, app_model):
+    def test_update_app_api_status_skips_when_unchanged(self, app_model, mock_db):
         from events.app_event import app_was_updated
         from services.app_service import AppService
 
@@ -199,7 +200,7 @@ class TestAppWasUpdatedSignal:
 
         try:
             app_model.enable_api = True
-            AppService().update_app_api_status(app_model, True)
+            AppService().update_app_api_status(app_model, True, session=mock_db.session)
         finally:
             app_was_updated.disconnect(handler)
 
