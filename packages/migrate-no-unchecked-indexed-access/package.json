@@ -8,10 +8,10 @@
   },
   "scripts": {
     "build": "vp pack",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "dependencies": {
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {
