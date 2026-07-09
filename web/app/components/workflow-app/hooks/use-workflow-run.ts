@@ -67,6 +67,8 @@ type WorkflowDebugWindow = Window & {
   __allTriggersDebugAbortController?: DebugAbortController
 }
 
+const WORKFLOW_DATA_CHUNK_SIZE = 900
+
 const stringifyWorkflowData = (workflowData: unknown) => {
   if (!workflowData)
     return undefined
@@ -76,6 +78,26 @@ const stringifyWorkflowData = (workflowData: unknown) => {
   }
   catch {
     return undefined
+  }
+}
+
+const chunkWorkflowData = (serializedWorkflowData: string) => {
+  const workflowDataChars = Array.from(serializedWorkflowData)
+  const chunks: string[] = []
+
+  for (let index = 0; index < workflowDataChars.length; index += WORKFLOW_DATA_CHUNK_SIZE)
+    chunks.push(workflowDataChars.slice(index, index + WORKFLOW_DATA_CHUNK_SIZE).join(''))
+
+  return chunks
+}
+
+const buildWorkflowDataTrackingProperties = (workflowData: unknown) => {
+  const serializedWorkflowData = stringifyWorkflowData(workflowData)
+  if (!serializedWorkflowData)
+    return {}
+
+  return {
+    workflow_data_chunks: chunkWorkflowData(serializedWorkflowData),
   }
 }
 
@@ -367,6 +389,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const nodeType = typeof payload?.node_type === 'string'
         ? payload.node_type
         : undefined
+      const workflowDataTrackingProperties = buildWorkflowDataTrackingProperties(workflowData)
 
       trackEvent('workflow_run_failed', {
         workflow_id: flowId,
@@ -375,8 +398,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         data: {
           workflow_status: getWorkflowStatus(workflowData),
           workflow_tracing_count: getWorkflowTracingCount(workflowData),
-          workflow_data: workflowData,
-          workflow_data_json: stringifyWorkflowData(workflowData),
+          ...workflowDataTrackingProperties,
         },
       })
     }
