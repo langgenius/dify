@@ -1,8 +1,8 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 //
-// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/release/1.16.0/docs.json
-// Generated at: 2026-07-09T07:08:15.106Z
+// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
+// Generated at: 2026-07-09T10:55:53.618Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -106,10 +106,11 @@ type UseDifyPath =
   | '/use-dify/build/additional-features'
   | '/use-dify/build/agent'
   | '/use-dify/build/chatbot'
+  | '/use-dify/build/new-agent/build'
+  | '/use-dify/build/new-agent/overview'
   | '/use-dify/build/orchestrate-node'
   | '/use-dify/build/predefined-error-handling-logic'
   | '/use-dify/build/shortcut-key'
-  | '/use-dify/build/snippet'
   | '/use-dify/build/text-generator'
   | '/use-dify/build/version-control'
   | '/use-dify/build/workflow-chatflow'
@@ -325,10 +326,11 @@ type SelfHostPath =
   | '/self-host/use-dify/build/additional-features'
   | '/self-host/use-dify/build/agent'
   | '/self-host/use-dify/build/chatbot'
+  | '/self-host/use-dify/build/new-agent/build'
+  | '/self-host/use-dify/build/new-agent/overview'
   | '/self-host/use-dify/build/orchestrate-node'
   | '/self-host/use-dify/build/predefined-error-handling-logic'
   | '/self-host/use-dify/build/shortcut-key'
-  | '/self-host/use-dify/build/snippet'
   | '/self-host/use-dify/build/text-generator'
   | '/self-host/use-dify/build/version-control'
   | '/self-host/use-dify/build/workflow-chatflow'
@@ -551,10 +553,11 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/build/additional-features': ['cloud', 'self-host'],
   '/use-dify/build/agent': ['cloud', 'self-host'],
   '/use-dify/build/chatbot': ['cloud', 'self-host'],
+  '/use-dify/build/new-agent/build': ['self-host'],
+  '/use-dify/build/new-agent/overview': ['self-host'],
   '/use-dify/build/orchestrate-node': ['cloud', 'self-host'],
   '/use-dify/build/predefined-error-handling-logic': ['cloud', 'self-host'],
   '/use-dify/build/shortcut-key': ['cloud', 'self-host'],
-  '/use-dify/build/snippet': ['self-host'],
   '/use-dify/build/text-generator': ['cloud', 'self-host'],
   '/use-dify/build/version-control': ['cloud', 'self-host'],
   '/use-dify/build/workflow-chatflow': ['cloud', 'self-host'],
