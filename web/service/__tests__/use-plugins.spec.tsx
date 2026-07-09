@@ -19,9 +19,11 @@ import {
 const {
   mockGet,
   mockPost,
+  mockWorkspacePermissionKeysAtom,
 } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
+  mockWorkspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -37,12 +39,29 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-    workspacePermissionKeys: ['plugin.install'],
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockWorkspacePermissionKeysAtom)
+      return ['plugin.install']
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 vi.mock('../use-tools', () => ({

@@ -80,7 +80,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
     showModal,
   } = useMCPCreateAction({ handleCreate })
 
-  const linkUrl = useMemo(() => docLink('/use-dify/build/mcp'), [docLink])
+  const linkUrl = useMemo(() => docLink('/use-dify/workspace/tools#mcp'), [docLink])
 
   return (
     <>

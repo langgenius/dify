@@ -259,7 +259,11 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
                 200,
                 json={
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "dify-file-ref:file-1",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -276,6 +280,7 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
     assert preview.text == "hello"
     assert isinstance(uploaded, SandboxUploadResponse)
     assert uploaded.file.reference == "dify-file-ref:file-1"
+    assert uploaded.file.download_url == "https://files.example.com/report.txt"
 
 
 def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
@@ -293,7 +298,11 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
                 200,
                 json={
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "dify-file-ref:file-1",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
@@ -309,9 +318,33 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
         assert listing.path == "."
         assert preview.text == "hello"
         assert uploaded.file.reference == "dify-file-ref:file-1"
+        assert uploaded.file.download_url == "https://files.example.com/report.txt"
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+def test_sync_upload_sandbox_file_rejects_missing_download_url() -> None:
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path != "/sandbox/files/upload":
+            raise AssertionError(f"unexpected request: {request.method} {request.url}")
+        return httpx.Response(
+            200,
+            json={
+                "path": "report.txt",
+                "file": {
+                    "transfer_method": "tool_file",
+                    "reference": "dify-file-ref:file-1",
+                },
+            },
+        )
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(DifyAgentValidationError):
+        _ = client.upload_sandbox_file_sync(locator, "report.txt")
 
 
 def test_sync_sandbox_methods_map_invalid_json_to_validation_error() -> None:

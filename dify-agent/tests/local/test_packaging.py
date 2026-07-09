@@ -7,7 +7,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLIENT_SHARED_DTO_DEPENDENCIES = {
+    "anyio>=4.12.1,<5.0.0",
     "httpx==0.28.1",
+    "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
     "pydantic-ai-slim>=1.102.0,<2.0.0",
     "typer>=0.16.1,<0.17",
@@ -23,7 +25,13 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
-    "shell-session-manager==2.3.1",
+    "uvicorn[standard]==0.46.0",
+}
+
+SHELLCTL_SERVER_DEPENDENCIES = {
+    "aiosqlite>=0.21.0,<1.0.0",
+    "fastapi==0.136.0",
+    "sqlmodel>=0.0.24,<0.1.0",
     "uvicorn[standard]==0.46.0",
 }
 
@@ -54,6 +62,7 @@ def test_project_dependencies_split_client_and_server_requirements() -> None:
     assert set(project["dependencies"]) == CLIENT_SHARED_DTO_DEPENDENCIES
     assert set(project["optional-dependencies"]["grpc"]) == GRPC_RUNTIME_DEPENDENCIES
     assert set(project["optional-dependencies"]["server"]) == SERVER_RUNTIME_DEPENDENCIES
+    assert set(project["optional-dependencies"]["shellctl-server"]) == SHELLCTL_SERVER_DEPENDENCIES
     assert set(pyproject["dependency-groups"]["dev"]) == DEV_DEPENDENCIES
 
 
@@ -62,6 +71,8 @@ def test_default_package_discovery_excludes_example_packages() -> None:
     find_config = pyproject["tool"]["setuptools"]["packages"]["find"]
 
     assert find_config["where"] == ["src"]
+    assert "shellctl*" in find_config["include"]
+    assert "shellctl_runtime*" in find_config["include"]
     assert "agenton_examples*" not in find_config["include"]
     assert "dify_agent_examples*" not in find_config["include"]
 
@@ -72,6 +83,9 @@ def test_project_declares_console_scripts() -> None:
 
     assert scripts["dify-agent"] == "dify_agent.agent_stub.cli.main:main"
     assert scripts["dify-agent-stub-server"] == "dify_agent.agent_stub.server.cli:main"
+    assert scripts["shellctl"] == "shellctl.cli:main"
+    assert scripts["shellctl-sanitize-pty"] == "shellctl_runtime.sanitize:main"
+    assert scripts["shellctl-runner-exit"] == "shellctl_runtime.runner_exit:main"
 
 
 def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
@@ -80,10 +94,14 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "ARG NODE_VERSION=22.22.1" in dockerfile
     assert "ARG PNPM_VERSION=11.9.0" in dockerfile
     assert "ARG UV_VERSION=0.8.9" in dockerfile
-    assert "ARG DIFY_AGENT_TOOL_SPEC=.[grpc]" in dockerfile
-    assert "ARG SHELL_SESSION_MANAGER_TOOL_SPEC=shell-session-manager" in dockerfile
+    assert "ARG DIFY_AGENT_TOOL_SPEC=.[grpc,shellctl-server]" in dockerfile
+    assert "SHELL_SESSION_MANAGER_TOOL_SPEC" not in dockerfile
+    assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" not in dockerfile
+    assert 'ENV PATH="${UV_TOOL_BIN_DIR}:${PATH}"' not in dockerfile
     assert "UV_TOOL_DIR=/opt/dify-agent-tools/envs" in dockerfile
     assert "UV_TOOL_BIN_DIR=/opt/dify-agent-tools/bin" in dockerfile
+    assert 'ENV PATH="/opt/dify-agent-tools/bin:${PATH}"' in dockerfile
+    assert "bash" in dockerfile
     assert "git" in dockerfile
     assert "jq" in dockerfile
     assert "openssh-client" in dockerfile
@@ -95,13 +113,8 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "uv export --frozen --no-dev --all-extras --no-emit-project --no-hashes" in dockerfile
     assert "> /tmp/dify-agent-constraints.txt" in dockerfile
     assert '--constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${DIFY_AGENT_TOOL_SPEC}"' in dockerfile
-    assert (
-        '--constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${SHELL_SESSION_MANAGER_TOOL_SPEC}"'
-        in dockerfile
-    )
-    assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" in dockerfile
-    assert "COPY --from=tools ${UV_TOOL_DIR} ${UV_TOOL_DIR}" in dockerfile
-    assert "COPY --from=tools ${UV_TOOL_BIN_DIR} ${UV_TOOL_BIN_DIR}" in dockerfile
+    assert "COPY --from=tools /opt/dify-agent-tools/envs /opt/dify-agent-tools/envs" in dockerfile
+    assert "COPY --from=tools /opt/dify-agent-tools/bin /opt/dify-agent-tools/bin" in dockerfile
     assert "VIRTUAL_ENV" not in dockerfile
     assert "uv sync" not in dockerfile
     assert "mkdir -p /mnt/drive" in dockerfile

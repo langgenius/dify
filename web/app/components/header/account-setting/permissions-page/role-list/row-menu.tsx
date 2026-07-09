@@ -18,10 +18,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCopyWorkspaceRole, useDeleteWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { hasPermission } from '@/utils/permission'
 import { CopyMembersConfirmDialog } from './copy-members-confirm-dialog'
@@ -44,7 +45,7 @@ const RowMenu = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
 
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
 
   const handleView = useCallback(() => onView?.(role), [onView, role])

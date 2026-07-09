@@ -13,13 +13,15 @@ import {
   RiLock2Line,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
@@ -43,16 +45,17 @@ const DatasetDetailSection = ({
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
   const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', { enabled: !!datasetId && !!datasetRes })
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetRes?.maintainer,
     workspacePermissionKeys,
     isRbacEnabled,
-  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
+  }), [currentUserId, datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, workspacePermissionKeys])
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)

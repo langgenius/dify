@@ -23,30 +23,47 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-  useSelector: (selector: (state: {
-    isCurrentWorkspaceDatasetOperator: boolean
-    isLoadingCurrentWorkspace: boolean
-    isLoadingWorkspacePermissionKeys: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => unknown) => selector({
-    isCurrentWorkspaceDatasetOperator: false,
-    isLoadingCurrentWorkspace: false,
-    isLoadingWorkspacePermissionKeys: false,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }), () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }), () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }), () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }), () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => ({

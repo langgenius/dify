@@ -1,4 +1,5 @@
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
+import type { ICurrentWorkspace } from '@/models/common'
 
 const APP_CONTEXT_STATE_ATOM_KIND = Symbol('app-context-state-atom-kind')
 
@@ -7,28 +8,47 @@ export type AppContextStateMockState = {
     id?: string
     name?: string
     email?: string
-    avatar?: string
-    avatar_url?: string
+    avatar?: string | null
+    avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?: {
+  currentWorkspace?: ({
     id?: string
-  } | null
+    name?: string
+  } & Partial<ICurrentWorkspace>) | null
+  isCurrentWorkspaceManager?: boolean
+  isCurrentWorkspaceOwner?: boolean
+  isCurrentWorkspaceEditor?: boolean
+  isCurrentWorkspaceDatasetOperator?: boolean
   isLoadingCurrentWorkspace?: boolean
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
-  langGeniusVersionInfo?: LangGeniusVersionResponse
+  datasetRbacEnabled?: boolean
+  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
+  refreshUserProfile?: () => void
+  refreshCurrentWorkspace?: () => void
+  mutateUserProfile?: () => void
+  mutateCurrentWorkspace?: () => void
 }
 
 type AppContextStateAtomKind
   = | 'userProfile'
     | 'userProfileId'
+    | 'userProfileEmail'
     | 'currentWorkspace'
     | 'currentWorkspaceId'
+    | 'isCurrentWorkspaceManager'
+    | 'isCurrentWorkspaceOwner'
+    | 'isCurrentWorkspaceEditor'
+    | 'isCurrentWorkspaceDatasetOperator'
     | 'currentWorkspaceLoading'
     | 'workspacePermissionKeys'
     | 'workspacePermissionKeysLoading'
+    | 'datasetRbacEnabled'
     | 'langGeniusVersionInfo'
+    | 'langGeniusCurrentVersion'
+    | 'refreshUserProfile'
+    | 'refreshCurrentWorkspace'
 
 type AppContextStateMockAtom = {
   [APP_CONTEXT_STATE_ATOM_KIND]: AppContextStateAtomKind
@@ -49,7 +69,16 @@ const defaultUserProfile = {
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
-}
+  name: 'Workspace',
+  plan: '',
+  status: '',
+  created_at: 0,
+  role: 'owner',
+  providers: [],
+  trial_credits: 0,
+  trial_credits_used: 0,
+  next_credit_reset_date: 0,
+} satisfies ICurrentWorkspace
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
@@ -58,8 +87,12 @@ const defaultLangGeniusVersionInfo = {
   version: '',
   release_date: '',
   release_notes: '',
+  features: {
+    can_replace_logo: false,
+    model_load_balancing_enabled: false,
+  },
   can_auto_update: false,
-} satisfies LangGeniusVersionResponse
+} satisfies LangGeniusVersionInfo
 
 let appContextStateMockRegistry: AppContextStateMockRegistry | undefined
 
@@ -78,16 +111,21 @@ const getUserProfile = (state: AppContextStateMockState) => ({
   ...state.userProfile,
 })
 
-const getCurrentWorkspace = (state: AppContextStateMockState) => ({
+const getCurrentWorkspace = (state: AppContextStateMockState): ICurrentWorkspace => ({
   ...defaultCurrentWorkspace,
   ...state.currentWorkspace,
 })
 
-export const createAppContextStateAtomMock = async (
+const getLangGeniusVersionInfo = (state: AppContextStateMockState): LangGeniusVersionInfo => ({
+  ...defaultLangGeniusVersionInfo,
+  ...state.langGeniusVersionInfo,
+})
+
+export const createAppContextStateAtomMock = async <TModule extends object>(
   importOriginal: <T>() => Promise<T>,
   getState: () => AppContextStateMockState,
 ) => {
-  const actual = await importOriginal<typeof import('@/context/app-context-state')>()
+  const actual = await importOriginal<TModule>()
   appContextStateMockRegistry = {
     getState,
   }
@@ -96,12 +134,21 @@ export const createAppContextStateAtomMock = async (
     ...actual,
     userProfileAtom: createMockAtom('userProfile'),
     userProfileIdAtom: createMockAtom('userProfileId'),
+    userProfileEmailAtom: createMockAtom('userProfileEmail'),
     currentWorkspaceAtom: createMockAtom('currentWorkspace'),
     currentWorkspaceIdAtom: createMockAtom('currentWorkspaceId'),
+    isCurrentWorkspaceManagerAtom: createMockAtom('isCurrentWorkspaceManager'),
+    isCurrentWorkspaceOwnerAtom: createMockAtom('isCurrentWorkspaceOwner'),
+    isCurrentWorkspaceEditorAtom: createMockAtom('isCurrentWorkspaceEditor'),
+    isCurrentWorkspaceDatasetOperatorAtom: createMockAtom('isCurrentWorkspaceDatasetOperator'),
     currentWorkspaceLoadingAtom: createMockAtom('currentWorkspaceLoading'),
     workspacePermissionKeysAtom: createMockAtom('workspacePermissionKeys'),
     workspacePermissionKeysLoadingAtom: createMockAtom('workspacePermissionKeysLoading'),
+    datasetRbacEnabledAtom: createMockAtom('datasetRbacEnabled'),
     langGeniusVersionInfoAtom: createMockAtom('langGeniusVersionInfo'),
+    langGeniusCurrentVersionAtom: createMockAtom('langGeniusCurrentVersion'),
+    refreshUserProfileAtom: createMockAtom('refreshUserProfile'),
+    refreshCurrentWorkspaceAtom: createMockAtom('refreshCurrentWorkspace'),
   }
 }
 
@@ -129,11 +176,26 @@ export const createAppContextStateJotaiMock = async (
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'userProfileId')
         return userProfile.id
 
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'userProfileEmail')
+        return userProfile.email
+
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspace')
         return currentWorkspace
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceId')
         return currentWorkspace.id
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceManager')
+        return state.isCurrentWorkspaceManager ?? false
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceOwner')
+        return state.isCurrentWorkspaceOwner ?? false
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceEditor')
+        return state.isCurrentWorkspaceEditor ?? false
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'isCurrentWorkspaceDatasetOperator')
+        return state.isCurrentWorkspaceDatasetOperator ?? false
 
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'currentWorkspaceLoading')
         return state.isLoadingCurrentWorkspace ?? false
@@ -144,10 +206,33 @@ export const createAppContextStateJotaiMock = async (
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'workspacePermissionKeysLoading')
         return state.isLoadingWorkspacePermissionKeys ?? false
 
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'datasetRbacEnabled')
+        return state.datasetRbacEnabled ?? false
+
       if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusVersionInfo')
-        return state.langGeniusVersionInfo ?? defaultLangGeniusVersionInfo
+        return getLangGeniusVersionInfo(state)
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'langGeniusCurrentVersion')
+        return getLangGeniusVersionInfo(state).current_version
 
       throw new Error(`Unsupported app context state atom: ${atom[APP_CONTEXT_STATE_ATOM_KIND]}`)
+    },
+    useSetAtom: (atom: unknown) => {
+      if (!isAppContextStateMockAtom(atom))
+        return actual.useSetAtom(atom as Parameters<typeof actual.useSetAtom>[0])
+
+      if (!appContextStateMockRegistry)
+        throw new Error('App context state atom mock is not initialized')
+
+      const state = appContextStateMockRegistry.getState()
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'refreshUserProfile')
+        return state.refreshUserProfile ?? (() => {})
+
+      if (atom[APP_CONTEXT_STATE_ATOM_KIND] === 'refreshCurrentWorkspace')
+        return state.refreshCurrentWorkspace ?? (() => {})
+
+      throw new Error(`Unsupported app context state write atom: ${atom[APP_CONTEXT_STATE_ATOM_KIND]}`)
     },
   }
 }

@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import SupportMenu from '../support-menu'
@@ -18,6 +17,12 @@ const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, mockSetShowPricing
   mockOpenZendeskWindow: vi.fn(),
   mockMailToSupport: vi.fn(),
   mockSetShowPricingModal: vi.fn(),
+}))
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+    userProfile: { email: 'user@example.com' },
+  },
 }))
 
 vi.mock('@/app/components/base/zendesk/utils', () => ({
@@ -44,9 +49,31 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -62,10 +89,10 @@ describe('SupportMenu', () => {
     mockConfig.isCloudEdition = true
     mockConfig.supportEmailAddress = ''
     mockConfig.zendeskWidgetKey = 'zendesk-key'
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       langGeniusVersionInfo: { current_version: '1.0.0' },
       userProfile: { email: 'user@example.com' },
-    })
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       plan: { type: Plan.team },

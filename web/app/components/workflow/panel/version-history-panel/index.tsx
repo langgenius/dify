@@ -3,6 +3,7 @@ import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +11,7 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
@@ -58,7 +59,7 @@ export const VersionHistoryPanel = ({
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const userProfile = useAtomValue(userProfileAtom)
   const configsMap = useHooksStore(s => s.configsMap)
   const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)

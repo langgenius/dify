@@ -75,6 +75,8 @@ export type ClientOptions = {
   readonly retryAttempts?: number
   readonly logger?: HttpLogger
   readonly hooks?: Hooks
+  // Skip TLS certificate verification (local-dev only, self-signed hosts).
+  readonly insecure?: boolean
 }
 
 export type HttpClient = {

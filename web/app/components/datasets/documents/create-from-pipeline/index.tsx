@@ -10,12 +10,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'

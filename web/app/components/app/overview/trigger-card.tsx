@@ -12,8 +12,9 @@ import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import {
 

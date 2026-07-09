@@ -114,6 +114,16 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
   const map: Record<string, ChatItemInTree> = {}
   const rootNodes: ChatItemInTree[] = []
   const childrenCount: Record<string, number> = {}
+  const messageIds = new Set(allMessages.map(item => item.id))
+  const pendingChildren: Record<string, ChatItemInTree[]> = {}
+  const appendPendingChildren = (parentId: string) => {
+    const children = pendingChildren[parentId]
+    if (!children)
+      return
+
+    map[parentId]?.children?.push(...children)
+    delete pendingChildren[parentId]
+  }
 
   let lastAppendedLegacyAnswer: ChatItemInTree | null = null
   for (let i = 0; i < allMessages.length; i += 2) {
@@ -144,6 +154,8 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
 
     // Connect question and answer
     questionNode.children!.push(answerNode)
+    appendPendingChildren(question.id)
+    appendPendingChildren(answer.id)
 
     // Append to parent or add to root
     if (isLegacy) {
@@ -157,9 +169,13 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     else {
       if (
         !parentMessageId
-        || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
+        || !messageIds.has(parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
       ) {
         rootNodes.push(questionNode)
+      }
+      else if (!map[parentMessageId]) {
+        pendingChildren[parentMessageId] = pendingChildren[parentMessageId] || []
+        pendingChildren[parentMessageId]!.push(questionNode)
       }
       else {
         map[parentMessageId]!.children!.push(questionNode)

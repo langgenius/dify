@@ -9,6 +9,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -17,8 +18,8 @@ import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-conf
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
@@ -101,7 +102,7 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )

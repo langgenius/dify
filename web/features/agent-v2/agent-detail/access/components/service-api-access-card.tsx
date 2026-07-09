@@ -89,7 +89,7 @@ export function ServiceApiAccessCard({
           </span>
         </Button>
         <a
-          href={docLink('/use-dify/publish/developing-with-apis')}
+          href={docLink('/api-reference/guides/get-started')}
           target="_blank"
           rel="noreferrer"
           aria-label={t('agentDetail.access.serviceApi.actions.apiReference')}

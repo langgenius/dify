@@ -1,12 +1,14 @@
 import type { ChangeEvent } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateCurrentWorkspace } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -17,7 +19,9 @@ const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const { currentWorkspace, mutateCurrentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const mutateCurrentWorkspace = useSetAtom(refreshCurrentWorkspaceAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)

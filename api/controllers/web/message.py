@@ -188,6 +188,7 @@ class MessageMoreLikeThisApi(WebApiResource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

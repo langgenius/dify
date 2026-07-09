@@ -3,9 +3,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
@@ -17,7 +18,7 @@ type DeleteAccountProps = {
 
 export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
@@ -35,12 +36,12 @@ export default function FeedBack(props: DeleteAccountProps) {
 
   const handleSubmit = useCallback(async () => {
     try {
-      await sendFeedback({ feedback: userFeedback, email: userProfile.email })
+      await sendFeedback({ feedback: userFeedback, email: userProfileEmail })
       props.onConfirm()
       await handleSuccess()
     }
     catch (error) { console.error(error) }
-  }, [handleSuccess, userFeedback, sendFeedback, userProfile, props])
+  }, [handleSuccess, userFeedback, sendFeedback, userProfileEmail, props])
 
   const handleSkip = useCallback(() => {
     props.onCancel()

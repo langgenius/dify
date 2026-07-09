@@ -3,9 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useMembers } from '@/service/use-common'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
@@ -22,7 +24,8 @@ const Recipient = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile, currentWorkspace } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: members } = useMembers()
   const accounts = members?.accounts || []
 
@@ -70,14 +73,14 @@ const Recipient = ({
           <div className="w-[86px]">
             <MemberSelector
               value={data.items}
-              email={userProfile.email}
+              email={userProfileEmail}
               list={accounts}
               onSelect={handleMemberSelect}
             />
           </div>
         </div>
         <EmailInput
-          email={userProfile.email}
+          email={userProfileEmail}
           value={data.items}
           list={accounts}
           onDelete={handleDelete}

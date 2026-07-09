@@ -1,9 +1,10 @@
 import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
@@ -67,7 +68,7 @@ export const useWorkflowComment = () => {
     () => new Map(mentionableUsers.map(user => [user.id, user])),
     [mentionableUsers],
   )
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_collaboration_mode,

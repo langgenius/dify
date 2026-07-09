@@ -7,11 +7,9 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import {
-  datasetRbacEnabledAtom,
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 

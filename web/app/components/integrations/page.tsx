@@ -36,18 +36,18 @@ type IntegrationsPageProps = {
   section?: IntegrationSection
 }
 
-const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
+const headerDescriptionDocPaths = {
   'provider': '/use-dify/workspace/model-providers',
   'data-source': '/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
   'builtin': '/use-dify/workspace/tools',
-  'custom-tool': '/use-dify/workspace/tools#custom-tool',
-  'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
-  'mcp': '/use-dify/build/mcp',
+  'custom-tool': '/use-dify/workspace/tools#swagger-api',
+  'workflow-tool': '/use-dify/workspace/tools#workflow',
+  'mcp': '/use-dify/workspace/tools#mcp',
   'custom-endpoint': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
   'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
   'extension': '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
-}
+} satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
 
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
@@ -150,7 +150,7 @@ export default function IntegrationsPage({
   const headerDescriptionWithLink = headerDescription && headerDescriptionDocPath
     ? (
         <DescriptionWithLearnMore
-          href={docLink(headerDescriptionDocPath as DocPathWithoutLang)}
+          href={docLink(headerDescriptionDocPath)}
           label={t('modelProvider.learnMore', { ns: 'common' })}
         >
           {headerDescription}

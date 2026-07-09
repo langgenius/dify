@@ -298,7 +298,7 @@ describe('CustomizeModal', () => {
       })
 
       const way2Link = getAnchorButton(/way2\.operation/i)
-      expect(way2Link).toHaveAttribute('href', expect.stringContaining('/use-dify/publish/developing-with-apis'))
+      expect(way2Link).toHaveAttribute('href', expect.stringContaining('/api-reference/guides/get-started'))
       expect(way2Link).toHaveAttribute('target', '_blank')
       expect(way2Link).toHaveAttribute('rel', 'noopener noreferrer')
     })

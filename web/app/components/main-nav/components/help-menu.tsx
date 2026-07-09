@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/storage'
@@ -21,8 +22,9 @@ import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import SupportMenu from './support-menu'
@@ -51,7 +53,8 @@ const HelpMenu = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
   const [aboutVisible, setAboutVisible] = useState(false)

@@ -2,10 +2,12 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
@@ -29,8 +31,8 @@ const DatasetList: FC<Props> = ({
   settingsModalHeight,
 }) => {
   const { t } = useTranslation()
-  const currentUserId = useAppContextSelector(s => s.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const handleRemove = useCallback((index: number) => {
     return () => {

@@ -5,7 +5,7 @@ from __future__ import annotations
 import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, Literal, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -21,11 +21,16 @@ from dify_agent.agent_stub.client import (
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileMapping, is_canonical_dify_file_reference
 
 
+class _AgentStubFileDownloadResponse(Protocol):
+    download_url: str
+
+
 class UploadedToolFileMapping(BaseModel):
     """Canonical Agent output mapping returned by ``dify-agent file upload``."""
 
     transfer_method: Literal["tool_file"] = "tool_file"
     reference: str
+    download_url: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -39,9 +44,9 @@ class DownloadedFileResult:
 
 @dataclass(frozen=True, slots=True)
 class UploadedToolFileResource:
-    """Lower-level upload result carrying both public mapping and ToolFile id."""
+    """Lower-level upload result carrying the internal mapping and ToolFile id."""
 
-    mapping: UploadedToolFileMapping
+    mapping: AgentStubFileMapping
     tool_file_id: str
 
 
@@ -49,11 +54,22 @@ def upload_file_from_environment(*, path: str) -> UploadedToolFileMapping:
     """Upload one sandbox-local file through the Agent Stub control plane.
 
     The signed upload data-plane response must carry the Dify-generated
-    ``reference`` for the new ``ToolFile`` so the sandbox can return the
-    canonical Agent output file mapping without synthesizing reference format.
+    ``reference`` for the new ``ToolFile``. The helper then resolves the same
+    mapping through the signed download-request control plane so the public CLI
+    output includes a ready-to-share external ``download_url``.
     """
 
-    return upload_tool_file_resource_from_environment(path=path).mapping
+    resource = upload_tool_file_resource_from_environment(path=path)
+    reference = resource.mapping.reference
+    if not isinstance(reference, str) or not reference:
+        raise AgentStubTransferError("signed file upload response is missing reference")
+    environment = read_agent_stub_environment()
+    download_url = _request_uploaded_tool_file_download_url(
+        url=environment.url,
+        auth_jwe=environment.auth_jwe,
+        reference=reference,
+    )
+    return UploadedToolFileMapping(reference=reference, download_url=download_url)
 
 
 def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFileResource:
@@ -62,6 +78,8 @@ def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFile
     This lower-level helper backs ``drive push``. The signed upload data-plane
     response must include both the canonical Dify ``reference`` used by public
     CLI output and the raw ToolFile ``id`` required by drive commit payloads.
+    It intentionally stops after the upload allocation so internal flows that
+    only need the ToolFile identity do not pay for signed download enrichment.
 
     Raises:
         AgentStubValidationError: if ``path`` does not resolve to a local file.
@@ -92,7 +110,11 @@ def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFile
             file_obj=file_obj,
             mimetype=mime_type,
         )
-    return _normalize_uploaded_tool_file_resource(payload)
+    reference, tool_file_id = _normalize_uploaded_tool_file_payload(payload)
+    return UploadedToolFileResource(
+        mapping=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
+        tool_file_id=tool_file_id,
+    )
 
 
 def download_file_from_environment(
@@ -121,6 +143,7 @@ def download_file_from_environment(
         url=environment.url,
         auth_jwe=environment.auth_jwe,
         file=file_mapping,
+        for_external=False,
     )
     if not hasattr(download_request, "filename") or not isinstance(download_request.filename, str):
         raise AgentStubTransferError("signed file download response is missing filename")
@@ -164,7 +187,7 @@ def _build_download_mapping(
         raise AgentStubValidationError("invalid file download arguments") from exc
 
 
-def _normalize_uploaded_tool_file_resource(payload: dict[str, object]) -> UploadedToolFileResource:
+def _normalize_uploaded_tool_file_payload(payload: dict[str, object]) -> tuple[str, str]:
     reference = payload.get("reference")
     if not isinstance(reference, str) or not reference:
         raise AgentStubTransferError("signed file upload response is missing reference")
@@ -173,10 +196,24 @@ def _normalize_uploaded_tool_file_resource(payload: dict[str, object]) -> Upload
     tool_file_id = payload.get("id")
     if not isinstance(tool_file_id, str) or not tool_file_id:
         raise AgentStubTransferError("signed file upload response is missing id")
-    return UploadedToolFileResource(
-        mapping=UploadedToolFileMapping(reference=reference),
-        tool_file_id=tool_file_id,
+    return reference, tool_file_id
+
+
+def _request_uploaded_tool_file_download_url(*, url: str, auth_jwe: str, reference: str) -> str:
+    download_request = cast(
+        _AgentStubFileDownloadResponse,
+        request_agent_stub_file_download_sync(
+            url=url,
+            auth_jwe=auth_jwe,
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
+        ),
     )
+    if not hasattr(download_request, "download_url") or not isinstance(download_request.download_url, str):
+        raise AgentStubTransferError("signed file download response is missing download_url")
+    download_url = download_request.download_url
+    if not download_url:
+        raise AgentStubTransferError("signed file download response is missing download_url")
+    return download_url
 
 
 def _deduplicate_destination_path(path: Path) -> Path:

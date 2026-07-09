@@ -1,14 +1,21 @@
 """Runtime execution for one scheduled Dify Agent run.
 
 The runner is storage-agnostic: it normalizes the public Dify composition into
-Agenton's graph/config split, enters a fresh ``CompositorRun`` (or resumes one
-from a snapshot), renders the current Dify system prompts into temporary
-``message_history``, runs pydantic-ai with either the current ``run.user_prompts``
-or deferred external tool results, emits stream events, applies request-level
-``on_exit`` signals, and then publishes a terminal success or failure event. The
-Pydantic AI model is resolved from the active Agenton layer named by
+Agenton's graph/config split and chooses one of two execution modes after the
+composition is normalized and the ``on_exit`` policy is validated:
+
+- model runs: enter a fresh ``CompositorRun`` (or resume one from a snapshot),
+  render the current Dify system prompts into temporary ``message_history``, run
+  pydantic-ai with either the current ``run.user_prompts`` or deferred external
+  tool results, emit raw stream events with agent-message delta annotations, apply
+  request-level ``on_exit`` signals, and publish a terminal success or failure event;
+- lifecycle-only runs: enter from a supplied snapshot, apply request-level
+  ``on_exit`` signals, exit without invoking a model, and succeed with explicit
+  ``output = null`` and ``usage = null``.
+
+The Pydantic AI model is resolved from the active Agenton layer named by
 ``DIFY_AGENT_MODEL_LAYER_ID``. An optional history layer contributes stored
-message history only through session state; successful runs append only
+message history only through session state; successful model runs append only
 ``result.new_messages()`` back into that layer so current system prompts are not
 persisted. An optional structured output layer named by
 ``DIFY_AGENT_OUTPUT_LAYER_ID`` is read after entry and resolved into an output
@@ -24,18 +31,19 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
-from collections.abc import AsyncIterable, Callable
+from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
-from pydantic_ai.messages import AgentStreamEvent
+from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 
-from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
+from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
 from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
@@ -97,6 +105,42 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
+def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
+    """Return the public failed-run error text and structured reason."""
+    message = str(exc) or type(exc).__name__
+    reason: str | None = None
+
+    if isinstance(exc, ModelHTTPError):
+        body = exc.body
+        if isinstance(body, Mapping):
+            body_message = body.get("message")
+            if isinstance(body_message, str) and body_message:
+                message = body_message
+
+            error_type = body.get("error_type")
+            if isinstance(error_type, str) and error_type:
+                reason = error_type
+
+        if reason is None and exc.status_code == 429:
+            reason = "InvokeRateLimitError"
+
+    return message, reason
+
+
+def _has_model_layer(request: CreateRunRequest) -> bool:
+    """Return whether the public composition includes the reserved model layer."""
+    return any(layer.name == DIFY_AGENT_MODEL_LAYER_ID for layer in request.composition.layers)
+
+
+def _extract_agent_message_delta(event: AgentStreamEvent) -> str | None:
+    """Return agent-message text content from Pydantic AI stream events."""
+    if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
+        return event.delta.content_delta
+    if isinstance(event, PartStartEvent) and isinstance(event.part, TextPart):
+        return event.part.content
+    return None
+
+
 @dataclass(slots=True)
 class RunSuccessOutcome:
     """Normalized successful runner output before event emission."""
@@ -144,8 +188,8 @@ class AgentRunRunner:
         try:
             outcome = await self._run_agent()
         except Exception as exc:
-            message = str(exc) or type(exc).__name__
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
+            message, reason = _run_failed_error_payload(exc)
+            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 
@@ -163,7 +207,7 @@ class AgentRunRunner:
         await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
-        """Run pydantic-ai inside an entered Agenton run.
+        """Run the normalized request in model or lifecycle-only mode.
 
         Known request-shaped Agenton enter-time failures are normalized to
         ``AgentRunValidationError``. That includes the existing small class of
@@ -190,6 +234,57 @@ class AgentRunRunner:
         except (KeyError, TypeError, ValueError) as exc:
             raise AgentRunValidationError(str(exc)) from exc
 
+        if not _has_model_layer(self.request):
+            return await self._run_lifecycle_only(compositor=compositor, layer_configs=layer_configs)
+        return await self._run_model(compositor=compositor, layer_configs=layer_configs)
+
+    async def _run_lifecycle_only(
+        self,
+        *,
+        compositor: Any,
+        layer_configs: dict[str, LayerConfigInput],
+    ) -> RunSuccessOutcome:
+        """Replay only layer lifecycle work for a no-LLM composition plus snapshot."""
+        if self.request.session_snapshot is None:
+            raise AgentRunValidationError(
+                f"Missing '{DIFY_AGENT_MODEL_LAYER_ID}' requires a session_snapshot for lifecycle-only runs."
+            )
+        if self.request.deferred_tool_results is not None:
+            raise AgentRunValidationError(
+                f"Deferred tool results require the reserved '{DIFY_AGENT_MODEL_LAYER_ID}' layer."
+            )
+
+        entered_run = False
+        try:
+            async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
+                entered_run = True
+                apply_layer_exit_signals(run, self.request.on_exit)
+        except RuntimeError as exc:
+            if not entered_run and is_agenton_enter_validation_runtime_error(exc):
+                raise AgentRunValidationError(str(exc)) from exc
+            raise
+        except ValueError as exc:
+            if not entered_run:
+                raise AgentRunValidationError(str(exc)) from exc
+            raise
+
+        if run.session_snapshot is None:
+            raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
+        return RunSuccessOutcome(
+            result_kind="output",
+            output=None,
+            deferred_tool_call=None,
+            session_snapshot=run.session_snapshot,
+            usage=None,
+        )
+
+    async def _run_model(
+        self,
+        *,
+        compositor: Any,
+        layer_configs: dict[str, LayerConfigInput],
+    ) -> RunSuccessOutcome:
+        """Run the normal model/deferred-tool path inside an entered Agenton run."""
         entered_run = False
         output: JsonValue | None = None
         deferred_tool_call: DeferredToolCallPayload | None = None
@@ -206,7 +301,13 @@ class AgentRunRunner:
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
                     async for event in events:
-                        _ = await emit_pydantic_ai_event(self.sink, run_id=self.run_id, data=event)
+                        text_delta = _extract_agent_message_delta(event)
+                        _ = await emit_pydantic_ai_event(
+                            self.sink,
+                            run_id=self.run_id,
+                            data=event,
+                            agent_message_delta=text_delta,
+                        )
 
                 try:
                     output_contract = resolve_run_output_contract(run)

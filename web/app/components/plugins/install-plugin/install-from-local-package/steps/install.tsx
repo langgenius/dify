@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
@@ -108,7 +109,7 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
       return true

@@ -33,13 +33,6 @@ dayjs.extend(timezone)
 
 // Mock app context
 const mockTimezone = 'America/New_York'
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      timezone: mockTimezone,
-    },
-  }),
-}))
 
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()

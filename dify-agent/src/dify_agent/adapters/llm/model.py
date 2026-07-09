@@ -205,6 +205,7 @@ class DifyStreamedResponse(StreamedResponse):
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        chunk_sequence = 0
         async for chunk in self.chunks:
             if chunk.delta.usage is not None:
                 self._usage: RequestUsage = _map_usage(chunk.delta.usage)
@@ -216,8 +217,10 @@ class DifyStreamedResponse(StreamedResponse):
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
+                chunk_sequence,
             ):
                 yield event
+            chunk_sequence += 1
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
@@ -334,7 +337,7 @@ def _map_model_response_to_prompt_message(
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    for part in message.parts:
+    for index, part in enumerate(message.parts):
         if isinstance(part, TextPart):
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
@@ -346,7 +349,7 @@ def _map_model_response_to_prompt_message(
         elif isinstance(part, ToolCallPart):
             tool_calls.append(
                 AssistantPromptMessage.ToolCall(
-                    id=part.tool_call_id or f"tool-call-{part.tool_name}",
+                    id=part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
                     type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                         name=part.tool_name,
@@ -551,11 +554,21 @@ def _normalize_finish_reason(finish_reason: str) -> FinishReason:
     return "error"
 
 
+def _normalize_tool_call_id(tool_call_id: str | None) -> str | None:
+    if tool_call_id is None:
+        return None
+    normalized = tool_call_id.strip()
+    if not normalized or normalized.lower() in {"none", "null"}:
+        return None
+    return normalized
+
+
 def _chunk_to_stream_events(
     parts_manager: ModelResponsePartsManager,
     chunk: LLMResultChunk,
     provider_name: str,
     embedded_thinking_parser: "_EmbeddedThinkingParser",
+    chunk_sequence: int,
 ) -> list[ModelResponseStreamEvent]:
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
@@ -571,13 +584,14 @@ def _chunk_to_stream_events(
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for index, tool_call in enumerate(message.tool_calls):
-        vendor_id = tool_call.id or f"chunk-{chunk.delta.index}-tool-{index}"
+        tool_call_id = _normalize_tool_call_id(tool_call.id)
+        vendor_id = tool_call_id or f"chunk-{chunk_sequence}-tool-{index}"
         events.append(
             parts_manager.handle_tool_call_part(
                 vendor_part_id=vendor_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
-                tool_call_id=tool_call.id,
+                tool_call_id=tool_call_id or vendor_id,
                 provider_name=provider_name,
             )
         )

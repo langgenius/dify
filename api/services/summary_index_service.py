@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -912,12 +912,11 @@ class SummaryIndexService:
 
             # Disable summary records (don't delete)
             now = naive_utc_now()
-            for summary in summaries:
-                summary.enabled = False
-                summary.disabled_at = now
-                summary.disabled_by = disabled_by
-                session.add(summary)
-
+            session.execute(
+                update(DocumentSegmentSummary)
+                .where(DocumentSegmentSummary.id.in_(s.id for s in summaries))
+                .values(enabled=False, disabled_at=now, disabled_by=disabled_by)
+            )
             session.commit()
             logger.info("Disabled %s summary records for dataset %s", len(summaries), dataset.id)
 
@@ -1424,6 +1423,7 @@ class SummaryIndexService:
               - generating: Number of summaries being generated
               - error: Number of summaries with errors
               - not_started: Number of segments without summary records
+              - timeout: Number of summaries that timed out
             - summaries: List of summary records with status and content preview
         """
         from services.dataset_service import SegmentService

@@ -16,11 +16,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Link from '@/next/link'
@@ -87,7 +88,7 @@ export function MainNavMenuContent({
   onLogout,
 }: MainNavMenuContentProps) {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 

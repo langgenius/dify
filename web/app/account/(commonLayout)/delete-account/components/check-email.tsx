@@ -1,9 +1,10 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Input } from '@langgenius/dify-ui/input'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
 
@@ -14,7 +15,7 @@ type DeleteAccountProps = {
 
 export default function CheckEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const [userInputEmail, setUserInputEmail] = useState('')
 
   const { isPending: isSendingEmail, mutateAsync: getDeleteEmailVerifyCode } = useSendDeleteAccountEmail()
@@ -45,7 +46,7 @@ export default function CheckEmail(props: DeleteAccountProps) {
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={userInputEmail !== userProfile.email || isSendingEmail} loading={isSendingEmail} variant="primary" onClick={handleConfirm}>{t('account.sendVerificationButton', { ns: 'common' })}</Button>
+        <Button className="w-full" disabled={userInputEmail !== userProfileEmail || isSendingEmail} loading={isSendingEmail} variant="primary" onClick={handleConfirm}>{t('account.sendVerificationButton', { ns: 'common' })}</Button>
         <Button className="w-full" onClick={props.onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
       </div>
     </>

@@ -62,6 +62,8 @@ const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
+const fastOpenApiConsolePathPrefix = '/console/api'
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
@@ -276,6 +278,33 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   return document
 }
 
+const mergeFastOpenApiConsoleSwagger = (document: SwaggerDocument) => {
+  const fastOpenApiDocument = readApiSwagger(fastOpenApiConsoleSpecFilename)
+  const targetPaths = document.paths ??= {}
+
+  for (const [routePath, pathItem] of Object.entries(fastOpenApiDocument.paths ?? {})) {
+    const contractPath = routePath.startsWith(fastOpenApiConsolePathPrefix)
+      ? routePath.slice(fastOpenApiConsolePathPrefix.length) || '/'
+      : routePath
+
+    if (targetPaths[contractPath])
+      throw new Error(`Duplicate console API path after FastOpenAPI merge: ${contractPath}`)
+
+    targetPaths[contractPath] = pathItem
+  }
+
+  const targetSchemas = getDocumentSchemas(document)
+  const sourceSchemas = getDocumentSchemas(fastOpenApiDocument)
+  for (const [schemaName, schema] of Object.entries(sourceSchemas)) {
+    if (targetSchemas[schemaName])
+      throw new Error(`Duplicate console API schema after FastOpenAPI merge: ${schemaName}`)
+
+    targetSchemas[schemaName] = schema
+  }
+
+  return document
+}
+
 const topLevelPathSegment = (routePath: string) => {
   return routePath.split('/').filter(Boolean)[0] ?? 'root'
 }
@@ -435,7 +464,11 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(
+    spec.name === 'console'
+      ? mergeFastOpenApiConsoleSwagger(readApiSwagger(spec.filename))
+      : readApiSwagger(spec.filename),
+  )
 
   if (spec.name === 'console')
     return splitConsoleDocument(document)
