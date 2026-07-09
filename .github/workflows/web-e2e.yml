@@ -1,6 +1,10 @@
 name: Web Full-Stack E2E
 
 on:
+  push:
+    branches:
+      - feat/agent-v2-e2e-test
+
   workflow_call:
     inputs:
       run-external-runtime:
