@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // eslint-disable-next-line no-restricted-imports -- This legacy selector still relies on showLeftIcon/showClearIcon props from the old input.
 import Input from '@/app/components/base/input'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { PermissionLevel } from '@/models/permission'
 import MemberItem from './member-item'
 import Item from './permission-item'

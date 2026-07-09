@@ -2,7 +2,7 @@ import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { userProfileEmailAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 
 type TipsProps = {
   showEmailTip: boolean

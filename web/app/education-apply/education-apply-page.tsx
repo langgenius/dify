@@ -14,9 +14,10 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import { currentWorkspaceAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import {
   useRouter,

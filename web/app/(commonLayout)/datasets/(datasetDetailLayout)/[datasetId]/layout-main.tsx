@@ -7,14 +7,11 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import {
-  currentWorkspaceLoadingAtom,
-  datasetRbacEnabledAtom,
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'

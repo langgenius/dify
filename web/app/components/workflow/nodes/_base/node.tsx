@@ -29,7 +29,7 @@ import {
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'

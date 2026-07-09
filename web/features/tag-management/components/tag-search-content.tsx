@@ -4,7 +4,7 @@ import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, Combobo
 import { useAtomValue } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'

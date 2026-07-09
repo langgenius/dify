@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import { currentWorkspaceAtom } from '@/context/app-context-state'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
   createApikey as createAppApikey,

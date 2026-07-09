@@ -25,7 +25,8 @@ import {
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'

@@ -69,12 +69,12 @@ const getUserProfile = (state: DatasetAccessMockState) => ({
 
 const getWorkspacePermissionKeys = (state: DatasetAccessMockState) => state.workspacePermissionKeys ?? []
 
-export const createDatasetAccessAtomMock = async (
+export const createDatasetAccessAtomMock = async <TModule extends object>(
   importOriginal: <T>() => Promise<T>,
   getState: () => DatasetAccessMockState,
   getOptions: () => DatasetAccessMockOptions = () => ({}),
 ) => {
-  const actual = await importOriginal<typeof import('@/context/app-context-state')>()
+  const actual = await importOriginal<TModule>()
   datasetAccessMockRegistry = {
     getState,
     getOptions,
