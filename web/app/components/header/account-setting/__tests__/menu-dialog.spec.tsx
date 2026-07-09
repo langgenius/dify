@@ -18,6 +18,8 @@ describe('MenuDialog', () => {
       // Assert
       expect(screen.getByTestId('dialog-content')).toBeInTheDocument()
       expect(screen.getByRole('dialog').children).toHaveLength(1)
+      expect(screen.getByRole('dialog')).toHaveClass('z-50')
+      expect(screen.getByRole('dialog')).not.toHaveClass('z-40')
     })
 
     it('should not render children when show is false', () => {
