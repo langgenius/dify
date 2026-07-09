@@ -17,8 +17,6 @@ import { AccessMode } from '@/models/access-control'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
-let mockIsCurrentWorkspaceEditor = true
-let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
@@ -58,21 +56,6 @@ vi.mock('@/next/dynamic', () => ({
     LazyComponent.displayName = 'DynamicComponent'
     return LazyComponent
   },
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
-    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
-    userProfile: { id: 'member-1' },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
 }))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
@@ -238,8 +221,6 @@ const renderList = (searchParams?: Record<string, string>) => {
 describe('App List Browsing Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
-    mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
@@ -331,7 +312,6 @@ describe('App List Browsing Flow', () => {
     })
 
     it('should hide the create menu when user lacks app creation permission', () => {
-      mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       mockPages = [createPage([
         createMockApp({ name: 'Test App' }),
@@ -378,7 +358,6 @@ describe('App List Browsing Flow', () => {
     })
 
     it('should hide drag-drop hint without app creation permission', () => {
-      mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       mockPages = [createPage([createMockApp()])]
       renderList()
@@ -464,7 +443,6 @@ describe('App List Browsing Flow', () => {
   // -- Dataset operator behavior --
   describe('Dataset Operator Behavior', () => {
     it('should not redirect at list component level for dataset operators', () => {
-      mockIsCurrentWorkspaceDatasetOperator = true
       renderList()
 
       expect(mockRouterReplace).not.toHaveBeenCalled()

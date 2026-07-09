@@ -146,7 +146,7 @@ describe('isAgentSuggestedModel', () => {
     expect(isAgentSuggestedModel(provider, createModelItem('Claude Opus 4.8'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('opus-4.7'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('Claude Sonnet 4.6'))).toBe(true)
-    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview'))).toBe(false)
     expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview 001'))).toBe(false)
     expect(isAgentSuggestedModel(provider, createModelItem('grok-4.3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-pro'))).toBe(true)

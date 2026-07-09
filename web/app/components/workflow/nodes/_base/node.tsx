@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import {
   cloneElement,
   memo,
@@ -28,7 +29,7 @@ import {
   NodeRunningStatus,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
@@ -76,7 +77,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)

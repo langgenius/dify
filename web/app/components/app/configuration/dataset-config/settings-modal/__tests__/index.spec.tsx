@@ -67,24 +67,6 @@ vi.mock('@/service/use-common', async () => ({
   useMembers: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => {
-    throw new Error('legacy workspace dataset_operator state should not be used by SettingsModal')
-  },
-  useSelector: <T,>(selector: (value: {
-    userProfile: { id: string, name: string, email: string, avatar_url: string }
-    workspacePermissionKeys: string[]
-  }) => T) => selector({
-    userProfile: {
-      id: 'user-1',
-      name: 'User One',
-      email: 'user@example.com',
-      avatar_url: 'avatar.png',
-    },
-    workspacePermissionKeys: [],
-  }),
-}))
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,

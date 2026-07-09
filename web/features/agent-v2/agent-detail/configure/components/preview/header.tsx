@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
 
@@ -186,15 +187,16 @@ export function AgentPreviewHeader({
       </div>
       <div className="flex shrink-0 items-center">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={refreshDisabled}
-            className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={t('agentDetail.configure.preview.restart')}
-          >
-            <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
-          </button>
+          <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
+            <button
+              type="button"
+              disabled={refreshDisabled}
+              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={t('agentDetail.configure.preview.restart')}
+            >
+              <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
+            </button>
+          </AgentConfigureClearSessionConfirmDialog>
           {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"

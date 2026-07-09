@@ -69,15 +69,6 @@ vi.mock('@/app/education-apply/hooks', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-  useAppContext: () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 

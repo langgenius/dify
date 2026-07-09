@@ -3,6 +3,7 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
+import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -156,7 +157,7 @@ export function WebAppAccessCard({
                 access_token: updatedSite.code ?? agentDetail.site?.access_token ?? agentDetail.site?.code ?? null,
                 code: updatedSite.code ?? agentDetail.site?.code ?? agentDetail.site?.access_token ?? null,
                 app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
-                icon_url: agentDetail.site?.icon_url ?? null,
+                icon_url: null,
               },
             }
           : agentDetail,
@@ -287,6 +288,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
   const appId = agent.app_id
   if (!site || !appId)
     return null
+  const icon = getSettingsIcon(agent)
 
   return {
     id: appId,
@@ -301,15 +303,47 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
       privacy_policy: site.privacy_policy ?? '',
       custom_disclaimer: site.custom_disclaimer ?? '',
       input_placeholder: site.input_placeholder ?? '',
-      icon_type: site.icon_type === 'image' || site.icon_type === 'emoji' || site.icon_type === 'link'
-        ? site.icon_type
-        : 'emoji',
-      icon: site.icon ?? agent.icon ?? '',
-      icon_background: site.icon_background ?? agent.icon_background ?? null,
-      icon_url: site.icon_url ?? null,
+      icon_type: icon.icon_type,
+      icon: icon.icon,
+      icon_background: icon.icon_background,
+      icon_url: icon.icon_url,
       show_workflow_steps: site.show_workflow_steps ?? false,
       use_icon_as_answer_icon: site.use_icon_as_answer_icon ?? false,
     },
+  }
+}
+
+function isAppIconType(iconType: unknown): iconType is AppIconType {
+  return iconType === 'image' || iconType === 'emoji' || iconType === 'link'
+}
+
+function getSettingsIcon(agent: AgentAppDetailWithSite) {
+  const site = agent.site
+  if (site && isAppIconType(site.icon_type) && site.icon) {
+    return {
+      icon_type: site.icon_type,
+      icon: site.icon,
+      icon_background: site.icon_background ?? null,
+      icon_url: site.icon_url ?? null,
+    }
+  }
+
+  if (isAppIconType(agent.icon_type) && agent.icon) {
+    return {
+      icon_type: agent.icon_type,
+      icon: agent.icon,
+      icon_background: agent.icon_background ?? null,
+      icon_url: agent.icon_type === 'image' || agent.icon_type === 'link'
+        ? agent.icon_url
+        : null,
+    }
+  }
+
+  return {
+    icon_type: 'emoji' as const,
+    icon: '',
+    icon_background: null,
+    icon_url: null,
   }
 }
 

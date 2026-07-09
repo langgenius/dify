@@ -48,7 +48,7 @@ export default function AccountPage() {
   }))
   const apps = appList?.data || []
   const queryClient = useQueryClient()
-  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
   const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })

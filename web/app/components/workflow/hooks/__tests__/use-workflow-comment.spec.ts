@@ -28,6 +28,14 @@ const commentsUpdateState = vi.hoisted(() => ({
 const globalFeatureState = vi.hoisted(() => ({
   enableCollaboration: true,
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    email: 'alice@example.com',
+    avatar_url: 'alice.png',
+  },
+}))
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -41,16 +49,15 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-      avatar_url: 'alice.png',
-    },
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleClient: {

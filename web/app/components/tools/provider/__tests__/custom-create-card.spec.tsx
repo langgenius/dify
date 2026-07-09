@@ -9,12 +9,6 @@ const mockAppContextState = vi.hoisted(() => ({
   workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
-  }),
-}))
-
 vi.mock('@/context/app-context-state', () => ({
   workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
 }))

@@ -34,11 +34,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
 
 vi.mock('@/context/app-context-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')

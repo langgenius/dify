@@ -1,9 +1,10 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
+import { useAtomValue } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
@@ -26,7 +27,7 @@ export const TagSearchContent = ({
   canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter(tag => !isCreateTagOption(tag)).length

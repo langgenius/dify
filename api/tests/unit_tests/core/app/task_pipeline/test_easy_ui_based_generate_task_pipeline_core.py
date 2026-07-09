@@ -203,6 +203,7 @@ def _agent_thought() -> MessageAgentThought:
         tool="tool",
         tool_labels_str="{}",
         tool_input="input",
+        answer="answer",
         message_files="[]",
     )
     thought.id = "thought"
@@ -678,7 +679,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert agent_response.answer == "agent"
         assert isinstance(responses[-1], ErrorStreamResponse)
         assert isinstance(responses[-1].err, ValueError)
-        assert pipeline._task_state.llm_result.message.content == "annotatedagent"
+        assert pipeline._task_state.llm_result.message.content == "annotated"
 
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -720,6 +721,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert response is not None
         assert response.id == "thought"
+        assert response.thought == "t"
 
     def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -735,6 +737,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         agent_thought = _agent_thought()
         agent_thought.thought = None
+        agent_thought.answer = None
         agent_thought.observation = None
         agent_thought.tool = None
         agent_thought.tool_input = None

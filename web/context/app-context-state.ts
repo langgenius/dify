@@ -89,6 +89,14 @@ export const isCurrentWorkspaceManagerAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceManager
 })
 
+export const isCurrentWorkspaceEditorAtom = atom((get) => {
+  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceEditor
+})
+
+export const isCurrentWorkspaceDatasetOperatorAtom = atom((get) => {
+  return get(workspaceRoleFlagsAtom).isCurrentWorkspaceDatasetOperator
+})
+
 const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
   const workspaceId = get(currentWorkspaceIdAtom)
 
@@ -109,10 +117,6 @@ export const currentWorkspaceLoadingAtom = atom((get) => {
 
 export const datasetRbacEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).rbac_enabled
-})
-
-export const currentWorkspaceValidatingAtom = atom((get) => {
-  return get(currentWorkspaceQueryAtom).isFetching
 })
 
 const versionQueryAtom = atomWithQuery((get) => {

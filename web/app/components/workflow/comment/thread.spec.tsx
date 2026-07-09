@@ -4,6 +4,13 @@ import { CommentThread } from './thread'
 
 const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
 const mockFlowToScreenPosition = vi.hoisted(() => vi.fn(({ x, y }: { x: number, y: number }) => ({ x, y })))
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    avatar_url: 'alice.png',
+  },
+}))
 
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: {
@@ -31,15 +38,15 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      avatar_url: 'alice.png',
-    },
-  }),
-}))
+vi.mock('@/context/app-context-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({

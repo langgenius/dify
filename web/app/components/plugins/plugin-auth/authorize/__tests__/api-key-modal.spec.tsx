@@ -84,10 +84,6 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 // PermissionSelector also reads userProfile from app-context.
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => unknown) =>
-    selector({ userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' } }),
-}))
 
 const basePayload = {
   category: AuthCategory.tool,

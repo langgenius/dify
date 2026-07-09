@@ -2335,6 +2335,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |

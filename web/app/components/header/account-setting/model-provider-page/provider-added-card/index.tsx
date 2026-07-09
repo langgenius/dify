@@ -7,6 +7,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -14,7 +15,7 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
@@ -68,7 +69,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()

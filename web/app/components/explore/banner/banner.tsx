@@ -1,10 +1,11 @@
 import type { Banner as BannerType } from '@/models/app'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
 import { BannerItem } from './banner-item'
 
@@ -59,8 +60,9 @@ function Banner({
 }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const accountId = useSelector(s => s.userProfile.id)
-  const userName = useSelector(s => s.userProfile.name)
+  const userProfile = useAtomValue(userProfileAtom)
+  const accountId = userProfile.id
+  const userName = userProfile.name
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)

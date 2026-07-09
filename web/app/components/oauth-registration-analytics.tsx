@@ -48,8 +48,8 @@ export function OAuthRegistrationAnalytics() {
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    // Defer the Amplitude event until the user ID is attached. It is flushed in
-    // AppContextProvider after setUserId runs. Firing it here would record it under an
+    // Defer the Amplitude event until the user ID is attached. The app context
+    // external sync replays it after setUserId runs. Firing it here would record it under an
     // anonymous Amplitude profile (no user ID set yet).
     rememberRegistrationSuccess({ method: 'oauth', utmInfo })
 

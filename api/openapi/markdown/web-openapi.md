@@ -936,6 +936,7 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |

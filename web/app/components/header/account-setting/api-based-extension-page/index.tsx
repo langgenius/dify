@@ -2,11 +2,12 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
@@ -51,7 +52,7 @@ export function ApiBasedExtensionPage({
   layout,
 }: ApiBasedExtensionPageProps = {}) {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
