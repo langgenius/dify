@@ -590,7 +590,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "0.1.0"
+version = "1.16.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },

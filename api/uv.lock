@@ -1280,7 +1280,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "0.1.0"
+version = "1.16.0rc1"
 source = { editable = "../dify-agent" }
 dependencies = [
     { name = "anyio" },
@@ -1338,7 +1338,7 @@ docs = [
 
 [[package]]
 name = "dify-api"
-version = "1.15.0"
+version = "1.16.0rc1"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
