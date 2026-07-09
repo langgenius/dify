@@ -92,6 +92,21 @@ function getCompletedTitle(latency: NonNullable<ChatItem['more']>['latency'] | u
   return t('agentDetail.configure.answer.workFinished')
 }
 
+function hashString(value: string) {
+  let hash = 5381
+  for (let i = 0; i < value.length; i++)
+    hash = ((hash << 5) + hash) ^ value.charCodeAt(i)
+
+  return (hash >>> 0).toString(36)
+}
+
+function getAgentResponsePartBaseKey(part: NonNullable<ChatItem['agent_response_parts']>[number]) {
+  if (part.type === 'message')
+    return `message-${part.content.length}-${hashString(part.content)}`
+
+  return `thought-${part.thought.id || `${part.thought.message_id}-${part.thought.position}`}`
+}
+
 function useWorkingDuration(enabled?: boolean) {
   const startedAtRef = useRef<number | null>(null)
   const [now, setNow] = useState(0)
@@ -118,12 +133,14 @@ function useWorkingDuration(enabled?: boolean) {
 function ProcessShell({
   children,
   collapsed,
+  expandedTitle,
   icon,
   title,
   defaultOpen = false,
 }: {
   children?: ReactNode
   collapsed?: boolean
+  expandedTitle?: ReactNode
   icon: ReactNode
   title: ReactNode
   defaultOpen?: boolean
@@ -151,7 +168,7 @@ function ProcessShell({
           expanded ? 'system-xs-medium-uppercase' : 'system-sm-regular',
         )}
         >
-          {title}
+          {expanded ? (expandedTitle ?? title) : title}
         </span>
         {canExpand && (
           expanded
@@ -179,12 +196,14 @@ function ThoughtProcess({
   defaultOpen?: boolean
 }) {
   const { t } = useTranslation()
-  const summary = thought.thought.trim() || t('chat.thought', { ns: 'common' })
+  const thoughtTitle = t('chat.thought', { ns: 'common' })
+  const summary = thought.thought.trim() || thoughtTitle
 
   return (
     <ProcessShell
-      icon={<span className="i-ri-sparkling-2-line size-3.5" aria-hidden />}
-      title={defaultOpen ? t('chat.thought', { ns: 'common' }) : summary}
+      icon={<span className="i-custom-public-thought-imagine size-3.5" aria-hidden />}
+      title={summary}
+      expandedTitle={thoughtTitle.toUpperCase()}
       defaultOpen={defaultOpen}
     >
       <Markdown content={summary} />
@@ -309,15 +328,22 @@ function AgentResponsePartList({
   item: ChatItem
   responding?: boolean
 }) {
+  const keyOccurrences = new Map<string, number>()
+
   return (
     <div className="flex flex-col gap-1">
       {item.agent_response_parts?.map((part, index) => {
+        const baseKey = getAgentResponsePartBaseKey(part)
+        const occurrence = keyOccurrences.get(baseKey) ?? 0
+        keyOccurrences.set(baseKey, occurrence + 1)
+        const partKey = occurrence ? `${baseKey}-${occurrence}` : baseKey
+
         if (part.type === 'message') {
           if (!part.content)
             return null
 
           return (
-            <div key={`message-${index}`} className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
+            <div key={partKey} className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
               <Markdown content={part.content} />
             </div>
           )
@@ -325,7 +351,7 @@ function AgentResponsePartList({
 
         return (
           <AgentThoughtProcessItem
-            key={part.thought.id || `${part.thought.message_id}-${part.thought.position}-${index}`}
+            key={partKey}
             thought={part.thought}
             responding={responding}
             defaultOpen={index === 0}
