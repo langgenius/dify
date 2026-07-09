@@ -56,18 +56,22 @@ with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
-DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
+# This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
+# Replace this development default in production.
+# Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
+DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
 HTTP `DIFY_AGENT_STUB_API_BASE_URL` may be either the service root or the
 explicit `/agent-stub` API root; the server normalizes the service root to
 `/agent-stub`. Other HTTP paths are rejected at startup.
 
-`DIFY_AGENT_SERVER_SECRET_KEY` must be unpadded base64url text for exactly 32
-decoded bytes. One way to generate it is:
+The supplied Docker and `.example.env` configs use a development
+`DIFY_AGENT_SERVER_SECRET_KEY`. Override it in production with unpadded base64url
+text for exactly 32 decoded bytes. One way to generate it is:
 
 ```bash
-python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
 ## Client request shape
