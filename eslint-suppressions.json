@@ -6910,11 +6910,6 @@
       "count": 1
     }
   },
-  "web/scripts/component-analyzer.js": {
-    "regexp/no-unused-capturing-group": {
-      "count": 6
-    }
-  },
   "web/service/__tests__/base.spec.ts": {
     "no-restricted-imports": {
       "count": 1
