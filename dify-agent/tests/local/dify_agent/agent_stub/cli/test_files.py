@@ -53,6 +53,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
 
     def fake_request_agent_stub_file_download_sync(**kwargs):
         captured_download_request["file"] = kwargs["file"]
+        captured_download_request["for_external"] = kwargs.get("for_external", True)
         return type(
             "Response",
             (),
@@ -85,6 +86,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
         transfer_method="tool_file",
         reference=_reference("tool-file-1"),
     )
+    assert captured_download_request["for_external"] is True
 
 
 def test_upload_tool_file_resource_from_environment_preserves_tool_file_id(
@@ -256,6 +258,7 @@ def test_download_file_from_environment_supports_mapping_json(
 
     def fake_request_download(**kwargs):
         captured["file"] = kwargs["file"]
+        captured["for_external"] = kwargs["for_external"]
         return type(
             "Response",
             (),
@@ -283,8 +286,47 @@ def test_download_file_from_environment_supports_mapping_json(
         "reference": _reference("tool-file-1"),
         "url": None,
     }
+    assert captured["for_external"] is False
     assert result.path == target_dir / "report.pdf"
     assert result.path.read_bytes() == b"downloaded"
+
+
+def test_download_file_from_environment_requests_internal_download_url(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    target_dir = tmp_path / "downloads"
+    target_dir.mkdir()
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    captured: dict[str, object] = {}
+
+    def fake_request_download(**kwargs):
+        captured.update(kwargs)
+        return type(
+            "Response",
+            (),
+            {
+                "filename": "report.pdf",
+                "mime_type": "application/pdf",
+                "size": 12,
+                "download_url": "http://internal-files/report.pdf",
+            },
+        )()
+
+    monkeypatch.setattr("dify_agent.agent_stub.cli._files.request_agent_stub_file_download_sync", fake_request_download)
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: b"downloaded",
+    )
+
+    _ = download_file_from_environment(
+        transfer_method="tool_file",
+        reference_or_url=_reference("tool-file-1"),
+        local_dir=str(target_dir),
+    )
+
+    assert captured["for_external"] is False
 
 
 def test_download_file_from_environment_requires_mapping_or_positional_pair() -> None:

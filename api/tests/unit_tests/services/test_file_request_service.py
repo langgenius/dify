@@ -59,6 +59,31 @@ def test_request_download_url_builds_file_under_bound_scope(
     assert result.download_url == "https://files.example.com/x"
 
 
+def test_request_download_url_supports_internal_download_urls() -> None:
+    fake_file = MagicMock(filename="report.pdf", mime_type="application/pdf", size=123)
+    service = FileRequestService(access_controller=MagicMock())
+
+    with (
+        patch("services.file_request_service.bind_file_access_scope", return_value=nullcontext()),
+        patch.object(service, "_build_file", return_value=fake_file),
+        patch(
+            "services.file_request_service.file_helpers.resolve_file_url",
+            return_value="http://internal-files/report.pdf",
+        ) as resolve_file_url,
+    ):
+        result = service.request_download_url(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            user_from="account",
+            invoke_from="debugger",
+            file_mapping={"transfer_method": "tool_file", "reference": "dify-file-ref:tool-file-1"},
+            for_external=False,
+        )
+
+    resolve_file_url.assert_called_once_with(fake_file, for_external=False)
+    assert result.download_url == "http://internal-files/report.pdf"
+
+
 def test_request_download_url_rejects_unsupported_files() -> None:
     service = FileRequestService(access_controller=MagicMock())
 
