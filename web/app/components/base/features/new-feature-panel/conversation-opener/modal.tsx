@@ -121,7 +121,6 @@ const OpeningSettingModal = ({
               aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
               className="size-3.5"
               popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
-              delay={0}
             >
               {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
             </Infotip>

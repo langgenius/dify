@@ -55,8 +55,6 @@ type InfotipProps = {
   'iconSize'?: InfotipIconSize
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
   'popupClassName'?: string
-  /** Hover open delay in ms. Defaults to 300 to match the app-wide Tooltip delay. */
-  'delay'?: number
 }
 
 export function Infotip({
@@ -66,7 +64,6 @@ export function Infotip({
   iconVariant = 'question',
   iconSize = 'medium',
   popupClassName,
-  delay = 300,
 }: InfotipProps) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
@@ -76,7 +73,7 @@ export function Infotip({
     <Popover>
       <PopoverTrigger
         openOnHover
-        delay={delay}
+        delay={300}
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}

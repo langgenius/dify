@@ -373,7 +373,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.queryByText(/openingStatement\.openingQuestionDescription/)).not.toBeInTheDocument()
   })
 
-  it('should show the opening questions description in a tooltip', async () => {
+  it('should show the opening questions description in an infotip', async () => {
     await render(
       <OpeningSettingModal
         data={defaultData}
@@ -382,11 +382,9 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    act(() => {
-      fireEvent.mouseEnter(screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }))
-    })
+    await userEvent.hover(screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }))
 
-    expect(screen.getByText(/openingStatement\.openingQuestionDescription/)).toBeInTheDocument()
+    expect(await screen.findByText(/openingStatement\.openingQuestionDescription/)).toBeInTheDocument()
   })
 
   it('should call onAutoAddPromptVariable when confirm add is clicked', async () => {
