@@ -3,6 +3,7 @@ import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,8 +11,9 @@ import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/component
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
@@ -39,8 +41,8 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canMonitor = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,

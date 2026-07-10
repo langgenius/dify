@@ -23,6 +23,7 @@ from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.common_entities import I18nObject
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import dump_response
@@ -309,6 +310,7 @@ class DatasourceAuth(Resource):
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
             user=user,
+            session=db.session(),
         )
         return dump_response(DatasourceCredentialListResponse, {"result": datasources}), 200
 
@@ -335,6 +337,7 @@ class DatasourceAuthDeleteApi(Resource):
             auth_id=payload.credential_id,
             provider=provider_name,
             plugin_id=plugin_id,
+            session=db.session(),
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -380,7 +383,9 @@ class DatasourceAuthListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_all_datasource_credentials(tenant_id=current_tenant_id)
+        datasources = datasource_provider_service.get_all_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session()
+        )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
 
@@ -397,7 +402,9 @@ class DatasourceHardCodeAuthListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_hard_code_datasource_credentials(tenant_id=current_tenant_id)
+        datasources = datasource_provider_service.get_hard_code_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session()
+        )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
 

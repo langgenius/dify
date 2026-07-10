@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { IWorkspace } from '@/models/common'
+import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -13,7 +13,6 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/stor
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -30,15 +29,39 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoist
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: undefined as AppContextStateMockState | undefined,
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-  useSelector: vi.fn(),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -183,7 +206,7 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
   },
 })
 
-const appContextValue: AppContextValue = {
+const appContextValue: AppContextStateMockState = {
   userProfile: {
     id: 'user-1',
     name: 'Evan Z',
@@ -219,10 +242,8 @@ const appContextValue: AppContextValue = {
     version: '1.0.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
@@ -238,9 +259,9 @@ const renderMainNav = (
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
-  const getMockAppContext = useAppContext as Mock
-  const currentAppContext = getMockAppContext() as AppContextValue
-  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
+  const currentAppContext = mockAppContextState.current ?? appContextValue
+  mockAppContextState.current = currentAppContext
+  queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace as ICurrentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
@@ -286,8 +307,7 @@ describe('MainNav', () => {
       forward: vi.fn(),
       refresh: vi.fn(),
     })
-    ;(useAppContext as Mock).mockReturnValue(appContextValue)
-    ;(useAppContextSelector as Mock).mockImplementation((selector: (state: AppContextValue) => unknown) => selector((useAppContext as Mock)() as AppContextValue))
+    mockAppContextState.current = appContextValue
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -320,8 +340,8 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
-    expect(screen.getByRole('link', { name: /common.menus.roster common.menus.status/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
+    expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
@@ -332,7 +352,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
   it('hides the marketplace entry when marketplace is disabled', () => {
@@ -396,13 +416,13 @@ describe('MainNav', () => {
   })
 
   it('renders the desktop environment tag from the old header contract', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       langGeniusVersionInfo: {
         ...appContextValue.langGeniusVersionInfo,
         current_env: 'TESTING',
       },
-    })
+    }
 
     renderMainNav()
 
@@ -438,7 +458,7 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -449,13 +469,13 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
-    })
+    }
 
     renderMainNav()
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
@@ -464,7 +484,7 @@ describe('MainNav', () => {
   })
 
   it('keeps unrestricted main routes visible without route permission keys', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -475,13 +495,13 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: ['app_library.access', 'tool.manage'],
-    })
+    }
 
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
@@ -512,13 +532,13 @@ describe('MainNav', () => {
 
   it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
-    mockPathname = '/roster/agent/agent-1/configure'
+    mockPathname = '/agents/agent-1/configure'
 
     renderMainNav()
 
     expect(screen.queryByTestId('agent-detail-top')).not.toBeInTheDocument()
     expect(screen.queryByTestId('agent-detail-section')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
   it.each([
@@ -562,11 +582,11 @@ describe('MainNav', () => {
   })
 
   it('marks roster active on roster routes', () => {
-    mockPathname = '/roster'
+    mockPathname = '/agents'
 
     renderMainNav()
 
-    const rosterLink = screen.getByRole('link', { name: /common.menus.roster/ })
+    const rosterLink = screen.getByRole('link', { name: /Agents/ })
     expect(rosterLink).toHaveClass(activeGradientMaskClassName)
     expect(rosterLink).toHaveAttribute('aria-current', 'page')
   })
@@ -727,7 +747,7 @@ describe('MainNav', () => {
   })
 
   it('limits invite members by member management permission', async () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -736,7 +756,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(key => key !== 'workspace.member.manage'),
-    })
+    }
 
     renderMainNav()
 
@@ -747,7 +767,7 @@ describe('MainNav', () => {
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', () => {
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       ...appContextValue,
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
@@ -758,7 +778,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
-    })
+    }
 
     renderMainNav()
 

@@ -20,13 +20,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: testState.currentUserId },
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
 }))

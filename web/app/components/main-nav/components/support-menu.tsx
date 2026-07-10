@@ -1,13 +1,15 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { IS_CLOUD_EDITION, SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 
 type SupportMenuProps = {
   onContactUsClick?: () => void
@@ -16,7 +18,8 @@ type SupportMenuProps = {
 export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
   const { t } = useTranslation()
   const { enableBilling, plan } = useProviderContext()
-  const { userProfile, langGeniusVersionInfo } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const { setShowPricingModal } = useModalContext()
   const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
   const shouldShowUpgradeContact = IS_CLOUD_EDITION && enableBilling && plan.type === Plan.sandbox && !hasDedicatedChannel

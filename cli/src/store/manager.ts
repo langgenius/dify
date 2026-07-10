@@ -7,6 +7,7 @@ import { FileTokenStore, KeychainTokenStore } from './token-store'
 
 export const CACHE_APP_INFO = 'app-info'
 export const CACHE_NUDGE = 'nudge'
+export const CACHE_COMPAT = 'compat'
 const HOSTS_FILE = 'hosts.yml'
 const TOKENS_FILE = 'tokens.yml'
 export const CONFIG_FILE_NAME = 'config.yml'

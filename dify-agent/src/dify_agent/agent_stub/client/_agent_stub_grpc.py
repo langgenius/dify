@@ -124,6 +124,7 @@ def request_agent_stub_file_download_grpc_sync(
     url: str,
     auth_jwe: str,
     file: AgentStubFileMapping,
+    for_external: bool = True,
     timeout: float | httpx.Timeout = 30.0,
 ):
     """Request one signed download URL through the gRPC Agent Stub endpoint.
@@ -144,7 +145,7 @@ def request_agent_stub_file_download_grpc_sync(
             auth_jwe=auth_jwe,
             method_name="CreateFileDownloadRequest",
             request_factory=lambda runtime: _require_conversions().proto_file_download_request(
-                runtime.agent_stub_pb2, file=file
+                runtime.agent_stub_pb2, file=file, for_external=for_external
             ),
             response_parser=lambda response: _require_conversions().file_download_response_from_proto(response),
             timeout=timeout,

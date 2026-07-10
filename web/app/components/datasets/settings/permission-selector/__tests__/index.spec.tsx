@@ -4,16 +4,59 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { DatasetPermission } from '@/models/datasets'
 import PermissionSelector from '../index'
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
+
+let mockIsRbacEnabled = false
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 describe('PermissionSelector', () => {
   const mockMemberList: Member[] = [
@@ -33,6 +76,7 @@ describe('PermissionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = false
   })
 
   describe('Rendering', () => {
@@ -409,6 +453,8 @@ describe('PermissionSelector', () => {
     })
 
     it('should show access config hint and remain closed when RBAC is enabled', () => {
+      mockIsRbacEnabled = true
+
       renderWithSystemFeatures(<PermissionSelector {...defaultProps} />, {
         systemFeatures: {
           rbac_enabled: true,

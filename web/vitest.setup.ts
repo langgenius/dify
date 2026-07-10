@@ -1,5 +1,9 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import * as jestDomMatchers from '@testing-library/jest-dom/matchers'
 import { act, cleanup } from '@testing-library/react'
+import { getDefaultStore } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import * as React from 'react'
 import { afterEach, beforeEach, expect, vi } from 'vitest'
 import 'vitest-canvas-mock'
@@ -220,8 +224,101 @@ const createMockLocalStorage = () => {
 
 let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
 
+const testAccountProfileQueryKey = [
+  ['console', 'account', 'profile', 'get'],
+  { type: 'query' },
+] as const
+
+const testSystemFeaturesQueryKey = [
+  ['console', 'systemFeatures', 'get'],
+  { type: 'query' },
+] as const
+
+const testAccountProfile = {
+  profile: {
+    id: 'user-1',
+    name: 'Test User',
+    email: 'test@dify.ai',
+    avatar: '',
+    avatar_url: null,
+    is_password_set: false,
+    timezone: 'UTC',
+  },
+  meta: {
+    currentVersion: null,
+    currentEnv: null,
+  },
+} satisfies {
+  profile: GetAccountProfileResponse
+  meta: {
+    currentVersion: string | null
+    currentEnv: string | null
+  }
+}
+
+const testSystemFeatures = {
+  enable_app_deploy: false,
+  sso_enforced_for_signin: false,
+  sso_enforced_for_signin_protocol: '',
+  enable_marketplace: false,
+  enable_email_code_login: false,
+  enable_email_password_login: true,
+  enable_social_oauth_login: false,
+  enable_collaboration_mode: true,
+  is_allow_create_workspace: false,
+  is_allow_register: false,
+  is_email_setup: false,
+  enable_change_email: true,
+  max_plugin_package_size: 15728640,
+  license: {
+    status: 'none',
+    expired_at: '',
+    workspaces: {
+      enabled: false,
+      size: 0,
+      limit: 0,
+    },
+  },
+  branding: {
+    enabled: false,
+    login_page_logo: '',
+    workspace_logo: '',
+    favicon: '',
+    application_title: '',
+  },
+  webapp_auth: {
+    enabled: false,
+    allow_sso: false,
+    sso_config: {
+      protocol: '',
+    },
+    allow_email_code_login: false,
+    allow_email_password_login: false,
+  },
+  plugin_installation_permission: {
+    plugin_installation_scope: 'all',
+    restrict_to_marketplace_only: false,
+  },
+  plugin_manager: {
+    enabled: false,
+  },
+  rbac_enabled: false,
+  enable_creators_platform: false,
+  enable_trial_app: false,
+  enable_explore_banner: false,
+  enable_learn_app: true,
+} satisfies GetSystemFeaturesResponse
+
+const seedResolvedAppContextQueries = () => {
+  const queryClient = getDefaultStore().get(queryClientAtom)
+
+  queryClient.setQueryData(testAccountProfileQueryKey, testAccountProfile)
+  queryClient.setQueryData(testSystemFeaturesQueryKey, testSystemFeatures)
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  seedResolvedAppContextQueries()
   mockLocalStorage = createMockLocalStorage()
   Object.defineProperty(globalThis, 'localStorage', {
     value: mockLocalStorage,

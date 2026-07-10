@@ -81,6 +81,23 @@ describe('Answer Component', () => {
       expect(container.querySelector('.group')).toBeInTheDocument()
     })
 
+    it('should render custom agent content when only agent response parts exist', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            id: 'msg-with-parts',
+            content: '',
+            isAnswer: true,
+            agent_response_parts: [{ type: 'message', content: 'streamed answer' }],
+          } as ChatItem}
+          renderAgentContent={() => <div data-testid="custom-agent-content">streamed answer</div>}
+        />,
+      )
+
+      expect(screen.getByTestId('custom-agent-content')).toHaveTextContent('streamed answer')
+    })
+
     it('should render file lists', () => {
       render(
         <Answer

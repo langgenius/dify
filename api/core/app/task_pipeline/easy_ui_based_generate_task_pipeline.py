@@ -309,32 +309,20 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     response = self._message_cycle_manager.message_file_to_stream_response(event)
                     if response:
                         yield response
-                case QueueLLMChunkEvent() | QueueAgentMessageEvent():
+                case QueueAgentMessageEvent():
                     chunk = event.chunk
-                    delta_content = chunk.delta.message.content
-                    if delta_content is None:
+                    delta_text = self._chunk_delta_text(chunk)
+                    if delta_text is None:
                         continue
-                    if isinstance(delta_content, list):
-                        # EasyUI streams text only; structured multimodal chunks contribute their text parts.
-                        delta_text = ""
-                        for content in delta_content:
-                            logger.debug(
-                                "The content type %s in LLM chunk delta message content.: %r", type(content), content
-                            )
-                            match content:
-                                case TextPromptMessageContent():
-                                    delta_text += content.data
-                                case str():
-                                    delta_text += content  # failback to str
-                                case _:
-                                    logger.warning(
-                                        "Unsupported content type %s in LLM chunk delta message content.: %r",
-                                        type(content),
-                                        content,
-                                    )
-                                    continue
-                    else:
-                        delta_text = delta_content
+                    yield self._agent_message_to_stream_response(
+                        answer=delta_text,
+                        message_id=self._message_id,
+                    )
+                case QueueLLMChunkEvent():
+                    chunk = event.chunk
+                    delta_text = self._chunk_delta_text(chunk)
+                    if delta_text is None:
+                        continue
 
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
@@ -348,23 +336,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     current_content += delta_text
                     self._task_state.llm_result.message.content = current_content
 
-                    match event:
-                        case QueueLLMChunkEvent():
-                            # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
-                            if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
-                                self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
-                                    message_id=self._message_id
-                                )
-                            yield self._message_cycle_manager.message_to_stream_response(
-                                answer=delta_text,
-                                message_id=self._message_id,
-                                event_type=self._precomputed_event_type,
-                            )
-                        case _:
-                            yield self._agent_message_to_stream_response(
-                                answer=delta_text,
-                                message_id=self._message_id,
-                            )
+                    # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
+                    if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
+                        self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
+                            message_id=self._message_id
+                        )
+                    yield self._message_cycle_manager.message_to_stream_response(
+                        answer=delta_text,
+                        message_id=self._message_id,
+                        event_type=self._precomputed_event_type,
+                    )
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
                 case QueuePingEvent():
@@ -375,6 +356,32 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             publisher.publish(None)
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
+
+    @staticmethod
+    def _chunk_delta_text(chunk: LLMResultChunk) -> str | None:
+        delta_content = chunk.delta.message.content
+        if delta_content is None:
+            return None
+        if not isinstance(delta_content, list):
+            return delta_content
+
+        delta_text = ""
+        # EasyUI streams text only; structured multimodal chunks contribute their text parts.
+        for content in delta_content:
+            logger.debug("The content type %s in LLM chunk delta message content.: %r", type(content), content)
+            match content:
+                case TextPromptMessageContent():
+                    delta_text += content.data
+                case str():
+                    delta_text += content
+                case _:
+                    logger.warning(
+                        "Unsupported content type %s in LLM chunk delta message content.: %r",
+                        type(content),
+                        content,
+                    )
+                    continue
+        return delta_text
 
     def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
         """
@@ -413,6 +420,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         message.total_price = usage.total_price
         message.currency = usage.currency
         self._task_state.llm_result.usage.latency = message.provider_response_latency
+        self._task_state.metadata.usage = self._task_state.llm_result.usage
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:

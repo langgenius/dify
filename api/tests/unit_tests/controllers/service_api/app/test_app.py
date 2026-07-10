@@ -3,7 +3,7 @@ Unit tests for Service API App controllers
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -368,7 +368,7 @@ class TestAppMetaApi:
             response = api.get()
 
         # Assert
-        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model)
+        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model, session=ANY)
         assert response == {"tool_icons": {}, "AgentIcons": {}}
 
 

@@ -96,14 +96,62 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: {
       avatar_url: '',
       name: 'User',
     },
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -350,6 +398,7 @@ describe('AgentPreviewChat', () => {
       false,
       expect.any(Function),
       'debug-conversation-1',
+      { isNewAgent: true },
     )
   })
 
@@ -554,7 +603,16 @@ describe('AgentPreviewChat', () => {
           inputs: {},
           message: [],
           message_files: [],
-          agent_thoughts: [],
+          agent_thoughts: [{
+            id: 'thought-with-answer',
+            message_id: 'message-after-send',
+            thought: '',
+            answer: 'history thought answer',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            position: 1,
+          }],
           feedbacks: [],
           answer_tokens: 1,
           message_tokens: 1,
@@ -584,6 +642,51 @@ describe('AgentPreviewChat', () => {
         },
       },
     }))).toBe(conversationMessagesResponse)
+  })
+
+  it('should preserve historical agent thought answer when formatting chat history', async () => {
+    chatMessagesGetMock.mockResolvedValue({
+      data: [
+        {
+          id: 'message-with-thought-answer',
+          conversation_id: 'conversation-1',
+          query: 'hello',
+          answer: '',
+          inputs: {},
+          message: [],
+          message_files: [],
+          agent_thoughts: [{
+            id: 'thought-with-answer',
+            message_id: 'message-with-thought-answer',
+            thought: '',
+            answer: 'history thought answer',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            position: 1,
+          }],
+          feedbacks: [],
+          status: 'success',
+          from_source: 'console',
+        },
+      ],
+    })
+
+    renderPreviewChat({
+      conversationId: 'conversation-1',
+    })
+
+    await waitFor(() => {
+      const formattedTree = useChatMock.mock.calls.find((call) => {
+        const chatTree = call[2]
+        return JSON.stringify(chatTree).includes('history thought answer')
+      })?.[2]
+
+      expect(formattedTree?.[0]?.children?.[0]?.agent_thoughts?.[0]).toEqual(expect.objectContaining({
+        id: 'thought-with-answer',
+        answer: 'history thought answer',
+      }))
+    })
   })
 
   it('should notify the owner when a send settles with an error', async () => {

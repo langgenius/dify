@@ -25,6 +25,7 @@ import type { VisionSettings } from '@/types/app'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -43,8 +44,10 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { usePathname } from '@/next/navigation'
@@ -110,7 +113,10 @@ export type ConfigurationViewModel = {
 
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
-  const { isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const openIntegrationsSetting = useIntegrationsSetting()
 
   const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
@@ -123,10 +129,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const configurationReadonly = !appACLCapabilities.canEdit
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)

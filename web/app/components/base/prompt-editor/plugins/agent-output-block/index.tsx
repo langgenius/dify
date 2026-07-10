@@ -18,14 +18,13 @@ import {
   createAgentOutputConfig,
   getAgentOutputTypeOptionValue,
   getUniqueAgentOutputName,
-  inferAgentOutputType,
   parseAgentOutputToken,
 } from './utils'
 
 function getAgentOutputBlockNodeType(name: string, outputs: NonNullable<AgentOutputBlockType['outputs']>) {
   const output = outputs.find(item => item.name === name)
 
-  return inferAgentOutputType(name, output ? getAgentOutputTypeOptionValue(output) : 'string')
+  return output ? getAgentOutputTypeOptionValue(output) : 'string'
 }
 
 const AgentOutputBlock = memo(({
@@ -120,7 +119,16 @@ const AgentOutputBlockReplacementBlock = memo(({
               || child.getOnChange() !== onChange
               || child.getOnEdit() !== onEdit
             ) {
-              child.replace($createAgentOutputBlockNode(name, outputType, child.isEditing(), outputs, onChange, onEdit))
+              child.replace($createAgentOutputBlockNode(
+                name,
+                outputType,
+                child.isEditing(),
+                outputs,
+                onChange,
+                onEdit,
+                child.shouldSelectNameOnEdit(),
+                child.shouldOpenTypeSelectOnEdit(),
+              ))
             }
             return
           }

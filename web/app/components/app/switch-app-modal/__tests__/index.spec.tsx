@@ -28,19 +28,6 @@ vi.mock('@/service/apps', () => ({
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
 }))
 
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
-}))
-
 let mockEnableBilling = false
 let mockPlan = {
   type: Plan.sandbox,
@@ -172,7 +159,6 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
       type: Plan.sandbox,

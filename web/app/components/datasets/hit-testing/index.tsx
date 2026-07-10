@@ -20,6 +20,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,8 +28,9 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {
@@ -63,13 +65,13 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canRunRetrievalRecall = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canRunRetrievalRecall = getDatasetACLCapabilities(currentDataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: currentDataset?.maintainer,
     workspacePermissionKeys,
-  }).canRetrievalRecall, [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  }).canRetrievalRecall
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
 
   const total = recordsRes?.total || 0

@@ -4,14 +4,17 @@ import type { InvitationResult, Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -30,7 +33,10 @@ const MembersPage = () => {
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
@@ -162,7 +168,7 @@ const MembersPage = () => {
                 key={account.id}
                 member={account}
                 roles={account.roles}
-                isCurrentUser={userProfile.email === account.email}
+                isCurrentUser={userProfileEmail === account.email}
                 canManage={canManageMembers}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 allowMultipleRoles={systemFeatures.rbac_enabled}
@@ -213,7 +219,7 @@ const MembersPage = () => {
           canAssignRoles={
             canManageMembers
             && detailsMember.role !== 'owner'
-            && userProfile.email !== detailsMember.email
+            && userProfileEmail !== detailsMember.email
           }
           allowMultipleRoles={systemFeatures.rbac_enabled}
           onClose={handleCloseDetails}

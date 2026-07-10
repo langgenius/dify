@@ -38,6 +38,7 @@ type ClientState = {
   readonly logger: HttpLogger | undefined
   readonly originalOptions: ClientOptions
   readonly dispatcher: ReturnType<typeof proxyDispatcher>
+  readonly insecure: boolean
 }
 
 function toArray<T>(value: T | T[] | undefined): T[] {
@@ -74,7 +75,8 @@ function compileState(opts: ClientOptions): ClientState {
     hooks: { onRequest, onResponse, onRequestError, onResponseError },
     logger: opts.logger,
     originalOptions: opts,
-    dispatcher: proxyDispatcher(),
+    dispatcher: proxyDispatcher({ insecure: opts.insecure }),
+    insecure: opts.insecure ?? false,
   }
 }
 
@@ -171,9 +173,16 @@ async function execute(
 
     await runHooks(state.hooks.onRequest, ctx)
 
-    const init: RequestInit & { dispatcher?: unknown, verbose?: boolean } = { signal }
+    // Two runtimes, two options: Node's fetch reads undici's `dispatcher` (used
+    // below for TLS-skip + proxy routing); Bun's native fetch — what the compiled
+    // difyctl binary actually runs on — ignores `dispatcher` entirely and instead
+    // needs its own `tls` option. Set both; each runtime ignores the one it
+    // doesn't understand.
+    const init: RequestInit & { dispatcher?: unknown, tls?: { rejectUnauthorized: boolean }, verbose?: boolean } = { signal }
     if (state.dispatcher !== undefined)
       init.dispatcher = state.dispatcher
+    if (state.insecure)
+      init.tls = { rejectUnauthorized: false }
     if (isVerbose())
       init.verbose = true
 

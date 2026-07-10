@@ -19,6 +19,7 @@ const codeFileExtensions = new Set([
 ])
 const tableFileExtensions = new Set(['csv', 'xls', 'xlsx'])
 const archiveFileExtensions = new Set(['7z', 'gz', 'rar', 'tar', 'zip'])
+const imageFileExtensions = new Set(['apng', 'avif', 'bmp', 'gif', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'webp'])
 const driveFileIconTypes = new Set<FileTreeIconType>([
   'archive',
   'code',
@@ -40,7 +41,7 @@ function getFileExtension(fileName: string) {
 export function getFileIconType(fileName: string, mimeType?: string | null): FileTreeIconType {
   const extension = getFileExtension(fileName)
 
-  if (mimeType?.startsWith('image/'))
+  if (mimeType?.startsWith('image/') || imageFileExtensions.has(extension))
     return 'image'
   if (mimeType === 'application/pdf' || extension === 'pdf')
     return 'pdf'

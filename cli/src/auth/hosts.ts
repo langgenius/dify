@@ -41,6 +41,7 @@ export type AccountContext = z.infer<typeof AccountContextSchema>
 
 export const HostEntrySchema = z.object({
   scheme: z.string().optional(),
+  insecure_tls: z.boolean().optional(),
   current_account: z.string().optional(),
   accounts: z.record(z.string(), AccountContextSchema).default({}),
 })
@@ -58,6 +59,7 @@ export type ActiveContext = {
   readonly email: string
   readonly ctx: AccountContext
   readonly scheme?: string
+  readonly insecureTls?: boolean
 }
 
 export function notLoggedInError(hint = 'run \'difyctl auth login\''): BaseError {
@@ -104,7 +106,7 @@ export class Registry {
     const ctx = entry.accounts[email]
     if (ctx === undefined)
       return undefined
-    return { host, email, ctx, scheme: entry.scheme }
+    return { host, email, ctx, scheme: entry.scheme, insecureTls: entry.insecure_tls }
   }
 
   requireActive(hint?: string): ActiveContext {
@@ -155,6 +157,12 @@ export class Registry {
     const entry = this.data.hosts[host]
     if (entry !== undefined)
       entry.scheme = scheme
+  }
+
+  setInsecureTls(host: string, insecure: boolean): void {
+    const entry = this.data.hosts[host]
+    if (entry !== undefined)
+      entry.insecure_tls = insecure
   }
 
   activate(host: string, email: string, ctx: AccountContext): void {

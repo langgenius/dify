@@ -13,7 +13,7 @@ from services.account_service import RegisterService, TenantService
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
-from .wraps import only_edition_self_hosted
+from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
 class SetupRequestPayload(BaseModel):
@@ -79,7 +79,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     if get_setup_status():
         raise AlreadySetupError()
 
-    tenant_count = TenantService.get_tenant_count(session=db.session)
+    tenant_count = TenantService.get_tenant_count(session=db.session())
     if tenant_count > 0:
         raise AlreadySetupError()
 
@@ -94,8 +94,9 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
         password=payload.password,
         ip_address=extract_remote_ip(request),
         language=payload.language,
-        session=db.session,
+        session=db.session(),
     )
+    mark_setup_completed()
 
     return SetupResponse(result="success")
 

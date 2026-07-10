@@ -10,6 +10,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightSFill } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -24,7 +25,8 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
@@ -123,7 +125,8 @@ const EmailSenderModal = ({
   availableNodes = [],
 }: EmailSenderModalProps) => {
   const { t } = useTranslation()
-  const { userProfile, currentWorkspace } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const appDetail = useAppStore(state => state.appDetail)
   const { mutateAsync: testEmailSender } = useTestEmailSender()
 
@@ -236,7 +239,7 @@ const EmailSenderModal = ({
                   i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugDone`}
                   ns="workflow"
                   components={{ email: <span className="system-md-semibold text-text-secondary"></span> }}
-                  values={{ email: userProfile.email }}
+                  values={{ email: userProfileEmail }}
                 />
               </div>
             )}
@@ -268,7 +271,7 @@ const EmailSenderModal = ({
             <div className="mt-4">
               <EmailInput
                 disabled
-                email={userProfile.email}
+                email={userProfileEmail}
                 value={config?.recipients?.items}
                 list={accounts}
                 onDelete={noop}
@@ -308,7 +311,7 @@ const EmailSenderModal = ({
                   i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
                   ns="workflow"
                   components={{ email: <span className="system-sm-semibold text-text-primary"></span> }}
-                  values={{ email: userProfile.email }}
+                  values={{ email: userProfileEmail }}
                 />
               </div>
             </>
@@ -342,7 +345,7 @@ const EmailSenderModal = ({
             <div className="mt-4">
               <EmailInput
                 disabled
-                email={userProfile.email}
+                email={userProfileEmail}
                 value={config?.recipients?.items}
                 list={accounts}
                 onDelete={noop}

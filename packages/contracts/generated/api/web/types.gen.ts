@@ -18,6 +18,7 @@ export type AccessTokenResultResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -46,51 +47,7 @@ export type AppPermissionQuery = {
   appId: string
 }
 
-export type AppSiteInfoResponse = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: {
-    [key: string]: unknown
-  } | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: AppSiteModelConfigResponse | null
-  plan?: string | null
-  site: AppSiteResponse
-}
-
-export type AppSiteModelConfigResponse = {
-  model: unknown
-  more_like_this: unknown
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  suggested_questions: unknown
-  suggested_questions_after_answer: unknown
-  user_input_form: unknown
-}
-
-export type AppSiteResponse = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  icon_url?: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
-
-export type AudioBinaryResponse = Blob | File
-
-export type AudioTranscriptResponse = {
+export type AudioToTextResponse = {
   text: string
 }
 
@@ -288,15 +245,13 @@ export type HumanInputFormDefinition = {
 
 export type HumanInputFormDefinitionResponse = {
   expiration_time: number
-  form_content: unknown
-  inputs: unknown
+  form_content: string
+  inputs: Array<FormInputConfig>
   resolved_default_values: {
     [key: string]: string
   }
-  site?: {
-    [key: string]: unknown
-  } | null
-  user_actions: unknown
+  site?: WebAppSiteResponse | null
+  user_actions: Array<UserActionConfig>
 }
 
 export type HumanInputFormSubmissionData = {
@@ -318,7 +273,7 @@ export type HumanInputFormSubmitPayload = {
 }
 
 export type HumanInputFormSubmitResponse = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type HumanInputUploadTokenResponse = {
@@ -619,6 +574,22 @@ export type WebAppAuthSsoModel = {
   protocol: string
 }
 
+export type WebAppCustomConfigResponse = {
+  remove_webapp_brand: boolean
+  replace_webapp_logo?: string | null
+}
+
+export type WebAppSiteResponse = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponse
+}
+
 export type WebMessageInfiniteScrollPagination = {
   data: Array<WebMessageListItem>
   has_more: boolean
@@ -628,8 +599,10 @@ export type WebMessageInfiniteScrollPagination = {
 export type WebMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -638,11 +611,44 @@ export type WebMessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
+}
+
+export type WebModelConfigResponse = {
+  model?: unknown
+  more_like_this?: unknown
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: unknown
+  suggested_questions_after_answer?: unknown
+  user_input_form?: unknown
+}
+
+export type WebSiteResponse = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type WorkflowRunPayload = {
@@ -655,6 +661,83 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type GeneratedAppResponseWritable = JsonValue
+
+export type HumanInputFormDefinitionResponseWritable = {
+  expiration_time: number
+  form_content: string
+  inputs: Array<FormInputConfig>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  site?: WebAppSiteResponseWritable | null
+  user_actions: Array<UserActionConfig>
+}
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type WebAppSiteResponseWritable = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponseWritable
+}
+
+export type WebMessageInfiniteScrollPaginationWritable = {
+  data: Array<WebMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type WebMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
+}
+
+export type WebSiteResponseWritable = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type PostAudioToTextData = {
@@ -674,7 +757,7 @@ export type PostAudioToTextErrors = {
 }
 
 export type PostAudioToTextResponses = {
-  200: AudioTranscriptResponse
+  200: AudioToTextResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
@@ -1021,6 +1104,13 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type GetFormHumanInputByFormTokenErrors = {
+  403: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
@@ -1037,6 +1127,13 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type PostFormHumanInputByFormTokenErrors = {
+  400: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
@@ -1051,6 +1148,12 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
   }
   query?: never
   url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+  404: unknown
+  412: unknown
+  429: unknown
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenResponses = {
@@ -1421,7 +1524,7 @@ export type GetSiteErrors = {
 }
 
 export type GetSiteResponses = {
-  200: AppSiteInfoResponse
+  200: WebAppSiteResponse
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -1458,7 +1561,9 @@ export type PostTextToAudioErrors = {
 }
 
 export type PostTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]

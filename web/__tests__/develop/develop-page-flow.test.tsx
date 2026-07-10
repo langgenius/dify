@@ -50,16 +50,6 @@ vi.mock('@/i18n-config/language', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Workspace' },
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({ userProfile: { id: 'user-1' }, workspacePermissionKeys: ['app.create_and_management'] }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: vi.fn((val: number) => `Time:${val}`),

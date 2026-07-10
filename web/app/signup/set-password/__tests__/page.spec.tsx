@@ -10,7 +10,8 @@ import { useMailRegister } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
-const { mockRememberRegistrationSuccess, mockSendGAEvent } = vi.hoisted(() => ({
+const { mockRememberCreateAppExternalAttribution, mockRememberRegistrationSuccess, mockSendGAEvent } = vi.hoisted(() => ({
+  mockRememberCreateAppExternalAttribution: vi.fn(),
   mockRememberRegistrationSuccess: vi.fn(),
   mockSendGAEvent: vi.fn(),
 }))
@@ -41,7 +42,7 @@ vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
 }))
 
 vi.mock('@/utils/create-app-tracking', () => ({
-  rememberCreateAppExternalAttribution: vi.fn(),
+  rememberCreateAppExternalAttribution: (...args: unknown[]) => mockRememberCreateAppExternalAttribution(...args),
 }))
 
 const mockRegister = vi.fn()
@@ -137,8 +138,8 @@ describe('Signup Set Password Page', () => {
       expect(mockReplace).toHaveBeenCalledWith('/')
     })
 
-    it('should remember the utm event and clear the utm cookie when a utm_info cookie is present', async () => {
-      Cookies.set('utm_info', JSON.stringify({ utm_source: 'twitter' }))
+    it('should remember the utm event with slug and clear the utm cookie when a utm_info cookie is present', async () => {
+      Cookies.set('utm_info', JSON.stringify({ utm_source: 'community', slug: 'partner-launch' }))
       mockRegister.mockResolvedValue({ result: 'success', data: {} })
 
       renderWithQueryClient(<ChangePasswordForm />)
@@ -147,12 +148,16 @@ describe('Signup Set Password Page', () => {
       await waitFor(() => {
         expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
           method: 'email',
-          utmInfo: { utm_source: 'twitter' },
+          utmInfo: { utm_source: 'community', slug: 'partner-launch' },
         })
+      })
+      expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledWith({
+        utmInfo: { utm_source: 'community', slug: 'partner-launch' },
       })
       expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
         method: 'email',
-        utm_source: 'twitter',
+        utm_source: 'community',
+        slug: 'partner-launch',
       })
       expect(Cookies.get('utm_info')).toBeUndefined()
     })

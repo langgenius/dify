@@ -11,6 +11,7 @@ import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
@@ -19,7 +20,8 @@ import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
@@ -59,7 +61,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const invalidateAppList = useInvalidateAppList()
@@ -93,7 +96,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      try {
+        await trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      }
+      catch {
+        // Analytics should not turn a successful app creation into a failed flow.
+      }
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()
@@ -101,7 +109,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       setNeedRefresh('1')
       invalidateAppList()
       getRedirection(app, push, {
-        currentUserId: userProfile?.id,
+        currentUserId,
         resourceMaintainer: app.maintainer,
         workspacePermissionKeys,
         isRbacEnabled,
@@ -111,7 +119,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [canCreateApp, name, t, appMode, appIcon, description, onSuccess, onClose, push, userProfile?.id, workspacePermissionKeys, isRbacEnabled, setNeedRefresh, invalidateAppList])
+  }, [canCreateApp, currentUserId, name, t, appMode, appIcon, description, onSuccess, onClose, push, workspacePermissionKeys, isRbacEnabled, setNeedRefresh, invalidateAppList])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey('Mod+Enter', () => {

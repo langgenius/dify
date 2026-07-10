@@ -41,6 +41,7 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('../hooks', () => ({
   useDefaultModel: () => ({ data: null, isLoading: false }),
+  useLanguage: () => 'en_US',
 }))
 
 vi.mock('../provider-added-card', () => ({
@@ -84,9 +85,11 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: () => ({
+  useInstalledPluginList: () => ({
     data: { plugins: [] },
   }),
+  useInvalidateInstalledPluginList: () => vi.fn(),
+  useInvalidateCheckInstalled: () => vi.fn(),
   usePluginAutoUpgradeSettings: () => ({
     data: {
       category: 'model',

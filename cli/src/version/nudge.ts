@@ -44,7 +44,9 @@ export async function maybeNudgeCompat(host: string, deps: NudgeDeps): Promise<v
     }
 
     const verdict = evaluateCompat(server.version)
-    if (verdict.status !== 'unsupported')
+    // Only "too new" is a soft nudge here; "too old" is hard-failed up front by
+    // enforceDifyVersion, so the command never reaches this path for it.
+    if (verdict.status !== 'too_new')
       return
 
     deps.emit(formatBanner(deps.clientVersion, server.version, deps.color === true))

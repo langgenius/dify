@@ -36,6 +36,7 @@ message FileMapping {
 
 message FileDownloadRequest {
   FileMapping file = 1;
+  optional bool for_external = 2;
 }
 
 message FileDownloadResponse {

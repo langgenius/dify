@@ -84,7 +84,7 @@ describe('Empty', () => {
 
       expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.goToStudio/i })).toHaveAttribute('href', '/apps')
       expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('target', '_blank')
-      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow-tool')
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow')
     })
   })
 

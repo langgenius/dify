@@ -5,6 +5,7 @@ import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-s
 import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useEffect,
@@ -23,7 +24,7 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
@@ -143,7 +144,7 @@ const SnippetMain = ({
   const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
   const effectiveDraftViewport = localDraftState?.viewport ?? draftViewport
   const { graph, snippet } = effectiveDraftPayload
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canSave = canEditSnippet && currentCanvasNodeCount > 0
   const {

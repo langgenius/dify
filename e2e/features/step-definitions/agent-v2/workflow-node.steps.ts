@@ -94,7 +94,7 @@ Then(
     await expect(detailsDialog.getByText(normalAgentPrompt)).toBeVisible()
     await expect(detailsDialog.getByRole('link', { name: 'Edit in Agent Console' })).toHaveAttribute(
       'href',
-      `/roster/agent/${this.createdAgentIds.at(-1)}/configure`,
+      `/agents/${this.createdAgentIds.at(-1)}/configure`,
     )
   },
 )
@@ -114,7 +114,7 @@ Then(
       throw new Error('Stable chat model preflight must run before asserting Agent Console.')
 
     await expect(agentConsolePage).toHaveURL(
-      new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`),
+      new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`),
     )
     await expect(agentConsolePage.getByRole('heading', { name: 'Configure' })).toBeVisible({
       timeout: 30_000,

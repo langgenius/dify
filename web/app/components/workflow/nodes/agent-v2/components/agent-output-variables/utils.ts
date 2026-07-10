@@ -40,6 +40,8 @@ export type EditingState = {
 export type AgentOutputVariablesProps = {
   outputs: DeclaredOutputConfig[]
   onChange: (outputs: DeclaredOutputConfig[]) => void
+  collapsed?: boolean
+  onCollapse?: (collapsed: boolean) => void
 }
 
 export const OUTPUT_NAME_PATTERN = /^[a-z_]\w*$/i

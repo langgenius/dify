@@ -112,6 +112,7 @@ class SandboxUploadedFile(BaseModel):
 
     transfer_method: Literal["tool_file"] = "tool_file"
     reference: str
+    download_url: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

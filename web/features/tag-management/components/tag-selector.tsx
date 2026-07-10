@@ -6,9 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
@@ -71,7 +72,7 @@ export const TagSelector = ({
   const [open, setOpen] = useState(false)
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()

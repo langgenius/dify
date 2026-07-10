@@ -1,4 +1,3 @@
-// import { useAppContext } from '@/context/app-context'
 // import { Button } from '@langgenius/dify-ui/button'
 // import { StatusDot } from '@langgenius/dify-ui/status-dot'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
@@ -18,7 +17,6 @@ const ActionList = ({
   detail,
 }: Props) => {
   const { t } = useTranslation()
-  // const { isCurrentWorkspaceManager } = useAppContext()
   // const providerBriefInfo = detail.declaration.datasource?.identity
   // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
   const { data: dataSourceList } = useDataSourceList(true)

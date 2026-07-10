@@ -8,10 +8,11 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
@@ -35,7 +36,7 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-  const email = useAppContextWithSelector(s => s.userProfile.email)
+  const email = useAtomValue(userProfileEmailAtom)
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '{{#url#}}')

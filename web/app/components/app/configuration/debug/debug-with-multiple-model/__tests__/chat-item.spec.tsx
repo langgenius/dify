@@ -29,10 +29,6 @@ let capturedChatProps: {
 
 let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
-
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))

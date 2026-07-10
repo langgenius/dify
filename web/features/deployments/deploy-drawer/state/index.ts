@@ -18,6 +18,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
 import { envVarBindingSlotFromContract } from '../../shared/components/env-var-bindings-utils'
 import {
@@ -80,6 +81,10 @@ export const releaseDeploymentViewQueryAtom = atomWithQuery((get) => {
     enabled: Boolean(appInstanceId),
   })
 })
+
+export const releaseDeploymentViewAtom = selectAtom(releaseDeploymentViewQueryAtom, query => query.data)
+export const releaseDeploymentViewIsLoadingAtom = selectAtom(releaseDeploymentViewQueryAtom, query => query.isLoading)
+export const releaseDeploymentViewIsErrorAtom = selectAtom(releaseDeploymentViewQueryAtom, query => query.isError)
 
 const selectedEnvIdAtom = atom<string | undefined>(undefined)
 const selectedReleaseIdAtom = atom<string | undefined>(undefined)
@@ -223,44 +228,47 @@ const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const deployBindingSlotsAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
+const releaseDeploymentOptionsAtom = selectAtom(releaseDeploymentOptionsQueryAtom, query => query.data)
+const releaseDeploymentOptionsIsLoadingAtom = selectAtom(releaseDeploymentOptionsQueryAtom, query => query.isLoading)
+const releaseDeploymentOptionsIsFetchingAtom = selectAtom(releaseDeploymentOptionsQueryAtom, query => query.isFetching)
+const releaseDeploymentOptionsIsErrorAtom = selectAtom(releaseDeploymentOptionsQueryAtom, query => query.isError)
 
-  return deploymentOptionsQuery.data?.options.credentialSlots.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+export const deployBindingSlotsAtom = atom((get) => {
+  const deploymentOptions = get(releaseDeploymentOptionsAtom)
+
+  return deploymentOptions?.options.credentialSlots.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
 })
 
 export const deployEnvVarSlotsAtom = atom((get): EnvVarBindingSlot[] => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
+  const deploymentOptions = get(releaseDeploymentOptionsAtom)
 
-  return deploymentOptionsQuery.data?.options.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
+  return deploymentOptions?.options.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
     const bindingSlot = envVarBindingSlotFromContract(slot)
     return bindingSlot ? [bindingSlot] : []
   }) ?? []
 })
 
 export const deployIsBindingOptionsLoadingAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
 
   return Boolean(
     releaseId
     && get(deployHasSelectedEnvironmentAtom)
-    && (deploymentOptionsQuery.isLoading || deploymentOptionsQuery.isFetching),
+    && (get(releaseDeploymentOptionsIsLoadingAtom) || get(releaseDeploymentOptionsIsFetchingAtom)),
   )
 })
 
 export const deployHasBindingOptionsErrorAtom = atom((get) => {
-  return get(releaseDeploymentOptionsQueryAtom).isError
+  return get(releaseDeploymentOptionsIsErrorAtom)
 })
 
 const deployIsBindingOptionsReadyAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
 
   return Boolean(
     releaseId
     && get(deployHasSelectedEnvironmentAtom)
-    && deploymentOptionsQuery.data
+    && get(releaseDeploymentOptionsAtom)
     && !get(deployIsBindingOptionsLoadingAtom)
     && !get(deployHasBindingOptionsErrorAtom),
   )

@@ -2,6 +2,7 @@ import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
@@ -9,7 +10,7 @@ import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -37,7 +38,7 @@ const DebugWithSingleModel = (
     ref: React.RefObject<DebugWithSingleModelRefType>
   },
 ) => {
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const {
     readonly,
     canTestAndRun = false,

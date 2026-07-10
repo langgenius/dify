@@ -9,9 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useMembers } from '@/service/use-common'
 
 type CreatorsFilterProps = {
@@ -33,12 +34,11 @@ const CreatorsFilter = ({
   onChange,
 }: CreatorsFilterProps) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const { data: membersData } = useMembers()
   const [keywords, setKeywords] = useState('')
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
-    const currentUserId = userProfile?.id
     const members = membersData?.accounts ?? []
 
     return [...members]
@@ -56,7 +56,7 @@ const CreatorsFilter = ({
         avatarUrl: member.avatar_url,
         isYou: member.id === currentUserId,
       }))
-  }, [membersData?.accounts, userProfile?.id])
+  }, [currentUserId, membersData?.accounts])
 
   const filteredCreators = useMemo(() => {
     const normalizedKeywords = keywords.trim().toLowerCase()

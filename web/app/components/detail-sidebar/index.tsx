@@ -3,11 +3,12 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useDetailSidebarMode } from './storage'
 
 type DetailSidebarRenderProps = {
@@ -41,7 +42,7 @@ export function DetailSidebarFrame({
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
   const detailNavigationExpanded = detailNavigationMode === 'expand'
