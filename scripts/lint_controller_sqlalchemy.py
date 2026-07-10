@@ -206,9 +206,7 @@ def main() -> int:
             include_suppressed=bool(args.include_suppressed),
             summary_only=bool(args.summary_only),
         )
-        sys.stdout.write(
-            f"{json.dumps(payload, indent=2, sort_keys=True)}\n"
-        )
+        sys.stdout.write(f"{json.dumps(payload, indent=2, sort_keys=True)}\n")
     else:
         print_text_report(
             findings,

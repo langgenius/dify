@@ -44,11 +44,7 @@ def is_suppressed(match: Match) -> bool:
 
 
 def is_reportable_match(match: Match) -> bool:
-    return (
-        not is_allowed_session_boundary(match)
-        and not is_flask_session_get(match)
-        and not is_suppressed(match)
-    )
+    return not is_allowed_session_boundary(match) and not is_flask_session_get(match) and not is_suppressed(match)
 
 
 def main() -> int:
