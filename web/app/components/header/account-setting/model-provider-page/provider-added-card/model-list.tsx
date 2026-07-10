@@ -11,8 +11,8 @@ import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useModalContextSelector } from '@/context/modal-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import {
   ConfigurationMethodEnum,

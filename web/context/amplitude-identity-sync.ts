@@ -6,10 +6,8 @@ import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
-import {
-  currentWorkspaceAtom,
-  userProfileAtom,
-} from './app-context-state'
+import { userProfileAtom } from './account-state'
+import { currentWorkspaceAtom } from './workspace-state'
 
 type AmplitudeProperties = Record<string, string | number | boolean>
 

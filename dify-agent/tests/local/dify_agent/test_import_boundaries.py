@@ -121,8 +121,8 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
             "openai",
             "pydantic_settings",
             "redis",
-            "shell_session_manager.shellctl.client",
-            "shell_session_manager.shellctl.server",
+            "shellctl.client",
+            "shellctl.server",
         ],
         imports=[
             "dify_agent.protocol",
@@ -158,7 +158,7 @@ def test_agent_stub_cli_main_import_is_client_safe() -> None:
             "jwcrypto",
             "pydantic_settings",
             "redis",
-            "shell_session_manager",
+            "shellctl.server",
         ],
         imports=[
             "dify_agent.agent_stub.client",
@@ -238,7 +238,7 @@ def test_agent_stub_cli_help_render_does_not_load_server_modules() -> None:
         "jwcrypto",
         "pydantic_settings",
         "redis",
-        "shell_session_manager",
+        "shellctl.server",
     ]
     script = "\n".join(
         [
@@ -267,6 +267,28 @@ def test_agent_stub_cli_help_render_does_not_load_server_modules() -> None:
         ]
     )
     _run_python_script(script)
+
+
+def test_shellctl_client_imports_do_not_import_server_modules() -> None:
+    _run_import_check(
+        blocked_imports=[
+            "aiosqlite",
+            "fastapi",
+            "sqlalchemy",
+            "sqlmodel",
+            "shellctl.server.api",
+            "shellctl.server.service",
+            "shellctl.server.tmux",
+            "uvicorn",
+        ],
+        imports=["shellctl", "shellctl.client", "shellctl.shared", "shellctl.cli"],
+        assertions=[
+            "assert hasattr(shellctl, 'ShellctlClient')",
+            "assert hasattr(shellctl_client, 'ShellctlClient')",
+            "assert hasattr(shellctl_shared, 'JobResult')",
+            "assert hasattr(shellctl_cli, 'cli')",
+        ],
+    )
 
 
 def test_server_settings_import_does_not_import_agent_stub_app() -> None:

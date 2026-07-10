@@ -209,12 +209,6 @@ export function useAgentConfigureSync({
   }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
-    return () => {
-      debouncedSaveDraft.flush?.()
-    }
-  }, [debouncedSaveDraft])
-
-  useEffect(() => {
     const saveDraftWhenPageHidden = () => {
       if (document.visibilityState === 'hidden')
         saveDirtyDraftOnPageClose()
@@ -229,6 +223,12 @@ export function useAgentConfigureSync({
     return () => {
       document.removeEventListener('visibilitychange', saveDraftWhenPageHidden)
       window.removeEventListener('beforeunload', saveDraftBeforeUnload)
+    }
+  }, [saveDirtyDraftOnPageClose])
+
+  useEffect(() => {
+    return () => {
+      saveDirtyDraftOnPageClose()
     }
   }, [saveDirtyDraftOnPageClose])
 

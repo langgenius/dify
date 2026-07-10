@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import JsonValue
 from pydantic_ai import Tool
-from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     ToolReturnPart,
     ModelMessage,
@@ -63,8 +63,8 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError, _run_failed_error_payload
+from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
 class StaticToolsTestLayer(ToolsLayer):
@@ -125,6 +125,28 @@ class FakeRunnerShellctlClient:
     ) -> DeleteJobResponse:
         self.delete_calls.append((job_id, force, grace_seconds))
         return DeleteJobResponse(job_id=job_id)
+
+
+def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
+    exc = ModelHTTPError(
+        429,
+        "gpt-4o-mini",
+        {"error_type": "InvokeRateLimitError", "message": "quota exceeded"},
+    )
+
+    message, reason = _run_failed_error_payload(exc)
+
+    assert message == "quota exceeded"
+    assert reason == "InvokeRateLimitError"
+
+
+def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() -> None:
+    exc = ModelHTTPError(429, "gpt-4o-mini", {"message": "too many requests"})
+
+    message, reason = _run_failed_error_payload(exc)
+
+    assert message == "too many requests"
+    assert reason == "InvokeRateLimitError"
 
 
 def _request(

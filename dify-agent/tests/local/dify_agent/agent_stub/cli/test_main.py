@@ -161,6 +161,24 @@ def test_cli_plural_config_groups_expose_pull_push_and_delete(
     assert "delete" in captured.out
 
 
+def test_cli_config_skills_push_help_describes_skill_directory_requirements(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["config", "skills", "push", "--help"])
+
+    captured = capsys.readouterr()
+    normalized_output = " ".join(captured.out.split())
+    assert exc_info.value.code == 0
+    assert "Skill directory requirements:" in captured.out
+    assert "top-level SKILL.md" in captured.out
+    assert "UTF-8 Markdown" in captured.out
+    assert "YAML frontmatter matching this schema" in captured.out
+    assert "--- name: <non-empty string> description: <string> ---" in normalized_output
+    assert "Symlinked files are rejected" in captured.out
+    assert ".venv and node_modules should be manually cleared before push" in normalized_output
+
+
 @pytest.mark.parametrize("argv", [["config", "file", "--help"], ["config", "skill", "--help"]])
 def test_cli_hidden_singular_alias_help_exposes_pull_only(
     capsys: pytest.CaptureFixture[str],

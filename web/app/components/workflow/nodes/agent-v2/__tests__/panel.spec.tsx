@@ -427,7 +427,7 @@ describe('agent/panel', () => {
     expect(panel).toBeInTheDocument()
     expect(within(panel).getByText('Researcher')).toBeInTheDocument()
     const consoleLink = within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })
-    expect(consoleLink).toHaveAttribute('href', '/roster/agent/agent-1/configure')
+    expect(consoleLink).toHaveAttribute('href', '/agents/agent-1/configure')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()

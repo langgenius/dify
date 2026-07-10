@@ -70,7 +70,7 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'

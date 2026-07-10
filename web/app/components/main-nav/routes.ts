@@ -9,13 +9,15 @@ const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 export type MainNavRouteConfig = {
   key: string
   href: string
-  labelKey: string
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
   feature?: 'agentV2' | 'marketplace'
-}
+} & (
+  | { label: string, labelKey?: never }
+  | { label?: never, labelKey: string }
+)
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
@@ -54,9 +56,9 @@ export const MAIN_NAV_ROUTES = [
   },
   {
     key: 'roster',
-    href: '/roster',
-    labelKey: 'menus.roster',
-    active: (path: string) => isPathUnderRoute(path, '/roster'),
+    href: '/agents',
+    label: 'Agents',
+    active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-roster',
     activeIcon: 'i-custom-vender-main-nav-roster-active',
     visibility: 'notDatasetOperator',
@@ -137,9 +139,9 @@ function isDatasetDetailPathname(pathname: string) {
 }
 
 function isAgentDetailPathname(pathname: string) {
-  const [section, type, agentId] = pathname.split('/').filter(Boolean)
+  const [section, agentId] = pathname.split('/').filter(Boolean)
 
-  return section === 'roster' && type === 'agent' && !!agentId
+  return section === 'agents' && !!agentId
 }
 
 function isDeploymentDetailPathname(pathname: string) {

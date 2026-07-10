@@ -6,9 +6,10 @@ import { Plan } from '@/app/components/billing/type'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { IS_CLOUD_EDITION, SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
-import { langGeniusVersionInfoAtom, userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 
 type SupportMenuProps = {
   onContactUsClick?: () => void

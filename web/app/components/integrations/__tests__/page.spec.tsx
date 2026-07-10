@@ -613,7 +613,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('MCP')).toHaveLength(2)
     expect(screen.getByText('common.mcpPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/build/mcp')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#mcp')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -622,7 +622,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#custom-tool')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#swagger-api')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -665,7 +665,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('workflow.common.workflowAsTool')).toHaveLength(2)
     expect(screen.getByText('common.workflowAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow-tool')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 

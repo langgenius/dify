@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useDetailSidebarMode } from './storage'
 
 type DetailSidebarRenderProps = {

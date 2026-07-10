@@ -10,7 +10,7 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const agentRole = 'E2E roster-created assistant'
   const agentDescription = 'Created by Dify E2E through the Agent Roster UI.'
 
-  await page.goto('/roster')
+  await page.goto('/agents')
   await page.getByRole('button', { name: 'Create agent' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Create agent' })
@@ -40,7 +40,7 @@ Then('the created Agent v2 should open in Configure', async function (this: Dify
     throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   await expect(this.getPage()).toHaveURL(
-    new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`),
+    new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`),
     { timeout: 30_000 },
   )
   await expect(this.getPage().getByRole('heading', { name: 'Configure' }))

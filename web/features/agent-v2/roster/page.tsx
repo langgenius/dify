@@ -43,7 +43,6 @@ const getFilteredRosterItems = (
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
   const [createdByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
@@ -84,14 +83,14 @@ export default function RosterPage() {
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
 
-  useDocumentTitle(tCommon('menus.roster'))
+  useDocumentTitle('Agents')
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-            {tCommon('menus.roster')}
+            Agents
           </h1>
           <a
             href="https://docs.dify.ai/"

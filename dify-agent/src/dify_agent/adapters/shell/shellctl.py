@@ -1,6 +1,6 @@
 """Shellctl-backed shell provider adapter for dify-agent.
 
-The shell-session-manager SDK owns the HTTP timeout policy for long-polling
+The built-in shellctl SDK owns the HTTP timeout policy for long-polling
 shellctl requests. This adapter stays narrowly focused on translating SDK and
 transport failures into ``ShellProviderError`` so the shell layer can return
 tool observations instead of aborting the agent loop.
@@ -16,9 +16,9 @@ import time
 from collections.abc import Awaitable
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeVar, cast
 
-import httpx
+import httpx2 as httpx
 
 from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
@@ -228,8 +228,16 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
 @dataclass(slots=True)
 class ShellctlResource(ShellResourceProtocol):
     client: ShellctlClientProtocol
-    commands: ShellCommandProtocol
-    files: ShellFileTransferProtocol
+    _commands: ShellCommandProtocol
+    _files: ShellFileTransferProtocol
+
+    @property
+    def commands(self) -> ShellCommandProtocol:
+        return self._commands
+
+    @property
+    def files(self) -> ShellFileTransferProtocol:
+        return self._files
 
     async def close(self) -> None:
         try:
@@ -257,8 +265,8 @@ class ShellctlProvider(ShellProviderProtocol):
         )
         return ShellctlResource(
             client=client,
-            commands=ShellctlCommands(client=client),
-            files=ShellctlFileTransfer(client=client),
+            _commands=ShellctlCommands(client=client),
+            _files=ShellctlFileTransfer(client=client),
         )
 
 
@@ -269,9 +277,15 @@ def create_default_shellctl_client_factory(
     output_limit: int = _SHELLCTL_OUTPUT_LIMIT_BYTES,
 ) -> ShellctlClientFactory:
     def factory() -> ShellctlClientProtocol:
-        from shell_session_manager.shellctl.client import ShellctlClient
+        from shellctl.client import ShellctlClient
 
-        return ShellctlClient(entrypoint, token=token, output_limit=output_limit)
+        return cast(
+            ShellctlClientProtocol,
+            cast(
+                object,
+                ShellctlClient(entrypoint, token=token, output_limit=output_limit),
+            ),
+        )
 
     return factory
 

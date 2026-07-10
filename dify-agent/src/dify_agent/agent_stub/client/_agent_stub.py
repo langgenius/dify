@@ -97,6 +97,7 @@ def request_agent_stub_file_download_sync(
     url: str,
     auth_jwe: str,
     file: AgentStubFileMapping,
+    for_external: bool = True,
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ):
@@ -109,12 +110,14 @@ def request_agent_stub_file_download_sync(
             url=endpoint.url,
             auth_jwe=auth_jwe,
             file=file,
+            for_external=for_external,
             timeout=timeout,
         )
     return request_agent_stub_file_download_http_sync(
         base_url=endpoint.url,
         auth_jwe=auth_jwe,
         file=file,
+        for_external=for_external,
         timeout=timeout,
         sync_http_client=sync_http_client,
     )

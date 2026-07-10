@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as amplitude from '@/app/components/base/amplitude'
+import * as amplitude from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
@@ -29,7 +29,7 @@ describe('create-app-tracking', () => {
       })
     })
 
-    it('should gate on known external sources but keep raw values', () => {
+    it('should accept any non-empty utm_source and keep raw values', () => {
       expect(extractExternalCreateAppAttribution({
         searchParams: new URLSearchParams('utm_source=newsletter'),
       })).toEqual({ utmSource: 'newsletter' })
@@ -41,14 +41,36 @@ describe('create-app-tracking', () => {
         slug: 'launch-week',
       })
 
-      // Unknown sources are still rejected.
       expect(extractExternalCreateAppAttribution({
         searchParams: new URLSearchParams('utm_source=random&slug=x'),
-      })).toBeNull()
+      })).toEqual({
+        utmSource: 'random',
+        slug: 'x',
+      })
     })
   })
 
   describe('rememberCreateAppExternalAttribution', () => {
+    it('should remember unknown utm_source values from the utm cookie', () => {
+      vi.spyOn(Cookies, 'get').mockImplementation(((key?: string) => {
+        return key
+          ? JSON.stringify({
+              utm_source: 'community',
+              slug: 'partner-launch',
+            })
+          : {}
+      }) as typeof Cookies.get)
+
+      expect(rememberCreateAppExternalAttribution()).toEqual({
+        utmSource: 'community',
+        slug: 'partner-launch',
+      })
+      expect(window.sessionStorage.getItem('create_app_external_attribution')).toBe(JSON.stringify({
+        utmSource: 'community',
+        slug: 'partner-launch',
+      }))
+    })
+
     it('should ignore malformed utm cookies', () => {
       vi.spyOn(Cookies, 'get').mockImplementation(((key?: string) => {
         return key ? 'not-json' : {}
@@ -168,6 +190,24 @@ describe('create-app-tracking', () => {
   })
 
   describe('trackCreateApp', () => {
+    it('should flush the create_app event immediately when tracking returns an SDK handle', async () => {
+      vi.spyOn(amplitude, 'trackEvent').mockReturnValue({
+        promise: Promise.resolve({}),
+      } as ReturnType<typeof amplitude.trackEvent>)
+      const flushEventsSpy = vi.spyOn(amplitude, 'flushEvents').mockReturnValue({
+        promise: Promise.resolve(),
+      } as ReturnType<typeof amplitude.flushEvents>)
+
+      await expect(trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })).resolves.toBeUndefined()
+
+      expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
+        source: 'studio_blank',
+        app_mode: 'chatflow',
+        time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
+      })
+      expect(flushEventsSpy).toHaveBeenCalledTimes(1)
+    })
+
     it('should track remembered external attribution once before falling back to internal source', () => {
       rememberCreateAppExternalAttribution({
         searchParams: new URLSearchParams('utm_source=newsletter&slug=how-to-build-rag-agent'),
@@ -242,7 +282,7 @@ describe('create-app-tracking', () => {
 
     it('should consume snake_case sessionStorage attribution and map legacy utm_campaign to slug', () => {
       window.sessionStorage.setItem('create_app_external_attribution', JSON.stringify({
-        utm_source: 'twitter',
+        utm_source: 'community',
         utm_campaign: 'launch-week',
       }))
 
@@ -252,7 +292,7 @@ describe('create-app-tracking', () => {
         source: 'external',
         app_mode: 'chatflow',
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
-        utm_source: 'twitter',
+        utm_source: 'community',
         slug: 'launch-week',
       })
       expect(window.sessionStorage.getItem('create_app_external_attribution')).toBeNull()

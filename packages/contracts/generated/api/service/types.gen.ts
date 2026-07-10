@@ -1071,8 +1071,10 @@ export type MessageInfiniteScrollPagination = {
 export type MessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -1081,10 +1083,14 @@ export type MessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type MessageListQuery = {
@@ -1689,6 +1695,36 @@ export type GeneratedAppResponseWritable = JsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
+}
+
+export type MessageInfiniteScrollPaginationWritable = {
+  data: Array<MessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type MessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type SiteWritable = {
