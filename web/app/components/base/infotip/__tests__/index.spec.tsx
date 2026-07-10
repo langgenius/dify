@@ -17,10 +17,14 @@ describe('Infotip', () => {
     const user = userEvent.setup()
     render(<Infotip aria-label="Rate limits">Rate limit details</Infotip>)
 
-    screen.getByRole('button', { name: 'Rate limits' }).focus()
+    const trigger = screen.getByRole('button', { name: 'Rate limits' })
+    trigger.focus()
     await user.keyboard('{Enter}')
 
-    expect(await screen.findByRole('dialog', { name: 'Rate limits' })).toHaveTextContent('Rate limit details')
+    const dialog = await screen.findByRole('dialog', { name: 'Rate limits' })
+    expect(dialog).toHaveAttribute('aria-labelledby', trigger.id)
+    expect(dialog).not.toHaveAttribute('aria-label')
+    expect(dialog).toHaveTextContent('Rate limit details')
   })
 
   it('should close the dialog with Escape', async () => {
