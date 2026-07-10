@@ -58,7 +58,7 @@ When(
       response.request().method() === 'POST'
       && new URL(response.url()).pathname === `/console/api/agent/${agentId}/audio-to-text`
     ))
-    await page.getByTestId('voice-input-stop').click()
+    await page.getByRole('button', { name: 'Stop recording' }).click()
     const response = await responsePromise
     const request = response.request()
 
