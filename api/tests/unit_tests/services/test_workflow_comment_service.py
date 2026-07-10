@@ -242,7 +242,7 @@ class TestWorkflowCommentService:
             content="hello",
             position_x=1.0,
             position_y=2.0,
-            mentioned_user_ids=[USER_2_ID, "bad-id"],
+            mentioned_user_ids=[USER_2_ID, OUTSIDER_ID],
         )
 
         comment = sqlite_session.get(WorkflowComment, result["id"])
@@ -293,7 +293,7 @@ class TestWorkflowCommentService:
             comment_id=comment.id,
             user_id=OWNER_ID,
             content="updated",
-            mentioned_user_ids=[USER_2_ID, "bad-id"],
+            mentioned_user_ids=[USER_2_ID, OUTSIDER_ID],
         )
 
         sqlite_session.expire_all()
@@ -519,7 +519,7 @@ class TestWorkflowCommentService:
             comment_id=comment.id,
             content="hello",
             created_by=OWNER_ID,
-            mentioned_user_ids=[USER_2_ID, "bad-id"],
+            mentioned_user_ids=[USER_2_ID, OUTSIDER_ID],
         )
 
         reply = sqlite_session.get(WorkflowCommentReply, result["id"])
@@ -575,7 +575,7 @@ class TestWorkflowCommentService:
             reply_id=reply.id,
             user_id=OWNER_ID,
             content="new",
-            mentioned_user_ids=[USER_2_ID, "bad-id"],
+            mentioned_user_ids=[USER_2_ID, OUTSIDER_ID],
         )
 
         sqlite_session.expire_all()
