@@ -15,8 +15,8 @@ const WorkflowVersionApiUpgradeNotice = () => {
   if (!isFetchedPlan || !enableBilling || plan.type !== Plan.sandbox)
     return null
 
-  const title = t('upgrade.workflowVersionRun.title')
-  const description = t('upgrade.workflowVersionRun.description')
+  const title = t($ => $['upgrade.workflowVersionRun.title'])
+  const description = t($ => $['upgrade.workflowVersionRun.description'])
 
   return (
     <>
