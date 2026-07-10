@@ -108,10 +108,10 @@ export default function ConfigCredential({
               <div className="shrink-0 border-b border-divider-regular py-4">
                 <div className="flex h-6 items-center justify-between pr-5 pl-6">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                    {t('createTool.authMethod.title', { ns: 'tools' })}
+                    {t($ => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
                   <DrawerCloseButton
-                    aria-label={t('operation.close', { ns: 'common' })}
+                    aria-label={t($ => $['operation.close'], { ns: 'common' })}
                     className="size-6 rounded-md"
                   />
                 </div>
@@ -134,20 +134,20 @@ export default function ConfigCredential({
                     )}
                   >
                     <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                      {t('createTool.authMethod.type', { ns: 'tools' })}
+                      {t($ => $['createTool.authMethod.type'], { ns: 'tools' })}
                     </FieldsetLegend>
                     <SelectItem<AuthType>
-                      text={t('createTool.authMethod.types.none', { ns: 'tools' })}
+                      text={t($ => $['createTool.authMethod.types.none'], { ns: 'tools' })}
                       value={AuthType.none}
                       isChecked={tempCredential.auth_type === AuthType.none}
                     />
                     <SelectItem<AuthType>
-                      text={t('createTool.authMethod.types.api_key_header', { ns: 'tools' })}
+                      text={t($ => $['createTool.authMethod.types.api_key_header'], { ns: 'tools' })}
                       value={AuthType.apiKeyHeader}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                     />
                     <SelectItem<AuthType>
-                      text={t('createTool.authMethod.types.api_key_query', { ns: 'tools' })}
+                      text={t($ => $['createTool.authMethod.types.api_key_query'], { ns: 'tools' })}
                       value={AuthType.apiKeyQuery}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
                     />
@@ -166,20 +166,20 @@ export default function ConfigCredential({
                         )}
                       >
                         <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                          {t('createTool.authHeaderPrefix.title', { ns: 'tools' })}
+                          {t($ => $['createTool.authHeaderPrefix.title'], { ns: 'tools' })}
                         </FieldsetLegend>
                         <SelectItem<AuthHeaderPrefix>
-                          text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
+                          text={t($ => $['createTool.authHeaderPrefix.types.basic'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.basic}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
                         />
                         <SelectItem<AuthHeaderPrefix>
-                          text={t('createTool.authHeaderPrefix.types.bearer', { ns: 'tools' })}
+                          text={t($ => $['createTool.authHeaderPrefix.types.bearer'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.bearer}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
                         />
                         <SelectItem<AuthHeaderPrefix>
-                          text={t('createTool.authHeaderPrefix.types.custom', { ns: 'tools' })}
+                          text={t($ => $['createTool.authHeaderPrefix.types.custom'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.custom}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
                         />
@@ -187,27 +187,27 @@ export default function ConfigCredential({
                     </FieldRoot>
                     <div>
                       <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t('createTool.authMethod.key', { ns: 'tools' })}
+                        {t($ => $['createTool.authMethod.key'], { ns: 'tools' })}
                         <Infotip
-                          aria-label={t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                          aria-label={t($ => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                           className="ml-0.5 size-4"
                           popupClassName="w-[261px] text-text-tertiary"
                         >
-                          {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                          {t($ => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                         </Infotip>
                       </div>
                       <Input
                         value={tempCredential.api_key_header}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiKeyPlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiKeyPlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.value'], { ns: 'tools' })}</div>
                       <Input
                         value={tempCredential.api_key_value}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiValuePlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                   </>
@@ -216,34 +216,34 @@ export default function ConfigCredential({
                   <>
                     <div>
                       <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t('createTool.authMethod.queryParam', { ns: 'tools' })}
+                        {t($ => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                         <Infotip
-                          aria-label={t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                          aria-label={t($ => $['createTool.authMethod.queryParamTooltip'], { ns: 'tools' })}
                           className="ml-0.5 size-4"
                           popupClassName="w-[261px] text-text-tertiary"
                         >
-                          {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                          {t($ => $['createTool.authMethod.queryParamTooltip'], { ns: 'tools' })}
                         </Infotip>
                       </div>
                       <Input
                         value={tempCredential.api_key_query_param}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_query_param: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.queryParamPlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.queryParamPlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.value'], { ns: 'tools' })}</div>
                       <Input
                         value={tempCredential.api_key_value}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiValuePlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                   </>
                 )}
               </ScrollArea>
               <div className="mt-4 flex shrink-0 justify-end space-x-2 px-6 py-4">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
                 <Button
                   variant="primary"
                   onClick={() => {
@@ -251,7 +251,7 @@ export default function ConfigCredential({
                     onHide()
                   }}
                 >
-                  {t('operation.save', { ns: 'common' })}
+                  {t($ => $['operation.save'], { ns: 'common' })}
                 </Button>
               </div>
             </DrawerContent>

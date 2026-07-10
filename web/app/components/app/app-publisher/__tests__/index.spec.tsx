@@ -37,12 +37,15 @@ const hotkeyMocks = vi.hoisted(() => ({
 let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null),
+  })
+})
 
 vi.mock('@tanstack/react-hotkeys', () => ({
   useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {

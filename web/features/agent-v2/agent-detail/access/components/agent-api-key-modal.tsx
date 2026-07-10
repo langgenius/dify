@@ -59,10 +59,10 @@ export function AgentApiKeyModal({
           },
         }),
       })
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     },
   }))
   const deleteApiKeyMutation = useMutation(consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete.mutationOptions({
@@ -78,10 +78,10 @@ export function AgentApiKeyModal({
           },
         }),
       })
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     },
   }))
   const apiKeys = apiKeysQuery.data?.data ?? []
@@ -123,28 +123,28 @@ export function AgentApiKeyModal({
         <DialogContent className="flex w-full max-w-[800px]! flex-col overflow-hidden px-8">
           <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('apiKeyModal.apiSecretKey')}
+            {t($ => $['apiKeyModal.apiSecretKey'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t('apiKeyModal.apiSecretKeyTips')}
+            {t($ => $['apiKeyModal.apiSecretKeyTips'])}
           </DialogDescription>
 
           <div className="mt-4 min-h-20 overflow-hidden">
             <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-              <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey')}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created')}</div>
-              <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed')}</div>
+              <div className="w-64 shrink-0 px-3">{t($ => $['apiKeyModal.secretKey'])}</div>
+              <div className="w-[200px] shrink-0 px-3">{t($ => $['apiKeyModal.created'])}</div>
+              <div className="w-[200px] shrink-0 px-3">{t($ => $['apiKeyModal.lastUsed'])}</div>
               <div className="grow px-3" />
             </div>
             <div className="max-h-[280px] overflow-auto">
               {apiKeysQuery.isPending && (
                 <div role="status" className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
-                  {t('loading')}
+                  {t($ => $.loading)}
                 </div>
               )}
               {apiKeysQuery.isError && (
                 <div className="flex h-20 items-center justify-center gap-2 system-sm-regular text-text-tertiary">
-                  <span>{tCommon('api.actionFailed')}</span>
+                  <span>{tCommon($ => $['api.actionFailed'])}</span>
                   <Button
                     variant="secondary"
                     size="small"
@@ -152,13 +152,13 @@ export function AgentApiKeyModal({
                       void apiKeysQuery.refetch()
                     }}
                   >
-                    {tCommon('operation.retry')}
+                    {tCommon($ => $['operation.retry'])}
                   </Button>
                 </div>
               )}
               {apiKeysQuery.isSuccess && apiKeys.length === 0 && (
                 <div className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
-                  {tCommon('noData')}
+                  {tCommon($ => $.noData)}
                 </div>
               )}
               {apiKeysQuery.isSuccess && apiKeys.map(apiKey => (
@@ -167,10 +167,10 @@ export function AgentApiKeyModal({
                     {maskApiKey(apiKey.token)}
                   </div>
                   <div className="w-[200px] shrink-0 truncate px-3">
-                    {apiKey.created_at ? formatTime(apiKey.created_at, t('dateTimeFormat', { ns: 'appLog' })) : t('never')}
+                    {apiKey.created_at ? formatTime(apiKey.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' })) : t($ => $.never)}
                   </div>
                   <div className="w-[200px] shrink-0 truncate px-3">
-                    {apiKey.last_used_at ? formatTime(apiKey.last_used_at, t('dateTimeFormat', { ns: 'appLog' })) : t('never')}
+                    {apiKey.last_used_at ? formatTime(apiKey.last_used_at, t($ => $.dateTimeFormat, { ns: 'appLog' })) : t($ => $.never)}
                   </div>
                   <div className="flex grow gap-2 px-3">
                     <CopyFeedback content={apiKey.token} />
@@ -178,7 +178,7 @@ export function AgentApiKeyModal({
                       variant="ghost"
                       size="small"
                       className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
-                      aria-label={tCommon('operation.delete')}
+                      aria-label={tCommon($ => $['operation.delete'])}
                       disabled={isDeleting}
                       onClick={() => setApiKeyToDelete(apiKey)}
                     >
@@ -193,7 +193,7 @@ export function AgentApiKeyModal({
           <div className="mt-4 flex justify-start">
             <Button onClick={handleCreateApiKey} loading={isCreating}>
               <span aria-hidden className="mr-1 i-heroicons-plus-20-solid size-4" />
-              {t('apiKeyModal.createNewSecretKey')}
+              {t($ => $['apiKeyModal.createNewSecretKey'])}
             </Button>
           </div>
         </DialogContent>
@@ -214,18 +214,18 @@ export function AgentApiKeyModal({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('actionMsg.deleteConfirmTitle')}
+              {t($ => $['actionMsg.deleteConfirmTitle'])}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('actionMsg.deleteConfirmTips')}
+              {t($ => $['actionMsg.deleteConfirmTips'])}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {tCommon('operation.cancel')}
+              {tCommon($ => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteApiKey}>
-              {tCommon('operation.confirm')}
+              {tCommon($ => $['operation.confirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
@@ -254,10 +254,10 @@ function AgentApiKeyGenerateModal({
       <DialogContent className="w-full max-w-[480px]! overflow-hidden px-8">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('apiKeyModal.apiSecretKey')}
+          {t($ => $['apiKeyModal.apiSecretKey'])}
         </DialogTitle>
         <DialogDescription className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">
-          {t('apiKeyModal.generateTips')}
+          {t($ => $['apiKeyModal.generateTips'])}
         </DialogDescription>
         <div className="my-4 flex h-9 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
           <span className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary" translate="no">
@@ -267,7 +267,7 @@ function AgentApiKeyGenerateModal({
         </div>
         <div className="my-4 flex justify-end">
           <Button className="w-16 shrink-0" onClick={onClose}>
-            {t('actionMsg.ok')}
+            {t($ => $['actionMsg.ok'])}
           </Button>
         </div>
       </DialogContent>

@@ -49,7 +49,7 @@ export function AccessSurfaceCard({
   const { copied, copy } = useClipboard({
     timeout: 2000,
     onCopyError: () => {
-      toast.error(t('agentDetail.access.copyFailed'))
+      toast.error(t($ => $['agentDetail.access.copyFailed']))
     },
   })
   const canCopyEndpoint = Boolean(endpoint)
@@ -83,13 +83,13 @@ export function AccessSurfaceCard({
             )}
             >
               <StatusDot status={enabled ? 'success' : 'disabled'} size="small" />
-              {t(enabled ? 'agentDetail.access.status.inService' : 'agentDetail.access.status.outOfService')}
+              {t($ => $[enabled ? 'agentDetail.access.status.inService' : 'agentDetail.access.status.outOfService'])}
             </span>
             <Switch
               size="md"
               checked={enabled}
               disabled={switchDisabled}
-              aria-label={t('agentDetail.access.toggleSurface', { name: title })}
+              aria-label={t($ => $['agentDetail.access.toggleSurface'], { name: title })}
               onCheckedChange={onEnabledChange}
             />
           </div>
@@ -101,13 +101,13 @@ export function AccessSurfaceCard({
           </div>
           <div className="mt-1 flex h-8 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
             <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary" translate="no">
-              {endpoint || t('agentDetail.access.workflow.notAvailable')}
+              {endpoint || t($ => $['agentDetail.access.workflow.notAvailable'])}
             </span>
             <Button
               variant="ghost"
               size="small"
               className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
-              aria-label={copied ? tCommon('operation.copied') : copyLabel}
+              aria-label={copied ? tCommon($ => $['operation.copied']) : copyLabel}
               disabled={!canCopyEndpoint}
               onClick={handleCopyEndpoint}
             >

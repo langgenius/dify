@@ -31,15 +31,15 @@ const WorkflowProcessItem = ({
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
-  const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
+  const fallbackTitle = t($ => $['common.workflowProcess'], { ns: 'workflow' })
   const statusLabel = running
-    ? t('common.workflowProcessRunning', { ns: 'workflow' })
+    ? t($ => $['common.workflowProcessRunning'], { ns: 'workflow' })
     : succeeded
-      ? t('common.workflowProcessSucceeded', { ns: 'workflow' })
+      ? t($ => $['common.workflowProcessSucceeded'], { ns: 'workflow' })
       : failed
-        ? t('common.workflowProcessFailed', { ns: 'workflow' })
+        ? t($ => $['common.workflowProcessFailed'], { ns: 'workflow' })
         : paused
-          ? t('common.workflowProcessPaused', { ns: 'workflow' })
+          ? t($ => $['common.workflowProcessPaused'], { ns: 'workflow' })
           : undefined
   const collapsedTitle = failed
     ? data.error || latestNode?.error || latestNode?.title || fallbackTitle

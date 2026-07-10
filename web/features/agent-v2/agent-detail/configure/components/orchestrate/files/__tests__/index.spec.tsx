@@ -517,7 +517,7 @@ describe('AgentFiles', () => {
 
     await user.click(within(buildNoteRow!).getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
 
-    expect(await screen.findByText('agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
+    expect(await screen.findByText('agentV2.agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
   })
 
   it('should clear config note when deleting the virtual build note file', async () => {

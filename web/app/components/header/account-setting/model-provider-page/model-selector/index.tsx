@@ -144,7 +144,7 @@ function ModelSelector({
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('detailPanel.configureModel', { ns: 'plugin' })}
+        aria-label={t($ => $['detailPanel.configureModel'], { ns: 'plugin' })}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
         disabled={readonly}

@@ -59,7 +59,7 @@ function EmojiPickerContent({
       )}
     >
       <DialogTitle className="sr-only">
-        {t('iconPicker.emoji', { ns: 'app' })}
+        {t($ => $['iconPicker.emoji'], { ns: 'app' })}
       </DialogTitle>
 
       <EmojiPickerInner
@@ -75,7 +75,7 @@ function EmojiPickerContent({
           className="w-full"
           onClick={() => onOpenChange(false)}
         >
-          {t('iconPicker.cancel', { ns: 'app' })}
+          {t($ => $['iconPicker.cancel'], { ns: 'app' })}
         </Button>
         <Button
           disabled={selectedEmoji === '' || !selectedBackground}
@@ -86,7 +86,7 @@ function EmojiPickerContent({
             onOpenChange(false)
           }}
         >
-          {t('iconPicker.ok', { ns: 'app' })}
+          {t($ => $['iconPicker.ok'], { ns: 'app' })}
         </Button>
       </div>
     </DialogContent>

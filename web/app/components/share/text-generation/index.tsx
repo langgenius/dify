@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { InputValueTypes, TextGenerationRunControl } from './types'
+import type { InputValueTypes, TextGenerationRunControl, TextGenerationTranslate } from './types'
 import type { InstalledApp } from '@/models/explore'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,6 +23,9 @@ type IMainProps = {
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation()
+  const translateBatchKey: TextGenerationTranslate = useCallback((selector, options) => {
+    return t(selector, options)
+  }, [t])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const searchParams = useSearchParams()
@@ -50,7 +53,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   const { allFailedTaskList, allSuccessTaskList, allTaskList, allTasksRun, controlRetry, exportRes, handleCompleted, handleRetryAllFailedTask, handleRunBatch: runBatchExecution, isCallBatchAPI, noPendingTask, resetBatchExecution, setIsCallBatchAPI, showTaskList } = useTextGenerationBatch({
     promptConfig,
     notify,
-    t,
+    t: translateBatchKey,
   })
   useEffect(() => {
     if (isCallBatchAPI)

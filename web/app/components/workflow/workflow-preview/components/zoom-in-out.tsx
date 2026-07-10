@@ -66,7 +66,7 @@ const ZoomInOut: FC = () => {
     [
       {
         key: ZoomType.zoomToFit,
-        text: t('operator.zoomToFit', { ns: 'workflow' }),
+        text: t($ => $['operator.zoomToFit'], { ns: 'workflow' }),
       },
     ],
   ]
@@ -101,12 +101,12 @@ const ZoomInOut: FC = () => {
     >
       <div className="flex h-8 w-[98px] items-center justify-between rounded-lg">
         <TipPopup
-          title={t('operator.zoomOut', { ns: 'workflow' })}
+          title={t($ => $['operator.zoomOut'], { ns: 'workflow' })}
           shortcut="workflow.zoom-out"
         >
           <button
             type="button"
-            aria-label={t('operator.zoomOut', { ns: 'workflow' })}
+            aria-label={t($ => $['operator.zoomOut'], { ns: 'workflow' })}
             disabled={zoom <= 0.25}
             className={`flex size-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {
@@ -165,12 +165,12 @@ const ZoomInOut: FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
         <TipPopup
-          title={t('operator.zoomIn', { ns: 'workflow' })}
+          title={t($ => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"
         >
           <button
             type="button"
-            aria-label={t('operator.zoomIn', { ns: 'workflow' })}
+            aria-label={t($ => $['operator.zoomIn'], { ns: 'workflow' })}
             disabled={zoom >= 2}
             className={`flex size-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {

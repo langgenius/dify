@@ -142,7 +142,7 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const updatePreview = useCallback(() => {
     if (segmentation.segmentationType === ProcessMode.general && segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
+      toast.error(t($ => $['stepTwo.maxLengthCheck'], { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return
     }
     estimateHook.fetchEstimate()
@@ -203,7 +203,7 @@ const StepTwo: FC<StepTwoProps> = ({
   return (
     <div className="flex size-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className="mb-1 system-md-semibold text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
+        <div className="mb-1 system-md-semibold text-text-secondary">{t($ => $['stepTwo.segmentation'], { ns: 'datasetCreation' })}</div>
         {showGeneralOption && (
           <GeneralChunkingOptions
             segmentIdentifier={segmentation.segmentIdentifier}

@@ -18,7 +18,7 @@ const BrandingFooter = ({
   return (
     <div className="flex flex-row-reverse px-2 py-3">
       <div className="flex shrink-0 items-center gap-1.5 px-1">
-        <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+        <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['chat.poweredBy'], { ns: 'share' })}</div>
         {replaceWebappLogo
           ? <img src={replaceWebappLogo} alt="logo" className="block h-5 w-auto" />
           : <DifyLogo size="small" />}

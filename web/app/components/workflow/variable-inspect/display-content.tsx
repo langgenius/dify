@@ -30,8 +30,8 @@ export function DisplayContent(props: DisplayContentProps) {
   const [isFocused, setIsFocused] = useState(false)
   const { t } = useTranslation()
   const viewOptions = [
-    { value: ViewMode.Code, label: t('nodes.templateTransform.code', { ns: 'workflow' }), iconClassName: 'i-ri-braces-line' },
-    { value: ViewMode.Preview, label: t('common.preview', { ns: 'workflow' }), iconClassName: 'i-ri-eye-line' },
+    { value: ViewMode.Code, label: t($ => $['nodes.templateTransform.code'], { ns: 'workflow' }), iconClassName: 'i-ri-braces-line' },
+    { value: ViewMode.Preview, label: t($ => $['common.preview'], { ns: 'workflow' }), iconClassName: 'i-ri-eye-line' },
   ]
   const selectedViewMode = selectedViewModes[0] ?? ViewMode.Code
 
@@ -76,7 +76,7 @@ export function DisplayContent(props: DisplayContentProps) {
           </div>
         )}
         <SegmentedControl<ViewMode>
-          aria-label={t('common.preview', { ns: 'workflow' })}
+          aria-label={t($ => $['common.preview'], { ns: 'workflow' })}
           value={selectedViewModes}
           onValueChange={handleViewModeChange}
           className="shrink-0 rounded-md p-px"
@@ -98,7 +98,7 @@ export function DisplayContent(props: DisplayContentProps) {
           previewType === PreviewType.Markdown
             ? (
                 <Textarea
-                  aria-label={t('debug.variableInspect.markdownContent', { ns: 'workflow' })}
+                  aria-label={t($ => $['debug.variableInspect.markdownContent'], { ns: 'workflow' })}
                   readOnly={readonly}
                   disabled={readonly}
                   className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"

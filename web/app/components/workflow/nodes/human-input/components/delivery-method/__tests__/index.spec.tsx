@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'
 
@@ -64,7 +65,7 @@ describe('DeliveryMethodForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesSyncDraft.mockReturnValue({
       handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,

@@ -1,5 +1,7 @@
+import type { WorkflowTranslate } from '../parallel'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 import formatToTracingNodeList from '../index'
 
@@ -104,7 +106,7 @@ describe('formatToTracingNodeList', () => {
   })
 
   it('should sort the input by index and run the formatter pipeline in order', () => {
-    const t = vi.fn((key: string) => key)
+    const t = withSelectorKey(vi.fn((key: string) => key), 'workflow') as WorkflowTranslate
     const traces = [
       createTrace({ id: 'b', node_id: 'b', title: 'B', index: 2 }),
       createTrace({ id: 'a', node_id: 'a', title: 'A', index: 0 }),
@@ -129,7 +131,7 @@ describe('formatToTracingNodeList', () => {
   })
 
   it('should collapse loop and iteration children into parent nodes and propagate child failures', () => {
-    const t = vi.fn((key: string) => key)
+    const t = withSelectorKey(vi.fn((key: string) => key), 'workflow') as WorkflowTranslate
     const loopParent = createTrace({
       id: 'loop-parent',
       node_id: 'loop-parent',

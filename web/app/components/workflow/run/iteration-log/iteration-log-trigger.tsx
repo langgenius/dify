@@ -146,11 +146,11 @@ const IterationLogTrigger = ({
       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
       <Iteration className="size-4 shrink-0 text-components-button-tertiary-text" />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
-        {t('nodes.iteration.iteration', { ns: 'workflow', count: displayIterationCount })}
+        {t($ => $['nodes.iteration.iteration'], { ns: 'workflow', count: displayIterationCount })}
         {errorCount > 0 && (
           <>
-            {t('nodes.iteration.comma', { ns: 'workflow' })}
-            {t('nodes.iteration.error', { ns: 'workflow', count: errorCount })}
+            {t($ => $['nodes.iteration.comma'], { ns: 'workflow' })}
+            {t($ => $['nodes.iteration.error'], { ns: 'workflow', count: errorCount })}
           </>
         )}
       </div>

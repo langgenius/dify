@@ -74,7 +74,7 @@ export function OutputEditCard({
   return (
     <div ref={editorRef}>
       <Form
-        aria-label={t('nodes.agent.outputVars.editorLabel', { ns: 'workflow' })}
+        aria-label={t($ => $['nodes.agent.outputVars.editorLabel'], { ns: 'workflow' })}
         className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
         onSubmit={(event) => {
           event.preventDefault()
@@ -85,7 +85,7 @@ export function OutputEditCard({
           <div className="flex h-6 items-center gap-x-2">
             <FieldRoot name="name" invalid={hasNameError} className="contents">
               <FieldLabel className="sr-only">
-                {t('nodes.agent.outputVars.nameLabel', { ns: 'workflow' })}
+                {t($ => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflow' })}
               </FieldLabel>
               <FieldControl
                 aria-describedby={hasNameError ? nameErrorId : undefined}
@@ -95,7 +95,7 @@ export function OutputEditCard({
                 pattern={OUTPUT_NAME_PATTERN_SOURCE}
                 size="small"
                 value={draft.name}
-                placeholder={t('nodes.agent.outputVars.namePlaceholder', { ns: 'workflow' })}
+                placeholder={t($ => $['nodes.agent.outputVars.namePlaceholder'], { ns: 'workflow' })}
                 className="h-6 w-24 px-1.5 py-0 code-sm-semibold"
                 onChange={event => updateDraft({ name: event.currentTarget.value })}
               />
@@ -107,12 +107,12 @@ export function OutputEditCard({
             <FieldRoot name="required" className="contents">
               <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
                 <Switch
-                  aria-label={t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
+                  aria-label={t($ => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
                   size="xs"
                   checked={draft.required}
                   onCheckedChange={required => updateDraft({ required })}
                 />
-                {t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
+                {t($ => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
               </FieldLabel>
             </FieldRoot>
           </div>
@@ -120,19 +120,19 @@ export function OutputEditCard({
             <FieldRoot name="nameError" invalid className="contents">
               <FieldError id={nameErrorId} match className="mt-1 px-1 py-0 system-xs-regular text-text-destructive">
                 {duplicateName
-                  ? t('nodes.agent.outputVars.nameDuplicate', { ns: 'workflow' })
-                  : t('nodes.agent.outputVars.nameInvalid', { ns: 'workflow' })}
+                  ? t($ => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflow' })
+                  : t($ => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflow' })}
               </FieldError>
             </FieldRoot>
           )}
           <FieldRoot name="description" className="contents">
             <FieldLabel className="sr-only">
-              {t('nodes.agent.outputVars.descriptionLabel', { ns: 'workflow' })}
+              {t($ => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflow' })}
             </FieldLabel>
             <FieldControl
               size="small"
               value={draft.description}
-              placeholder={t('nodes.agent.outputVars.descriptionPlaceholder', { ns: 'workflow' })}
+              placeholder={t($ => $['nodes.agent.outputVars.descriptionPlaceholder'], { ns: 'workflow' })}
               className="mt-2 h-5 border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
               onChange={event => updateDraft({ description: event.currentTarget.value })}
             />
@@ -145,24 +145,24 @@ export function OutputEditCard({
                 aria-hidden="true"
                 className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
               />
-              {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
+              {t($ => $['nodes.agent.outputVars.showAdvancedOptions'], { ns: 'workflow' })}
             </CollapsibleTrigger>
             <CollapsiblePanel className="border-t border-divider-subtle">
               <div className="px-3 py-2">
                 <FieldRoot name="defaultValue" className="gap-1">
                   <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-                    {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
+                    {t($ => $['nodes.agent.outputVars.defaultValueLabel'], { ns: 'workflow' })}
                   </FieldLabel>
                   <Textarea
                     size="small"
                     value={draft.defaultValue}
-                    placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
+                    placeholder={t($ => $['nodes.agent.outputVars.defaultValuePlaceholder'], { ns: 'workflow' })}
                     className="mt-1 min-h-6"
                     onValueChange={defaultValue => updateDraft({ defaultValue })}
                   />
                   {defaultValueErrorKey && (
                     <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                      {t(defaultValueErrorKey, { ns: 'workflow' })}
+                      {t($ => $[defaultValueErrorKey], { ns: 'workflow' })}
                     </FieldError>
                   )}
                 </FieldRoot>
@@ -172,17 +172,17 @@ export function OutputEditCard({
         )}
         <div className="flex h-12 items-center justify-end gap-x-2 px-3">
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             type="submit"
             size="small"
             variant="primary"
             disabled={confirmDisabled}
-            aria-label={t('nodes.agent.outputVars.confirm', { ns: 'workflow' })}
+            aria-label={t($ => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
             className="gap-x-1"
           >
-            {t('nodes.agent.outputVars.confirm', { ns: 'workflow' })}
+            {t($ => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
             <ConfirmHotkeyHint />
           </Button>
         </div>

@@ -37,7 +37,7 @@ const Row = ({
           {name}
         </div>
         <p className="truncate system-xs-regular text-text-secondary">
-          {description || t('role.noDescription', { ns: 'permission' })}
+          {description || t($ => $['role.noDescription'], { ns: 'permission' })}
         </p>
       </div>
       <RowMenu

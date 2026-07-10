@@ -70,10 +70,10 @@ const PublishAsKnowledgePipelineModal = ({
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none p-0! text-left align-middle">
 
           <div className="relative flex items-center p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
-            {t('common.publishAs', { ns: 'pipeline' })}
+            {t($ => $['common.publishAs'], { ns: 'pipeline' })}
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
               onClick={onCancel}
             >
@@ -84,12 +84,12 @@ const PublishAsKnowledgePipelineModal = ({
             <div className="mb-5 flex">
               <div className="mr-3 grow">
                 <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                  {t('common.publishAsPipeline.name', { ns: 'pipeline' })}
+                  {t($ => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}
                 </div>
                 <Input
                   value={pipelineName}
                   onChange={e => setPipelineName(e.target.value)}
-                  placeholder={t('common.publishAsPipeline.namePlaceholder', { ns: 'pipeline' }) || ''}
+                  placeholder={t($ => $['common.publishAsPipeline.namePlaceholder'], { ns: 'pipeline' }) || ''}
                 />
               </div>
               <AppIcon
@@ -104,12 +104,12 @@ const PublishAsKnowledgePipelineModal = ({
             </div>
             <div>
               <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t('common.publishAsPipeline.description', { ns: 'pipeline' })}
+                {t($ => $['common.publishAsPipeline.description'], { ns: 'pipeline' })}
               </div>
               <Textarea
                 className="resize-none"
-                aria-label={t('common.publishAsPipeline.description', { ns: 'pipeline' })}
-                placeholder={t('common.publishAsPipeline.descriptionPlaceholder', { ns: 'pipeline' }) || ''}
+                aria-label={t($ => $['common.publishAsPipeline.description'], { ns: 'pipeline' })}
+                placeholder={t($ => $['common.publishAsPipeline.descriptionPlaceholder'], { ns: 'pipeline' }) || ''}
                 value={description}
                 onValueChange={value => setDescription(value)}
               />
@@ -120,14 +120,14 @@ const PublishAsKnowledgePipelineModal = ({
               className="mr-2"
               onClick={onCancel}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               disabled={!pipelineName?.trim() || confirmDisabled}
               variant="primary"
               onClick={() => handleConfirm()}
             >
-              {t('common.publish', { ns: 'workflow' })}
+              {t($ => $['common.publish'], { ns: 'workflow' })}
             </Button>
           </div>
           {showAppIconPicker && (

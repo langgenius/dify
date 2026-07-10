@@ -22,7 +22,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
     <>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.timeout', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.timeout'], { ns: 'tools' })}</span>
         </div>
         <NumberField
           value={timeout}
@@ -30,13 +30,13 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
           onValueChange={value => onTimeoutChange(value ?? 0)}
         >
           <NumberFieldGroup>
-            <NumberFieldInput placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })} />
+            <NumberFieldInput placeholder={t($ => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })} />
           </NumberFieldGroup>
         </NumberField>
       </div>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.sseReadTimeout', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.sseReadTimeout'], { ns: 'tools' })}</span>
         </div>
         <NumberField
           value={sseReadTimeout}
@@ -44,7 +44,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
           onValueChange={value => onSseReadTimeoutChange(value ?? 0)}
         >
           <NumberFieldGroup>
-            <NumberFieldInput placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })} />
+            <NumberFieldInput placeholder={t($ => $['mcp.modal.timeoutPlaceholder'], { ns: 'tools' })} />
           </NumberFieldGroup>
         </NumberField>
       </div>

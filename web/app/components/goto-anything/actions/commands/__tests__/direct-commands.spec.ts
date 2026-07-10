@@ -13,12 +13,15 @@ import { forumCommand } from '../forum'
 vi.mock('../command-bus')
 
 const mockT = vi.fn((key: string) => key)
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => mockT(key),
-    language: 'en',
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    getI18n: () => ({
+      t: withSelectorKey((key: string) => mockT(key)),
+      language: 'en',
+    }),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   defaultDocBaseUrl: 'https://docs.dify.ai',

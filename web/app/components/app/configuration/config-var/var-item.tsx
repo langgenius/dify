@@ -62,7 +62,7 @@ const VarItem: FC<ItemProps> = ({
         <div className={cn('hidden items-center justify-end rounded-lg', !readonly && 'group-hover:flex')}>
           <button
             type="button"
-            aria-label={t('operation.edit', { ns: 'common' })}
+            aria-label={t($ => $['operation.edit'], { ns: 'common' })}
             className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onEdit}
           >
@@ -70,7 +70,7 @@ const VarItem: FC<ItemProps> = ({
           </button>
           <button
             type="button"
-            aria-label={t('operation.delete', { ns: 'common' })}
+            aria-label={t($ => $['operation.delete'], { ns: 'common' })}
             className="flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 text-text-tertiary hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}

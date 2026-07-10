@@ -172,7 +172,7 @@ const AllStartBlocks = ({
                   <span className="i-ri-information-fill size-4 text-text-accent" />
                 </span>
                 <div className="relative py-1 system-xs-regular text-text-secondary">
-                  {t('nodes.startPlaceholder.userInputConflictTip', { ns: 'workflow' })}
+                  {t($ => $['nodes.startPlaceholder.userInputConflictTip'], { ns: 'workflow' })}
                 </div>
               </div>
             )}
@@ -237,7 +237,7 @@ const AllStartBlocks = ({
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
               <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
-                {t('nodes.startPlaceholder.noTriggersFound', { ns: 'workflow' })}
+                {t($ => $['nodes.startPlaceholder.noTriggersFound'], { ns: 'workflow' })}
               </div>
               <Link
                 href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
@@ -248,7 +248,7 @@ const AllStartBlocks = ({
                   variant="secondary-accent"
                   className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
+                  {t($ => $['tabs.requestToCommunity'], { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -267,13 +267,13 @@ const AllStartBlocks = ({
                     <MarketplaceFooterDivider />
                     <span className="flex items-center gap-1">
                       <span className="i-custom-vender-workflow-marketplace size-3 shrink-0" aria-hidden />
-                      <span>{t('nodes.startPlaceholder.browseMoreOnMarketplace', { ns: 'workflow' })}</span>
+                      <span>{t($ => $['nodes.startPlaceholder.browseMoreOnMarketplace'], { ns: 'workflow' })}</span>
                     </span>
                   </>
                 )
               : (
                   <>
-                    <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+                    <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
                     <RiArrowRightUpLine className="ml-0.5 size-3" />
                   </>
                 )}

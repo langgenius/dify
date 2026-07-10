@@ -225,7 +225,7 @@ const CreateFormPipeline = () => {
         <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
+            title={t($ => $['addDocuments.title'], { ns: 'datasetPipeline' })}
             currentStep={currentStep}
           />
           <div className="grow overflow-y-auto">
@@ -304,8 +304,8 @@ const CreateFormPipeline = () => {
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+          title={t($ => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t($ => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
         />
       )}
     </div>

@@ -12,11 +12,14 @@ const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
 const mockRemoveUsedVarInNodes = vi.hoisted(() => vi.fn())
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => options?.key || key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => options?.key || key),
+    }),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   __esModule: true,

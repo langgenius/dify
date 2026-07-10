@@ -39,14 +39,14 @@ const ToolPicker: FC<Props> = ({
   const { t } = useTranslation()
 
   const allTabs = [
-    { key: PLUGIN_TYPE_SEARCH_MAP.all, name: t('category.all', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.model, name: t('category.models', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.tool, name: t('category.tools', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.agent, name: t('category.agents', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.extension, name: t('category.extensions', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.datasource, name: t('category.datasources', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.trigger, name: t('category.triggers', { ns: 'plugin' }) },
-    { key: PLUGIN_TYPE_SEARCH_MAP.bundle, name: t('category.bundles', { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.all, name: t($ => $['category.all'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.model, name: t($ => $['category.models'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.tool, name: t($ => $['category.tools'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.agent, name: t($ => $['category.agents'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.extension, name: t($ => $['category.extensions'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.datasource, name: t($ => $['category.datasources'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.trigger, name: t($ => $['category.triggers'], { ns: 'plugin' }) },
+    { key: PLUGIN_TYPE_SEARCH_MAP.bundle, name: t($ => $['category.bundles'], { ns: 'plugin' }) },
   ]
   const tabs = integrationCategory
     ? allTabs.filter(tab => tab.key === integrationCategory)
@@ -117,7 +117,7 @@ const ToolPicker: FC<Props> = ({
                 onSearchChange={setQuery}
                 tags={tags}
                 onTagsChange={setTags}
-                placeholder={t('searchTools', { ns: 'plugin' })!}
+                placeholder={t($ => $.searchTools, { ns: 'plugin' })!}
                 inputClassName="w-full"
               />
             </div>

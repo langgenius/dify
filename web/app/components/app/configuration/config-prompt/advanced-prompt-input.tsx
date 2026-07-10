@@ -93,7 +93,7 @@ const AdvancedPromptInput: FC<Props> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i]!.key === newExternalDataTool.variable) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
+            toast.error(t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }
@@ -151,14 +151,14 @@ const AdvancedPromptInput: FC<Props> = ({
     >
       <div className="flex items-center pr-2">
         <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
-        <div className="text-[13px] leading-[18px] font-medium text-[#DC6803]">{t('promptMode.contextMissing', { ns: 'appDebug' })}</div>
+        <div className="text-[13px] leading-[18px] font-medium text-[#DC6803]">{t($ => $['promptMode.contextMissing'], { ns: 'appDebug' })}</div>
       </div>
       <Button
         size="small"
         variant="secondary-accent"
         onClick={onHideContextMissingTip}
       >
-        {t('operation.ok', { ns: 'common' })}
+        {t($ => $['operation.ok'], { ns: 'common' })}
       </Button>
     </div>
   )
@@ -177,14 +177,14 @@ const AdvancedPromptInput: FC<Props> = ({
                       <div className="flex items-center space-x-1">
 
                         <div className="text-sm font-semibold text-indigo-800 uppercase">
-                          {t('pageTitle.line1', { ns: 'appDebug' })}
+                          {t($ => $['pageTitle.line1'], { ns: 'appDebug' })}
                         </div>
                         <Infotip
-                          aria-label={t('promptTip', { ns: 'appDebug' })}
+                          aria-label={t($ => $.promptTip, { ns: 'appDebug' })}
                           className="ml-1"
                           popupClassName="w-[180px]"
                         >
-                          {t('promptTip', { ns: 'appDebug' })}
+                          {t($ => $.promptTip, { ns: 'appDebug' })}
                         </Infotip>
                       </div>
                     )}

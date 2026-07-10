@@ -84,11 +84,11 @@ function DeployReleaseMenuContent({ onDeleted }: {
   const isDeletingRelease = deleteRelease.isPending
   const isExportingDsl = exportReleaseDslMutation.isPending
   const deleteDisabledReason = isCheckingDeleteUsage
-    ? t('versions.disabledReason.checkingDeployments')
+    ? t($ => $['versions.disabledReason.checkingDeployments'])
     : hasDeleteUsageCheckFailed
-      ? t('versions.disabledReason.checkDeploymentsFailed')
+      ? t($ => $['versions.disabledReason.checkDeploymentsFailed'])
       : isReleaseInUse
-        ? t('versions.disabledReason.releaseInUse', { count: deleteUsageCount })
+        ? t($ => $['versions.disabledReason.releaseInUse'], { count: deleteUsageCount })
         : undefined
   const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || hasDeleteUsageCheckFailed || isReleaseInUse
 
@@ -103,7 +103,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
           setOpen(false)
         },
         onError: () => {
-          toast.error(t('versions.exportDslFailed'))
+          toast.error(t($ => $['versions.exportDslFailed']))
         },
       },
     )
@@ -122,11 +122,11 @@ function DeployReleaseMenuContent({ onDeleted }: {
       {
         onSuccess: () => {
           setDeleteReleaseDialogOpen(false)
-          toast.success(t('versions.deleteSuccess', { name: targetReleaseName }))
+          toast.success(t($ => $['versions.deleteSuccess'], { name: targetReleaseName }))
           onDeleted?.()
         },
         onError: () => {
-          toast.error(t('versions.deleteFailed'))
+          toast.error(t($ => $['versions.deleteFailed']))
         },
       },
     )
@@ -138,14 +138,14 @@ function DeployReleaseMenuContent({ onDeleted }: {
     releaseRows,
     releaseId,
     targetRelease: release,
-    t,
+    t: (selector, options) => t(selector, options),
   })
 
   return (
     <>
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          aria-label={t('versions.moreActions')}
+          aria-label={t($ => $['versions.moreActions'])}
           className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
@@ -158,7 +158,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
             >
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">
-                {t('versions.editRelease')}
+                {t($ => $['versions.editRelease'])}
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -172,7 +172,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
             >
               <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">
-                {isExportingDsl ? t('versions.exportingDsl') : t('versions.exportDsl')}
+                {isExportingDsl ? t($ => $['versions.exportingDsl']) : t($ => $['versions.exportDsl'])}
               </span>
             </DropdownMenuItem>
             {groupedRows.length > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
@@ -180,7 +180,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
               <div key={section.group}>
                 {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
                 <div className="px-3 pt-1.5 pb-1 system-2xs-medium-uppercase text-text-quaternary">
-                  {t(`versions.groupHeader.${section.group}`)}
+                  {t($ => $[`versions.groupHeader.${section.group}`])}
                 </div>
                 {section.rows.map((row) => {
                   const isDisabled = row.state === 'current' || row.state === 'deploying'
@@ -226,7 +226,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
                 }}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
+                <span className="system-sm-regular">{t($ => $['versions.deleteRelease'])}</span>
               </DropdownMenuItem>
             </TitleTooltip>
           </DropdownMenuContent>

@@ -5,24 +5,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'category.all': 'All',
-        'marketplace.allPlugins': 'All plugins',
-        'category.models': 'Models',
-        'category.tools': 'Tools',
-        'category.datasources': 'Data Sources',
-        'category.triggers': 'Triggers',
-        'category.agents': 'Agents',
-        'category.extensions': 'Extensions',
-        'category.bundles': 'Bundles',
-      }
-      return map[key] || key
-    },
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'category.all': 'All',
+          'marketplace.allPlugins': 'All plugins',
+          'category.models': 'Models',
+          'category.tools': 'Tools',
+          'category.datasources': 'Data Sources',
+          'category.triggers': 'Triggers',
+          'category.agents': 'Agents',
+          'category.extensions': 'Extensions',
+          'category.bundles': 'Bundles',
+        }
+        return map[key] || key
+      }),
+    }),
+  })
+})
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })

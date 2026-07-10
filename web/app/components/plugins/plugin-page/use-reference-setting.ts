@@ -43,7 +43,7 @@ export const usePluginSettingsAccess = () => {
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } = useMutationPluginPermissionSettings({
     onSuccess: () => {
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     },
   })
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
@@ -98,7 +98,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     currentReferenceSetting: data,
     onSuccess: () => {
       invalidateReferenceSettings()
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     },
   })
 

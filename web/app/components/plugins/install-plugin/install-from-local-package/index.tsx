@@ -45,15 +45,15 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' })
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
 
-    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+    return t($ => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [isBundle, step, t])
 
   const { getIconUrl } = useGetIcon()

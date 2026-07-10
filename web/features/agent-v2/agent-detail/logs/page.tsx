@@ -89,7 +89,7 @@ export function AgentLogsPage({
   const [selectedLog, setSelectedLog] = useState<AgentLogConversationItemResponse>()
   const periodItems = periodOptions.map(option => ({
     value: option.value,
-    name: t(option.labelKey),
+    name: t($ => $[option.labelKey]),
   }))
   const logSourcesQuery = useQuery(consoleQuery.agent.byAgentId.logSources.get.queryOptions({
     input: {
@@ -126,21 +126,21 @@ export function AgentLogsPage({
   }
 
   return (
-    <AgentDetailSectionSurface label={t('agentDetail.sections.logs')}>
+    <AgentDetailSectionSurface label={t($ => $['agentDetail.sections.logs'])}>
       <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
-            {t('agentDetail.logs.title')}
+            {t($ => $['agentDetail.logs.title'])}
           </h2>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t('agentDetail.logs.description')}</span>
+            <span>{t($ => $['agentDetail.logs.description'])}</span>
             <a
               href={docLink('/use-dify/monitor/logs')}
               target="_blank"
               rel="noreferrer"
               className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              {t('agentDetail.logs.learnMore')}
+              {t($ => $['agentDetail.logs.learnMore'])}
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
           </p>
@@ -178,9 +178,9 @@ export function AgentLogsPage({
             />
 
             <SearchInput
-              aria-label={t('agentDetail.logs.filters.search.label')}
+              aria-label={t($ => $['agentDetail.logs.filters.search.label'])}
               value={keyword}
-              placeholder={t('agentDetail.logs.filters.search.placeholder')}
+              placeholder={t($ => $['agentDetail.logs.filters.search.placeholder'])}
               className="w-50 shrink-0"
               onValueChange={(nextKeyword) => {
                 setPage(1)
@@ -193,8 +193,8 @@ export function AgentLogsPage({
             order={sort.order === 'desc' ? '-' : ''}
             value={sort.field}
             items={[
-              { value: 'created_at', name: t('agentDetail.logs.filters.sort.lastCreatedTime') },
-              { value: 'updated_at', name: t('agentDetail.logs.filters.sort.lastUpdatedTime') },
+              { value: 'created_at', name: t($ => $['agentDetail.logs.filters.sort.lastCreatedTime']) },
+              { value: 'updated_at', name: t($ => $['agentDetail.logs.filters.sort.lastUpdatedTime']) },
             ]}
             onSelect={(nextSortValue) => {
               setPage(1)
@@ -249,10 +249,10 @@ export function AgentLogsPage({
         onPageChange={setPage}
         className="h-14 shrink-0 px-6 py-3"
         labels={{
-          previous: tCommon('pagination.previous'),
-          next: tCommon('pagination.next'),
-          editPageNumber: (page, totalPages) => tCommon('pagination.editPageNumber', { page, totalPages }),
-          pageNumberInput: tCommon('pagination.pageNumber'),
+          previous: tCommon($ => $['pagination.previous']),
+          next: tCommon($ => $['pagination.next']),
+          editPageNumber: (page, totalPages) => tCommon($ => $['pagination.editPageNumber'], { page, totalPages }),
+          pageNumberInput: tCommon($ => $['pagination.pageNumber']),
         }}
         pageSize={{
           value: limit,
@@ -261,8 +261,8 @@ export function AgentLogsPage({
             setPage(1)
             setLimit(nextLimit)
           },
-          label: tCommon('pagination.perPage'),
-          ariaLabel: tCommon('pagination.perPage'),
+          label: tCommon($ => $['pagination.perPage']),
+          ariaLabel: tCommon($ => $['pagination.perPage']),
         }}
       />
     </AgentDetailSectionSurface>

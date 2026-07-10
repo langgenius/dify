@@ -58,14 +58,14 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className="flex items-center justify-between p-4 pb-2">
-        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
+        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t($ => $['comments.panelTitle'], { ns: 'workflow' })}</div>
         <div className="relative flex items-center gap-2">
           <button
             className={cn(
               'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
               hasActiveFilter && 'bg-state-accent-active',
             )}
-            aria-label={t('comments.aria.filterComments', { ns: 'workflow' })}
+            aria-label={t($ => $['comments.aria.filterComments'], { ns: 'workflow' })}
             onClick={() => setShowFilter(v => !v)}
           >
             <RiFilter3Line className={cn(
@@ -83,7 +83,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.all', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">{t($ => $['comments.filter.all'], { ns: 'workflow' })}</span>
                 {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <button
@@ -93,7 +93,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.onlyYourThreads', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">{t($ => $['comments.filter.onlyYourThreads'], { ns: 'workflow' })}</span>
                 {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <Divider type="horizontal" className="my-1" />
@@ -103,7 +103,7 @@ const CommentsPanel = () => {
                   e.stopPropagation()
                 }}
               >
-                <span className="text-sm text-text-secondary">{t('comments.filter.showResolved', { ns: 'workflow' })}</span>
+                <span className="text-sm text-text-secondary">{t($ => $['comments.filter.showResolved'], { ns: 'workflow' })}</span>
                 <Switch
                   size="md"
                   checked={showResolvedComments}
@@ -176,7 +176,7 @@ const CommentsPanel = () => {
                     <div className="system-2xs-regular text-text-tertiary">
                       {c.reply_count}
                       {' '}
-                      {t('comments.reply', { ns: 'workflow' })}
+                      {t($ => $['comments.reply'], { ns: 'workflow' })}
                     </div>
                   </div>
                 )}
@@ -185,7 +185,7 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
+          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t($ => $['comments.noComments'], { ns: 'workflow' })}</div>
         )}
       </div>
     </div>

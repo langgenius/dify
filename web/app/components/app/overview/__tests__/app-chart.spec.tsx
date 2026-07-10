@@ -3,11 +3,14 @@ import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('echarts-for-react', () => ({
   default: (props: { option: unknown, opts?: unknown }) => {

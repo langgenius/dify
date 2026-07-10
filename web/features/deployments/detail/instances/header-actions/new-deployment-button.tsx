@@ -29,7 +29,7 @@ export function NewDeploymentButton() {
       }}
     >
       <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
-      {t('deployTab.newDeployment')}
+      {t($ => $['deployTab.newDeployment'])}
     </Button>
   )
 }

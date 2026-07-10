@@ -43,12 +43,12 @@ const InputsFormNode = ({
         )}
         >
           <Message3Fill className="size-6 shrink-0" />
-          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow system-xl-semibold text-text-secondary">{t($ => $['chat.chatSettingsTitle'], { ns: 'share' })}</div>
           {collapsed && (
-            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
+            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t($ => $['operation.edit'], { ns: 'common' })}</Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
+            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t($ => $['operation.close'], { ns: 'common' })}</Button>
           )}
         </div>
         {!collapsed && (
@@ -70,7 +70,7 @@ const InputsFormNode = ({
                   : {}
               }
             >
-              {t('chat.startChat', { ns: 'share' })}
+              {t($ => $['chat.startChat'], { ns: 'share' })}
             </Button>
           </div>
         )}

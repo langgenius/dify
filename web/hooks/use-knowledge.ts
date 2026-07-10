@@ -9,14 +9,14 @@ export const useKnowledge = () => {
   const { t } = useTranslation()
 
   const formatIndexingTechnique = useCallback((indexingTechnique: IndexingTechnique) => {
-    return t(`indexingTechnique.${indexingTechnique}`, { ns: 'dataset' }) as string
+    return t($ => $[`indexingTechnique.${indexingTechnique}`], { ns: 'dataset' }) as string
   }, [t])
 
   const formatIndexingMethod = useCallback((indexingMethod: IndexingMethod, isEco?: boolean) => {
     if (isEco)
-      return t('indexingMethod.invertedIndex', { ns: 'dataset' })
+      return t($ => $['indexingMethod.invertedIndex'], { ns: 'dataset' })
 
-    return t(`indexingMethod.${indexingMethod}`, { ns: 'dataset' }) as string
+    return t($ => $[`indexingMethod.${indexingMethod}`], { ns: 'dataset' }) as string
   }, [t])
 
   const formatIndexingTechniqueAndMethod = useCallback((indexingTechnique: IndexingTechnique, indexingMethod: IndexingMethod) => {

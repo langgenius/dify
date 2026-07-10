@@ -6,6 +6,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as ReactI18next from 'react-i18next'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
 
@@ -568,7 +569,7 @@ describe('HeaderInMobile', () => {
     const handleDelete = vi.fn()
     const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation')
     useTranslationSpy.mockReturnValue({
-      t: (key: string) => key === 'chat.deleteConversation.content' ? '' : key,
+      t: withSelectorKey((key: string) => key === 'chat.deleteConversation.content' ? '' : key),
       i18n: {} as unknown as i18n,
       ready: true,
       tReady: true,

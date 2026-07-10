@@ -31,12 +31,12 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     if (!selectedId) {
       if (isOpen) {
         return {
-          label: t('subscription.selectPlaceholder', { ns: 'pluginTrigger' }),
+          label: t($ => $['subscription.selectPlaceholder'], { ns: 'pluginTrigger' }),
           color: 'yellow' as const,
         }
       }
       return {
-        label: t('subscription.noSubscriptionSelected', { ns: 'pluginTrigger' }),
+        label: t($ => $['subscription.noSubscriptionSelected'], { ns: 'pluginTrigger' }),
         color: 'red' as const,
       }
     }
@@ -46,7 +46,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
 
       if (!selectedSubscription) {
         return {
-          label: t('subscription.subscriptionRemoved', { ns: 'pluginTrigger' }),
+          label: t($ => $['subscription.subscriptionRemoved'], { ns: 'pluginTrigger' }),
           color: 'red' as const,
         }
       }
@@ -58,7 +58,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     }
 
     return {
-      label: t('subscription.noSubscriptionSelected', { ns: 'pluginTrigger' }),
+      label: t($ => $['subscription.noSubscriptionSelected'], { ns: 'pluginTrigger' }),
       color: 'red' as const,
     }
   }, [selectedId, subscriptions, t, isOpen])

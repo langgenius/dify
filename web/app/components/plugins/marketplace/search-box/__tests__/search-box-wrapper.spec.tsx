@@ -6,11 +6,14 @@ const mockHandleSearchPluginTextChange = vi.fn()
 const mockHandleFilterPluginTagsChange = vi.fn()
 const mockSearchBox = vi.fn()
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
+    }),
+  })
+})
 
 vi.mock('../../atoms', () => ({
   useSearchPluginText: () => ['plugin search', mockHandleSearchPluginTextChange],

@@ -38,7 +38,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   }, [])
   const conditionNotSet = (
     <div className="flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
-      {t(`${i18nPrefix}.conditionNotSetup`, { ns: 'workflow' })}
+      {t($ => $[`${i18nPrefix}.conditionNotSetup`], { ns: 'workflow' })}
     </div>
   )
 
@@ -82,7 +82,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                       : conditionNotSet
                   }
                   {i !== caseItem.conditions.length - 1 && (
-                    <div className="absolute right-1 bottom-[-10px] z-10 text-[10px] leading-4 font-medium text-text-accent uppercase">{t(`${i18nPrefix}.${caseItem.logical_operator}`, { ns: 'workflow' })}</div>
+                    <div className="absolute right-1 bottom-[-10px] z-10 text-[10px] leading-4 font-medium text-text-accent uppercase">{t($ => $[`${i18nPrefix}.${caseItem.logical_operator}`], { ns: 'workflow' })}</div>
                   )}
                 </div>
               ))}

@@ -161,7 +161,7 @@ describe('error_sso dedicated view', () => {
     render(<DevicePage />)
     await screen.findByText(TITLE)
     fireEvent.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
-    await screen.findByText('chooser.subtitle')
+    await screen.findByText('deviceFlow.chooser.subtitle')
     expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
   })
 

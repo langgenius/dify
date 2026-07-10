@@ -87,7 +87,7 @@ const PermissionGroupList = ({
         {groups.length === 0
           ? (
               <div className="flex h-full items-center justify-center px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                {t('permissionList.noPermissionsFound', { ns: 'permission' })}
+                {t($ => $['permissionList.noPermissionsFound'], { ns: 'permission' })}
               </div>
             )
           : (
@@ -119,8 +119,8 @@ const PermissionGroupList = ({
                             onClick={() => toggleGroupSelection(group, selectedCount)}
                           >
                             {allSelected
-                              ? t('permissionList.clearAll', { ns: 'permission' })
-                              : t('permissionList.selectAll', { ns: 'permission' })}
+                              ? t($ => $['permissionList.clearAll'], { ns: 'permission' })
+                              : t($ => $['permissionList.selectAll'], { ns: 'permission' })}
                           </button>
                         )}
                         {selectedCount > 0 && (
@@ -133,7 +133,7 @@ const PermissionGroupList = ({
                         <button
                           type="button"
                           className="flex h-6 w-6 shrink-0 items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active"
-                          aria-label={expanded ? t('permissionList.collapseGroup', { ns: 'permission' }) : t('permissionList.expandGroup', { ns: 'permission' })}
+                          aria-label={expanded ? t($ => $['permissionList.collapseGroup'], { ns: 'permission' }) : t($ => $['permissionList.expandGroup'], { ns: 'permission' })}
                           onClick={() => toggleGroupExpanded(group.group_key)}
                         >
                           <span

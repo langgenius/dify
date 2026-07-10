@@ -66,7 +66,7 @@ function DebugInfo({
         popupClassName="border-0 bg-transparent p-0 shadow-none"
       >
         <PluginSidecarPanel
-          title={t(`${i18nPrefix}.title`, { ns: 'plugin' })}
+          title={t($ => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
           footer={(
             <div className="flex w-full shrink-0 flex-col items-start">
               <div className="flex w-full shrink-0 items-center justify-end gap-2 px-4 pt-2 pb-4">
@@ -77,7 +77,7 @@ function DebugInfo({
                     rel="noopener noreferrer"
                     className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
                   >
-                    <span>{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
+                    <span>{t($ => $[`${i18nPrefix}.viewDocs`], { ns: 'plugin' })}</span>
                     <RiArrowRightUpLine className="size-3" />
                   </a>
                 </div>

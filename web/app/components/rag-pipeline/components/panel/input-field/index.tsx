@@ -110,7 +110,7 @@ const InputFieldPanel = () => {
     <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
         <div className="grow system-xl-semibold text-text-primary">
-          {t('inputFieldPanel.title', { ns: 'datasetPipeline' })}
+          {t($ => $['inputFieldPanel.title'], { ns: 'datasetPipeline' })}
         </div>
         <Button
           variant="ghost"
@@ -123,12 +123,12 @@ const InputFieldPanel = () => {
           disabled={isEditing}
         >
           <RiEyeLine className="size-3.5" />
-          <span className="px-[3px]">{t('operations.preview', { ns: 'datasetPipeline' })}</span>
+          <span className="px-[3px]">{t($ => $['operations.preview'], { ns: 'datasetPipeline' })}</span>
         </Button>
         <Divider type="vertical" className="mx-1 h-3" />
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
@@ -136,19 +136,19 @@ const InputFieldPanel = () => {
         </button>
       </div>
       <div className="shrink-0 px-4 pt-1 pb-2 system-sm-regular text-text-tertiary">
-        {t('inputFieldPanel.description', { ns: 'datasetPipeline' })}
+        {t($ => $['inputFieldPanel.description'], { ns: 'datasetPipeline' })}
       </div>
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
+            {t($ => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
           </span>
           <Infotip
-            aria-label={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+            aria-label={t($ => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
             popupClassName="max-w-[240px]"
           >
-            {t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+            {t($ => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
           </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">

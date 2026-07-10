@@ -55,7 +55,7 @@ const NodeControl: FC<NodeControlProps> = ({
           canRun && !nodesReadOnly && canRunBySingle(data.type, isChildNode) && (
             <button
               type="button"
-              aria-label={isSingleRunning ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' }) : t('panel.runThisStep', { ns: 'workflow' })}
+              aria-label={isSingleRunning ? t($ => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' }) : t($ => $['panel.runThisStep'], { ns: 'workflow' })}
               className={`flex size-5 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
               onClick={() => {
                 const action = isSingleRunning ? 'stop' : 'run'
@@ -78,7 +78,7 @@ const NodeControl: FC<NodeControlProps> = ({
                           render={<span className="i-ri-play-large-line size-3" />}
                         />
                         <TooltipContent>
-                          {t('panel.runThisStep', { ns: 'workflow' })}
+                          {t($ => $['panel.runThisStep'], { ns: 'workflow' })}
                         </TooltipContent>
                       </Tooltip>
                     )

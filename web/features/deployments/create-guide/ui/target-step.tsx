@@ -61,8 +61,8 @@ export function TargetStepContent() {
 
   return (
     <StepShell
-      title={t('createGuide.target.title')}
-      description={t('createGuide.target.description')}
+      title={t($ => $['createGuide.target.title'])}
+      description={t($ => $['createGuide.target.description'])}
       hideHeader
     >
       <div className="flex flex-col gap-6">
@@ -88,7 +88,7 @@ function TargetEnvironmentSection() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['createGuide.target.environment'])}</div>
       {hasEnvironmentOptions
         ? (
             <RadioGroup<string>
@@ -109,8 +109,8 @@ function TargetEnvironmentSection() {
           : (
               <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
                 {environmentsIsError
-                  ? t('createGuide.target.loadEnvironmentsFailed')
-                  : t('createGuide.target.noEnvironmentOptions')}
+                  ? t($ => $['createGuide.target.loadEnvironmentsFailed'])
+                  : t($ => $['createGuide.target.noEnvironmentOptions'])}
               </div>
             )}
     </div>
@@ -121,7 +121,7 @@ function EnvironmentOptionRow({ environment }: {
   environment: Environment
 }) {
   const { t } = useTranslation('deployments')
-  const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
+  const summary = environment.description.trim() || `${t($ => $[`mode.${environment.mode}`])} · ${t($ => $[`backend.${environment.backend}`])}`
 
   return (
     <RadioItem<string>
@@ -169,14 +169,14 @@ function TargetBindingSection() {
     return (
       <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
         <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
-          <span className="system-xs-regular text-text-tertiary">{t('createGuide.target.bindingHint')}</span>
+          <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['createGuide.target.bindings'])}</div>
+          <span className="system-xs-regular text-text-tertiary">{t($ => $['createGuide.target.bindingHint'])}</span>
         </div>
         {isBindingLoading
           ? <TargetBindingSkeleton />
           : (
               <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                {t('createGuide.target.loadBindingsFailed')}
+                {t($ => $['createGuide.target.loadBindingsFailed'])}
               </div>
             )}
       </div>
@@ -187,13 +187,13 @@ function TargetBindingSection() {
     <RuntimeCredentialBindingsPanel
       slots={bindingSlots}
       selections={bindingSelections}
-      title={t('createGuide.target.bindings')}
-      hint={t('createGuide.target.bindingHint')}
-      noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
-      noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
-      selectCredentialLabel={t('createGuide.target.selectCredential')}
-      missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
-      bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
+      title={t($ => $['createGuide.target.bindings'])}
+      hint={t($ => $['createGuide.target.bindingHint'])}
+      noBindingRequiredLabel={t($ => $['createGuide.target.noBindingRequired'])}
+      noCredentialCandidatesLabel={t($ => $['createGuide.target.noCredentialCandidates'])}
+      selectCredentialLabel={t($ => $['createGuide.target.selectCredential'])}
+      missingRequiredLabel={t($ => $['createGuide.target.missingRequiredBinding'])}
+      bindingCountLabel={t($ => $['createGuide.target.bindingCount'], { count: bindingSlots.length })}
       onChange={selectBinding}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
@@ -220,19 +220,19 @@ function TargetEnvVarSection() {
     <EnvVarBindingsPanel
       slots={envVarSlots}
       values={envVarValues}
-      title={t('createGuide.target.envVars')}
-      hint={t('createGuide.target.envVarHint')}
-      envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
-      literalSourceLabel={t('createGuide.target.envVarSource.literal')}
-      defaultSourceLabel={t('createGuide.target.envVarSource.default')}
-      lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
+      title={t($ => $['createGuide.target.envVars'])}
+      hint={t($ => $['createGuide.target.envVarHint'])}
+      envVarPlaceholder={t($ => $['createGuide.target.envVarPlaceholder'])}
+      literalSourceLabel={t($ => $['createGuide.target.envVarSource.literal'])}
+      defaultSourceLabel={t($ => $['createGuide.target.envVarSource.default'])}
+      lastDeploymentSourceLabel={t($ => $['createGuide.target.envVarSource.lastDeployment'])}
       valueTypeLabels={{
-        string: t('createGuide.target.envVarType.string'),
-        number: t('createGuide.target.envVarType.number'),
-        secret: t('createGuide.target.envVarType.secret'),
+        string: t($ => $['createGuide.target.envVarType.string']),
+        number: t($ => $['createGuide.target.envVarType.number']),
+        secret: t($ => $['createGuide.target.envVarType.secret']),
       }}
-      sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
-      envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
+      sourceAriaLabel={key => t($ => $['createGuide.target.envVarSource.ariaLabel'], { key })}
+      envVarCountLabel={t($ => $['createGuide.target.envVarCount'], { count: envVarSlots.length })}
       onChange={setEnvVar}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
@@ -279,7 +279,7 @@ export function TargetBackButton() {
 
   return (
     <Button type="button" variant="secondary" onClick={() => setStep('release')} disabled={isSubmitting}>
-      {t('createGuide.actions.back')}
+      {t($ => $['createGuide.actions.back'])}
     </Button>
   )
 }
@@ -292,8 +292,8 @@ export function TargetSkipDeploymentButton() {
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSkippingDeployment
-    ? t('createGuide.actions.creating')
-    : t('createGuide.actions.skipDeploy')
+    ? t($ => $['createGuide.actions.creating'])
+    : t($ => $['createGuide.actions.skipDeploy'])
 
   async function handleSkipDeployment() {
     if (!canSkipDeployment)
@@ -307,8 +307,8 @@ export function TargetSkipDeploymentButton() {
     catch (error) {
       await showSubmissionError({
         error,
-        fallbackMessage: t('createGuide.errors.createReleaseFailed'),
-        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+        fallbackMessage: t($ => $['createGuide.errors.createReleaseFailed']),
+        unsupportedDslModeMessage: t($ => $['createGuide.dsl.unsupportedMode']),
       })
     }
   }
@@ -328,8 +328,8 @@ export function TargetDeployButton() {
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSubmitting && !isSkippingDeployment
-    ? t('createGuide.actions.deploying')
-    : t('createGuide.actions.createAndDeploy')
+    ? t($ => $['createGuide.actions.deploying'])
+    : t($ => $['createGuide.actions.createAndDeploy'])
 
   async function handleDeploy() {
     if (!canDeploy)
@@ -343,8 +343,8 @@ export function TargetDeployButton() {
     catch (error) {
       await showSubmissionError({
         error,
-        fallbackMessage: t('createGuide.errors.deployFailed'),
-        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+        fallbackMessage: t($ => $['createGuide.errors.deployFailed']),
+        unsupportedDslModeMessage: t($ => $['createGuide.dsl.unsupportedMode']),
       })
     }
   }

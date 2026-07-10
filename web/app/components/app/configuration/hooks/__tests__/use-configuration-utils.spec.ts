@@ -1,5 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
 import type { VisionSettings } from '@/types/app'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import {
   buildConfigurationDatasetConfigs,
@@ -19,6 +20,7 @@ const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
+const t = withSelectorKey((key: string) => key)
 
 const baseVisionConfig: VisionSettings = {
   enabled: false,
@@ -692,7 +694,7 @@ describe('useConfiguration utils', () => {
       setPublishedConfig,
       speechToTextConfig: { enabled: false } as any,
       suggestedQuestionsAfterAnswerConfig: { enabled: false } as any,
-      t: (key: string) => key,
+      t,
       textToSpeechConfig: { enabled: false, voice: '', language: '' } as any,
     })
 
@@ -779,7 +781,7 @@ describe('useConfiguration utils', () => {
       setPublishedConfig: vi.fn(),
       speechToTextConfig: { enabled: false } as any,
       suggestedQuestionsAfterAnswerConfig: { enabled: false } as any,
-      t: (key: string) => key,
+      t,
       textToSpeechConfig: { enabled: false, voice: '', language: '' } as any,
       ...overrides,
     })
@@ -828,7 +830,7 @@ describe('useConfiguration utils', () => {
       resolvedModelModeType: ModelModeType.chat,
       setCompletionParams,
       setModelConfig,
-      t: (key: string) => key,
+      t,
       visionConfig: baseVisionConfig,
     })
 
@@ -882,7 +884,7 @@ describe('useConfiguration utils', () => {
       resolvedModelModeType: ModelModeType.chat,
       setCompletionParams,
       setModelConfig,
-      t: (key: string) => key,
+      t,
       visionConfig: baseVisionConfig,
     })
 

@@ -69,11 +69,11 @@ const NewFeaturePanel = ({
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">{title ?? t('common.features', { ns: 'workflow' })}</div>
-            <div className="body-xs-regular text-text-tertiary">{description ?? t('common.featuresDescription', { ns: 'workflow' })}</div>
+            <div className="system-xl-semibold text-text-primary">{title ?? t($ => $['common.features'], { ns: 'workflow' })}</div>
+            <div className="body-xs-regular text-text-tertiary">{description ?? t($ => $['common.featuresDescription'], { ns: 'workflow' })}</div>
           </div>
           <DrawerCloseButton
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="size-8 p-2"
           />
         </div>

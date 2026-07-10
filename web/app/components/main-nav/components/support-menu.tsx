@@ -29,7 +29,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
     <>
       {shouldShowUpgradeContact && (
         <DropdownMenuItem
-          aria-label={`${t('userProfile.contactUs', { ns: 'common' })} ${t('upgradeBtn.encourageShort', { ns: 'billing' })}`}
+          aria-label={`${t($ => $['userProfile.contactUs'], { ns: 'common' })} ${t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}`}
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             setShowPricingModal()
@@ -40,7 +40,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
             iconClassName="i-ri-chat-smile-2-line text-text-disabled"
             label={(
               <span className="text-text-disabled">
-                {t('userProfile.contactUs', { ns: 'common' })}
+                {t($ => $['userProfile.contactUs'], { ns: 'common' })}
               </span>
             )}
             trailing={(
@@ -48,7 +48,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
                 aria-hidden
                 className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible"
               >
-                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                {t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
               </span>
             )}
           />
@@ -64,7 +64,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-chat-smile-2-line"
-            label={t('userProfile.contactUs', { ns: 'common' })}
+            label={t($ => $['userProfile.contactUs'], { ns: 'common' })}
           />
         </DropdownMenuItem>
       )}
@@ -77,7 +77,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
         >
           <MenuItemContent
             iconClassName="i-ri-mail-send-line"
-            label={t('userProfile.emailSupport', { ns: 'common' })}
+            label={t($ => $['userProfile.emailSupport'], { ns: 'common' })}
             trailing={<ExternalLinkIndicator />}
           />
         </DropdownMenuLinkItem>
@@ -90,7 +90,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
       >
         <MenuItemContent
           iconClassName="i-ri-discuss-line"
-          label={t('userProfile.forum', { ns: 'common' })}
+          label={t($ => $['userProfile.forum'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
       </DropdownMenuLinkItem>
@@ -102,7 +102,7 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
       >
         <MenuItemContent
           iconClassName="i-ri-discord-line"
-          label={t('userProfile.community', { ns: 'common' })}
+          label={t($ => $['userProfile.community'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
       </DropdownMenuLinkItem>

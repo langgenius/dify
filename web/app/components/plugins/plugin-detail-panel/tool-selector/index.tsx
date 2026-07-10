@@ -116,17 +116,17 @@ const ToolSelector: FC<Props> = ({
     <div className="max-w-[240px] space-y-1 text-xs">
       <h3 className="font-semibold text-text-primary">
         {currentTool
-          ? t('detailPanel.toolSelector.uninstalledTitle', { ns: 'plugin' })
-          : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+          ? t($ => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })
+          : t($ => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
       </h3>
       <p className="tracking-tight text-text-secondary">
         {currentTool
-          ? t('detailPanel.toolSelector.uninstalledContent', { ns: 'plugin' })
-          : t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })}
+          ? t($ => $['detailPanel.toolSelector.uninstalledContent'], { ns: 'plugin' })
+          : t($ => $['detailPanel.toolSelector.unsupportedContent'], { ns: 'plugin' })}
       </p>
       <p>
         <Link href="/plugins" className="tracking-tight text-text-accent">
-          {t('detailPanel.toolSelector.uninstalledLink', { ns: 'plugin' })}
+          {t($ => $['detailPanel.toolSelector.uninstalledLink'], { ns: 'plugin' })}
         </Link>
       </p>
     </div>
@@ -191,7 +191,7 @@ const ToolSelector: FC<Props> = ({
         >
           {/* Header */}
           <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">
-            {t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}
+            {t($ => $[`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`], { ns: 'plugin' })}
           </div>
 
           {/* Base form: tool picker + description */}

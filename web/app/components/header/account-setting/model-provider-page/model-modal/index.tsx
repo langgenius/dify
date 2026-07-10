@@ -209,15 +209,15 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [mode, selectedCredential, model, currentCustomConfigurationModelFixedFields, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
 
   const modalTitle = useMemo(() => {
-    let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
+    let label = t($ => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
 
     if (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.addCustomModelToModelList)
-      label = t('modelProvider.auth.addModel', { ns: 'common' })
+      label = t($ => $['modelProvider.auth.addModel'], { ns: 'common' })
     if (mode === ModelModalModeEnum.configModelCredential) {
       if (credential)
-        label = t('modelProvider.auth.editModelCredential', { ns: 'common' })
+        label = t($ => $['modelProvider.auth.editModelCredential'], { ns: 'common' })
       else
-        label = t('modelProvider.auth.addModelCredential', { ns: 'common' })
+        label = t($ => $['modelProvider.auth.addModelCredential'], { ns: 'common' })
     }
 
     return (
@@ -231,7 +231,7 @@ const ModelModal: FC<ModelModalProps> = ({
     if (providerFormSchemaPredefined) {
       return (
         <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
+          {t($ => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'common' })}
         </div>
       )
     }
@@ -281,8 +281,8 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [mode, selectedCredential])
   const saveButtonText = useMemo(() => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList || mode === ModelModalModeEnum.configCustomModel)
-      return t('operation.add', { ns: 'common' })
-    return t('operation.save', { ns: 'common' })
+      return t($ => $['operation.add'], { ns: 'common' })
+    return t($ => $['operation.save'], { ns: 'common' })
   }, [mode, t])
   const canSaveCredentialChange = mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential.addNewCredential
     ? canUseCredential
@@ -355,7 +355,7 @@ const ModelModal: FC<ModelModalProps> = ({
           {
             showCredentialLabel && (
               <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-                {t('modelProvider.auth.modelCredential', { ns: 'common' })}
+                {t($ => $['modelProvider.auth.modelCredential'], { ns: 'common' })}
                 <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
               </div>
             )
@@ -411,14 +411,14 @@ const ModelModal: FC<ModelModalProps> = ({
                   tone="destructive"
                   onClick={() => openConfirmDelete(credential, model)}
                 >
-                  {t('operation.remove', { ns: 'common' })}
+                  {t($ => $['operation.remove'], { ns: 'common' })}
                 </Button>
               )
             }
             <Button
               onClick={onCancel}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               variant="primary"
@@ -434,7 +434,7 @@ const ModelModal: FC<ModelModalProps> = ({
             <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
                 <Lock01 className="mr-1 size-3 text-text-tertiary" />
-                {t('modelProvider.encrypted.front', { ns: 'common' })}
+                {t($ => $['modelProvider.encrypted.front'], { ns: 'common' })}
                 <a
                   className="mx-1 text-text-accent"
                   target="_blank"
@@ -443,7 +443,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 >
                   PKCS1_OAEP
                 </a>
-                {t('modelProvider.encrypted.back', { ns: 'common' })}
+                {t($ => $['modelProvider.encrypted.back'], { ns: 'common' })}
               </div>
             </div>
           )
@@ -453,16 +453,16 @@ const ModelModal: FC<ModelModalProps> = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={doingAction}
               onClick={handleDeleteCredential}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

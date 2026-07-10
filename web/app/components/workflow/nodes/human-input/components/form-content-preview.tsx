@@ -61,7 +61,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
       }}
     >
       <div className="flex h-[26px] items-center justify-between px-4">
-        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</Badge>
+        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t($ => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}</Badge>
         <ActionButton onClick={onClose}><span className="i-ri-close-line size-5 text-text-tertiary" /></ActionButton>
       </div>
       <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">
@@ -92,7 +92,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
             </Button>
           ))}
         </div>
-        <div className="mt-1 system-xs-regular text-text-tertiary">{t('nodes.humanInput.editor.previewTip', { ns: 'workflow' })}</div>
+        <div className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['nodes.humanInput.editor.previewTip'], { ns: 'workflow' })}</div>
       </div>
     </div>
   )

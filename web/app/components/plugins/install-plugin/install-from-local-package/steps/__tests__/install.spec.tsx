@@ -156,7 +156,7 @@ describe('Install', () => {
     it('should render trust source message', () => {
       render(<Install {...defaultProps} />)
 
-      expect(screen.getByText('installModal.fromTrustSource')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.fromTrustSource')).toBeInTheDocument()
     })
 
     it('should render plugin card', () => {

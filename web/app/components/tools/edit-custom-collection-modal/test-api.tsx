@@ -97,10 +97,10 @@ const TestApi: FC<Props> = ({
                 <div className="shrink-0 border-b border-divider-regular py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {`${t('test.title', { ns: 'tools' })}  ${toolName}`}
+                      {`${t($ => $['test.title'], { ns: 'tools' })}  ${toolName}`}
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -108,21 +108,21 @@ const TestApi: FC<Props> = ({
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2">
                   <div className="space-y-4">
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.title'], { ns: 'tools' })}</div>
                       <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
-                        <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${tempCredential.auth_type}`, { ns: 'tools' })}</div>
+                        <div className="system-xs-regular text-text-primary">{t($ => $[`createTool.authMethod.types.${tempCredential.auth_type}`], { ns: 'tools' })}</div>
                         <RiSettings2Line className="size-4 text-text-secondary" />
                       </div>
                     </div>
 
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('test.parametersValue', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['test.parametersValue'], { ns: 'tools' })}</div>
                       <div className="rounded-lg border border-divider-regular">
                         <table className="w-full body-xs-regular text-text-secondary">
                           <thead className="text-text-tertiary uppercase">
                             <tr className="border-b border-divider-regular">
-                              <th className="p-2 pl-3 font-medium">{t('test.parameters', { ns: 'tools' })}</th>
-                              <th className="p-2 pl-3 font-medium">{t('test.value', { ns: 'tools' })}</th>
+                              <th className="p-2 pl-3 font-medium">{t($ => $['test.parameters'], { ns: 'tools' })}</th>
+                              <th className="p-2 pl-3 font-medium">{t($ => $['test.value'], { ns: 'tools' })}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -147,14 +147,14 @@ const TestApi: FC<Props> = ({
                     </div>
 
                   </div>
-                  <Button variant="primary" className="mt-4 h-10 w-full" loading={testing} disabled={testing} onClick={handleTest}>{t('test.title', { ns: 'tools' })}</Button>
+                  <Button variant="primary" className="mt-4 h-10 w-full" loading={testing} disabled={testing} onClick={handleTest}>{t($ => $['test.title'], { ns: 'tools' })}</Button>
                   <div className="mt-6">
                     <div className="flex items-center space-x-3">
-                      <div className="system-xs-semibold text-text-tertiary">{t('test.testResult', { ns: 'tools' })}</div>
+                      <div className="system-xs-semibold text-text-tertiary">{t($ => $['test.testResult'], { ns: 'tools' })}</div>
                       <div className="bg-[rgb(243, 244, 246)] h-px w-0 grow"></div>
                     </div>
                     <div className="mt-2 h-[200px] overflow-x-hidden overflow-y-auto rounded-lg bg-components-input-bg-normal px-3 py-2 system-xs-regular text-text-secondary">
-                      {result || <span className="text-text-quaternary">{t('test.testResultPlaceholder', { ns: 'tools' })}</span>}
+                      {result || <span className="text-text-quaternary">{t($ => $['test.testResultPlaceholder'], { ns: 'tools' })}</span>}
                     </div>
                   </div>
                 </div>

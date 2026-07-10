@@ -1,5 +1,6 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { FlowType } from '@/types/common'
 import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
@@ -59,7 +60,7 @@ describe('PanelContextmenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,

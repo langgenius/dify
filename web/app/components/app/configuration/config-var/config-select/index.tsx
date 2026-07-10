@@ -69,7 +69,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                 />
                 <button
                   type="button"
-                  aria-label={t('operation.delete', { ns: 'common' })}
+                  aria-label={t($ => $['operation.delete'], { ns: 'common' })}
                   className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
@@ -91,7 +91,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
         className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
       >
         <RiAddLine className="size-4" />
-        <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
+        <div className="system-sm-medium text-[13px]">{t($ => $['variableConfig.addOption'], { ns: 'appDebug' })}</div>
       </div>
     </div>
   )

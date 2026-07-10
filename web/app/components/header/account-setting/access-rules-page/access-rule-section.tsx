@@ -89,7 +89,7 @@ const AccessRuleSection = ({
               {title}
             </span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
-              {t('accessRule.summary', { ns: 'permission', count: ruleCount })}
+              {t($ => $['accessRule.summary'], { ns: 'permission', count: ruleCount })}
             </span>
           </div>
         </button>
@@ -102,12 +102,12 @@ const AccessRuleSection = ({
               disabled={isLoadingRules}
             >
               <span className="mr-0.5 i-ri-add-line size-3.5" />
-              <span>{t('accessRule.newPermissionSet', { ns: 'permission' })}</span>
+              <span>{t($ => $['accessRule.newPermissionSet'], { ns: 'permission' })}</span>
             </Button>
           )}
           <ActionButton
             size="l"
-            aria-label={expanded ? t('accessRule.collapseSection', { ns: 'permission', title }) : t('accessRule.expandSection', { ns: 'permission', title })}
+            aria-label={expanded ? t($ => $['accessRule.collapseSection'], { ns: 'permission', title }) : t($ => $['accessRule.expandSection'], { ns: 'permission', title })}
             onClick={() => setExpanded(expanded => !expanded)}
           >
             <span
@@ -134,7 +134,7 @@ const AccessRuleSection = ({
             : rules.length === 0
               ? (
                   <div className="px-1 py-8 text-center system-sm-regular text-text-tertiary">
-                    {t('accessRule.noRules', { ns: 'permission' })}
+                    {t($ => $['accessRule.noRules'], { ns: 'permission' })}
                   </div>
                 )
               : (

@@ -43,7 +43,7 @@ export function AgentLogDetailPanel({
   const chatList = log
     ? formatAgentLogMessages({
         conversationId: log.conversation_id,
-        formatLogTime: value => formatTime(value, tAgentV2('roster.dateTimeFormat')),
+        formatLogTime: value => formatTime(value, tAgentV2($ => $['roster.dateTimeFormat'])),
         messages: messagesQuery.data?.data ?? [],
       })
     : []
@@ -52,7 +52,7 @@ export function AgentLogDetailPanel({
     <div className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="min-w-0 shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{t('detail.conversationId', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{t($ => $['detail.conversationId'], { ns: 'appLog' })}</div>
           <div className="flex min-w-0 items-center system-2xs-regular-uppercase text-text-secondary">
             {log && (
               <>
@@ -76,7 +76,7 @@ export function AgentLogDetailPanel({
             {log?.title || log?.conversation_id}
           </div>
         </div>
-        <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
+        <ActionButton size="l" aria-label={t($ => $['operation.close'], { ns: 'common' })} onClick={onClose}>
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
         </ActionButton>
       </div>
@@ -91,12 +91,12 @@ export function AgentLogDetailPanel({
         )}
         {messagesQuery.isError && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
-            {t('agentDetail.logs.loadFailed', { ns: 'agentV2' })}
+            {t($ => $['agentDetail.logs.loadFailed'], { ns: 'agentV2' })}
           </div>
         )}
         {messagesQuery.isSuccess && chatList.length === 0 && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
-            {t('agentDetail.logs.empty', { ns: 'agentV2' })}
+            {t($ => $['agentDetail.logs.empty'], { ns: 'agentV2' })}
           </div>
         )}
         {messagesQuery.isSuccess && chatList.length > 0 && (

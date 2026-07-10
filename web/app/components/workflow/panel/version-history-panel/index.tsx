@@ -133,7 +133,7 @@ export const VersionHistoryPanel = ({
         break
       case VersionHistoryContextMenuOptions.copyId:
         copy(item.id)
-        toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
+        toast.success(t($ => $['versionHistory.action.copyIdSuccess'], { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
         if (!canUseWorkflowVersionAction) {
@@ -217,14 +217,14 @@ export const VersionHistoryPanel = ({
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
-      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+      toast.success(t($ => $['versionHistory.action.restoreSuccess'], { ns: 'workflow' }))
       deleteAllInspectVars()
       invalidAllLastRun()
       await emitRestoreComplete(item, true)
       await emitWorkflowUpdate()
     }
     catch {
-      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      toast.error(t($ => $['versionHistory.action.restoreFailure'], { ns: 'workflow' }))
       await emitRestoreComplete(item, false, 'restore failed')
     }
     finally {
@@ -238,13 +238,13 @@ export const VersionHistoryPanel = ({
     await deleteWorkflow(deleteVersionUrl?.(id) || '', {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
-        toast.success(t('versionHistory.action.deleteSuccess', { ns: 'workflow' }))
+        toast.success(t($ => $['versionHistory.action.deleteSuccess'], { ns: 'workflow' }))
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
         invalidAllLastRun()
       },
       onError: () => {
-        toast.error(t('versionHistory.action.deleteFailure', { ns: 'workflow' }))
+        toast.error(t($ => $['versionHistory.action.deleteFailure'], { ns: 'workflow' }))
       },
       onSettled: () => {
         setDeleteConfirmOpen(false)
@@ -262,11 +262,11 @@ export const VersionHistoryPanel = ({
     }, {
       onSuccess: () => {
         setEditModalOpen(false)
-        toast.success(t('versionHistory.action.updateSuccess', { ns: 'workflow' }))
+        toast.success(t($ => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
         resetWorkflowVersionHistory()
       },
       onError: () => {
-        toast.error(t('versionHistory.action.updateFailure', { ns: 'workflow' }))
+        toast.error(t($ => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
       },
       onSettled: () => {
         setEditModalOpen(false)
@@ -277,7 +277,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="flex-1 py-1 system-xl-semibold text-text-primary">{t($ => $['versionHistory.title'], { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -335,7 +335,7 @@ export const VersionHistoryPanel = ({
                   : <RiArrowDownDoubleLine className="size-3.5 text-text-accent" />}
               </div>
               <div className="py-px system-xs-medium-uppercase text-text-accent">
-                {t('common.loadMore', { ns: 'workflow' })}
+                {t($ => $['common.loadMore'], { ns: 'workflow' })}
               </div>
             </div>
           </div>
@@ -353,8 +353,8 @@ export const VersionHistoryPanel = ({
         <PlanUpgradeModal
           show
           onClose={() => setIsRestorePlanUpgradeModalOpen(false)}
-          title={t('upgrade.workflowRestore.title', { ns: 'billing' })!}
-          description={t('upgrade.workflowRestore.description', { ns: 'billing' })!}
+          title={t($ => $['upgrade.workflowRestore.title'], { ns: 'billing' })!}
+          description={t($ => $['upgrade.workflowRestore.description'], { ns: 'billing' })!}
         />
       )}
       {deleteConfirmOpen && (

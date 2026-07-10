@@ -1,11 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import DSLConfirmModal from '../dsl-confirm-modal'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 describe('DSLConfirmModal', () => {
   it('should render the version details', () => {

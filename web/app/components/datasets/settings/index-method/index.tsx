@@ -41,8 +41,8 @@ const IndexMethod = ({
         onClick={onChange}
         icon={<HighQuality className="size-[18px]" />}
         iconActiveColor="text-util-colors-orange-orange-500"
-        title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-        description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+        title={t($ => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
+        description={t($ => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
         disabled={disabled}
         isRecommended
         effectColor={EffectColor.orange}
@@ -62,8 +62,8 @@ const IndexMethod = ({
             onClick={onChange}
             icon={<Economic className="size-[18px]" />}
             iconActiveColor="text-util-colors-indigo-indigo-600"
-            title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-            description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
+            title={t($ => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+            description={t($ => $['form.indexMethodEconomyTip'], { ns: 'datasetSettings', count: keywordNumber })}
             disabled={disabled || isEconomyDisabled}
             effectColor={EffectColor.indigo}
             showEffectColor
@@ -82,7 +82,7 @@ const IndexMethod = ({
             sideOffset={4}
             popupClassName="rounded-lg border-0 bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg"
           >
-            {t('form.indexMethodChangeToEconomyDisabledTip', { ns: 'datasetSettings' })}
+            {t($ => $['form.indexMethodChangeToEconomyDisabledTip'], { ns: 'datasetSettings' })}
           </PopoverContent>
         )}
       </Popover>

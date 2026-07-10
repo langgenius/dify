@@ -46,7 +46,7 @@ function canSubmitEditDeploymentForm(initialValues: EditDeploymentFormValues, va
 
 function EditDeploymentForm() {
   const { t } = useTranslation('deployments')
-  const nameLabel = t('settings.name')
+  const nameLabel = t($ => $['settings.name'])
   const appInstance = useAtomValue(deploymentActionAppInstanceAtom)
   const appInstanceId = appInstance.id
   const initialValues = {
@@ -82,11 +82,11 @@ function EditDeploymentForm() {
       },
       {
         onSuccess: () => {
-          toast.success(t('settings.updated'))
+          toast.success(t($ => $['settings.updated']))
           setOpen(false)
         },
         onError: () => {
-          toast.error(t('settings.updateFailed'))
+          toast.error(t($ => $['settings.updateFailed']))
         },
       },
     )
@@ -106,11 +106,11 @@ function EditDeploymentForm() {
             defaultValue={initialValues.name}
             className="h-8"
           />
-          <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
+          <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}</FieldError>
         </FieldRoot>
         <FieldRoot name="description" className="gap-2">
           <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
-            {t('settings.description')}
+            {t($ => $['settings.description'])}
           </FieldLabel>
           <Textarea
             defaultValue={initialValues.description}
@@ -124,7 +124,7 @@ function EditDeploymentForm() {
             disabled={updateInstance.isPending}
             onClick={handleClose}
           >
-            {t('createModal.cancel')}
+            {t($ => $['createModal.cancel'])}
           </Button>
           <Button
             type="submit"
@@ -132,7 +132,7 @@ function EditDeploymentForm() {
             disabled={updateInstance.isPending}
             loading={updateInstance.isPending}
           >
-            {t('settings.save')}
+            {t($ => $['settings.save'])}
           </Button>
         </div>
       </Form>
@@ -148,7 +148,7 @@ function EditDeploymentDialogContent() {
     <>
       <div className="border-b border-divider-subtle px-6 py-5">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {t('card.menu.editInfo')}
+          {t($ => $['card.menu.editInfo'])}
         </DialogTitle>
       </div>
       <div className="px-6 py-5">

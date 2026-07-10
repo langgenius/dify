@@ -45,7 +45,7 @@ export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) =
         ...startPlaceholderDefault.defaultValue,
         selected: true,
         type: startPlaceholderDefault.metaData.type,
-        title: t(`blocks.${startPlaceholderDefault.metaData.type}`, { ns: 'workflow' }),
+        title: t($ => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
         desc: '',
       },
       position: START_INITIAL_POSITION,

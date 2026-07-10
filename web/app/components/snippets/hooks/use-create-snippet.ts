@@ -58,7 +58,7 @@ export const useCreateSnippet = () => {
         },
       })
 
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      toast.success(t($ => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     }

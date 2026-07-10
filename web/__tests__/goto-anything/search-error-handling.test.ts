@@ -15,12 +15,15 @@ import { postMarketplace } from '@/service/base'
 import { fetchDatasets } from '@/service/datasets'
 
 // Mock react-i18next before importing modules that use it
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => key,
-    language: 'en',
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    getI18n: () => ({
+      t: withSelectorKey((key: string) => key),
+      language: 'en',
+    }),
+  })
+})
 
 // Mock API functions
 vi.mock('@/service/base', () => ({

@@ -28,7 +28,7 @@ const Bucket = ({
     if (!disabled)
       handleClickBucketName()
   }, [disabled, handleClickBucketName])
-  const allBucketsLabel = t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })
+  const allBucketsLabel = t($ => $['onlineDrive.breadcrumbs.allBuckets'], { ns: 'datasetPipeline' })
 
   return (
     <>

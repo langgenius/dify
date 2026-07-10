@@ -29,7 +29,7 @@ const Statistics = ({
           {documentCount ?? '--'}
         </div>
         <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-          {t('datasetMenus.documents', { ns: 'common' })}
+          {t($ => $['datasetMenus.documents'], { ns: 'common' })}
         </div>
       </div>
       <div className="flex h-[42px] w-[15px] shrink-0 items-center justify-center">
@@ -42,13 +42,13 @@ const Statistics = ({
         <Popover>
           <PopoverTrigger
             openOnHover
-            aria-label={t('datasetMenus.relatedApp', { ns: 'common' })}
+            aria-label={t($ => $['datasetMenus.relatedApp'], { ns: 'common' })}
             render={(
               <button
                 type="button"
                 className="flex max-w-full cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
               >
-                <span className="truncate">{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
+                <span className="truncate">{t($ => $['datasetMenus.relatedApp'], { ns: 'common' })}</span>
                 <RiInformation2Line className="size-3 shrink-0" />
               </button>
             )}

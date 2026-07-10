@@ -63,7 +63,7 @@ function AgentSkillPackageUploader({
   const setUploadFiles = (files: File[]) => {
     const [uploadFile] = files
     if (files.length !== 1 || !uploadFile || !isSupportedSkillPackage(uploadFile)) {
-      toast.error(t('agentDetail.configure.skills.upload.invalidFile'))
+      toast.error(t($ => $['agentDetail.configure.skills.upload.invalidFile']))
       return
     }
 
@@ -121,7 +121,7 @@ function AgentSkillPackageUploader({
     <div
       className="mt-6"
       role="group"
-      aria-label={t('agentDetail.configure.skills.upload.title')}
+      aria-label={t($ => $['agentDetail.configure.skills.upload.title'])}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -144,13 +144,13 @@ function AgentSkillPackageUploader({
           <div className="flex w-full items-center justify-center space-x-2">
             <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />
             <div className="text-text-tertiary">
-              {t('agentDetail.configure.skills.upload.dropzone')}
+              {t($ => $['agentDetail.configure.skills.upload.dropzone'])}
               <button
                 type="button"
                 className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {t('agentDetail.configure.skills.upload.browse')}
+                {t($ => $['agentDetail.configure.skills.upload.browse'])}
               </button>
             </div>
           </div>
@@ -165,7 +165,7 @@ function AgentSkillPackageUploader({
           <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">{file.name}</span>
             <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
-              <span>{t('agentDetail.configure.skills.upload.fileType')}</span>
+              <span>{t($ => $['agentDetail.configure.skills.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>
             </div>
@@ -207,7 +207,7 @@ export function AgentSkillUploadDialog({
       onSuccess: (
         response: PostAgentByAgentIdConfigSkillsUploadResponse | PostAppsByAppIdAgentConfigSkillsUploadResponse,
       ) => {
-        toast.success(t('agentDetail.configure.skills.upload.success'))
+        toast.success(t($ => $['agentDetail.configure.skills.upload.success']))
         onUploaded?.(toUploadedSkill(response, file))
         setFile(undefined)
         onOpenChange(false)
@@ -259,10 +259,10 @@ export function AgentSkillUploadDialog({
       <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('agentDetail.configure.skills.upload.title')}
+          {t($ => $['agentDetail.configure.skills.upload.title'])}
         </DialogTitle>
         <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-          {t('agentDetail.configure.skills.upload.description')}
+          {t($ => $['agentDetail.configure.skills.upload.description'])}
         </DialogDescription>
         <AgentSkillPackageUploader
           file={file}
@@ -270,7 +270,7 @@ export function AgentSkillUploadDialog({
         />
         <div className="flex justify-end gap-2 pt-6">
           <Button type="button" onClick={() => handleOpenChange(false)} disabled={uploadSkillMutation.isPending}>
-            {tCommon('operation.cancel')}
+            {tCommon($ => $['operation.cancel'])}
           </Button>
           <Button
             type="button"
@@ -279,7 +279,7 @@ export function AgentSkillUploadDialog({
             loading={uploadSkillMutation.isPending}
             onClick={handleUpload}
           >
-            {t('agentDetail.configure.skills.upload.action')}
+            {t($ => $['agentDetail.configure.skills.upload.action'])}
           </Button>
         </div>
       </DialogContent>

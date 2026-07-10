@@ -29,7 +29,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
           <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">{t($ => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}</p>
         </div>
       </div>
     )
@@ -40,7 +40,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
           <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">{t($ => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
           <AddMemberOrGroupDialog />
@@ -60,14 +60,14 @@ function RenderGroupsAndMembers() {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pt-5 pb-1.5"><p className="text-center system-xs-regular text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
+    return <div className="px-2 pt-5 pb-1.5"><p className="text-center system-xs-regular text-text-tertiary">{t($ => $['accessControlDialog.noGroupsOrMembers'], { ns: 'app' })}</p></div>
   return (
     <>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['accessControlDialog.groups'], { ns: 'app', count: specificGroups.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
       </div>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['accessControlDialog.members'], { ns: 'app', count: specificMembers.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
       </div>
@@ -133,7 +133,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
       <button
         type="button"
         className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        aria-label={t('operation.remove', { ns: 'common' })}
+        aria-label={t($ => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
         <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
@@ -144,7 +144,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
 
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
-  const tip = t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })
+  const tip = t($ => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
 
   return (
     <Infotip

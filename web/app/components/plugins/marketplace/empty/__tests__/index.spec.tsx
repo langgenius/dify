@@ -8,18 +8,21 @@ import Line from '../line'
 // ================================
 
 // Mock i18n translation hook
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
       // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      const translations: Record<string, string> = {
-        'plugin.marketplace.noPluginFound': 'No plugin found',
-      }
-      return translations[fullKey] || key
-    },
-  }),
-}))
+        const fullKey = options?.ns ? `${options.ns}.${key}` : key
+        const translations: Record<string, string> = {
+          'plugin.marketplace.noPluginFound': 'No plugin found',
+        }
+        return translations[fullKey] || key
+      }),
+    }),
+  })
+})
 
 // Mock useTheme hook with controllable theme value
 let mockTheme = 'light'

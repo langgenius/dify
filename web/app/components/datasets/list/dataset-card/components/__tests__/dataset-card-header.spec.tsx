@@ -36,16 +36,19 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset')
-        return 'Pipeline'
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset')
+          return 'Pipeline'
 
-      return options?.ns ? `${options.ns}.${key}` : key
-    },
-  }),
-}))
+        return options?.ns ? `${options.ns}.${key}` : key
+      }),
+    }),
+  })
+})
 
 describe('DatasetCardHeader', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({

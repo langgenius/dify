@@ -8,7 +8,7 @@ import Loading from '@/app/components/base/loading'
 import Row from './row'
 
 export type RoleListGroup = {
-  id: string
+  id: 'builtin' | 'custom'
   category: RoleCategory
   title: string
   items: Role[]
@@ -49,7 +49,7 @@ const RoleList = ({
           className="flex min-w-0 flex-col gap-y-1"
         >
           <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
-            {t(`role.groups.${group.id}`, { ns: 'permission', defaultValue: group.title })}
+            {t($ => $[`role.groups.${group.id}`], { ns: 'permission', defaultValue: group.title })}
           </div>
           <div className="flex flex-col">
             {group.items.map(row => (

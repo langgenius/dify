@@ -23,7 +23,7 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
-  const title = t('feature.annotation.removeConfirm', { ns: 'appDebug' })
+  const title = t($ => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })
 
   return (
     <AlertDialog open={isShow} onOpenChange={open => !open && onHide()}>
@@ -35,10 +35,10 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="destructive" onClick={onRemove}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

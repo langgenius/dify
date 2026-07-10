@@ -139,11 +139,11 @@ const EmbeddingProcess = ({
             <>
               <RiLoader2Fill className="size-4 animate-spin" />
               <span>
-                {isEmbeddingWaiting ? t('embedding.waiting', { ns: 'datasetDocuments' }) : t('embedding.processing', { ns: 'datasetDocuments' })}
+                {isEmbeddingWaiting ? t($ => $['embedding.waiting'], { ns: 'datasetDocuments' }) : t($ => $['embedding.processing'], { ns: 'datasetDocuments' })}
               </span>
             </>
           )}
-          {isEmbeddingCompleted && t('embedding.completed', { ns: 'datasetDocuments' })}
+          {isEmbeddingCompleted && t($ => $['embedding.completed'], { ns: 'datasetDocuments' })}
         </div>
         {
           enableBilling && plan.type !== Plan.team && (
@@ -152,7 +152,7 @@ const EmbeddingProcess = ({
                 <RiAedFill className="size-4 text-text-primary-on-surface" />
               </div>
               <div className="grow system-md-medium text-text-primary">
-                {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
+                {t($ => $['plansCommon.documentProcessingPriorityUpgrade'], { ns: 'billing' })}
               </div>
               <UpgradeBtn loc="knowledge-speed-up" />
             </div>
@@ -248,7 +248,7 @@ const EmbeddingProcess = ({
           variant="primary"
           onClick={navToDocumentList}
         >
-          <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
+          <span className="px-0.5">{t($ => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4 stroke-current stroke-1" />
         </Button>
       </div>

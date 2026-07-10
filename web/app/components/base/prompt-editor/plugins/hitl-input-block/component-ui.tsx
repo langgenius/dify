@@ -113,12 +113,12 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   }, [paragraphDefault])
   const inputTypeLabel = useMemo(() => {
     if (isParagraphFormInput(resolvedFormInput))
-      return t('variableConfig.paragraph', { ns: 'appDebug' })
+      return t($ => $['variableConfig.paragraph'], { ns: 'appDebug' })
     if (isSelectFormInput(resolvedFormInput))
-      return t('variableConfig.select', { ns: 'appDebug' })
+      return t($ => $['variableConfig.select'], { ns: 'appDebug' })
     if (isFileFormInput(resolvedFormInput))
-      return t('variableConfig.single-file', { ns: 'appDebug' })
-    return t('variableConfig.multi-files', { ns: 'appDebug' })
+      return t($ => $['variableConfig.single-file'], { ns: 'appDebug' })
+    return t($ => $['variableConfig.multi-files'], { ns: 'appDebug' })
   }, [resolvedFormInput, t])
   const variableSelector = useMemo(() => {
     if (isDefaultValueVariable)
@@ -133,7 +133,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
     if (isSelectFormInput(resolvedFormInput)) {
       if (resolvedFormInput.option_source.type === 'variable')
-        return t(`${i18nPrefix}.variable`, { ns: 'workflow' })
+        return t($ => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
@@ -181,7 +181,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <div className="flex h-full items-center" ref={editBtnRef}>
               <ActionButton
                 size="s"
-                aria-label={t('operation.edit', { ns: 'common' })}
+                aria-label={t($ => $['operation.edit'], { ns: 'common' })}
               >
                 <span className="i-ri-edit-line size-4 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
@@ -190,7 +190,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             <div className="flex h-full items-center" ref={removeBtnRef}>
               <ActionButton
                 size="s"
-                aria-label={t('operation.remove', { ns: 'common' })}
+                aria-label={t($ => $['operation.remove'], { ns: 'common' })}
               >
                 <span className="i-ri-delete-bin-line size-4 text-text-tertiary" aria-hidden="true" />
               </ActionButton>

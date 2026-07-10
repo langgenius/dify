@@ -79,7 +79,7 @@ const ApiKeyModal = ({
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('auth.authorizationName', { ns: 'plugin' }),
+        label: t($ => $['auth.authorizationName'], { ns: 'plugin' }),
         required: false,
       },
       ...mergedData,
@@ -139,7 +139,7 @@ const ApiKeyModal = ({
           ...permissionPayload,
         })
       }
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
       onClose?.()
@@ -169,10 +169,10 @@ const ApiKeyModal = ({
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
-              {t('auth.useApiAuth', { ns: 'plugin' })}
+              {t($ => $['auth.useApiAuth'], { ns: 'plugin' })}
             </DialogTitle>
             <div className="mt-1 system-xs-regular text-text-tertiary">
-              {t('auth.useApiAuthDesc', { ns: 'plugin' })}
+              {t($ => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
             </div>
             <DialogCloseButton
               className="top-5 right-5 size-8 rounded-lg"
@@ -202,7 +202,7 @@ const ApiKeyModal = ({
             {!isLoading && !editValues && (
               <div className="mt-4 px-1">
                 <div className="mb-1 system-sm-semibold text-text-secondary">
-                  {t('auth.whoCanUse', { ns: 'plugin' })}
+                  {t($ => $['auth.whoCanUse'], { ns: 'plugin' })}
                 </div>
                 <PermissionSelector
                   disabled={disabled}
@@ -227,7 +227,7 @@ const ApiKeyModal = ({
                     onClick={onRemove}
                     disabled={isDisabled}
                   >
-                    {t('operation.remove', { ns: 'common' })}
+                    {t($ => $['operation.remove'], { ns: 'common' })}
                   </Button>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
                 </>
@@ -236,7 +236,7 @@ const ApiKeyModal = ({
                 onClick={() => handleOpenChange(false)}
                 disabled={isDisabled}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 data-testid="modal-confirm"
@@ -245,7 +245,7 @@ const ApiKeyModal = ({
                 onClick={handleConfirm}
                 disabled={isDisabled}
               >
-                {t('operation.save', { ns: 'common' })}
+                {t($ => $['operation.save'], { ns: 'common' })}
               </Button>
             </div>
           </div>

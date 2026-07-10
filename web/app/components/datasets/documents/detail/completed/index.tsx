@@ -188,7 +188,7 @@ const Completed: FC<ICompletedProps> = ({
           )
         : (
             <CheckboxGroup
-              aria-label={t('segment.chunk', { ns: 'datasetDocuments' })}
+              aria-label={t($ => $['segment.chunk'], { ns: 'datasetDocuments' })}
               value={currentPageSelectedSegmentIds}
               onValueChange={nextSegmentIds => handleCurrentPageSelectedSegmentIdsChange(nextSegmentIds)}
               allValues={segmentIds}
@@ -230,17 +230,17 @@ const Completed: FC<ICompletedProps> = ({
         totalPages={totalPages}
         onPageChange={handlePageChange}
         labels={{
-          previous: t('pagination.previous', { ns: 'common' }),
-          next: t('pagination.next', { ns: 'common' }),
-          editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-          pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+          previous: t($ => $['pagination.previous'], { ns: 'common' }),
+          next: t($ => $['pagination.next'], { ns: 'common' }),
+          editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+          pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
         }}
         pageSize={{
           value: limit,
           options: [10, 25, 50],
           onValueChange: setLimit,
-          label: t('pagination.perPage', { ns: 'common' }),
-          ariaLabel: t('pagination.perPage', { ns: 'common' }),
+          label: t($ => $['pagination.perPage'], { ns: 'common' }),
+          ariaLabel: t($ => $['pagination.perPage'], { ns: 'common' }),
         }}
       />
 

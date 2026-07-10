@@ -73,7 +73,7 @@ function DocumentPickerTriggerValue({
   const parentModeLabel = (() => {
     if (!parentMode)
       return '--'
-    return parentMode === 'paragraph' ? t('parentMode.paragraph', { ns: 'dataset' }) : t('parentMode.fullDoc', { ns: 'dataset' })
+    return parentMode === 'paragraph' ? t($ => $['parentMode.paragraph'], { ns: 'dataset' }) : t($ => $['parentMode.fullDoc'], { ns: 'dataset' })
   })()
 
   return (
@@ -89,9 +89,9 @@ function DocumentPickerTriggerValue({
         <span className="flex h-3 max-w-[300px] items-center gap-0.5 text-text-tertiary">
           <TypeIcon className="size-3 shrink-0" />
           <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
-            {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
-            {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
-            {isParentChild && `${t('chunkingMode.parentChild', { ns: 'dataset' })} · ${parentModeLabel}`}
+            {isGeneralMode && t($ => $['chunkingMode.general'], { ns: 'dataset' })}
+            {isQAMode && t($ => $['chunkingMode.qa'], { ns: 'dataset' })}
+            {isParentChild && `${t($ => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`}
           </span>
         </span>
       </span>
@@ -151,7 +151,7 @@ export function DocumentPicker({
       filter={null}
     >
       <ComboboxTrigger
-        aria-label={value?.name || t('operation.search', { ns: 'common' })}
+        aria-label={value?.name || t($ => $['operation.search'], { ns: 'common' })}
         icon={false}
         className={cn(
           'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-popup-open:bg-state-base-hover',
@@ -171,8 +171,8 @@ export function DocumentPicker({
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
           <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <ComboboxInput
-            aria-label={t('operation.search', { ns: 'common' })}
-            placeholder={t('operation.search', { ns: 'common' })}
+            aria-label={t($ => $['operation.search'], { ns: 'common' })}
+            placeholder={t($ => $['operation.search'], { ns: 'common' })}
             className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
           />
         </ComboboxInputGroup>
@@ -183,7 +183,7 @@ export function DocumentPicker({
           ? (
               <ComboboxEmpty className="p-0">
                 <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
-                  {t('noData', { ns: 'common' })}
+                  {t($ => $.noData, { ns: 'common' })}
                 </div>
               </ComboboxEmpty>
             )

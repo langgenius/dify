@@ -28,7 +28,7 @@ describe('SubmittedHumanInputContent Integration', () => {
     // Verify ExecutedAction rendering
     expect(screen.getByTestId('executed-action')).toBeInTheDocument()
     // Trans component for triggered action. The mock usually renders the key.
-    expect(screen.getByText('nodes.humanInput.userActions.triggered')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.userActions.triggered')).toBeInTheDocument()
   })
 
   it('should prefer structured form data over rendered markdown when available', () => {

@@ -64,7 +64,7 @@ export const useFieldList = ({ initialInputFields, onInputFieldsChange, nodeId, 
   const handleSubmitField = useCallback((data: InputVar, moreInfo?: MoreInfo) => {
     const isDuplicate = allVariableNames.some(name => name === data.variable && name !== inputFieldsRef.current[editingFieldIndex.current]?.variable)
     if (isDuplicate) {
-      toast.error(t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }))
+      toast.error(t($ => $['inputFieldPanel.error.variableDuplicate'], { ns: 'datasetPipeline' }))
       return
     }
     const newInputFields = produce(inputFieldsRef.current, (draft) => {

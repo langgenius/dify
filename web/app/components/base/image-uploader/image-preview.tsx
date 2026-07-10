@@ -109,14 +109,14 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         ])
         setIsCopied(true)
 
-        toast.success(t('operation.imageCopied', { ns: 'common' }))
+        toast.success(t($ => $['operation.imageCopied'], { ns: 'common' }))
       }
       catch (err) {
         console.error('Failed to copy image:', err)
 
         downloadUrl({ url, fileName: `${title}.png` })
 
-        toast.info(t('operation.imageDownloaded', { ns: 'common' }))
+        toast.info(t($ => $['operation.imageDownloaded'], { ns: 'common' }))
       }
     }
     shareImage()
@@ -173,12 +173,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   useHotkey('ArrowLeft', onPrev || noop)
   useHotkey('ArrowRight', onNext || noop)
 
-  const copyImageLabel = t('operation.copyImage', { ns: 'common' })
-  const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
-  const zoomInLabel = t('operation.zoomIn', { ns: 'common' })
-  const downloadLabel = t('operation.download', { ns: 'common' })
-  const openInNewTabLabel = t('operation.openInNewTab', { ns: 'common' })
-  const cancelLabel = t('operation.cancel', { ns: 'common' })
+  const copyImageLabel = t($ => $['operation.copyImage'], { ns: 'common' })
+  const zoomOutLabel = t($ => $['operation.zoomOut'], { ns: 'common' })
+  const zoomInLabel = t($ => $['operation.zoomIn'], { ns: 'common' })
+  const downloadLabel = t($ => $['operation.download'], { ns: 'common' })
+  const openInNewTabLabel = t($ => $['operation.openInNewTab'], { ns: 'common' })
+  const cancelLabel = t($ => $['operation.cancel'], { ns: 'common' })
 
   return (
     <Dialog

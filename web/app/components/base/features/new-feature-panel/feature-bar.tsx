@@ -43,7 +43,7 @@ const FeatureBar = ({
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
           <RiApps2AddLine className="size-3.5 text-text-accent" />
-          <div className="body-xs-medium text-text-accent">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
+          <div className="body-xs-medium text-text-accent">{t($ => $['feature.bar.empty'], { ns: 'appDebug' })}</div>
           <RiArrowRightLine className="size-3.5 text-text-accent" />
         </div>
       )}
@@ -60,7 +60,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.moreLikeThis.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -74,7 +74,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.conversationOpener.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -88,7 +88,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.moderation.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.moderation.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -102,7 +102,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.speechToText.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.speechToText.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -117,7 +117,7 @@ const FeatureBar = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('feature.textToSpeech.title', { ns: 'appDebug' })}
+                    {t($ => $['feature.textToSpeech.title'], { ns: 'appDebug' })}
                   </TooltipContent>
                 </Tooltip>
               </VoiceSettings>
@@ -132,7 +132,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.fileUpload.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.fileUpload.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -146,7 +146,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.suggestedQuestionsAfterAnswer.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -160,7 +160,7 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.citation.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.citation.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -174,16 +174,16 @@ const FeatureBar = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('feature.annotation.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.annotation.title'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
           </div>
-          <div className="grow body-xs-regular text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
+          <div className="grow body-xs-regular text-text-tertiary">{t($ => $['feature.bar.enableText'], { ns: 'appDebug' })}</div>
           {
             !hideEditEntrance && (
               <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
-                <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
+                <div className="mx-1">{t($ => $['feature.bar.manage'], { ns: 'appDebug' })}</div>
                 <RiArrowRightLine className="size-3.5 text-text-accent" />
               </Button>
             )

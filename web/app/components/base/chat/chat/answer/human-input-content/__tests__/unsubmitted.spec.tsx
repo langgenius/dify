@@ -98,7 +98,7 @@ describe('UnsubmittedHumanInputContent Integration', () => {
         />,
       )
 
-      expect(screen.getByText('common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
+      expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     })
 
     it('should render "Expired" state when expiration time is in the past', () => {

@@ -14,19 +14,22 @@ import { CollectionType } from '@/app/components/tools/types'
 
 // ---- Mocks ----
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'type.builtIn': 'Built-in',
-        'type.custom': 'Custom',
-        'type.workflow': 'Workflow',
-        'noTools': 'No tools found',
-      }
-      return map[key] ?? key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'type.builtIn': 'Built-in',
+          'type.custom': 'Custom',
+          'type.workflow': 'Workflow',
+          'noTools': 'No tools found',
+        }
+        return map[key] ?? key
+      }),
+    }),
+  })
+})
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()

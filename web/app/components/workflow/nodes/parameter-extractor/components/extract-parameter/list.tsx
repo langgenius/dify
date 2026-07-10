@@ -59,7 +59,7 @@ const List: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`, { ns: 'workflow' })}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>{t($ => $[`${i18nPrefix}.extractParametersNotSet`], { ns: 'workflow' })}</ListNoDataPlaceholder>
     )
   }
   return (

@@ -222,17 +222,17 @@ function VoiceInput({
         <div className="grow">
           {isStarting && (
             <div className="text-sm text-gray-500" role="status">
-              {t('voiceInput.starting', { ns: 'common' })}
+              {t($ => $['voiceInput.starting'], { ns: 'common' })}
             </div>
           )}
           {isRecording && (
             <div className="text-sm text-gray-500">
-              {t('voiceInput.speaking', { ns: 'common' })}
+              {t($ => $['voiceInput.speaking'], { ns: 'common' })}
             </div>
           )}
           {isConverting && (
             <div className={cn(s.convert, 'text-sm')} role="status" data-testid="voice-input-converting-text">
-              {t('voiceInput.converting', { ns: 'common' })}
+              {t($ => $['voiceInput.converting'], { ns: 'common' })}
             </div>
           )}
         </div>
@@ -240,7 +240,7 @@ function VoiceInput({
           <button
             type="button"
             className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t('voiceInput.stop', { ns: 'common' })}
+            aria-label={t($ => $['voiceInput.stop'], { ns: 'common' })}
             onClick={handleStopRecorder}
           >
             <span className="i-ri-stop-circle-line size-5 text-primary-600" aria-hidden="true" />
@@ -250,7 +250,7 @@ function VoiceInput({
           <button
             type="button"
             className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t('operation.cancel', { ns: 'common' })}
+            aria-label={t($ => $['operation.cancel'], { ns: 'common' })}
             onClick={handleCancel}
           >
             <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />

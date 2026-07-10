@@ -51,7 +51,7 @@ const ServiceApi = ({
                     apiBaseUrl ? 'success' : 'warning'
                   }
                 />
-                <div className="px-0.5 system-xs-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
+                <div className="px-0.5 system-xs-medium">{t($ => $['serviceApi.title'], { ns: 'dataset' })}</div>
               </div>
             </button>
           )}

@@ -57,7 +57,7 @@ const BasicInfoSection = ({
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">{t($ => $['form.nameAndIcon'], { ns: 'datasetSettings' })}</div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
@@ -81,14 +81,14 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">{t($ => $['form.desc'], { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <Textarea
-            aria-label={t('form.desc', { ns: 'datasetSettings' })}
+            aria-label={t($ => $['form.desc'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
-            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+            placeholder={t($ => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             value={description}
             onValueChange={value => setDescription(value)}
           />
@@ -98,7 +98,7 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">{t($ => $['form.permissions'], { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <PermissionSelector

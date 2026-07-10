@@ -17,7 +17,7 @@ export function SnippetCollapsedPreview({
   snippetId?: string
 }) {
   const { t } = useTranslation()
-  const sectionLabel = t('sectionOrchestrate', { ns: 'snippet' })
+  const sectionLabel = t($ => $.sectionOrchestrate, { ns: 'snippet' })
 
   return (
     <div
@@ -54,7 +54,7 @@ export function SnippetCollapsedPreview({
           'mt-4 flex min-w-6 items-center justify-center rounded-full border border-divider-subtle bg-components-badge-bg-gray-soft px-2 text-2xs leading-4 font-normal text-text-secondary',
           inputFieldCount > 99 ? 'h-5' : 'size-5',
         )}
-        aria-label={`${inputFieldCount} ${t('inputVariables', { ns: 'snippet' })}`}
+        aria-label={`${inputFieldCount} ${t($ => $.inputVariables, { ns: 'snippet' })}`}
       >
         {inputFieldCount}
       </div>

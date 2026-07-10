@@ -54,7 +54,7 @@ function DeployRuntimeCredentialBindingsSection() {
       selections={selectedBindings}
       isLoading={isBindingOptionsLoading}
       hasError={hasBindingOptionsError}
-      bindingCountLabel={t('deployDrawer.bindingCount', { count: bindingSlots.length })}
+      bindingCountLabel={t($ => $['deployDrawer.bindingCount'], { count: bindingSlots.length })}
       showMissingRequired={showValidationErrors}
       onChange={selectBinding}
     />
@@ -77,21 +77,21 @@ function DeployEnvVarBindingsSection() {
     <EnvVarBindingsPanel
       slots={envVarSlots}
       values={envVarValues}
-      title={t('deployDrawer.envVars')}
-      hint={t('deployDrawer.envVarHint')}
-      envVarPlaceholder={t('deployDrawer.envVarPlaceholder')}
-      literalSourceLabel={t('deployDrawer.envVarSource.literal')}
-      defaultSourceLabel={t('deployDrawer.envVarSource.default')}
-      lastDeploymentSourceLabel={t('deployDrawer.envVarSource.lastDeployment')}
+      title={t($ => $['deployDrawer.envVars'])}
+      hint={t($ => $['deployDrawer.envVarHint'])}
+      envVarPlaceholder={t($ => $['deployDrawer.envVarPlaceholder'])}
+      literalSourceLabel={t($ => $['deployDrawer.envVarSource.literal'])}
+      defaultSourceLabel={t($ => $['deployDrawer.envVarSource.default'])}
+      lastDeploymentSourceLabel={t($ => $['deployDrawer.envVarSource.lastDeployment'])}
       valueTypeLabels={{
-        string: t('deployDrawer.envVarType.string'),
-        number: t('deployDrawer.envVarType.number'),
-        secret: t('deployDrawer.envVarType.secret'),
+        string: t($ => $['deployDrawer.envVarType.string']),
+        number: t($ => $['deployDrawer.envVarType.number']),
+        secret: t($ => $['deployDrawer.envVarType.secret']),
       }}
-      sourceAriaLabel={key => t('deployDrawer.envVarSource.ariaLabel', { key })}
+      sourceAriaLabel={key => t($ => $['deployDrawer.envVarSource.ariaLabel'], { key })}
       defaultSourcePriority="lastDeployment"
-      envVarCountLabel={t('deployDrawer.envVarCount', { count: envVarSlots.length })}
-      missingRequiredLabel={t('deployDrawer.missingRequiredEnvVar')}
+      envVarCountLabel={t($ => $['deployDrawer.envVarCount'], { count: envVarSlots.length })}
+      missingRequiredLabel={t($ => $['deployDrawer.missingRequiredEnvVar'])}
       listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
       showMissingRequired={showValidationErrors}
       onChange={setDeployEnvVar}
@@ -134,7 +134,7 @@ function DeployFooter() {
   const canAttemptDeploy = useAtomValue(canAttemptDeployAtom)
   const canDeploy = useAtomValue(canSubmitDeployAtom)
   const isSubmitting = useAtomValue(isDeployReleaseSubmittingAtom)
-  const submitLabel = isSubmitting ? t('deployDrawer.deploying') : t('deployDrawer.deploy')
+  const submitLabel = isSubmitting ? t($ => $['deployDrawer.deploying']) : t($ => $['deployDrawer.deploy'])
 
   function handleDeploy() {
     showValidationErrors()
@@ -143,14 +143,14 @@ function DeployFooter() {
       return
 
     submitDeployRelease({
-      deployFailedMessage: t('deployDrawer.deployFailed'),
+      deployFailedMessage: t($ => $['deployDrawer.deployFailed']),
     })
   }
 
   return (
     <div className="flex shrink-0 justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
       <Button type="button" variant="secondary" onClick={closeDeployDrawer}>
-        {t('deployDrawer.cancel')}
+        {t($ => $['deployDrawer.cancel'])}
       </Button>
       <Button variant="primary" disabled={!canAttemptDeploy} onClick={handleDeploy}>
         {submitLabel}
@@ -214,7 +214,7 @@ function DeployFormContent({
   if (isError) {
     return (
       <div className="p-4 system-sm-regular text-text-destructive">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </div>
     )
   }
@@ -222,7 +222,7 @@ function DeployFormContent({
   if (!deploymentView) {
     return (
       <div className="p-4 system-sm-regular text-text-destructive">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </div>
     )
   }
@@ -241,7 +241,7 @@ function DeployFormContent({
   })
   const defaultReleaseId = releases[0]?.id
   const releaseEmptyLabel = lockedEnvId && !presetReleaseId && currentReleaseId
-    ? t('deployDrawer.noOtherReleaseAvailable')
+    ? t($ => $['deployDrawer.noOtherReleaseAvailable'])
     : undefined
   const readyFormConfig = {
     appInstanceId,

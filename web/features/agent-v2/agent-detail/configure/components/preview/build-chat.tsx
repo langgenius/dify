@@ -27,7 +27,7 @@ function AgentBuildChatEmptyState({
   inputNode,
 }: AgentChatRuntimeEmptyStateProps) {
   const { t } = useTranslation('agentV2')
-  const communityEditionBuildModeTip = t('agentDetail.configure.build.empty.communityEditionTip')
+  const communityEditionBuildModeTip = t($ => $['agentDetail.configure.build.empty.communityEditionTip'])
 
   return (
     <div className="flex h-full items-center justify-center">
@@ -46,7 +46,7 @@ function AgentBuildChatEmptyState({
         </div>
         <div className="mt-3 flex max-w-full items-center gap-1.5">
           <div className="min-w-0 truncate system-md-medium text-text-secondary">
-            {t('agentDetail.configure.build.empty.title')}
+            {t($ => $['agentDetail.configure.build.empty.title'])}
           </div>
           <Popover>
             <PopoverTrigger
@@ -72,7 +72,7 @@ function AgentBuildChatEmptyState({
           </Popover>
         </div>
         <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
-          {t('agentDetail.configure.build.empty.description')}
+          {t($ => $['agentDetail.configure.build.empty.description'])}
         </p>
         {inputNode}
       </div>
@@ -86,9 +86,9 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
   return (
     <AgentChatRuntime
       {...props}
-      inputPlaceholder={t('agentDetail.configure.build.inputPlaceholder')}
+      inputPlaceholder={t($ => $['agentDetail.configure.build.inputPlaceholder'])}
       inputAutoFocus={false}
-      sendButtonLabel={t('agentDetail.configure.build.startBuild')}
+      sendButtonLabel={t($ => $['agentDetail.configure.build.startBuild'])}
       renderEmptyState={(emptyStateProps: AgentChatRuntimeEmptyStateProps) => (
         <AgentBuildChatEmptyState {...emptyStateProps} />
       )}

@@ -60,8 +60,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t('comments.fallback.user', { ns: 'workflow' })
-  const currentUserSuffix = t('members.you', { ns: 'common' })
+  const fallbackUsername = t($ => $['comments.fallback.user'], { ns: 'workflow' })
+  const currentUserSuffix = t($ => $['members.you'], { ns: 'common' })
 
   const renderDisplayName = (
     user: OnlineUser,

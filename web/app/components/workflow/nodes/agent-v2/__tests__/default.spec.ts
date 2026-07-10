@@ -1,9 +1,10 @@
 import type { AgentV2NodeType } from '../types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import nodeDefault from '../default'
 import { isAgentV2NodeData } from '../types'
 
-const t = vi.fn((key: string, options?: Record<string, unknown>) => {
+const t = withSelectorKey(vi.fn((key: string, options?: Record<string, unknown>) => {
   if (key === 'errorMsg.fieldRequired')
     return `required:${options?.field}`
 
@@ -11,7 +12,7 @@ const t = vi.fn((key: string, options?: Record<string, unknown>) => {
     return 'Agent'
 
   return key
-})
+}), 'workflow')
 
 const createPayload = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',

@@ -70,7 +70,7 @@ export function ApiBasedExtensionSelector({
                   )
                 : (
                     <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
-                      {t('apiBasedExtension.selector.placeholder', {
+                      {t($ => $['apiBasedExtension.selector.placeholder'], {
                         ns: 'common',
                       })}
                       <span
@@ -92,7 +92,7 @@ export function ApiBasedExtensionSelector({
             <div className="p-1">
               <div className="flex items-center justify-between px-3 pt-2 pb-1">
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t('apiBasedExtension.selector.title', { ns: 'common' })}
+                  {t($ => $['apiBasedExtension.selector.title'], { ns: 'common' })}
                 </div>
                 <button
                   type="button"
@@ -104,7 +104,7 @@ export function ApiBasedExtensionSelector({
                     })
                   }}
                 >
-                  {t('apiBasedExtension.selector.manage', { ns: 'common' })}
+                  {t($ => $['apiBasedExtension.selector.manage'], { ns: 'common' })}
                   <span
                     className="ml-0.5 i-custom-vender-line-arrows-arrow-up-right size-3"
                     aria-hidden="true"
@@ -141,7 +141,7 @@ export function ApiBasedExtensionSelector({
                   className="mr-2 i-ri-add-line size-4"
                   aria-hidden="true"
                 />
-                {t('operation.add', { ns: 'common' })}
+                {t($ => $['operation.add'], { ns: 'common' })}
               </button>
             </div>
           </div>

@@ -32,15 +32,15 @@ export function AgentLogsTable({
 }) {
   const { t } = useTranslation('agentV2')
   const tableHeaderLabels = {
-    unread: t('agentDetail.logs.table.unread'),
-    title: t('agentDetail.logs.table.title'),
-    source: t('agentDetail.logs.table.source'),
-    endUser: t('agentDetail.logs.table.endUser'),
-    messageCount: t('agentDetail.logs.table.messageCount'),
-    userRate: t('agentDetail.logs.table.userRate'),
-    operationRate: t('agentDetail.logs.table.operationRate'),
-    updatedTime: t('agentDetail.logs.table.updatedTime'),
-    createdTime: t('agentDetail.logs.table.createdTime'),
+    unread: t($ => $['agentDetail.logs.table.unread']),
+    title: t($ => $['agentDetail.logs.table.title']),
+    source: t($ => $['agentDetail.logs.table.source']),
+    endUser: t($ => $['agentDetail.logs.table.endUser']),
+    messageCount: t($ => $['agentDetail.logs.table.messageCount']),
+    userRate: t($ => $['agentDetail.logs.table.userRate']),
+    operationRate: t($ => $['agentDetail.logs.table.operationRate']),
+    updatedTime: t($ => $['agentDetail.logs.table.updatedTime']),
+    createdTime: t($ => $['agentDetail.logs.table.createdTime']),
   }
 
   return (
@@ -54,7 +54,7 @@ export function AgentLogsTable({
 
       <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
-          aria-label={t('agentDetail.logs.title')}
+          aria-label={t($ => $['agentDetail.logs.title'])}
           role="region"
           tabIndex={-1}
           className="overscroll-contain"
@@ -103,9 +103,9 @@ function AgentLogsTableBody({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
-  const notAvailable = t('agentDetail.logs.notAvailable')
+  const notAvailable = t($ => $['agentDetail.logs.notAvailable'])
   const formatLogTime = (value?: number | null) =>
-    value == null ? notAvailable : formatTime(value, t('roster.dateTimeFormat'))
+    value == null ? notAvailable : formatTime(value, t($ => $['roster.dateTimeFormat']))
 
   return (
     <tbody className="system-sm-regular text-text-secondary">
@@ -115,16 +115,16 @@ function AgentLogsTableBody({
       {isError && (
         <LogsStateRow>
           <div className="flex items-center justify-center gap-2">
-            <span>{t('agentDetail.logs.loadFailed')}</span>
+            <span>{t($ => $['agentDetail.logs.loadFailed'])}</span>
             <Button variant="secondary" size="small" onClick={onRetry}>
-              {tCommon('operation.retry')}
+              {tCommon($ => $['operation.retry'])}
             </Button>
           </div>
         </LogsStateRow>
       )}
       {isSuccess && logs.length === 0 && (
         <LogsStateRow>
-          {t('agentDetail.logs.empty')}
+          {t($ => $['agentDetail.logs.empty'])}
         </LogsStateRow>
       )}
       {isSuccess && logs.map((log) => {

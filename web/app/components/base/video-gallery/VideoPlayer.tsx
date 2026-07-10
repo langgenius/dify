@@ -54,9 +54,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isSmallSize, setIsSmallSize] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const playPauseLabel = t(isPlaying ? 'operation.pause' : 'operation.play', { ns: 'common' })
-  const toggleMuteLabel = t('operation.toggleMute', { ns: 'common' })
-  const toggleFullscreenLabel = t('operation.toggleFullscreen', { ns: 'common' })
+  const playPauseLabel = t($ => $[isPlaying ? 'operation.pause' : 'operation.play'], { ns: 'common' })
+  const toggleMuteLabel = t($ => $['operation.toggleMute'], { ns: 'common' })
+  const toggleFullscreenLabel = t($ => $['operation.toggleFullscreen'], { ns: 'common' })
 
   useEffect(() => {
     const video = videoRef.current

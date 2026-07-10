@@ -61,17 +61,20 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => {
-      if (key === 'banner.greeting')
-        return `Welcome back, ${opts?.name} 👋`
-      if (key === 'banner.tagline')
-        return 'What if… this is where your next idea begins.'
-      return key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
+        if (key === 'banner.greeting')
+          return `Welcome back, ${opts?.name} 👋`
+        if (key === 'banner.tagline')
+          return 'What if… this is where your next idea begins.'
+        return key
+      }),
+    }),
+  })
+})
 
 vi.mock('@/app/components/base/carousel', () => ({
   Carousel: Object.assign(

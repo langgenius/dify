@@ -32,7 +32,7 @@ export function ReleaseSourceSection() {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label id="release-source-mode-label" className="system-xs-medium-uppercase text-text-tertiary">
-          {t('versions.releaseSourceLabel')}
+          {t($ => $['versions.releaseSourceLabel'])}
         </label>
         {isDeploymentDslImportEnabled && (
           <SegmentedControl<ReleaseSourceMode>
@@ -49,11 +49,11 @@ export function ReleaseSourceSection() {
           >
             <SegmentedControlItem value="sourceApp" className="gap-1.5">
               <span className="i-ri-apps-2-line size-4 shrink-0" aria-hidden="true" />
-              <span>{t('versions.sourceAppOption')}</span>
+              <span>{t($ => $['versions.sourceAppOption'])}</span>
             </SegmentedControlItem>
             <SegmentedControlItem value="dsl" className="gap-1.5">
               <span className="i-ri-upload-cloud-2-line size-4 shrink-0" aria-hidden="true" />
-              <span>{t('versions.manualDslOption')}</span>
+              <span>{t($ => $['versions.manualDslOption'])}</span>
             </SegmentedControlItem>
           </SegmentedControl>
         )}
@@ -102,12 +102,12 @@ function DslFileField() {
       />
       {isReadingDsl && (
         <div role="status" className="system-xs-regular text-text-tertiary">
-          {t('versions.dslReading')}
+          {t($ => $['versions.dslReading'])}
         </div>
       )}
       {dslReadError && (
         <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
-          {t('versions.dslReadFailed')}
+          {t($ => $['versions.dslReadFailed'])}
         </div>
       )}
       <DslUnsupportedModeError />
@@ -124,7 +124,7 @@ function DslUnsupportedModeError() {
 
   return (
     <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
-      {t('versions.dslUnsupportedMode')}
+      {t($ => $['versions.dslUnsupportedMode'])}
     </div>
   )
 }

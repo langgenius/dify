@@ -72,8 +72,8 @@ function SourceMethodSection() {
 
   return (
     <StepShell
-      title={t('createGuide.steps.method')}
-      description={t('createGuide.method.description')}
+      title={t($ => $['createGuide.steps.method'])}
+      description={t($ => $['createGuide.method.description'])}
       descriptionClassName="lg:hidden"
       hideHeader
     >
@@ -85,15 +85,15 @@ function SourceMethodSection() {
         <SourceMethodCard
           value="bindApp"
           icon="i-ri-stack-line"
-          title={t('createGuide.methods.bindApp.title')}
-          description={t('createGuide.methods.bindApp.description')}
+          title={t($ => $['createGuide.methods.bindApp.title'])}
+          description={t($ => $['createGuide.methods.bindApp.description'])}
         />
         {isDeploymentDslImportEnabled && (
           <SourceMethodCard
             value="importDsl"
             icon="i-ri-file-code-line"
-            title={t('createGuide.methods.importDsl.title')}
-            description={t('createGuide.methods.importDsl.description')}
+            title={t($ => $['createGuide.methods.importDsl.title'])}
+            description={t($ => $['createGuide.methods.importDsl.description'])}
           />
         )}
       </RadioGroup>
@@ -148,8 +148,8 @@ function SourceAppSelectionSection() {
 
   return (
     <StepShell
-      title={t('createGuide.source.title')}
-      description={t('createGuide.source.description')}
+      title={t($ => $['createGuide.source.title'])}
+      description={t($ => $['createGuide.source.description'])}
       descriptionClassName="lg:hidden"
       hideHeader
       className="min-h-0 flex-1"
@@ -172,16 +172,16 @@ function SourceSearchInput() {
       <span className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
       <Input
         id="create-guide-source-search"
-        aria-label={t('createGuide.source.sourceApp')}
+        aria-label={t($ => $['createGuide.source.sourceApp'])}
         value={sourceSearchText}
         onChange={event => setSourceSearchText(event.target.value)}
-        placeholder={t('createGuide.source.searchPlaceholder')}
+        placeholder={t($ => $['createGuide.source.searchPlaceholder'])}
         className="h-9 pr-8 pl-8"
       />
       {sourceSearchText && (
         <button
           type="button"
-          aria-label={t('createGuide.source.clearSearch')}
+          aria-label={t($ => $['createGuide.source.clearSearch'])}
           onClick={() => setSourceSearchText('')}
           className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
         >
@@ -225,7 +225,7 @@ function SourceAppList() {
         : sourceApps.length === 0
           ? (
               <DeploymentStateMessage variant="embedded">
-                {t('createGuide.source.empty')}
+                {t($ => $['createGuide.source.empty'])}
               </DeploymentStateMessage>
             )
           : (
@@ -240,7 +240,7 @@ function SourceAppList() {
                 ))}
                 {sourceAppsIsFetchingNextPage && (
                   <div className="border-t border-divider-subtle px-3 py-2 text-center system-xs-regular text-text-tertiary">
-                    {t('createModal.loadingApps')}
+                    {t($ => $['createModal.loadingApps'])}
                   </div>
                 )}
                 {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
@@ -317,13 +317,13 @@ function DslUploadSection() {
   const selectDslFile = useSetAtom(selectDslFileAtom)
 
   return (
-    <StepShell title={t('createGuide.dsl.title')} description={t('createGuide.dsl.description')} hideHeader>
+    <StepShell title={t($ => $['createGuide.dsl.title'])} description={t($ => $['createGuide.dsl.description'])} hideHeader>
       <div className="flex flex-col gap-4 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-5">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 i-ri-upload-cloud-2-line size-5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <div className="flex min-w-0 flex-col gap-1">
-            <div className="system-sm-semibold text-text-primary">{t('createGuide.dsl.dropTitle')}</div>
-            <div className="system-sm-regular text-text-tertiary">{t('createGuide.dsl.dropDescription')}</div>
+            <div className="system-sm-semibold text-text-primary">{t($ => $['createGuide.dsl.dropTitle'])}</div>
+            <div className="system-sm-regular text-text-tertiary">{t($ => $['createGuide.dsl.dropDescription'])}</div>
           </div>
         </div>
         <Uploader
@@ -347,17 +347,17 @@ function DslReadStatus() {
     <>
       {isReadingDsl && (
         <div className="system-xs-regular text-text-tertiary">
-          {t('createGuide.dsl.reading')}
+          {t($ => $['createGuide.dsl.reading'])}
         </div>
       )}
       {dslReadError && (
         <div className="system-xs-regular text-text-destructive">
-          {t('createGuide.dsl.readFailed')}
+          {t($ => $['createGuide.dsl.readFailed'])}
         </div>
       )}
       {dslUnsupportedMode && (
         <div role="alert" className="system-xs-regular text-text-destructive">
-          {t('createGuide.dsl.unsupportedMode')}
+          {t($ => $['createGuide.dsl.unsupportedMode'])}
         </div>
       )}
     </>
@@ -375,11 +375,11 @@ export function SourceActionButtons() {
       variant="primary"
       disabled={!canGoNext}
       onClick={() => continueFromSource({
-        defaultDslAppName: t('createGuide.dsl.defaultAppName'),
-        defaultReleaseName: t('createGuide.release.defaultName'),
+        defaultDslAppName: t($ => $['createGuide.dsl.defaultAppName']),
+        defaultReleaseName: t($ => $['createGuide.release.defaultName']),
       })}
     >
-      {t('createGuide.actions.next')}
+      {t($ => $['createGuide.actions.next'])}
     </Button>
   )
 }

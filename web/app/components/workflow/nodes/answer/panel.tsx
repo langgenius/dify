@@ -34,7 +34,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       <Editor
         readOnly={readOnly}
         justVar
-        title={t(`${i18nPrefix}.answer`, { ns: 'workflow' })!}
+        title={t($ => $[`${i18nPrefix}.answer`], { ns: 'workflow' })!}
         value={inputs.answer}
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}

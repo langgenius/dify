@@ -79,11 +79,11 @@ export const useDocumentActions = ({
       if (!e) {
         if (actionName === DocumentActionType.delete)
           onClearSelection()
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         onUpdate()
       }
       else {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       }
     }
   }, [actionMutationMap, datasetId, selectedIds, onClearSelection, onUpdate, t])
@@ -94,11 +94,11 @@ export const useDocumentActions = ({
     )
     if (!e) {
       onClearSelection()
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate()
     }
     else {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }, [retryIndexDocument, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
@@ -110,7 +110,7 @@ export const useDocumentActions = ({
       requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }),
     )
     if (e || !blob) {
-      toast.error(t('actionMsg.downloadUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return
     }
 

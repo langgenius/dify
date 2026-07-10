@@ -50,7 +50,7 @@ const SubVariablePicker: FC<Props> = ({
               : (
                   <div className="flex pl-1 system-sm-regular text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
                     <Variable02 className="mr-1 size-4 shrink-0" />
-                    <span>{t('placeholder.select', { ns: 'common' })}</span>
+                    <span>{t($ => $['placeholder.select'], { ns: 'common' })}</span>
                   </div>
                 )}
           </div>

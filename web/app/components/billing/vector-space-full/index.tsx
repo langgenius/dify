@@ -16,8 +16,8 @@ const VectorSpaceFull: FC = () => {
       <div className="px-6 py-5">
         <div className="flex items-center justify-between">
           <div className={cn(s.textGradient, 'text-base leading-[24px] font-semibold')}>
-            <div>{t('vectorSpace.fullTip', { ns: 'billing' })}</div>
-            <div>{t('vectorSpace.fullSolution', { ns: 'billing' })}</div>
+            <div>{t($ => $['vectorSpace.fullTip'], { ns: 'billing' })}</div>
+            <div>{t($ => $['vectorSpace.fullSolution'], { ns: 'billing' })}</div>
           </div>
           <UpgradeBtn loc="knowledge-add-file" />
         </div>

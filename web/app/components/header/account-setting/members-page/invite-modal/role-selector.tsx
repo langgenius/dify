@@ -93,8 +93,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const selectedRole = roles.find(role => role.id === value)
   const selectedRoleName = selectedRole?.name || value
   const triggerLabel = selectedRoleName
-    ? t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })
-    : t('members.selectRole', { ns: 'common' })
+    ? t($ => $['members.invitedAsRole'], { ns: 'common', role: selectedRoleName })
+    : t($ => $['members.selectRole'], { ns: 'common' })
 
   const setContainerElement = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node
@@ -119,16 +119,16 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
 
     switch (legacyRoleDescriptionKey) {
       case 'admin':
-        return t('members.adminTip', { ns: 'common' })
+        return t($ => $['members.adminTip'], { ns: 'common' })
       case 'editor':
-        return t('members.editorTip', { ns: 'common' })
+        return t($ => $['members.editorTip'], { ns: 'common' })
       case 'normal':
-        return t('members.normalTip', { ns: 'common' })
+        return t($ => $['members.normalTip'], { ns: 'common' })
       case 'dataset_operator':
-        return t('members.datasetOperatorTip', { ns: 'common' })
+        return t($ => $['members.datasetOperatorTip'], { ns: 'common' })
     }
 
-    return t('role.noDescription', { ns: 'permission' })
+    return t($ => $['role.noDescription'], { ns: 'permission' })
   }
 
   return (
@@ -161,13 +161,13 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             {rolesLoading
               ? (
                   <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                    {t('loading', { ns: 'common' })}
+                    {t($ => $.loading, { ns: 'common' })}
                   </div>
                 )
               : roles.length === 0
                 ? (
                     <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                      {t('dynamicSelect.noData', { ns: 'common' })}
+                      {t($ => $['dynamicSelect.noData'], { ns: 'common' })}
                     </div>
                   )
                 : (

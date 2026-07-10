@@ -290,13 +290,13 @@ const ChatWrapper = () => {
                   ? (
                       <>
                         <RiArrowUpSLine className="size-3" />
-                        {t('chat.collapse', { ns: 'share' })}
+                        {t($ => $['chat.collapse'], { ns: 'share' })}
                       </>
                     )
                   : (
                       <>
                         <RiArrowDownSLine className="size-3" />
-                        {t('chat.expand', { ns: 'share' })}
+                        {t($ => $['chat.expand'], { ns: 'share' })}
                       </>
                     )}
               </button>

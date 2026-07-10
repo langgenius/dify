@@ -243,7 +243,7 @@ function AgentFileItem({
         <AgentSkillDetailDialog
           skillName={file.name}
           detail={{
-            description: t('agentDetail.configure.files.tip'),
+            description: t($ => $['agentDetail.configure.files.tip']),
             files,
             filePreview: {
               binary: previewQuery.data?.binary,
@@ -266,7 +266,7 @@ function AgentFileItem({
       <div className="pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
         <button
           type="button"
-          aria-label={t('agentDetail.configure.files.download', { name: file.name })}
+          aria-label={t($ => $['agentDetail.configure.files.download'], { name: file.name })}
           onClick={handleDownload}
           className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
@@ -276,7 +276,7 @@ function AgentFileItem({
           <button
             type="button"
             data-agent-file-remove-button
-            aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
+            aria-label={t($ => $['agentDetail.configure.files.remove'], { name: file.name })}
             onClick={handleRemove}
             className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -309,7 +309,7 @@ function AgentBuildNoteBadge() {
   return (
     <FileTreeBadge className="ms-0 gap-0.5 px-1 py-0.5">
       <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
-      <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+      <span>{t($ => $['agentDetail.configure.files.buildNote.generated'])}</span>
     </FileTreeBadge>
   )
 }
@@ -320,14 +320,14 @@ function AgentBuildNoteInfotip() {
 
   return (
     <Infotip
-      aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
+      aria-label={t($ => $['agentDetail.configure.files.buildNote.tooltip'])}
       className="size-5 text-text-quaternary hover:text-text-quaternary"
       iconSize="large"
       popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
     >
       <p className="body-xs-regular text-text-secondary">
         <Trans
-          i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+          i18nKey={$ => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
           components={{
             docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
@@ -340,7 +340,7 @@ function AgentBuildNoteInfotip() {
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const filesTip = t('agentDetail.configure.files.tip')
+  const filesTip = t($ => $['agentDetail.configure.files.tip'])
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
@@ -414,7 +414,7 @@ export function AgentFiles() {
   return (
     <>
       <ConfigureSection
-        label={t('agentDetail.configure.files.label')}
+        label={t($ => $['agentDetail.configure.files.label'])}
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
@@ -423,7 +423,7 @@ export function AgentFiles() {
         panelContentClassName="pb-4"
         actions={(
           <ConfigureSectionAddButton
-            ariaLabel={t('agentDetail.configure.files.add')}
+            ariaLabel={t($ => $['agentDetail.configure.files.add'])}
             onClick={() => handleOpenUpload()}
           />
         )}
@@ -431,15 +431,15 @@ export function AgentFiles() {
         {visibleFiles.length === 0
           ? (
               <ConfigureSectionEmpty
-                title={t('agentDetail.configure.files.empty.title')}
-                description={t('agentDetail.configure.files.empty.description')}
+                title={t($ => $['agentDetail.configure.files.empty.title'])}
+                description={t($ => $['agentDetail.configure.files.empty.description'])}
               />
             )
           : (
               <AgentFileTree
                 id={filesTreeId}
                 files={visibleFiles}
-                treeLabel={t('agentDetail.configure.files.treeLabel')}
+                treeLabel={t($ => $['agentDetail.configure.files.treeLabel'])}
                 className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
                 scrollAreaClassName="max-h-[250px] flex-none"
                 renderFile={({ depth, file, selected, children }) => {

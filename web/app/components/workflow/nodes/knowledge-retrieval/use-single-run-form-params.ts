@@ -70,7 +70,7 @@ const useSingleRunFormParams = ({
     const inputFields: FormProps[] = [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.queryText`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.queryText`], { ns: 'workflow' })!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: false,
@@ -84,7 +84,7 @@ const useSingleRunFormParams = ({
       inputFields.push(
         {
           inputs: [{
-            label: t(`${i18nPrefix}.queryAttachment`, { ns: 'workflow' })!,
+            label: t($ => $[`${i18nPrefix}.queryAttachment`], { ns: 'workflow' })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,

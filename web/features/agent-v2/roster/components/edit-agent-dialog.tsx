@@ -105,7 +105,7 @@ export function EditAgentDialog({
       body,
     }, {
       onSuccess: () => {
-        toast.success(t('roster.updateSuccess'))
+        toast.success(t($ => $['roster.updateSuccess']))
         handleOpenChange(false)
       },
     })
@@ -127,10 +127,10 @@ export function EditAgentDialog({
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('roster.editDialog.title')}
+              {t($ => $['roster.editDialog.title'])}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              {t('roster.editDialog.description')}
+              {t($ => $['roster.editDialog.description'])}
             </DialogDescription>
           </div>
           <Form<AgentFormValues>
@@ -141,7 +141,7 @@ export function EditAgentDialog({
             <AgentFormFields
               description={description}
               icon={agentIcon}
-              iconAriaLabel={t('roster.editAgent', { name: agent.name })}
+              iconAriaLabel={t($ => $['roster.editAgent'], { name: agent.name })}
               name={name}
               role={role}
               onDescriptionChange={setDescription}
@@ -151,7 +151,7 @@ export function EditAgentDialog({
             />
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={updateAgentMutation.isPending}>
-                {tCommon('operation.cancel')}
+                {tCommon($ => $['operation.cancel'])}
               </Button>
               <Button
                 type="submit"
@@ -160,7 +160,7 @@ export function EditAgentDialog({
                 disabled={!hasChanges}
                 loading={updateAgentMutation.isPending}
               >
-                {tCommon('operation.save')}
+                {tCommon($ => $['operation.save'])}
               </Button>
             </div>
           </Form>

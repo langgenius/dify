@@ -138,7 +138,7 @@ export function ExploreHomeSkeleton({
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="contents">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="contents">
       {showBanner && <BannerSkeletonBody />}
       <section className="px-8 pb-5">
         <RecommendationSectionSkeletonBody />

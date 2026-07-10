@@ -1,6 +1,7 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildSelectOptions,
   createPayloadForType,
@@ -13,7 +14,7 @@ import {
   validateConfigModalPayload,
 } from '../utils'
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key)
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,

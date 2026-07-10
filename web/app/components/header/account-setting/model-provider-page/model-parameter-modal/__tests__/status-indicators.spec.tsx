@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { withSelectorKey } from '@/test/i18n-mock'
 import StatusIndicators from '../status-indicators'
 
 let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
@@ -13,7 +14,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version'
   SwitchPluginVersion: ({ uniqueIdentifier }: { uniqueIdentifier: string }) => <div>{`SwitchVersion:${uniqueIdentifier}`}</div>,
 }))
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key, 'workflow')
 
 describe('StatusIndicators', () => {
   beforeEach(() => {

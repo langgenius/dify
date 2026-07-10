@@ -43,10 +43,10 @@ const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
       {isEmbedding && (
         <>
           <RiLoader2Fill className="size-4 animate-spin" />
-          <span>{t('embedding.processing', { ns: 'datasetDocuments' })}</span>
+          <span>{t($ => $['embedding.processing'], { ns: 'datasetDocuments' })}</span>
         </>
       )}
-      {isCompleted && t('embedding.completed', { ns: 'datasetDocuments' })}
+      {isCompleted && t($ => $['embedding.completed'], { ns: 'datasetDocuments' })}
     </div>
   )
 }
@@ -71,7 +71,7 @@ const ActionButtons: FC<{
         variant="primary"
         onClick={onNavToDocuments}
       >
-        <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
+        <span className="px-0.5">{t($ => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
         <RiArrowRightLine className="size-4 stroke-current stroke-1" />
       </Button>
     </div>

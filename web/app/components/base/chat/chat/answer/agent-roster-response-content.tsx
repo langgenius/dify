@@ -62,14 +62,14 @@ function getToolProcesses(thought: ThoughtItem, responding?: boolean): ToolProce
 function formatDuration(seconds: number, t: ReturnType<typeof useTranslation<'agentV2'>>['t']) {
   const safeSeconds = Math.max(0, seconds)
   if (safeSeconds < 60)
-    return t('agentDetail.configure.answer.duration.second', { count: Number(safeSeconds.toFixed(2)) })
+    return t($ => $['agentDetail.configure.answer.duration.second'], { count: Number(safeSeconds.toFixed(2)) })
 
   const minutes = Math.floor(safeSeconds / 60)
   const remainingSeconds = Math.floor(safeSeconds % 60)
 
   return [
-    t('agentDetail.configure.answer.duration.minute', { count: minutes }),
-    t('agentDetail.configure.answer.duration.second', { count: remainingSeconds }),
+    t($ => $['agentDetail.configure.answer.duration.minute'], { count: minutes }),
+    t($ => $['agentDetail.configure.answer.duration.second'], { count: remainingSeconds }),
   ].join(' ')
 }
 
@@ -84,12 +84,12 @@ function formatLatencyDuration(latency: NonNullable<ChatItem['more']>['latency']
 function getCompletedTitle(latency: NonNullable<ChatItem['more']>['latency'] | undefined, t: ReturnType<typeof useTranslation<'agentV2'>>['t']) {
   const numericLatency = Number(latency)
   if (latency != null && !Number.isNaN(numericLatency) && numericLatency > 0) {
-    return t('agentDetail.configure.answer.workedFor', {
+    return t($ => $['agentDetail.configure.answer.workedFor'], {
       duration: formatLatencyDuration(latency, t),
     })
   }
 
-  return t('agentDetail.configure.answer.workFinished')
+  return t($ => $['agentDetail.configure.answer.workFinished'])
 }
 
 function hashString(value: string) {
@@ -196,7 +196,7 @@ function ThoughtProcess({
   defaultOpen?: boolean
 }) {
   const { t } = useTranslation()
-  const thoughtTitle = t('chat.thought', { ns: 'common' })
+  const thoughtTitle = t($ => $['chat.thought'], { ns: 'common' })
   const summary = thought.thought.trim() || thoughtTitle
 
   return (
@@ -240,13 +240,13 @@ function ToolProcessCard({
         <div className="mt-2 space-y-1">
           <div className="rounded-[10px] bg-components-panel-on-panel-item-bg px-3 py-2">
             <div className="system-xs-semibold-uppercase text-text-tertiary">
-              {t('thought.requestTitle', { ns: 'tools' })}
+              {t($ => $['thought.requestTitle'], { ns: 'tools' })}
             </div>
             <div className="mt-1 code-xs-regular wrap-break-word text-text-secondary">{tool.input}</div>
           </div>
           <div className="rounded-[10px] bg-components-panel-on-panel-item-bg px-3 py-2">
             <div className="system-xs-semibold-uppercase text-text-tertiary">
-              {t('thought.responseTitle', { ns: 'tools' })}
+              {t($ => $['thought.responseTitle'], { ns: 'tools' })}
             </div>
             <div className="mt-1 code-xs-regular wrap-break-word text-text-secondary">{tool.output}</div>
           </div>
@@ -379,7 +379,7 @@ function AgentThoughtsProcessGroup({
       <div className="flex flex-col">
         <div className="flex h-9 w-full items-center border-b border-divider-subtle text-left">
           <span className="system-md-regular text-text-tertiary">
-            {t('agentDetail.configure.answer.workingFor', { duration: workingDuration })}
+            {t($ => $['agentDetail.configure.answer.workingFor'], { duration: workingDuration })}
           </span>
         </div>
         <AgentThoughtsProcessList

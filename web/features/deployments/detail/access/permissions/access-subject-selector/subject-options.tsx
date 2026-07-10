@@ -78,11 +78,11 @@ export function SelectedGroupsBreadCrumb({
               className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleReset}
             >
-              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
+              {t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
             </button>
           )
         : (
-            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+            <span className="system-xs-regular text-text-tertiary">{t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}</span>
           )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
         const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
@@ -141,7 +141,7 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         onPointerDown={event => event.preventDefault()}
         onClick={() => onExpandGroup(group)}
       >
-        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
+        <span className="px-[3px]">{t($ => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}</span>
         <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />
       </Button>
     </div>
@@ -171,7 +171,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
             (
-            {t('you', { ns: 'common' })}
+            {t($ => $.you, { ns: 'common' })}
             )
           </span>
         )}

@@ -101,7 +101,7 @@ export function EnvironmentPermissionRow({
       {
         onSuccess: options?.onSuccess,
         onError: () => {
-          toast.error(t('access.permission.updateFailed'))
+          toast.error(t($ => $['access.permission.updateFailed']))
         },
       },
     )

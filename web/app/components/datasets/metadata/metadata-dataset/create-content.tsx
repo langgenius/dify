@@ -51,17 +51,17 @@ export function CreateContent({
           onClick={onBack}
         >
           <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
-          <span className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</span>
+          <span className="system-xs-semibold-uppercase">{t($ => $[`${i18nPrefix}.back`], { ns: 'dataset' })}</span>
         </button>
       )}
       <div className="mb-1 flex h-6 items-center justify-between">
         <div className="system-xl-semibold text-text-primary">
-          {t(`${i18nPrefix}.title`, { ns: 'dataset' })}
+          {t($ => $[`${i18nPrefix}.title`], { ns: 'dataset' })}
         </div>
         {!hasBack && (
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="cursor-pointer border-none bg-transparent p-1.5 text-text-tertiary"
             onClick={onClose}
           >
@@ -71,7 +71,7 @@ export function CreateContent({
       </div>
       <div className="mt-2">
         <div className="space-y-3">
-          <Field label={t(`${i18nPrefix}.type`, { ns: 'dataset' })}>
+          <Field label={t($ => $[`${i18nPrefix}.type`], { ns: 'dataset' })}>
             <div className="grid grid-cols-3 gap-2">
               <OptionCard
                 title="String"
@@ -90,12 +90,12 @@ export function CreateContent({
               />
             </div>
           </Field>
-          <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}>
+          <Field label={t($ => $[`${i18nPrefix}.name`], { ns: 'dataset' })}>
             <Input
-              aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
+              aria-label={t($ => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
               value={name}
               onChange={handleNameChange}
-              placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+              placeholder={t($ => $[`${i18nPrefix}.namePlaceholder`], { ns: 'dataset' })}
             />
           </Field>
         </div>
@@ -105,13 +105,13 @@ export function CreateContent({
           className="mr-2"
           onClick={onClose}
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
           onClick={handleSave}
           variant="primary"
         >
-          {t('operation.save', { ns: 'common' })}
+          {t($ => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
     </div>

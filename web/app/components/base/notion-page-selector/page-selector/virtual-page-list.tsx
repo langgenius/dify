@@ -92,7 +92,7 @@ const VirtualPageList = ({
         {selectionMode === 'single'
           ? (
               <RadioGroup
-                aria-label={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
+                aria-label={t($ => $['dataSource.notion.selector.headerTitle'], { ns: 'common' })}
                 value={selectedPageId}
                 onValueChange={onSelect}
                 className="contents"

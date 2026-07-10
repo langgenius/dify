@@ -80,11 +80,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === segmentImportStatus.error)
-          toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
+          toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
+        toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }
@@ -101,7 +101,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
+        toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }
@@ -192,10 +192,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
   } as FullDocumentDetail), [documentDetail, documentMetadata])
 
-  const backButtonLabel = t('operation.back', { ns: 'common' })
+  const backButtonLabel = t($ => $['operation.back'], { ns: 'common' })
   const metadataToggleLabel = `${showMetadata
-    ? t('operation.close', { ns: 'common' })
-    : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
+    ? t($ => $['operation.close'], { ns: 'common' })
+    : t($ => $['operation.view'], { ns: 'common' })} ${t($ => $['metadata.title'], { ns: 'datasetDocuments' })}`
 
   return (
     <DocumentContext.Provider value={contextValue}>

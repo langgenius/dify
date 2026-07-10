@@ -83,7 +83,7 @@ const TryApp: FC<Props> = ({
                   render={(
                     <ActionButton
                       size="l"
-                      aria-label={t('chat.resetChat', { ns: 'share' })}
+                      aria-label={t($ => $['chat.resetChat'], { ns: 'share' })}
                       onClick={handleNewConversation}
                     >
                       <RiResetLeftLine className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -91,7 +91,7 @@ const TryApp: FC<Props> = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('chat.resetChat', { ns: 'share' })}
+                  {t($ => $['chat.resetChat'], { ns: 'share' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -102,7 +102,7 @@ const TryApp: FC<Props> = ({
         </div>
         <div className="mx-auto mt-4 flex h-0 w-[769px] grow flex-col">
           {!isHideTryNotice && (
-            <Alert className="mb-4 shrink-0" message={t('tryApp.tryInfo', { ns: 'explore' })} onHide={hideTryNotice} />
+            <Alert className="mb-4 shrink-0" message={t($ => $['tryApp.tryInfo'], { ns: 'explore' })} onHide={hideTryNotice} />
           )}
           <ChatWrapper />
         </div>

@@ -77,17 +77,17 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
 
   const getTitle = useCallback(() => {
     if (state.step === InstallStepFromGitHub.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (state.step === InstallStepFromGitHub.installFailed)
-      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
 
-    return updatePayload ? t(`${i18nPrefix}.updatePlugin`, { ns: 'plugin' }) : t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+    return updatePayload ? t($ => $[`${i18nPrefix}.updatePlugin`], { ns: 'plugin' }) : t($ => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [state.step, t, updatePayload])
 
   const handleUrlSubmit = async () => {
     const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
     if (!isValid || !owner || !repo) {
-      toast.error(t('error.inValidGitHubUrl', { ns: 'plugin' }))
+      toast.error(t($ => $['error.inValidGitHubUrl'], { ns: 'plugin' }))
       return
     }
     try {
@@ -100,16 +100,16 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
         }))
       }
       else {
-        toast.error(t('error.noReleasesFound', { ns: 'plugin' }))
+        toast.error(t($ => $['error.noReleasesFound'], { ns: 'plugin' }))
       }
     }
     catch {
-      toast.error(t('error.fetchReleasesError', { ns: 'plugin' }))
+      toast.error(t($ => $['error.fetchReleasesError'], { ns: 'plugin' }))
     }
   }
 
   const handleError = (e: any, isInstall: boolean) => {
-    const message = e?.response?.message || t('installModal.installFailedDesc', { ns: 'plugin' })
+    const message = e?.response?.message || t($ => $['installModal.installFailedDesc'], { ns: 'plugin' })
     setErrorMsg(message)
     setState(prevState => ({ ...prevState, step: isInstall ? InstallStepFromGitHub.installFailed : InstallStepFromGitHub.uploadFailed }))
   }
@@ -183,7 +183,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
               {getTitle()}
             </div>
             <div className="self-stretch system-xs-regular text-text-tertiary">
-              {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
+              {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t($ => $['installFromGitHub.installNote'], { ns: 'plugin' })}
             </div>
           </div>
         </div>
@@ -206,7 +206,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
                   >
                     <FieldRoot name="repoUrl" className="gap-4 self-stretch">
                       <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-                        <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
+                        <span className="system-sm-semibold">{t($ => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}</span>
                       </FieldLabel>
                       <FieldControl
                         autoFocus
@@ -224,7 +224,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
                         className="min-w-18"
                         onClick={onClose}
                       >
-                        {t('installModal.cancel', { ns: 'plugin' })}
+                        {t($ => $['installModal.cancel'], { ns: 'plugin' })}
                       </Button>
                       <Button
                         variant="primary"
@@ -232,7 +232,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
                         className="min-w-18"
                         disabled={!state.repoUrl.trim()}
                       >
-                        {t('installModal.next', { ns: 'plugin' })}
+                        {t($ => $['installModal.next'], { ns: 'plugin' })}
                       </Button>
                     </div>
                   </Form>

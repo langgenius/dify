@@ -197,8 +197,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
               }}
               fieldProps={{
                 fieldTitleProps: {
-                  title: t('nodes.knowledgeBase.chunksInput', { ns: 'workflow' }),
-                  tooltip: t('nodes.knowledgeBase.chunksInputTip', { ns: 'workflow' }),
+                  title: t($ => $['nodes.knowledgeBase.chunksInput'], { ns: 'workflow' }),
+                  tooltip: t($ => $['nodes.knowledgeBase.chunksInputTip'], { ns: 'workflow' }),
                   warningDot: chunksInputWarning,
                 },
               }}

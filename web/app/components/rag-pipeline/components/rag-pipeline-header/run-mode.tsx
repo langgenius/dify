@@ -68,19 +68,19 @@ const RunMode = ({
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
+            {workflowRunningData ? t($ => $['common.reRun'], { ns: 'pipeline' }) : (text ?? t($ => $['common.testRun'], { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
             <RiLoader2Line className="mr-1 size-4 animate-spin" />
-            {t('common.processing', { ns: 'pipeline' })}
+            {t($ => $['common.processing'], { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
             <RiDatabase2Line className="mr-1 size-4" />
-            {t('common.preparingDataSource', { ns: 'pipeline' })}
+            {t($ => $['common.preparingDataSource'], { ns: 'pipeline' })}
           </>
         )}
         {

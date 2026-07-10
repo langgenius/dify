@@ -36,7 +36,7 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
-  const keywordNumberLabel = t('form.numberOfKeywords', { ns: 'datasetSettings' })
+  const keywordNumberLabel = t($ => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
 
@@ -53,7 +53,7 @@ const IndexMethod = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('stepTwo.indexMode', { ns: 'datasetCreation' }),
+        title: t($ => $['stepTwo.indexMode'], { ns: 'datasetCreation' }),
       }}
     >
       <div className="space-y-1">
@@ -68,8 +68,8 @@ const IndexMethod = ({
               )}
             />
           )}
-          title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-          description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+          title={t($ => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
+          description={t($ => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
           onClick={handleIndexMethodChange}
           isRecommended
           effectColor="orange"
@@ -88,8 +88,8 @@ const IndexMethod = ({
                   )}
                 />
               )}
-              title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-              description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
+              title={t($ => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+              description={t($ => $['form.indexMethodEconomyTip'], { ns: 'datasetSettings', count: keywordNumber })}
               onClick={handleIndexMethodChange}
               effectColor="blue"
             >

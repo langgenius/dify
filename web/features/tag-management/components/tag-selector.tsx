@@ -100,8 +100,8 @@ export const TagSelector = ({
     })
   }, [tagList, value])
   const emptyTriggerLabel = canBindOrUnbindTags
-    ? t('tag.addTag', { ns: 'common' })
-    : t('tag.noTag', { ns: 'common' })
+    ? t($ => $['tag.addTag'], { ns: 'common' })
+    : t($ => $['tag.noTag'], { ns: 'common' })
   const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
@@ -152,12 +152,12 @@ export const TagSelector = ({
       type,
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }), {
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }), {
           id: toastId,
         })
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }), {
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }), {
           id: toastId,
         })
       },
@@ -189,11 +189,11 @@ export const TagSelector = ({
       },
     }, {
       onSuccess: () => {
-        toast.success(t('tag.created', { ns: 'common' }))
+        toast.success(t($ => $['tag.created'], { ns: 'common' }))
         setInputValue('')
       },
       onError: () => {
-        toast.error(t('tag.failed', { ns: 'common' }))
+        toast.error(t($ => $['tag.failed'], { ns: 'common' }))
       },
     })
   }, [canManageTags, createTag, isCreatingTag, t, type])

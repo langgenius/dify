@@ -32,13 +32,13 @@ export function EnvironmentStrip({ rows, releaseRows }: EnvironmentStripProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+        <h3 className="system-sm-semibold text-text-primary">{t($ => $['overview.strip.title'])}</h3>
         {hasRuntimeRows && appInstanceId && (
           <Link
             href={`/deployments/${appInstanceId}/instances`}
             className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
           >
-            {t('overview.previousReleases.viewAll')}
+            {t($ => $['overview.previousReleases.viewAll'])}
             <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
           </Link>
         )}
@@ -72,8 +72,8 @@ function EnvironmentEmptyState({ canDeploy }: {
     <DeploymentEmptyState
       variant="section"
       icon="i-ri-server-line"
-      title={t('overview.strip.emptyTitle')}
-      description={canDeploy ? t('overview.strip.emptyDeployableDescription') : t('overview.strip.emptyDescription')}
+      title={t($ => $['overview.strip.emptyTitle'])}
+      description={canDeploy ? t($ => $['overview.strip.emptyDeployableDescription']) : t($ => $['overview.strip.emptyDescription'])}
       className="min-h-44"
       action={canDeploy && appInstanceId
         ? (
@@ -85,7 +85,7 @@ function EnvironmentEmptyState({ canDeploy }: {
               onClick={() => openDeployDrawer({ appInstanceId })}
             >
               <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
-              {t('overview.strip.deployToNewEnvironment')}
+              {t($ => $['overview.strip.deployToNewEnvironment'])}
             </Button>
           )
         : undefined}
@@ -141,7 +141,7 @@ export function EnvironmentStripSkeleton() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
+      <h3 className="system-sm-semibold text-text-primary">{t($ => $['overview.strip.title'])}</h3>
       <CardSkeletons />
     </section>
   )

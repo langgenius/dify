@@ -9,7 +9,7 @@ const Header = () => {
 
   return (
     <div className="relative flex px-16 pt-5 pb-2 system-md-semibold text-text-primary">
-      <span>{t('creation.backToKnowledge', { ns: 'datasetPipeline' })}</span>
+      <span>{t($ => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}</span>
       <Link
         className="absolute bottom-0 left-5"
         href="/datasets"

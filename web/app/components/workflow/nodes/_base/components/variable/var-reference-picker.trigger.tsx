@@ -256,7 +256,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               <div>
                 <button
                   type="button"
-                  aria-label={t('operation.add', { ns: 'common' })}
+                  aria-label={t($ => $['operation.add'], { ns: 'common' })}
                   className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={() => {}}
                 >
@@ -312,7 +312,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                 {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
                   <button
                     type="button"
-                    aria-label={t('operation.clear', { ns: 'common' })}
+                    aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                     className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
                     onClick={handleClearVar}
                   >

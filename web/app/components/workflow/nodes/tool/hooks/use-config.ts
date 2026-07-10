@@ -66,7 +66,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       invalidToolsByType()
       hideSetAuthModal()
     },

@@ -28,7 +28,7 @@ export function AgentBuildDraftChangesPanel({
     <section className="flex w-full max-w-full flex-col px-2 pt-2">
       <div className="flex h-6 min-w-0 items-center gap-3 pr-8 pl-2">
         <p className="min-w-0 truncate system-sm-semibold text-text-primary">
-          {t('agentDetail.configure.buildDraft.title')}
+          {t($ => $['agentDetail.configure.buildDraft.title'])}
         </p>
         <button
           type="button"
@@ -84,6 +84,7 @@ function AgentBuildDraftChangeItemRow({
   item: AgentBuildDraftChangeItem
 }) {
   const { t } = useTranslation('agentV2')
+  const descriptionKey = item.descriptionKey
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -108,9 +109,9 @@ function AgentBuildDraftChangeItemRow({
           </p>
         </div>
       </div>
-      {item.descriptionKey && (
+      {descriptionKey && (
         <p className="ms-4 system-xs-regular text-text-tertiary">
-          {t(item.descriptionKey)}
+          {t($ => $[descriptionKey])}
         </p>
       )}
     </div>
@@ -139,9 +140,9 @@ function getChangeSections({
     })
   }
 
-  pushItemSection('skills', t('agentDetail.configure.skills.label'), changeSummary.skills)
-  pushItemSection('files', t('agentDetail.configure.files.label'), changeSummary.files)
-  pushItemSection('envVariables', t('agentDetail.configure.advancedSettings.envEditor.shortLabel'), changeSummary.envVariables)
+  pushItemSection('skills', t($ => $['agentDetail.configure.skills.label']), changeSummary.skills)
+  pushItemSection('files', t($ => $['agentDetail.configure.files.label']), changeSummary.files)
+  pushItemSection('envVariables', t($ => $['agentDetail.configure.advancedSettings.envEditor.shortLabel']), changeSummary.envVariables)
 
   return sections
 }

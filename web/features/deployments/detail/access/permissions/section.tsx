@@ -40,20 +40,20 @@ export function AccessPermissionsSection() {
 
   return (
     <Section
-      title={t('access.permissions.title')}
+      title={t($ => $['access.permissions.title'])}
       showDivider={false}
     >
       {isLoading
         ? <AccessPermissionsSkeleton />
         : isError || !appInstanceId
-          ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
+          ? <DeploymentStateMessage variant="section">{t($ => $['common.loadFailed'])}</DeploymentStateMessage>
           : policyRows.length === 0
             ? (
                 <DeploymentEmptyState
                   variant="section"
                   icon="i-ri-rocket-line"
-                  title={t('access.runAccess.noEnvsTitle')}
-                  description={t('access.runAccess.noEnvs')}
+                  title={t($ => $['access.runAccess.noEnvsTitle'])}
+                  description={t($ => $['access.runAccess.noEnvs'])}
                 />
               )
             : (

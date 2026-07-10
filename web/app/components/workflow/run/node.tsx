@@ -99,16 +99,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t('common.input', { ns: 'workflow' })
+    let text = t($ => $['common.input'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('nodes.loop.initialLoopVariables', { ns: 'workflow' })
+      text = t($ => $['nodes.loop.initialLoopVariables'], { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
-  const processDataTitle = t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()
+  const processDataTitle = t($ => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t('common.output', { ns: 'workflow' })
+    let text = t($ => $['common.output'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('nodes.loop.finalLoopVariables', { ns: 'workflow' })
+      text = t($ => $['nodes.loop.finalLoopVariables'], { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -212,7 +212,7 @@ const NodePanel: FC<Props> = ({
             <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status="stopped">
-                  {t('tracing.stopBy', { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                  {t($ => $['tracing.stopBy'], { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
               {(nodeInfo.status === 'exception') && (
@@ -224,7 +224,7 @@ const NodePanel: FC<Props> = ({
                     rel="noopener noreferrer"
                     className="text-text-accent"
                   >
-                    {t('common.learnMore', { ns: 'workflow' })}
+                    {t($ => $['common.learnMore'], { ns: 'workflow' })}
                   </a>
                 </StatusContainer>
               )}
@@ -240,7 +240,7 @@ const NodePanel: FC<Props> = ({
               )}
               {(nodeInfo.status === 'paused') && (
                 <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
+                  <div className="system-xs-regular text-text-warning">{t($ => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>

@@ -62,7 +62,7 @@ const Field: FC<Props> = ({
           )}
         />
         <TooltipContent>
-          {t('structOutput.moreFillTip', { ns: 'app' })}
+          {t($ => $['structOutput.moreFillTip'], { ns: 'app' })}
         </TooltipContent>
       </Tooltip>
 

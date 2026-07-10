@@ -132,7 +132,7 @@ const Form = () => {
             disabled={loading || readonly}
             onClick={handleSave}
           >
-            {t('form.save', { ns: 'datasetSettings' })}
+            {t($ => $['form.save'], { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>

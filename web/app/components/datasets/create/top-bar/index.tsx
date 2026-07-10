@@ -33,13 +33,13 @@ export const TopBar: FC<TopBarProps> = (props) => {
           <RiArrowLeftLine className="size-4 text-text-primary" />
         </div>
         <p className="system-sm-semibold-uppercase text-text-primary">
-          {t('steps.header.fallbackRoute', { ns: 'datasetCreation' })}
+          {t($ => $['steps.header.fallbackRoute'], { ns: 'datasetCreation' })}
         </p>
       </Link>
       <div className="absolute top-1/2 left-1/2 -translate-1/2">
         <Stepper
           steps={Array.from({ length: 3 }, (_, i) => ({
-            name: t(STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP], { ns: 'datasetCreation' }),
+            name: t($ => $[STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP]], { ns: 'datasetCreation' }),
           }))}
           {...rest}
         />
