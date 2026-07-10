@@ -1,8 +1,11 @@
 import inspect
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -32,15 +35,17 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
-from models import Account
-from models.account import AccountStatus
+from extensions.storage.storage_type import StorageType
+from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAccountJoin
+from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
 from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
 def make_account(account_id: str = "u1", *, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
     account = Account(name="John", email=f"{account_id}@test.com", status=status)
-    account.id = account_id
+    account.id = str(uuid5(NAMESPACE_URL, f"account:{account_id}"))
     account.avatar = "avatar.png"
     account.interface_language = "en-US"
     account.interface_theme = "light"
@@ -49,12 +54,62 @@ def make_account(account_id: str = "u1", *, status: AccountStatus = AccountStatu
     return account
 
 
+def persist_account_with_tenant(
+    session: Session,
+    account_id: str = "u1",
+    *,
+    status: AccountStatus = AccountStatus.ACTIVE,
+    tenant_id: str = "tenant-1",
+) -> tuple[Account, Tenant]:
+    account = make_account(account_id, status=status)
+    tenant = Tenant(name=tenant_id)
+    tenant.id = str(uuid5(NAMESPACE_URL, f"tenant:{tenant_id}"))
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.OWNER,
+    )
+    session.add_all([account, tenant, membership])
+    session.commit()
+    account._current_tenant = tenant
+    account.role = TenantAccountRole.OWNER
+    return account, tenant
+
+
+def make_upload_file(*, tenant_id: str, created_by: str) -> UploadFile:
+    return UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="avatar.png",
+        name="avatar.png",
+        size=128,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=created_by,
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=False,
+    )
+
+
 class TestAccountInitApi:
-    def test_init_success(self, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, InvitationCode)],
+        indirect=True,
+    )
+    def test_init_success(self, app: Flask, sqlite_session: Session):
         api = AccountInitApi()
         method = inspect.unwrap(api.post)
 
-        account = make_account(status=AccountStatus.UNINITIALIZED)
+        account, tenant = persist_account_with_tenant(
+            sqlite_session,
+            status=AccountStatus.UNINITIALIZED,
+        )
+        invitation_code = InvitationCode(batch="batch-1", code="code123")
+        sqlite_session.add(invitation_code)
+        sqlite_session.commit()
         payload = {
             "interface_language": "en-US",
             "timezone": "UTC",
@@ -63,14 +118,24 @@ class TestAccountInitApi:
 
         with (
             app.test_request_context("/account/init", json=payload),
-            patch("controllers.console.workspace.account.db.session.commit", return_value=None),
             patch("controllers.console.workspace.account.dify_config.EDITION", "CLOUD"),
-            patch("controllers.console.workspace.account.db.session.scalar") as scalar_mock,
+            patch("controllers.console.workspace.account.db.session", sqlite_session),
         ):
-            scalar_mock.return_value = MagicMock(status="unused")
             resp = method(api, account)
 
         assert resp["result"] == "success"
+        sqlite_session.expire_all()
+        persisted_account = sqlite_session.get(Account, account.id)
+        persisted_invitation = sqlite_session.get(InvitationCode, invitation_code.id)
+        assert persisted_account is not None
+        assert persisted_account.status == AccountStatus.ACTIVE
+        assert persisted_account.interface_language == "en-US"
+        assert persisted_account.timezone == "UTC"
+        assert persisted_account.initialized_at is not None
+        assert persisted_invitation is not None
+        assert persisted_invitation.status == InvitationCodeStatus.USED
+        assert persisted_invitation.used_by_account_id == account.id
+        assert persisted_invitation.used_by_tenant_id == tenant.id
 
     def test_init_already_initialized(self, app: Flask):
         api = AccountInitApi()
@@ -93,7 +158,7 @@ class TestAccountProfileApi:
         with app.test_request_context("/account/profile"):
             result = method(api, user)
 
-        assert result["id"] == "u1"
+        assert result["id"] == user.id
 
 
 class TestAccountUpdateApis:
@@ -119,29 +184,33 @@ class TestAccountUpdateApis:
         ):
             result = method(api, user)
 
-        assert result["id"] == "u1"
+        assert result["id"] == user.id
 
 
 class TestAccountAvatarApiGet:
     """GET /account/avatar must not sign arbitrary upload_file IDs (IDOR)."""
 
-    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, UploadFile)],
+        indirect=True,
+    )
+    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app: Flask, sqlite_session: Session):
         api = AccountAvatarApi()
         method = inspect.unwrap(api.get)
 
-        user = make_account("acc-owner")
-        tenant_id = "tenant-1"
+        user, tenant = persist_account_with_tenant(sqlite_session, "acc-owner")
+        tenant_id = tenant.id
         file_id = "550e8400-e29b-41d4-a716-446655440000"
 
-        upload_file = MagicMock()
+        upload_file = make_upload_file(tenant_id=tenant_id, created_by=user.id)
         upload_file.id = file_id
-        upload_file.tenant_id = tenant_id
-        upload_file.created_by = user.id
-        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
 
         with (
             app.test_request_context(f"/account/avatar?avatar={file_id}"),
-            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch("controllers.console.workspace.account.db.session", sqlite_session),
             patch(
                 "controllers.console.workspace.account.file_helpers.get_signed_file_url",
                 return_value="https://signed/example",
@@ -152,23 +221,35 @@ class TestAccountAvatarApiGet:
         assert result == {"avatar_url": "https://signed/example"}
         sign_mock.assert_called_once_with(upload_file_id=file_id)
 
-    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(self, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, UploadFile)],
+        indirect=True,
+    )
+    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(
+        self, app: Flask, sqlite_session: Session
+    ):
         api = AccountAvatarApi()
         method = inspect.unwrap(api.get)
 
-        user = make_account("acc-a")
-        tenant_id = "tenant-1"
+        user, tenant = persist_account_with_tenant(sqlite_session, "acc-a")
+        tenant_id = tenant.id
         file_id = "550e8400-e29b-41d4-a716-446655440001"
 
-        upload_file = MagicMock()
+        other_account = make_account("acc-b")
+        other_membership = TenantAccountJoin(
+            tenant_id=tenant_id,
+            account_id=other_account.id,
+            role=TenantAccountRole.NORMAL,
+        )
+        upload_file = make_upload_file(tenant_id=tenant_id, created_by=other_account.id)
         upload_file.id = file_id
-        upload_file.tenant_id = tenant_id
-        upload_file.created_by = "acc-b"
-        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+        sqlite_session.add_all([other_account, other_membership, upload_file])
+        sqlite_session.commit()
 
         with (
             app.test_request_context(f"/account/avatar?avatar={file_id}"),
-            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch("controllers.console.workspace.account.db.session", sqlite_session),
             patch(
                 "controllers.console.workspace.account.file_helpers.get_signed_file_url",
                 return_value="https://signed/leak",
@@ -179,23 +260,29 @@ class TestAccountAvatarApiGet:
 
         sign_mock.assert_not_called()
 
-    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, UploadFile)],
+        indirect=True,
+    )
+    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app: Flask, sqlite_session: Session):
         api = AccountAvatarApi()
         method = inspect.unwrap(api.get)
 
-        user = make_account("acc-owner")
-        tenant_id = "tenant-1"
+        user, tenant = persist_account_with_tenant(sqlite_session, "acc-owner")
+        tenant_id = tenant.id
         file_id = "550e8400-e29b-41d4-a716-446655440002"
 
-        upload_file = MagicMock()
+        other_tenant = Tenant(name="tenant-other")
+        other_tenant.id = str(uuid5(NAMESPACE_URL, "tenant:tenant-other"))
+        upload_file = make_upload_file(tenant_id=other_tenant.id, created_by=user.id)
         upload_file.id = file_id
-        upload_file.tenant_id = "tenant-other"
-        upload_file.created_by = user.id
-        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+        sqlite_session.add_all([other_tenant, upload_file])
+        sqlite_session.commit()
 
         with (
             app.test_request_context(f"/account/avatar?avatar={file_id}"),
-            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch("controllers.console.workspace.account.db.session", sqlite_session),
             patch(
                 "controllers.console.workspace.account.file_helpers.get_signed_file_url",
                 return_value="https://signed/leak",
@@ -246,7 +333,7 @@ class TestAccountPasswordApi:
         ):
             result = method(api, user)
 
-        assert result["id"] == "u1"
+        assert result["id"] == user.id
 
     def test_password_wrong_current(self, app: Flask):
         api = AccountPasswordApi()
@@ -271,21 +358,38 @@ class TestAccountPasswordApi:
 
 
 class TestAccountIntegrateApi:
-    def test_get_integrates(self, app: Flask):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Account, Tenant, TenantAccountJoin, AccountIntegrate)],
+        indirect=True,
+    )
+    def test_get_integrates(self, app: Flask, sqlite_session: Session):
         api = AccountIntegrateApi()
         method = inspect.unwrap(api.get)
 
-        account = make_account("acc1")
+        account, _ = persist_account_with_tenant(sqlite_session, "acc1")
+        sqlite_session.add(
+            AccountIntegrate(
+                account_id=account.id,
+                provider="github",
+                open_id="github-user",
+                encrypted_token="encrypted-token",
+            )
+        )
+        sqlite_session.commit()
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.account.db.session.scalars") as scalars_mock,
+            patch("controllers.console.workspace.account.db.session", sqlite_session),
         ):
-            scalars_mock.return_value.all.return_value = []
             result = method(api, account)
 
-        assert "data" in result
-        assert len(result["data"]) == 2
+        assert result["data"][0]["provider"] == "github"
+        assert result["data"][0]["is_bound"] is True
+        assert result["data"][0]["link"] is None
+        assert result["data"][1]["provider"] == "google"
+        assert result["data"][1]["is_bound"] is False
+        assert result["data"][1]["link"].endswith("/console/api/oauth/login/google")
 
 
 class TestAccountDeleteApi:
