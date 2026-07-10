@@ -368,7 +368,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleChangeConversation, handleNewConversationInputsChange, setClearChatList])
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
