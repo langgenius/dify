@@ -35,8 +35,8 @@ export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
 
-export type PostRemoteFilesUploadResponse =
-  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponse
+  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -51,5 +51,5 @@ export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
 }
 
-export type GetRemoteFilesByUrlResponse =
-  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponse
+  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]

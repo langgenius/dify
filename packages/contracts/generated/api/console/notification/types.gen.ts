@@ -59,5 +59,5 @@ export type PostNotificationDismissResponses = {
   200: SimpleResultResponse
 }
 
-export type PostNotificationDismissResponse =
-  PostNotificationDismissResponses[keyof PostNotificationDismissResponses]
+export type PostNotificationDismissResponse
+  = PostNotificationDismissResponses[keyof PostNotificationDismissResponses]

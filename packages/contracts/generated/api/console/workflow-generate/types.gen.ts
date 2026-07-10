@@ -49,8 +49,8 @@ export type PostWorkflowGenerateResponses = {
   200: GeneratorResponse
 }
 
-export type PostWorkflowGenerateResponse =
-  PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+export type PostWorkflowGenerateResponse
+  = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
 
 export type PostWorkflowGenerateStreamData = {
   body: WorkflowGeneratePayload
@@ -69,8 +69,8 @@ export type PostWorkflowGenerateStreamResponses = {
   }
 }
 
-export type PostWorkflowGenerateStreamResponse =
-  PostWorkflowGenerateStreamResponses[keyof PostWorkflowGenerateStreamResponses]
+export type PostWorkflowGenerateStreamResponse
+  = PostWorkflowGenerateStreamResponses[keyof PostWorkflowGenerateStreamResponses]
 
 export type PostWorkflowGenerateSuggestionsData = {
   body: WorkflowInstructionSuggestionsPayload
@@ -87,5 +87,5 @@ export type PostWorkflowGenerateSuggestionsResponses = {
   200: GeneratorResponse
 }
 
-export type PostWorkflowGenerateSuggestionsResponse =
-  PostWorkflowGenerateSuggestionsResponses[keyof PostWorkflowGenerateSuggestionsResponses]
+export type PostWorkflowGenerateSuggestionsResponse
+  = PostWorkflowGenerateSuggestionsResponses[keyof PostWorkflowGenerateSuggestionsResponses]

@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
@@ -1067,7 +1068,7 @@ export const byBatch = {
  */
 export const get9 = oc
   .route({
-    description: "Get a signed download URL for a document's original uploaded file.",
+    description: 'Get a signed download URL for a document\'s original uploaded file.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
@@ -1242,7 +1243,7 @@ export const get11 = oc
 export const post20 = oc
   .route({
     description:
-      "Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
+      'Update a chunk\'s content, keywords, or answer. Re-triggers indexing for the modified chunk.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
@@ -1385,7 +1386,7 @@ export const updateByFile = {
 export const post24 = oc
   .route({
     description:
-      "Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
+      'Update an existing document\'s text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
@@ -2077,7 +2078,7 @@ export const files = {
 export const get23 = oc
   .route({
     description:
-      "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
+      'Retrieve a paused Human Input form\'s contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
@@ -2096,7 +2097,7 @@ export const get23 = oc
 export const post34 = oc
   .route({
     description:
-      "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
+      'Submit the recipient\'s response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
@@ -2261,7 +2262,7 @@ export const meta = {
 export const get28 = oc
   .route({
     description:
-      "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
+      'Retrieve the application\'s input form configuration, including feature switches, input parameter names, types, and default values.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getParameters',

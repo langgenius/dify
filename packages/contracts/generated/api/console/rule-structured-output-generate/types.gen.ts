@@ -38,5 +38,5 @@ export type PostRuleStructuredOutputGenerateResponses = {
   200: GeneratorResponse
 }
 
-export type PostRuleStructuredOutputGenerateResponse =
-  PostRuleStructuredOutputGenerateResponses[keyof PostRuleStructuredOutputGenerateResponses]
+export type PostRuleStructuredOutputGenerateResponse
+  = PostRuleStructuredOutputGenerateResponses[keyof PostRuleStructuredOutputGenerateResponses]

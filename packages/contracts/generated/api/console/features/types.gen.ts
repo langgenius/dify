@@ -87,5 +87,5 @@ export type GetFeaturesVectorSpaceResponses = {
   200: LimitationModel
 }
 
-export type GetFeaturesVectorSpaceResponse =
-  GetFeaturesVectorSpaceResponses[keyof GetFeaturesVectorSpaceResponses]
+export type GetFeaturesVectorSpaceResponse
+  = GetFeaturesVectorSpaceResponses[keyof GetFeaturesVectorSpaceResponses]

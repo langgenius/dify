@@ -25,5 +25,5 @@ export type GetSpecSchemaDefinitionsResponses = {
   200: SchemaDefinitionsResponse
 }
 
-export type GetSpecSchemaDefinitionsResponse =
-  GetSpecSchemaDefinitionsResponses[keyof GetSpecSchemaDefinitionsResponses]
+export type GetSpecSchemaDefinitionsResponse
+  = GetSpecSchemaDefinitionsResponses[keyof GetSpecSchemaDefinitionsResponses]

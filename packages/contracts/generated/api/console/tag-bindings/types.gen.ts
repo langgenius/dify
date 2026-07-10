@@ -46,5 +46,5 @@ export type PostTagBindingsRemoveResponses = {
   200: SimpleResultResponse
 }
 
-export type PostTagBindingsRemoveResponse =
-  PostTagBindingsRemoveResponses[keyof PostTagBindingsRemoveResponses]
+export type PostTagBindingsRemoveResponse
+  = PostTagBindingsRemoveResponses[keyof PostTagBindingsRemoveResponses]

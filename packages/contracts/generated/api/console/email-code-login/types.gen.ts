@@ -37,8 +37,8 @@ export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailCodeLoginResponse =
-  PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
+export type PostEmailCodeLoginResponse
+  = PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
 
 export type PostEmailCodeLoginValidityData = {
   body: EmailCodeLoginPayload
@@ -51,5 +51,5 @@ export type PostEmailCodeLoginValidityResponses = {
   200: SimpleResultResponse
 }
 
-export type PostEmailCodeLoginValidityResponse =
-  PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
+export type PostEmailCodeLoginValidityResponse
+  = PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]

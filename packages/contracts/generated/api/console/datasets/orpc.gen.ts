@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+
 import {
   zDeleteDatasetsApiKeysByApiKeyIdPath,
   zDeleteDatasetsApiKeysByApiKeyIdResponse,
@@ -665,7 +666,7 @@ export const downloadZip = {
 export const post10 = oc
   .route({
     description:
-      "Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.",
+      'Generate summary index for documents\nThis endpoint checks if the dataset configuration supports summary generation\n(indexing_technique must be \'high_quality\' and summary_index_setting.enable must be true),\nthen asynchronously generates summary indexes for the provided documents.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsGenerateSummary',
@@ -734,7 +735,7 @@ export const status = {
  */
 export const get14 = oc
   .route({
-    description: "Get a signed download URL for a dataset document's original uploaded file",
+    description: 'Get a signed download URL for a dataset document\'s original uploaded file',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',

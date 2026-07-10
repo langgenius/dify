@@ -54,8 +54,8 @@ export type GetFilesSupportTypeResponses = {
   200: AllowedExtensionsResponse
 }
 
-export type GetFilesSupportTypeResponse =
-  GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
+export type GetFilesSupportTypeResponse
+  = GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
 
 export type GetFilesUploadData = {
   body?: never
@@ -99,5 +99,5 @@ export type GetFilesByFileIdPreviewResponses = {
   200: TextContentResponse
 }
 
-export type GetFilesByFileIdPreviewResponse =
-  GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
+export type GetFilesByFileIdPreviewResponse
+  = GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]

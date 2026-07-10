@@ -35,8 +35,8 @@ export type GetFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse =
-  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenResponse
+  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayload
@@ -51,5 +51,5 @@ export type PostFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse =
-  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenResponse
+  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]

@@ -162,16 +162,16 @@ jobs:
           cd api
           uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
 
-      - name: Generate frontend contracts
-        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
-        run: pnpm --dir packages/contracts gen-api-contract
-
-      - name: ESLint autofix
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
-        run: |
-          vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
-
       # TODO: Enable after the repository-wide vp fmt baseline lands.
+      # - name: Generate frontend contracts
+      #   if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
+      #   run: pnpm --dir packages/contracts gen-api-contract
+
+      # - name: ESLint autofix
+      #   if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+      #   run: |
+      #     vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
+
       # - name: Format frontend files
       #   if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
       #   run: vp fmt

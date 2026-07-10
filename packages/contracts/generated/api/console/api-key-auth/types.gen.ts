@@ -40,8 +40,8 @@ export type GetApiKeyAuthDataSourceResponses = {
   200: ApiKeyAuthDataSourceListResponse
 }
 
-export type GetApiKeyAuthDataSourceResponse =
-  GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
+export type GetApiKeyAuthDataSourceResponse
+  = GetApiKeyAuthDataSourceResponses[keyof GetApiKeyAuthDataSourceResponses]
 
 export type PostApiKeyAuthDataSourceBindingData = {
   body: ApiKeyAuthBindingPayload
@@ -54,8 +54,8 @@ export type PostApiKeyAuthDataSourceBindingResponses = {
   200: SimpleResultResponse
 }
 
-export type PostApiKeyAuthDataSourceBindingResponse =
-  PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
+export type PostApiKeyAuthDataSourceBindingResponse
+  = PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
 
 export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   body?: never
@@ -70,5 +70,5 @@ export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
   204: void
 }
 
-export type DeleteApiKeyAuthDataSourceByBindingIdResponse =
-  DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]
+export type DeleteApiKeyAuthDataSourceByBindingIdResponse
+  = DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]

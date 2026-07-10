@@ -2410,8 +2410,8 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
 /**
  * Successfully retrieved task status.
  */
-export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse =
-  zAnnotationJobStatusDetailResponse
+export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse
+  = zAnnotationJobStatusDetailResponse
 
 export const zGetAppsAnnotationsQuery = z.object({
   keyword: z.string().optional().default(''),
@@ -2554,11 +2554,11 @@ export const zGetConversationsByCIdVariablesQuery = z.object({
 /**
  * Successfully retrieved conversation variables.
  */
-export const zGetConversationsByCIdVariablesResponse =
-  zConversationVariableInfiniteScrollPaginationResponse
+export const zGetConversationsByCIdVariablesResponse
+  = zConversationVariableInfiniteScrollPaginationResponse
 
-export const zPutConversationsByCIdVariablesByVariableIdBody =
-  zConversationVariableUpdatePayloadWithUser
+export const zPutConversationsByCIdVariablesByVariableIdBody
+  = zConversationVariableUpdatePayloadWithUser
 
 export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
   c_id: z.uuid(),
@@ -2778,8 +2778,8 @@ export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.objec
 /**
  * Indexing status for documents in the batch.
  */
-export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse =
-  zDocumentStatusListResponse
+export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
+  = zDocumentStatusListResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2857,8 +2857,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.objec
 /**
  * Chunks created successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
-  zSegmentCreateListResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
+  = zSegmentCreateListResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2880,11 +2880,11 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath
 /**
  * Chunk details.
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
-  zSegmentDetailResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
+  = zSegmentDetailResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody =
-  zSegmentUpdatePayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody
+  = zSegmentUpdatePayload
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2895,18 +2895,18 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPat
 /**
  * Chunk updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
-  zSegmentDetailResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
+  = zSegmentDetailResponse
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
-  z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
+  = z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
   })
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery =
-  z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery
+  = z.object({
     keyword: z.string().optional(),
     limit: z.int().gte(1).optional().default(20),
     page: z.int().gte(1).optional().default(1),
@@ -2915,14 +2915,14 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 /**
  * List of child chunks.
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
-  zChildChunkListResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
+  = zChildChunkListResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody =
-  zChildChunkCreatePayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
+  = zChildChunkCreatePayload
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
-  z.object({
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
+  = z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
@@ -2931,11 +2931,11 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 /**
  * Child chunk created successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
-  zChildChunkDetailResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
+  = zChildChunkDetailResponse
 
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
-  z.object({
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
+  = z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2945,14 +2945,14 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
 /**
  * Success.
  */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
-  z.void()
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
+  = z.void()
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody =
-  zChildChunkUpdatePayload
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
+  = zChildChunkUpdatePayload
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
-  z.object({
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
+  = z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2962,8 +2962,8 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 /**
  * Child chunk updated successfully.
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
-  zChildChunkDetailResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
+  = zChildChunkDetailResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody = z.object({
   data: z.string().optional(),
@@ -2978,8 +2978,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.o
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse =
-  zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
+  = zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody = zDocumentTextUpdate
 
@@ -2991,8 +2991,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath = z.o
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
-  zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
+  = zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body = z.object({
   data: z.string().optional(),
@@ -3007,8 +3007,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response =
-  zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
+  = zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body = zDocumentTextUpdate
 
@@ -3020,8 +3020,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path = z.
 /**
  * Document updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response =
-  zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response
+  = zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 
@@ -3071,8 +3071,8 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 /**
  * Built-in metadata field toggled successfully.
  */
-export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
-  zDatasetMetadataActionResponse
+export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
+  = zDatasetMetadataActionResponse
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
   dataset_id: z.uuid(),
@@ -3107,11 +3107,11 @@ export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery = z.object({
 /**
  * List of datasource nodes configured in the pipeline.
  */
-export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse =
-  zDatasourcePluginListResponse
+export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
+  = zDatasourcePluginListResponse
 
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody =
-  zDatasourceNodeRunPayload
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody
+  = zDatasourceNodeRunPayload
 
 export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.object({
   dataset_id: z.uuid(),
@@ -3355,5 +3355,5 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
 /**
  * Available models for the specified type.
  */
-export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
-  zProviderWithModelsListResponse
+export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse
+  = zProviderWithModelsListResponse

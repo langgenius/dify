@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+
 import { zPostRuleGenerateBody, zPostRuleGenerateResponse } from './zod.gen'
 
 /**

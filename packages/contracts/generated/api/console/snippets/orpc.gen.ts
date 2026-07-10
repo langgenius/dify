@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+
 import {
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse,
@@ -442,7 +443,7 @@ export const nodes3 = {
 export const post5 = oc
   .route({
     description:
-      "Executes the snippet's draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.",
+      'Executes the snippet\'s draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftRun',
@@ -724,7 +725,7 @@ export const patch2 = oc
     method: 'PATCH',
     operationId: 'patchSnippetsBySnippetIdWorkflowsByWorkflowId',
     path: '/snippets/{snippet_id}/workflows/{workflow_id}',
-    summary: "Update a published snippet workflow version's display metadata",
+    summary: 'Update a published snippet workflow version\'s display metadata',
     tags: ['console'],
   })
   .input(

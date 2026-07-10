@@ -27,8 +27,8 @@ export type GetBillingInvoicesResponses = {
   200: BillingInvoiceResponse
 }
 
-export type GetBillingInvoicesResponse =
-  GetBillingInvoicesResponses[keyof GetBillingInvoicesResponses]
+export type GetBillingInvoicesResponse
+  = GetBillingInvoicesResponses[keyof GetBillingInvoicesResponses]
 
 export type PutBillingPartnersByPartnerKeyTenantsData = {
   body: PartnerTenantsPayload
@@ -47,8 +47,8 @@ export type PutBillingPartnersByPartnerKeyTenantsResponses = {
   200: BillingResponse
 }
 
-export type PutBillingPartnersByPartnerKeyTenantsResponse =
-  PutBillingPartnersByPartnerKeyTenantsResponses[keyof PutBillingPartnersByPartnerKeyTenantsResponses]
+export type PutBillingPartnersByPartnerKeyTenantsResponse
+  = PutBillingPartnersByPartnerKeyTenantsResponses[keyof PutBillingPartnersByPartnerKeyTenantsResponses]
 
 export type GetBillingSubscriptionData = {
   body?: never
@@ -64,5 +64,5 @@ export type GetBillingSubscriptionResponses = {
   200: BillingResponse
 }
 
-export type GetBillingSubscriptionResponse =
-  GetBillingSubscriptionResponses[keyof GetBillingSubscriptionResponses]
+export type GetBillingSubscriptionResponse
+  = GetBillingSubscriptionResponses[keyof GetBillingSubscriptionResponses]

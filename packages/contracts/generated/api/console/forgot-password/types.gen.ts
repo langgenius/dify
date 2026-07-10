@@ -52,8 +52,8 @@ export type PostForgotPasswordResponses = {
   200: ForgotPasswordEmailResponse
 }
 
-export type PostForgotPasswordResponse =
-  PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
+export type PostForgotPasswordResponse
+  = PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
 
 export type PostForgotPasswordResetsData = {
   body: ForgotPasswordResetPayload
@@ -70,8 +70,8 @@ export type PostForgotPasswordResetsResponses = {
   200: ForgotPasswordResetResponse
 }
 
-export type PostForgotPasswordResetsResponse =
-  PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
+export type PostForgotPasswordResetsResponse
+  = PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
 
 export type PostForgotPasswordValidityData = {
   body: ForgotPasswordCheckPayload
@@ -88,5 +88,5 @@ export type PostForgotPasswordValidityResponses = {
   200: ForgotPasswordCheckResponse
 }
 
-export type PostForgotPasswordValidityResponse =
-  PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+export type PostForgotPasswordValidityResponse
+  = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
