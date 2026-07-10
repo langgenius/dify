@@ -8,15 +8,15 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 
 const WorkflowVersionApiUpgradeNotice = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('billing')
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
 
   if (!isFetchedPlan || !enableBilling || plan.type !== Plan.sandbox)
     return null
 
-  const title = t('upgrade.workflowVersionRun.title', { ns: 'billing' })
-  const description = t('upgrade.workflowVersionRun.description', { ns: 'billing' })
+  const title = t('upgrade.workflowVersionRun.title')
+  const description = t('upgrade.workflowVersionRun.description')
 
   return (
     <>
