@@ -35,11 +35,11 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: cred
     <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
         <div className="system-sm-medium text-text-primary">
-          {t(titleKey, { ns: 'common' })}
+          {t($ => $[titleKey], { ns: 'common' })}
         </div>
         <div className="system-xs-regular text-text-tertiary">
           <Trans
-            i18nKey={descriptionKey}
+            i18nKey={$ => $[descriptionKey]}
             ns="common"
             components={{
               upgradeLink: IS_CLOUD_EDITION
@@ -58,7 +58,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: cred
       <MeterRoot value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <MeterLabel className="system-xs-medium text-text-tertiary">
-            {t('modelProvider.card.usageLabel', { ns: 'common' })}
+            {t($ => $['modelProvider.card.usageLabel'], { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
             {/* eslint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}

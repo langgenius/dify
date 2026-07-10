@@ -44,7 +44,7 @@ const ContinueWorkItem = ({
   )
 
   const showPreviewOnlyAccessWarning = () => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
   }
 
   const handlePreviewOnlyCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -78,7 +78,7 @@ const ContinueWorkItem = ({
         <div className="flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary">
           <span className="shrink-0">{app.author_name}</span>
           <span className="shrink-0">·</span>
-          <span className="min-w-0 truncate">{t('continueWork.editedAt', { ns: 'explore', time: formatTimeFromNow(updatedAt) })}</span>
+          <span className="min-w-0 truncate">{t($ => $['continueWork.editedAt'], { ns: 'explore', time: formatTimeFromNow(updatedAt) })}</span>
         </div>
       </div>
     </>

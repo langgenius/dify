@@ -35,7 +35,7 @@ const MemberItem = ({
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
-              {t('form.me', { ns: i18nNamespace })}
+              {t($ => $['form.me'], { ns: i18nNamespace })}
             </span>
           )}
         </div>

@@ -40,16 +40,16 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   const staticPrompts = useMemo(() => {
     if (mode === 'workflow') {
       return [
-        t('workflowGenerator.examples.workflow.summarize'),
-        t('workflowGenerator.examples.workflow.translate'),
-        t('workflowGenerator.examples.workflow.rag'),
-        t('workflowGenerator.examples.workflow.classify'),
+        t($ => $['workflowGenerator.examples.workflow.summarize']),
+        t($ => $['workflowGenerator.examples.workflow.translate']),
+        t($ => $['workflowGenerator.examples.workflow.rag']),
+        t($ => $['workflowGenerator.examples.workflow.classify']),
       ]
     }
     return [
-      t('workflowGenerator.examples.chatflow.support'),
-      t('workflowGenerator.examples.chatflow.tutor'),
-      t('workflowGenerator.examples.chatflow.triage'),
+      t($ => $['workflowGenerator.examples.chatflow.support']),
+      t($ => $['workflowGenerator.examples.chatflow.tutor']),
+      t($ => $['workflowGenerator.examples.chatflow.triage']),
     ]
   }, [mode, t])
 
@@ -110,13 +110,13 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
     <div className="mt-3">
       <div className="mb-1.5 flex items-center gap-1">
         <span className="system-xs-medium-uppercase text-text-tertiary">
-          {t('workflowGenerator.examples.label')}
+          {t($ => $['workflowGenerator.examples.label'])}
         </span>
         <button
           type="button"
           data-testid="workflow-gen-suggestions-refresh"
-          aria-label={t('workflowGenerator.examples.refresh')}
-          title={t('workflowGenerator.examples.refresh')}
+          aria-label={t($ => $['workflowGenerator.examples.refresh'])}
+          title={t($ => $['workflowGenerator.examples.refresh'])}
           className="flex size-4 cursor-pointer items-center justify-center rounded text-text-quaternary hover:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => { void fetchSuggestions() }}
           disabled={isLoading}

@@ -10,22 +10,23 @@ import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
 
 vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) => {
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const prefix = options?.ns ? `${options.ns}.` : ''
         if (options?.returnObjects)
           return [`${prefix}${key}-feature-1`, `${prefix}${key}-feature-2`]
         return `${prefix}${key}`
-      },
+      }),
       i18n: {
         language: 'en',
         changeLanguage: vi.fn(),
       },
     }),
-    Trans: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    Trans: withSelectorKeyProps(({ children }: { children?: ReactNode }) => <>{children}</>),
   }
 })
 

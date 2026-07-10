@@ -35,7 +35,7 @@ const AgentSetting: FC<Props> = ({
   const [tempPayload, setTempPayload] = useState(payload)
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
-  const maximumIterationsLabel = t('agent.setting.maximumIterations.name', { ns: 'appDebug' })
+  const maximumIterationsLabel = t($ => $['agent.setting.maximumIterations.name'], { ns: 'appDebug' })
 
   useClickAway(() => {
     if (mounted)
@@ -63,7 +63,7 @@ const AgentSetting: FC<Props> = ({
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
           <div className="flex flex-col text-base font-semibold text-text-primary">
-            <div className="leading-6">{t('agent.setting.name', { ns: 'appDebug' })}</div>
+            <div className="leading-6">{t($ => $['agent.setting.name'], { ns: 'appDebug' })}</div>
           </div>
           <div className="flex items-center">
             <div
@@ -87,10 +87,10 @@ const AgentSetting: FC<Props> = ({
             icon={
               <CuteRobot className="size-4 text-indigo-600" />
             }
-            name={t('agent.agentMode', { ns: 'appDebug' })}
-            description={t('agent.agentModeDes', { ns: 'appDebug' })}
+            name={t($ => $['agent.agentMode'], { ns: 'appDebug' })}
+            description={t($ => $['agent.agentModeDes'], { ns: 'appDebug' })}
           >
-            <div className="text-[13px] leading-[18px] font-medium text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
+            <div className="text-[13px] leading-[18px] font-medium text-text-primary">{isFunctionCall ? t($ => $['agent.agentModeType.functionCall'], { ns: 'appDebug' }) : t($ => $['agent.agentModeType.ReACT'], { ns: 'appDebug' })}</div>
           </ItemPanel>
 
           <ItemPanel
@@ -99,7 +99,7 @@ const AgentSetting: FC<Props> = ({
               <Unblur className="h-4 w-4 text-[#FB6514]" />
             }
             name={maximumIterationsLabel}
-            description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
+            description={t($ => $['agent.setting.maximumIterations.description'], { ns: 'appDebug' })}
           >
             <FieldsetRoot className="flex items-center">
               <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
@@ -143,7 +143,7 @@ const AgentSetting: FC<Props> = ({
 
           {!isFunctionCall && (
             <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
+              <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">{t($ => $['builtInPromptTitle'], { ns: 'tools' })}</div>
               <div className="h-[396px] overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
@@ -161,13 +161,13 @@ const AgentSetting: FC<Props> = ({
             onClick={onCancel}
             className="mr-2"
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
             onClick={handleSave}
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
       </div>

@@ -70,7 +70,7 @@ const PreviewDocumentPicker: FC<Props> = ({
         popupClassName="border-none bg-transparent shadow-none"
       >
         <div className="w-[392px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
-          {files?.length > 1 && <div className="flex h-8 items-center pl-2 system-xs-medium-uppercase text-text-tertiary">{t('preprocessDocument', { ns: 'dataset', num: files.length })}</div>}
+          {files?.length > 1 && <div className="flex h-8 items-center pl-2 system-xs-medium-uppercase text-text-tertiary">{t($ => $['preprocessDocument'], { ns: 'dataset', num: files.length })}</div>}
           {files?.length > 0
             ? (
                 <PreviewDocumentList

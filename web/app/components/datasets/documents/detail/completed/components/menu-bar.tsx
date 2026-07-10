@@ -43,7 +43,7 @@ function MenuBar({
             <Checkbox
               className="shrink-0"
               parent
-              aria-label={t('operation.selectAll', { ns: 'common' })}
+              aria-label={t($ => $['operation.selectAll'], { ns: 'common' })}
               disabled={isLoading}
             />
           )

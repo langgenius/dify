@@ -53,7 +53,7 @@ function addTitle({
 
     if (isParallelStartNode) {
       node.parallelDetail!.isParallelStartNode = true
-      node.parallelDetail!.parallelTitle = `${t('common.parallel', { ns: 'workflow' })}-${parallelIndexInfo}`
+      node.parallelDetail!.parallelTitle = `${t($ => $['common.parallel'], { ns: 'workflow' })}-${parallelIndexInfo}`
     }
 
     const isBrachStartNode = parallel_start_node_id === node.node_id
@@ -66,7 +66,7 @@ function addTitle({
         }
       }
 
-      node.parallelDetail!.branchTitle = `${t('common.branch', { ns: 'workflow' })}-${belongParallelIndexInfo}-${branchLetter}`
+      node.parallelDetail!.branchTitle = `${t($ => $['common.branch'], { ns: 'workflow' })}-${belongParallelIndexInfo}-${branchLetter}`
     }
 
     if (node.parallelDetail?.children && node.parallelDetail.children.length > 0) {

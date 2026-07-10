@@ -53,14 +53,14 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
           />
         )}
       >
-        {t('modelProvider.loadPresets', { ns: 'common' })}
+        {t($ => $['modelProvider.loadPresets'], { ns: 'common' })}
         <span className="ml-0.5 i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {visiblePresetTones.map(tone => (
           <DropdownMenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
             {TONE_ICONS[tone.id]}
-            {t(toneI18nKeyMap[tone.name], { ns: 'common' })}
+            {t($ => $[toneI18nKeyMap[tone.name]], { ns: 'common' })}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

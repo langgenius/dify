@@ -88,13 +88,13 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
       return
 
     if (isResponding) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return
     }
     if (onSend) {
       const { files } = filesStore.getState()
       if (files.some(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
+        toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
@@ -164,7 +164,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
     ;(Recorder as AudioRecorderWithPermission).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
-      toast.error(t('voiceInput.notAllow', { ns: 'common' }))
+      toast.error(t($ => $['voiceInput.notAllow'], { ns: 'common' }))
     })
   }, [t])
   const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
@@ -185,7 +185,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
                   textareaRef.current = ref ?? undefined
                 }}
                 className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')}
-                placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
+                placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t($ => $[readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder'], { ns: 'common', botName }) || '')}
                 // Existing chat behavior focuses the composer as soon as it opens.
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={autoFocus}

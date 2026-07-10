@@ -117,7 +117,7 @@ const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds,
     })
     onUpdate()
     hideEditModal()
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
   return {
     isShowEditModal,

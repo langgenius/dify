@@ -18,7 +18,7 @@ const SnippetLayout = ({
 }: SnippetLayoutProps) => {
   const { t } = useTranslation('snippet')
 
-  useDocumentTitle(snippet?.name || t('typeLabel'))
+  useDocumentTitle(snippet?.name || t($ => $['typeLabel']))
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 overflow-hidden bg-background-body">

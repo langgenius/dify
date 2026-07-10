@@ -174,7 +174,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
+      toast.error(t($ => $['panel.checklistTip'], { ns: 'workflow' }))
       throw new Error('Checklist has unresolved items')
     }
 
@@ -186,7 +186,7 @@ const FeaturesTrigger = () => {
         releaseNotes: publishParams?.releaseNotes || '',
       })
       if (res) {
-        toast.success(t('api.actionSuccess', { ns: 'common' }))
+        toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -235,7 +235,7 @@ const FeaturesTrigger = () => {
           onClick={handleShowFeatures}
         >
           <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
-          {t('common.features', { ns: 'workflow' })}
+          {t($ => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}
       <AppPublisher

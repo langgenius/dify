@@ -131,12 +131,12 @@ export const useFormState = () => {
       return
 
     if (!name?.trim()) {
-      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
+      toast.error(t($ => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+      toast.error(t($ => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
 
@@ -184,7 +184,7 @@ export const useFormState = () => {
       }
 
       await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
 
       if (mutateDatasets) {
         await mutateDatasets()
@@ -192,7 +192,7 @@ export const useFormState = () => {
       }
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
     finally {
       setLoading(false)

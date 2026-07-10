@@ -102,14 +102,14 @@ const Annotation: FC<Props> = (props) => {
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appDetail.id, payload)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -117,13 +117,13 @@ const Annotation: FC<Props> = (props) => {
   const handleBatchDelete = async () => {
     try {
       await delAnnotations(appDetail.id, selectedIds)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
     }
     catch (e: any) {
-      toast.error(e.message || t('api.actionFailed', { ns: 'common' }))
+      toast.error(e.message || t($ => $['api.actionFailed'], { ns: 'common' }))
     }
   }
 
@@ -136,7 +136,7 @@ const Annotation: FC<Props> = (props) => {
     if (!currItem)
       return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -149,10 +149,10 @@ const Annotation: FC<Props> = (props) => {
   return (
     <div className="flex h-full flex-col">
       <PageTitle
-        title={t('title', { ns: 'appAnnotation' })}
-        description={t('noData.description', { ns: 'appAnnotation' })}
+        title={t($ => $['title'], { ns: 'appAnnotation' })}
+        description={t($ => $['noData.description'], { ns: 'appAnnotation' })}
         learnMoreHref={docLink('/use-dify/monitor/annotation-reply')}
-        learnMoreLabel={t('operation.learnMore', { ns: 'common' })}
+        learnMoreLabel={t($ => $['operation.learnMore'], { ns: 'common' })}
       />
       <div className="relative flex min-h-0 flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
@@ -161,7 +161,7 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
                   <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
-                  <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
+                  <div className="system-sm-medium text-text-primary">{t($ => $['name'], { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     checked={annotationConfig?.enabled ?? false}
@@ -179,7 +179,7 @@ const Annotation: FC<Props> = (props) => {
                         const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
-                        toast.success(t('api.actionSuccess', { ns: 'common' }))
+                        toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
                       }
                     }}
                   >
@@ -230,17 +230,17 @@ const Annotation: FC<Props> = (props) => {
                 totalPages={totalPages}
                 onPageChange={page => setCurrPage(page - 1)}
                 labels={{
-                  previous: t('pagination.previous', { ns: 'common' }),
-                  next: t('pagination.next', { ns: 'common' }),
-                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                  previous: t($ => $['pagination.previous'], { ns: 'common' }),
+                  next: t($ => $['pagination.next'], { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+                  pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
                 }}
                 pageSize={{
                   value: limit,
                   options: [10, 25, 50],
                   onValueChange: setLimit,
-                  label: t('pagination.perPage', { ns: 'common' }),
-                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                  label: t($ => $['pagination.perPage'], { ns: 'common' }),
+                  ariaLabel: t($ => $['pagination.perPage'], { ns: 'common' }),
                 }}
               />
             )
@@ -279,7 +279,7 @@ const Annotation: FC<Props> = (props) => {
                 await updateAnnotationScore(appDetail.id, annotationId, score)
 
               await fetchAnnotationConfig()
-              toast.success(t('api.actionSuccess', { ns: 'common' }))
+              toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
               setIsShowEdit(false)
             }}
             annotationConfig={annotationConfig!}

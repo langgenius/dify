@@ -20,7 +20,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
   const { t } = useTranslation()
   const moreThanOneVersion = versionLen > 1
   const versions = Array.from({ length: versionLen }, (_, index) => ({
-    label: `${t('generate.version', { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t('generate.latest', { ns: 'appDebug' })}` : ''}`,
+    label: `${t($ => $['generate.version'], { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t($ => $['generate.latest'], { ns: 'appDebug' })}` : ''}`,
     value: index,
   }))
 
@@ -36,10 +36,10 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         )}
       >
         <div>
-          {t('generate.version', { ns: 'appDebug' })}
+          {t($ => $['generate.version'], { ns: 'appDebug' })}
           {' '}
           {value + 1}
-          {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
+          {isLatest && ` · ${t($ => $['generate.latest'], { ns: 'appDebug' })}`}
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
       </DropdownMenuTrigger>
@@ -50,7 +50,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         popupClassName="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <div className="flex h-[22px] items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
-          {t('generate.versions', { ns: 'appDebug' })}
+          {t($ => $['generate.versions'], { ns: 'appDebug' })}
         </div>
         <DropdownMenuRadioGroup
           value={value}

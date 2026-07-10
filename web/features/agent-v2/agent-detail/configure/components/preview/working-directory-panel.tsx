@@ -508,7 +508,7 @@ export function AgentWorkingDirectoryPanel({
           },
         })
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
-        toast.success(tCommon('operation.downloadSuccess'))
+        toast.success(tCommon($ => $['operation.downloadSuccess']))
       }
       finally {
         setDownloadActionLoadingTarget(null)
@@ -532,7 +532,7 @@ export function AgentWorkingDirectoryPanel({
         },
       })
       downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
-      toast.success(tCommon('operation.downloadSuccess'))
+      toast.success(tCommon($ => $['operation.downloadSuccess']))
     }
     finally {
       setDownloadActionLoadingTarget(null)
@@ -542,33 +542,33 @@ export function AgentWorkingDirectoryPanel({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AgentSkillDetailDialog
-        skillName={t('agentDetail.configure.workingDirectory.title')}
+        skillName={t($ => $['agentDetail.configure.workingDirectory.title'])}
         detail={{
-          description: t('agentDetail.configure.workingDirectory.description'),
+          description: t($ => $['agentDetail.configure.workingDirectory.description']),
           fileCount: countReadableFiles(workingDirectoryFiles),
           fileListHeader: isSandboxInfoLoading
             ? (
                 <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
-                  {t('agentDetail.configure.workingDirectory.fileSystem')}
+                  {t($ => $['agentDetail.configure.workingDirectory.fileSystem'])}
                 </h3>
               )
             : (
                 <div className="flex shrink-0 flex-col">
                   <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
                     <h3 id="agent-skill-detail-files-heading" className="min-w-0 flex-1 system-xl-semibold text-text-primary">
-                      {t('agentDetail.configure.workingDirectory.fileSystem')}
+                      {t($ => $['agentDetail.configure.workingDirectory.fileSystem'])}
                     </h3>
                     {showReturnToWorkspaceButton && (
                       <Tooltip>
                         <TooltipTrigger
-                          aria-label={t('agentDetail.configure.workingDirectory.returnToWorkspace')}
+                          aria-label={t($ => $['agentDetail.configure.workingDirectory.returnToWorkspace'])}
                           className="flex size-6 shrink-0 items-center justify-center rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                           onClick={() => handleDirectoryPathChange(workspaceDirectoryPath)}
                         >
                           <span aria-hidden className="i-ri-arrow-go-back-line size-3.5" />
                         </TooltipTrigger>
                         <TooltipContent placement="top">
-                          {t('agentDetail.configure.workingDirectory.returnToWorkspace')}
+                          {t($ => $['agentDetail.configure.workingDirectory.returnToWorkspace'])}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -583,7 +583,7 @@ export function AgentWorkingDirectoryPanel({
           fileListPanelClassName: 'w-[360px]',
           fileListTreeClassName: 'px-0',
           fileListTreeListClassName: 'px-1',
-          fileListTitle: t('agentDetail.configure.workingDirectory.title'),
+          fileListTitle: t($ => $['agentDetail.configure.workingDirectory.title']),
           files: workingDirectoryFiles,
           filePreview: {
             binary: fileReadQuery.data?.binary,
@@ -624,7 +624,7 @@ export function AgentWorkingDirectoryPanel({
           onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) => loadingFolderPaths.has(file.id)
             ? (
-                <span aria-label={tCommon('loading')} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
+                <span aria-label={tCommon($ => $['loading'])} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
               )
             : null,
           selectedFileId: selectedWorkingDirectoryFile?.id,

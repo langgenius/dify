@@ -23,7 +23,7 @@ const nodeDefault: NodeDefault<DocExtractorNodeType> = {
     const { variable_selector: variable } = payload
 
     if (!errorMessages && !variable?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.assigner.assignedVariable', { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: t($ => $['nodes.assigner.assignedVariable'], { ns: 'workflow' }) })
 
     return {
       isValid: !errorMessages,

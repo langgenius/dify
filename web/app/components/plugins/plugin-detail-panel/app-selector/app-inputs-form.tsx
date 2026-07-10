@@ -123,7 +123,7 @@ const AppInputsForm = ({
         <div key={form.variable}>
           <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
             <div className="truncate">{form.label}</div>
-            {!form.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+            {!form.required && <span className="system-xs-regular text-text-tertiary">{t($ => $['panel.optional'], { ns: 'workflow' })}</span>}
           </div>
           {renderField(form)}
         </div>

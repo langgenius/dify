@@ -5,21 +5,22 @@ import { InputVarType } from '@/app/components/workflow/types'
 import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   const React = await import('react')
   return {
     useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) => {
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = options?.ns as string | undefined
         return ns ? `${ns}.${key}` : key
-      },
+      }),
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
-    Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
+    Trans: withSelectorKeyProps(({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
       <span data-i18n-key={i18nKey}>
         {i18nKey}
         {components?.docLink}
       </span>
-    ),
+    )),
   }
 })
 

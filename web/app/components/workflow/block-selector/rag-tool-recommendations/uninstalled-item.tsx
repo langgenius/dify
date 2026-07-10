@@ -49,7 +49,7 @@ const UninstalledItem = ({
             className="cursor-pointer pl-1.5 system-xs-medium text-components-button-secondary-accent-text"
             onClick={showInstallModal}
           >
-            {t('installAction', { ns: 'plugin' })}
+            {t($ => $['installAction'], { ns: 'plugin' })}
           </div>
         )}
         {isShowInstallModal && canInstallPlugin && (

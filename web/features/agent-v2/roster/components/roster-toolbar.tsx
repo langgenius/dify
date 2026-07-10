@@ -57,7 +57,7 @@ function RosterStatusFilter({
 
   return (
     <SegmentedControl
-      aria-label={t('roster.filters.label')}
+      aria-label={t($ => $['roster.filters.label'])}
       className="shrink-0"
       value={[filter]}
       onValueChange={(value) => {
@@ -69,16 +69,16 @@ function RosterStatusFilter({
     >
       <RosterFilterItem
         value="all"
-        label={t('roster.filters.all')}
+        label={t($ => $['roster.filters.all'])}
       />
       <RosterFilterItem
         value="published"
-        label={t('roster.filters.published')}
+        label={t($ => $['roster.filters.published'])}
         count={publishedAgents}
       />
       <RosterFilterItem
         value="drafts"
-        label={t('roster.filters.drafts')}
+        label={t($ => $['roster.filters.drafts'])}
         count={draftAgents}
       />
     </SegmentedControl>
@@ -91,9 +91,9 @@ function RosterSearchFilter() {
 
   return (
     <SearchInput
-      aria-label={t('roster.searchLabel')}
+      aria-label={t($ => $['roster.searchLabel'])}
       className="h-8 w-50 min-w-0 shrink"
-      placeholder={t('roster.searchPlaceholder')}
+      placeholder={t($ => $['roster.searchPlaceholder'])}
       value={keyword}
       onValueChange={(value) => {
         void setKeyword(value)
@@ -114,7 +114,7 @@ function RosterCreatedByMeFilter() {
           void setCreatedByMe(checked === true)
         }}
       />
-      <span className="p-1 system-sm-regular text-text-tertiary">{t('roster.filters.createdByMe')}</span>
+      <span className="p-1 system-sm-regular text-text-tertiary">{t($ => $['roster.filters.createdByMe'])}</span>
     </label>
   )
 }

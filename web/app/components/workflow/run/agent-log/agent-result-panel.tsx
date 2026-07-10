@@ -46,7 +46,7 @@ const AgentResultPanel = ({
             </div>
             <span aria-hidden className="mr-1.5 i-ri-alert-fill size-4 text-text-warning-secondary" />
             <div className="system-xs-medium text-text-primary">
-              {t('circularInvocationTip', { ns: 'runLog' })}
+              {t($ => $['circularInvocationTip'], { ns: 'runLog' })}
             </div>
           </div>
         )

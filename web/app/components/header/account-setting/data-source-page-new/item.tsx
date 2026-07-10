@@ -36,7 +36,7 @@ const Item = ({
               className="h-6 min-w-0 grow"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
-              placeholder={t('placeholder.input', { ns: 'common' })}
+              placeholder={t($ => $['placeholder.input'], { ns: 'common' })}
               onClick={e => e.stopPropagation()}
             />
             <Button
@@ -55,7 +55,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
             <Button
               size="small"
@@ -64,7 +64,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
           </div>
         )
@@ -78,7 +78,7 @@ const Item = ({
             {
               credentialItem.is_default && (
                 <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium-uppercase text-text-tertiary">
-                  {t('auth.default', { ns: 'plugin' })}
+                  {t($ => $['auth.default'], { ns: 'plugin' })}
                 </div>
               )
             }
@@ -93,7 +93,7 @@ const Item = ({
                 <StatusDot status="success" />
               </div>
               <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
-                {t('dataSource.notion.connected', { ns: 'common' })}
+                {t($ => $['dataSource.notion.connected'], { ns: 'common' })}
               </div>
             </div>
             <div className="mr-1 ml-2 h-3 w-px bg-divider-regular"></div>

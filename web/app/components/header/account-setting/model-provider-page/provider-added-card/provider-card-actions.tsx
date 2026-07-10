@@ -112,7 +112,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               className="border-state-warning-active bg-state-warning-hover text-text-warning"
               size="xs"
               uppercase={false}
-              text={t('operation.debugConfig', { ns: 'appDebug' })}
+              text={t($ => $['operation.debugConfig'], { ns: 'appDebug' })}
             />
           )}
         </>
@@ -129,12 +129,12 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
                 className="h-5!"
                 onClick={handleTriggerLatestUpdate}
               >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
+                {t($ => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
             )}
           />
           <TooltipContent>
-            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+            {t($ => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )}

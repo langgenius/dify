@@ -28,13 +28,13 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
 
   const getStatusText = () => {
     if (isEmbedding)
-      return t('embedding.processing', { ns: 'datasetDocuments' })
+      return t($ => $['embedding.processing'], { ns: 'datasetDocuments' })
     if (isCompleted)
-      return t('embedding.completed', { ns: 'datasetDocuments' })
+      return t($ => $['embedding.completed'], { ns: 'datasetDocuments' })
     if (isPaused)
-      return t('embedding.paused', { ns: 'datasetDocuments' })
+      return t($ => $['embedding.paused'], { ns: 'datasetDocuments' })
     if (isError)
-      return t('embedding.error', { ns: 'datasetDocuments' })
+      return t($ => $['embedding.error'], { ns: 'datasetDocuments' })
     return ''
   }
 
@@ -58,7 +58,7 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
         >
           <RiPauseCircleLine className="size-3.5 text-components-button-secondary-text" />
           <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
-            {t('embedding.pause', { ns: 'datasetDocuments' })}
+            {t($ => $['embedding.pause'], { ns: 'datasetDocuments' })}
           </span>
         </button>
       )}
@@ -71,7 +71,7 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(({
         >
           <RiPlayCircleLine className="size-3.5 text-components-button-secondary-text" />
           <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
-            {t('embedding.resume', { ns: 'datasetDocuments' })}
+            {t($ => $['embedding.resume'], { ns: 'datasetDocuments' })}
           </span>
         </button>
       )}

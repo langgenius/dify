@@ -63,11 +63,11 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate?.(operationName)
     }
     else {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -113,7 +113,7 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
               )}
             />
             <TooltipContent className="system-xs-medium text-text-secondary">
-              {t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+              {t($ => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
             </TooltipContent>
           </Tooltip>
         </div>

@@ -39,9 +39,9 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
 
     const timeText = formatTime({
       date: timestamp * 1000,
-      dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+      dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
     })
-    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
+    return `${t($ => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.created_at, app.updated_at, t])
   const href = getRedirectionPath(app, {
     currentUserId,
@@ -56,7 +56,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
   )
   const showPreviewOnlyAccessWarning = useCallback(() => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
   }, [t])
   const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ')

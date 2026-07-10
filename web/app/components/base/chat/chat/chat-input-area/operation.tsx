@@ -53,7 +53,7 @@ const Operation: FC<OperationProps> = ({
             speechToTextConfig?.enabled && (
               <ActionButton
                 size="l"
-                aria-label={t('voiceInput.start', { ns: 'common' })}
+                aria-label={t($ => $['voiceInput.start'], { ns: 'common' })}
                 disabled={readonly}
                 onClick={onShowVoiceInput}
               >
@@ -63,7 +63,7 @@ const Operation: FC<OperationProps> = ({
           }
         </div>
         <Button
-          aria-label={sendButtonLabel ? undefined : t('operation.send', { ns: 'common' })}
+          aria-label={sendButtonLabel ? undefined : t($ => $['operation.send'], { ns: 'common' })}
           className={cn(
             'ml-3 focus-visible:ring-inset',
             sendButtonLabel ? 'px-3' : 'w-8 px-0',

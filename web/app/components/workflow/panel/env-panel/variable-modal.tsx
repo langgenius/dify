@@ -32,7 +32,7 @@ const VariableModal = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
+      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: t($ => $['env.modal.name'], { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -49,15 +49,15 @@ const VariableModal = ({
     if (!checkVariableName(name))
       return
     if (!value)
-      return toast.error(t('env.modal.valueRequired', { ns: 'workflow' }))
+      return toast.error(t($ => $['env.modal.valueRequired'], { ns: 'workflow' }))
 
     // Add check for duplicate name when editing
     const envList = workflowStore.getState().environmentVariables
     if (env && env.name !== name && envList.some(e => e.name === name))
-      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
+      return toast.error(t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: t($ => $['env.modal.name'], { ns: 'workflow' }) }))
     // Original check for create new variable
     if (!env && envList.some(e => e.name === name))
-      return toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
+      return toast.error(t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: t($ => $['env.modal.name'], { ns: 'workflow' }) }))
 
     onSave({
       id: env ? env.id : uuid4(),
@@ -84,7 +84,7 @@ const VariableModal = ({
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl')}
     >
       <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
-        {!env ? t('env.modal.title', { ns: 'workflow' }) : t('env.modal.editTitle', { ns: 'workflow' })}
+        {!env ? t($ => $['env.modal.title'], { ns: 'workflow' }) : t($ => $['env.modal.editTitle'], { ns: 'workflow' })}
         <div className="flex items-center">
           <div
             className="flex size-6 cursor-pointer items-center justify-center"
@@ -97,7 +97,7 @@ const VariableModal = ({
       <div className="px-4 py-2">
         {/* type */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.type', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['env.modal.type'], { ns: 'workflow' })}</div>
           <div className="flex gap-2">
             <div
               className={cn(
@@ -130,22 +130,22 @@ const VariableModal = ({
             >
               <span>Secret</span>
               <Infotip
-                aria-label={t('env.modal.secretTip', { ns: 'workflow' })}
+                aria-label={t($ => $['env.modal.secretTip'], { ns: 'workflow' })}
                 className="ml-0.5 size-3.5"
                 iconClassName="h-3.5 w-3.5"
                 popupClassName="w-[240px]"
               >
-                {t('env.modal.secretTip', { ns: 'workflow' })}
+                {t($ => $['env.modal.secretTip'], { ns: 'workflow' })}
               </Infotip>
             </div>
           </div>
         </div>
         {/* name */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.name', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['env.modal.name'], { ns: 'workflow' })}</div>
           <div className="flex">
             <Input
-              placeholder={t('env.modal.namePlaceholder', { ns: 'workflow' }) || ''}
+              placeholder={t($ => $['env.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
               value={name}
               onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
@@ -155,7 +155,7 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className="mb-4">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.value', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['env.modal.value'], { ns: 'workflow' })}</div>
           <div className="flex">
             {
               type !== 'number'
@@ -163,13 +163,13 @@ const VariableModal = ({
                     <textarea
                       className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       value={value}
-                      placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+                      placeholder={t($ => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
                       onChange={e => setValue(e.target.value)}
                     />
                   )
                 : (
                     <Input
-                      placeholder={t('env.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+                      placeholder={t($ => $['env.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
                       value={value}
                       onChange={e => setValue(e.target.value)}
                       type="number"
@@ -180,12 +180,12 @@ const VariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('env.modal.description', { ns: 'workflow' })}</div>
+          <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['env.modal.description'], { ns: 'workflow' })}</div>
           <div className="flex">
             <textarea
               className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
-              placeholder={t('env.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
+              placeholder={t($ => $['env.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
@@ -193,8 +193,8 @@ const VariableModal = ({
       </div>
       <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
         <div className="flex gap-2">
-          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+          <Button onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handleSave}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
         </div>
       </div>
     </div>

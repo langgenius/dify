@@ -132,7 +132,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.warning(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return
     }
     startQuerying()
@@ -216,13 +216,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {!workflowProcessData && taskId && (
                 <div className={cn('sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className="mr-1 size-3" />
-                  <span>{t('generation.execution', { ns: 'share' })}</span>
+                  <span>{t($ => $['generation.execution'], { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
                 </div>
               )}
               {isError && (
-                <div className="p-4 pt-0 body-lg-regular text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
+                <div className="p-4 pt-0 body-lg-regular text-text-quaternary">{t($ => $['generation.batchFailed.outputPlaceholder'], { ns: 'share' })}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
@@ -240,7 +240,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 <span>
                   {content?.length}
                   {' '}
-                  {t('unit.char', { ns: 'common' })}
+                  {t($ => $['unit.char'], { ns: 'common' })}
                 </span>
               )}
               {/* action buttons */}

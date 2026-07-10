@@ -80,7 +80,7 @@ const ChatUserInput = ({
               {type !== 'checkbox' && (
                 <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                   <div className="truncate">{name || key}</div>
-                  {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                  {!required && <span className="system-xs-regular text-text-tertiary">{t($ => $['panel.optional'], { ns: 'workflow' })}</span>}
                 </div>
               )}
               <div className="grow">
@@ -115,7 +115,7 @@ const ChatUserInput = ({
                     }}
                   >
                     <SelectTrigger className="w-full">
-                      {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t('placeholder.select', { ns: 'common' })}
+                      {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t($ => $['placeholder.select'], { ns: 'common' })}
                     </SelectTrigger>
                     <SelectContent>
                       {(options || []).map(option => (

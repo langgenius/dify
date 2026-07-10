@@ -41,7 +41,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const config = SOURCE_CONFIG_MAP[source]
   if (!config)
     return null
-  const tip = t(config.tipKey as never, { ns: 'plugin' })
+  const tip = t($ => $[config.tipKey as never], { ns: 'plugin' })
 
   return (
     <>

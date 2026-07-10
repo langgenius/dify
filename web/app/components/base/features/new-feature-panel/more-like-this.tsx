@@ -45,10 +45,10 @@ const MoreLikeThis = ({
           <RiSparklingFill className="size-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
-      tooltip={t('feature.moreLikeThis.tip', { ns: 'appDebug' })}
+      title={t($ => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
+      tooltip={t($ => $['feature.moreLikeThis.tip'], { ns: 'appDebug' })}
       value={!!features.moreLikeThis?.enabled}
-      description={t('feature.moreLikeThis.description', { ns: 'appDebug' })!}
+      description={t($ => $['feature.moreLikeThis.description'], { ns: 'appDebug' })!}
       onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
       disabled={disabled}
     />

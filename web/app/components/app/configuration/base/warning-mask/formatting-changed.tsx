@@ -24,15 +24,15 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({
 
   return (
     <WarningMask
-      title={t('formattingChangedTitle', { ns: 'appDebug' })}
-      description={t('formattingChangedText', { ns: 'appDebug' })}
+      title={t($ => $['formattingChangedTitle'], { ns: 'appDebug' })}
+      description={t($ => $['formattingChangedText'], { ns: 'appDebug' })}
       footer={(
         <div className="flex space-x-2">
           <Button variant="primary" className="flex space-x-2" onClick={onConfirm}>
             {icon}
-            <span>{t('operation.refresh', { ns: 'common' })}</span>
+            <span>{t($ => $['operation.refresh'], { ns: 'common' })}</span>
           </Button>
-          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' }) as string}</Button>
+          <Button onClick={onCancel}>{t($ => $['operation.cancel'], { ns: 'common' }) as string}</Button>
         </div>
       )}
     />

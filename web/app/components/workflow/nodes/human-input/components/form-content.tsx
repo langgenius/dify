@@ -107,7 +107,7 @@ const FormContent: FC<FormContentProps> = ({
     }
     if (node.data.type === BlockEnum.Start) {
       acc.sys = {
-        title: t('blocks.start', { ns: 'workflow' }),
+        title: t($ => $['blocks.start'], { ns: 'workflow' }),
         type: BlockEnum.Start,
       }
     }
@@ -174,7 +174,7 @@ const FormContent: FC<FormContentProps> = ({
           className={cn('min-h-[80px]', isExpand && 'h-full')}
           onFocus={setFocus}
           onBlur={setBlur}
-          placeholder={t('nodes.humanInput.formContent.placeholder', { ns: 'workflow' })}
+          placeholder={t($ => $['nodes.humanInput.formContent.placeholder'], { ns: 'workflow' })}
           hitlInputBlock={{
             show: true,
             formInputs,
@@ -200,7 +200,7 @@ const FormContent: FC<FormContentProps> = ({
       {isFocus && (
         <div className="flex h-8 shrink-0 items-center px-3 system-xs-regular text-components-input-text-placeholder">
           <Trans
-            i18nKey="nodes.humanInput.formContent.hotkeyTip"
+            i18nKey={$ => $["nodes.humanInput.formContent.hotkeyTip"]}
             ns="workflow"
             components={
               {

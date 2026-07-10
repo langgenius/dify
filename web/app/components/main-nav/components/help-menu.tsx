@@ -68,7 +68,7 @@ const HelpMenu = ({
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
+          aria-label={t($ => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
@@ -88,14 +88,14 @@ const HelpMenu = ({
               <DropdownMenuLinkItem href={docLink('/use-dify/getting-started/introduction')} target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
                 <MenuItemContent
                   iconClassName="i-ri-book-open-line"
-                  label={t('mainNav.help.docs', { ns: 'common' })}
+                  label={t($ => $['mainNav.help.docs'], { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
               <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
                 <MenuItemContent
                   iconClassName="i-ri-map-2-line"
-                  label={t('userProfile.roadmap', { ns: 'common' })}
+                  label={t($ => $['userProfile.roadmap'], { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
@@ -108,7 +108,7 @@ const HelpMenu = ({
                 >
                   <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                    {t('mainNav.help.learnDify', { ns: 'common' })}
+                    {t($ => $['mainNav.help.learnDify'], { ns: 'common' })}
                   </span>
                   <span
                     aria-hidden
@@ -137,7 +137,7 @@ const HelpMenu = ({
               <DropdownMenuLinkItem href="https://github.com/langgenius/dify" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
                 <MenuItemContent
                   iconClassName="i-ri-github-line"
-                  label={t('userProfile.github', { ns: 'common' })}
+                  label={t($ => $['userProfile.github'], { ns: 'common' })}
                   trailing={(
                     <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
                       <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
@@ -156,10 +156,10 @@ const HelpMenu = ({
                 >
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
-                    label={t('userProfile.about', { ns: 'common' })}
+                    label={t($ => $['userProfile.about'], { ns: 'common' })}
                     trailing={(
                       <div className="flex shrink-0 items-center">
-                        <div className="system-xs-regular text-text-tertiary">{t('about.version', { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
+                        <div className="system-xs-regular text-text-tertiary">{t($ => $['about.version'], { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
                       </div>
                     )}
                   />

@@ -25,11 +25,11 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
   const notifyVarError = useCallback((key: string) => {
     const fieldLabel = key === 'variableConfig.varName'
-      ? t('variableConfig.varName', { ns: 'appDebug' })
+      ? t($ => $['variableConfig.varName'], { ns: 'appDebug' })
       : key
     const message = key.startsWith('varKeyError.')
-      ? t(key as never, { ns: 'appDebug', key: fieldLabel })
-      : t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: fieldLabel })
+      ? t($ => $[key as never], { ns: 'appDebug', key: fieldLabel })
+      : t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: fieldLabel })
 
     toast.error(message)
   }, [t])

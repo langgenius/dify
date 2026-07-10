@@ -75,7 +75,7 @@ const IndexingSection = ({
           <div className={rowClass}>
             <div className="flex w-[180px] shrink-0 flex-col">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
-                {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
+                {t($ => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
                 <a
@@ -84,9 +84,9 @@ const IndexingSection = ({
                   href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
                   className="text-text-accent"
                 >
-                  {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
+                  {t($ => $['form.chunkStructure.learnMore'], { ns: 'datasetSettings' })}
                 </a>
-                {t('form.chunkStructure.description', { ns: 'datasetSettings' })}
+                {t($ => $['form.chunkStructure.description'], { ns: 'datasetSettings' })}
               </div>
             </div>
             <div className="grow">
@@ -104,7 +104,7 @@ const IndexingSection = ({
       {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t($ => $['form.indexMethod'], { ns: 'datasetSettings' })}</div>
           </div>
           <div className="grow">
             <IndexMethod
@@ -122,7 +122,7 @@ const IndexingSection = ({
                   <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
-                  {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
+                  {t($ => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
                 </span>
               </div>
             )}
@@ -135,7 +135,7 @@ const IndexingSection = ({
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">
-              {t('form.embeddingModel', { ns: 'datasetSettings' })}
+              {t($ => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="grow">
@@ -170,7 +170,7 @@ const IndexingSection = ({
             <div className={labelClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
                 <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
-                  {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+                  {t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">
                   <a
@@ -179,9 +179,9 @@ const IndexingSection = ({
                     href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
                     className="text-text-accent"
                   >
-                    {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
+                    {t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
                   </a>
-                  {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
+                  {t($ => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
                 </div>
               </div>
             </div>

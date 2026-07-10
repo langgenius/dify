@@ -86,7 +86,7 @@ const Options = ({
           onClick={foldToggle}
         >
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}
+            {t($ => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
           <ArrowDownRoundFill className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
         </div>
@@ -98,7 +98,7 @@ const Options = ({
           className="shrink-0 gap-x-0.5"
         >
           <RiPlayLargeLine className="size-4" />
-          <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>
+          <span className="px-0.5">{!isRunning ? t($ => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' }) : t($ => $[`${I18N_PREFIX}.running`], { ns: 'datasetCreation' })}</span>
         </Button>
       </div>
       {!fold && (

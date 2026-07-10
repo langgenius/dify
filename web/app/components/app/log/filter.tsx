@@ -53,7 +53,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t($ => $[`filter.period.${v.name}`], { ns: 'appLog' }) }))}
       />
       <Chip
         className="min-w-[150px]"
@@ -65,9 +65,9 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
-          { value: 'all', name: t('filter.annotation.all', { ns: 'appLog' }) },
-          { value: 'annotated', name: t('filter.annotation.annotated', { ns: 'appLog', count: data?.count }) },
-          { value: 'not_annotated', name: t('filter.annotation.not_annotated', { ns: 'appLog' }) },
+          { value: 'all', name: t($ => $['filter.annotation.all'], { ns: 'appLog' }) },
+          { value: 'annotated', name: t($ => $['filter.annotation.annotated'], { ns: 'appLog', count: data?.count }) },
+          { value: 'not_annotated', name: t($ => $['filter.annotation.not_annotated'], { ns: 'appLog' }) },
         ]}
       />
       <Input
@@ -75,7 +75,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
-        placeholder={t('operation.search', { ns: 'common' })!}
+        placeholder={t($ => $['operation.search'], { ns: 'common' })!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}
@@ -88,8 +88,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
             order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
             value={queryParams.sort_by?.replace('-', '') || 'created_at'}
             items={[
-              { value: 'created_at', name: t('table.header.time', { ns: 'appLog' }) },
-              { value: 'updated_at', name: t('table.header.updatedTime', { ns: 'appLog' }) },
+              { value: 'created_at', name: t($ => $['table.header.time'], { ns: 'appLog' }) },
+              { value: 'updated_at', name: t($ => $['table.header.updatedTime'], { ns: 'appLog' }) },
             ]}
             onSelect={(value) => {
               setQueryParams({ ...queryParams, sort_by: value as string })

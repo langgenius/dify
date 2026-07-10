@@ -99,7 +99,7 @@ const DebugAndPreview = () => {
         style={{ width: `${panelWidth}px` }}
       >
         <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2 system-xl-semibold text-text-primary">
-          <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
+          <div className="h-8">{t($ => $['common.debugAndPreview'], { ns: 'workflow' }).toLocaleUpperCase()}</div>
           <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger
@@ -110,7 +110,7 @@ const DebugAndPreview = () => {
                 )}
               />
               <TooltipContent>
-                {t('operation.refresh', { ns: 'common' })}
+                {t($ => $['operation.refresh'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
             {visibleVariables.length > 0 && (
@@ -124,7 +124,7 @@ const DebugAndPreview = () => {
                     )}
                   />
                   <TooltipContent>
-                    {t('panel.userInputField', { ns: 'workflow' })}
+                    {t($ => $['panel.userInputField'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
                 {expanded && <div className="absolute right-[5px] bottom-[-17px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}

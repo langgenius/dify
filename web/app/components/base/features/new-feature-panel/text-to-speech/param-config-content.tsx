@@ -40,20 +40,20 @@ const VoiceParamConfig = ({
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
   const formatLanguageName = (item: SelectOption) => {
-    return t(`voice.language.${replace(item.value, '-', '')}`, item.name, { ns: 'common' as const })
+    return t($ => $[`voice.language.${replace(item.value, '-', '')}`], item.name, { ns: 'common' as const })
   }
 
   let languageItem = languages.find(item => item.value === text2speech?.language)
   if (languages && !languageItem)
     languageItem = languages[0]
-  const localLanguagePlaceholder = languageItem?.name || t('placeholder.select', { ns: 'common' })
+  const localLanguagePlaceholder = languageItem?.name || t($ => $['placeholder.select'], { ns: 'common' })
 
   const language = languageItem?.value
   const { data: voiceItems } = useAppVoices(appId, language)
   let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem)
     voiceItem = voiceItems[0]
-  const localVoicePlaceholder = voiceItem?.name || t('placeholder.select', { ns: 'common' })
+  const localVoicePlaceholder = voiceItem?.name || t($ => $['placeholder.select'], { ns: 'common' })
 
   const handleChange = (value: Record<string, string>) => {
     const {
@@ -76,11 +76,11 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">{t($ => $['voice.voiceSettings.title'], { ns: 'appDebug' })}</div>
         <button
           type="button"
           className="rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-          aria-label={t('appDebug:voice.voiceSettings.close')}
+          aria-label={t($ => $['appDebug:voice.voiceSettings.close'])}
           onClick={onClose}
         >
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
@@ -88,12 +88,12 @@ const VoiceParamConfig = ({
       </div>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          {t($ => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
           <Infotip
-            aria-label={t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' })}
+            aria-label={t($ => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
             popupClassName="w-[180px]"
           >
-            {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+            {t($ => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' }).split('\n').map(item => (
               <div key={item}>
                 {item}
               </div>
@@ -110,7 +110,7 @@ const VoiceParamConfig = ({
             })
           }}
         >
-          <SelectTrigger aria-label={t('voice.voiceSettings.language', { ns: 'appDebug' })} className="w-full">
+          <SelectTrigger aria-label={t($ => $['voice.voiceSettings.language'], { ns: 'appDebug' })} className="w-full">
             {languageItem ? formatLanguageName(languageItem) : localLanguagePlaceholder}
           </SelectTrigger>
           <SelectContent listClassName="max-h-60">
@@ -127,7 +127,7 @@ const VoiceParamConfig = ({
       </div>
       <div className="mb-3">
         <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
-          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+          {t($ => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
           <Select
@@ -142,7 +142,7 @@ const VoiceParamConfig = ({
             }}
           >
             <div className="grow">
-              <SelectTrigger aria-label={t('voice.voiceSettings.voice', { ns: 'appDebug' })} className="w-full">
+              <SelectTrigger aria-label={t($ => $['voice.voiceSettings.voice'], { ns: 'appDebug' })} className="w-full">
                 {voiceItem?.name ?? localVoicePlaceholder}
               </SelectTrigger>
               <SelectContent listClassName="max-h-60">
@@ -161,7 +161,7 @@ const VoiceParamConfig = ({
             <div
               className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1"
               role="group"
-              aria-label={t('play', { ns: 'appApi', defaultValue: 'Play' })}
+              aria-label={t($ => $['play'], { ns: 'appApi', defaultValue: 'Play' })}
             >
               <AudioBtn
                 value={languageItem?.example}
@@ -175,7 +175,7 @@ const VoiceParamConfig = ({
       </div>
       <div>
         <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
-          {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
+          {t($ => $['voice.voiceSettings.autoPlay'], { ns: 'appDebug' })}
         </div>
         <Switch
           className="shrink-0"

@@ -53,7 +53,7 @@ const DatasetCardModals = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+              {t($ => $['deleteDatasetConfirmTitle'], { ns: 'dataset' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {modalState.confirmMessage}
@@ -61,10 +61,10 @@ const DatasetCardModals = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

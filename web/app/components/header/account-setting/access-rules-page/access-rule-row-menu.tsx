@@ -48,7 +48,7 @@ const AccessRuleRowMenu = ({
   const handleCopyRules = useCallback(() => {
     copyAccessRule(rule.id, {
       onSuccess: () => {
-        toast.success(t('accessRule.copied', { ns: 'permission' }))
+        toast.success(t($ => $['accessRule.copied'], { ns: 'permission' }))
         setOpen(false)
       },
     })
@@ -62,7 +62,7 @@ const AccessRuleRowMenu = ({
   const handleDelete = useCallback(() => {
     deleteAccessRule(rule.id, {
       onSuccess: () => {
-        toast.success(t('accessRule.deleted', { ns: 'permission' }))
+        toast.success(t($ => $['accessRule.deleted'], { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
@@ -78,7 +78,7 @@ const AccessRuleRowMenu = ({
             <ActionButton
               size="l"
               className={open ? 'bg-state-base-hover' : ''}
-              aria-label={t('operation.moreActions', { ns: 'common' })}
+              aria-label={t($ => $['operation.moreActions'], { ns: 'common' })}
             />
           )}
         >
@@ -95,7 +95,7 @@ const AccessRuleRowMenu = ({
                   className="system-sm-semibold text-text-secondary"
                   onClick={handleView}
                 >
-                  {t('operation.view', { ns: 'common' })}
+                  {t($ => $['operation.view'], { ns: 'common' })}
                 </DropdownMenuItem>
               )
             : (
@@ -103,14 +103,14 @@ const AccessRuleRowMenu = ({
                   className="system-sm-semibold text-text-secondary"
                   onClick={onEdit}
                 >
-                  {t('operation.edit', { ns: 'common' })}
+                  {t($ => $['operation.edit'], { ns: 'common' })}
                 </DropdownMenuItem>
               )}
           <DropdownMenuItem
             className="system-sm-semibold text-text-secondary"
             onClick={handleCopyRules}
           >
-            {t('common.duplicateAction', { ns: 'permission' })}
+            {t($ => $['common.duplicateAction'], { ns: 'permission' })}
           </DropdownMenuItem>
           {!isBuiltIn && (
             <>
@@ -120,7 +120,7 @@ const AccessRuleRowMenu = ({
                 className="system-sm-semibold"
                 onClick={openDeleteConfirm}
               >
-                {t('operation.delete', { ns: 'common' })}
+                {t($ => $['operation.delete'], { ns: 'common' })}
               </DropdownMenuItem>
             </>
           )}
@@ -130,19 +130,19 @@ const AccessRuleRowMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('accessRule.deleteTitle', { ns: 'permission', name: rule.name })}
+              {t($ => $['accessRule.deleteTitle'], { ns: 'permission', name: rule.name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('accessRule.deleteDescription', { ns: 'permission' })}
+              {t($ => $['accessRule.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={isDeletingAccessRule}
               onClick={handleDelete}
             >
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -98,7 +98,7 @@ export default function RosterPage() {
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
           >
-            {t('roster.learnMore')}
+            {t($ => $['roster.learnMore'])}
             <span aria-hidden className="i-ri-external-link-line size-3" />
           </a>
         </div>
@@ -122,7 +122,7 @@ export default function RosterPage() {
                 isFetching={isFetching}
                 isFetchingNextPage={isFetchingNextPage}
                 isPending={isPending}
-                label={t('roster.listLabel')}
+                label={t($ => $['roster.listLabel'])}
                 onLoadMore={() => fetchNextPage()}
               />
             </ScrollAreaContent>

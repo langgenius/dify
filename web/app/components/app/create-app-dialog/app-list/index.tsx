@@ -159,7 +159,7 @@ const Apps = ({
       trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
+      toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
       if (onSuccess)
         onSuccess()
       if (app.app_id)
@@ -176,7 +176,7 @@ const Apps = ({
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
@@ -192,7 +192,7 @@ const Apps = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
         <div className="min-w-[180px] pl-5">
-          <span className="title-xl-semi-bold text-text-primary">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
+          <span className="title-xl-semi-bold text-text-primary">{t($ => $['newApp.startFromTemplate'], { ns: 'app' })}</span>
         </div>
         <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
@@ -203,7 +203,7 @@ const Apps = ({
             showClearIcon
             wrapperClassName="w-full flex-1"
             className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
-            placeholder={t('newAppFromTemplate.searchAllTemplate', { ns: 'app' }) as string}
+            placeholder={t($ => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' }) as string}
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
@@ -222,7 +222,7 @@ const Apps = ({
             <>
               <div className="pt-4 pb-1">
                 {searchKeywords
-                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
+                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t($ => $['newApp.foundResults'], { ns: 'app', count: searchFilteredList.length }) : t($ => $['newApp.foundResult'], { ns: 'app', count: searchFilteredList.length })}</p>
                   : (
                       <div className="flex h-[22px] items-center">
                         <AppCategoryLabel category={activeCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
@@ -277,8 +277,8 @@ function NoTemplateFound() {
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
         <RiRobot2Line className="size-5 text-text-tertiary" />
       </div>
-      <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
-      <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>
+      <p className="title-md-semi-bold text-text-primary">{t($ => $['newApp.noTemplateFound'], { ns: 'app' })}</p>
+      <p className="system-sm-regular text-text-tertiary">{t($ => $['newApp.noTemplateFoundTip'], { ns: 'app' })}</p>
     </div>
   )
 }

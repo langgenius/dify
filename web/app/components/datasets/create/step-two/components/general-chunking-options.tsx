@@ -85,9 +85,9 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
-      remove_extra_spaces: t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' }),
-      remove_urls_emails: t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' }),
-      remove_stopwords: t('stepTwo.removeStopwords', { ns: 'datasetCreation' }),
+      remove_extra_spaces: t($ => $['stepTwo.removeExtraSpaces'], { ns: 'datasetCreation' }),
+      remove_urls_emails: t($ => $['stepTwo.removeUrlEmails'], { ns: 'datasetCreation' }),
+      remove_stopwords: t($ => $['stepTwo.removeStopwords'], { ns: 'datasetCreation' }),
     }
     return ruleNameMap[key] ?? key
   }
@@ -95,20 +95,20 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   return (
     <OptionCard
       className="mb-2 bg-background-section"
-      title={t('stepTwo.general', { ns: 'datasetCreation' })}
-      icon={<img width={20} height={20} src={SettingCog.src} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
+      title={t($ => $['stepTwo.general'], { ns: 'datasetCreation' })}
+      icon={<img width={20} height={20} src={SettingCog.src} alt={t($ => $['stepTwo.general'], { ns: 'datasetCreation' })} />}
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
-      description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
+      description={t($ => $['stepTwo.generalTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
       onSwitched={() => onDocFormChange(ChunkingMode.text)}
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
             <RiSearchEyeLine className="mr-0.5 size-4" />
-            {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
+            {t($ => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
-            {t('stepTwo.reset', { ns: 'datasetCreation' })}
+            {t($ => $['stepTwo.reset'], { ns: 'datasetCreation' })}
           </Button>
         </>
       )}
@@ -135,7 +135,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
         <div className="flex w-full flex-col">
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.rules', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>{t($ => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
@@ -185,7 +185,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       }}
                     />
                     <span className="ml-2 system-sm-regular text-text-secondary">
-                      {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
+                      {t($ => $['stepTwo.useQALanguage'], { ns: 'datasetCreation' })}
                     </span>
                   </label>
                   <LanguageSelect
@@ -194,11 +194,11 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
                   <Infotip
-                    aria-label={t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    aria-label={t($ => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     className="size-3.5"
                     iconClassName="h-full w-full"
                   >
-                    {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    {t($ => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                   </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
@@ -210,7 +210,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
                     <span className="system-xs-medium text-text-primary">
-                      {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                      {t($ => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </span>
                   </div>
                 )}

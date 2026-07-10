@@ -45,7 +45,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       setIsShowAvatarPicker(false)
       onSave?.()
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     }
     catch (e) {
       toast.error((e as Error).message)
@@ -55,7 +55,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleDeleteAvatar = useCallback(async () => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setIsShowDeleteConfirm(false)
       onSave?.()
     }
@@ -106,7 +106,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       <div>
         <button
           type="button"
-          aria-label={t('avatar.editAction', { ns: 'common' })}
+          aria-label={t($ => $['avatar.editAction'], { ns: 'common' })}
           className="group relative inline-flex overflow-hidden rounded-full border-none bg-transparent p-0 outline-hidden hover:opacity-90 focus-visible:ring-2 focus-visible:ring-components-input-border-hover active:opacity-80"
           onClick={() => setIsShowAvatarPicker(true)}
         >
@@ -125,15 +125,15 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
           <div className="flex w-full items-center justify-center gap-2 p-3">
             {canDeleteAvatar && (
               <Button tone="destructive" className="shrink-0" onClick={handleDeleteAvatarClick}>
-                {t('operation.delete', { ns: 'common' })}
+                {t($ => $['operation.delete'], { ns: 'common' })}
               </Button>
             )}
             <Button className="min-w-0 flex-1" onClick={() => setIsShowAvatarPicker(false)}>
-              {t('iconPicker.cancel', { ns: 'app' })}
+              {t($ => $['iconPicker.cancel'], { ns: 'app' })}
             </Button>
 
             <Button variant="primary" className="min-w-0 flex-1" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
-              {t('iconPicker.ok', { ns: 'app' })}
+              {t($ => $['iconPicker.ok'], { ns: 'app' })}
             </Button>
           </div>
         </DialogContent>
@@ -141,16 +141,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
       <Dialog open={isShowDeleteConfirm} onOpenChange={open => !open && setIsShowDeleteConfirm(false)}>
         <DialogContent className="w-[362px]! p-6!">
-          <div className="mb-3 title-2xl-semi-bold text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
-          <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
+          <div className="mb-3 title-2xl-semi-bold text-text-primary">{t($ => $['avatar.deleteTitle'], { ns: 'common' })}</div>
+          <p className="mb-8 text-text-secondary">{t($ => $['avatar.deleteDescription'], { ns: 'common' })}</p>
 
           <div className="flex w-full items-center justify-center gap-2">
             <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
 
             <Button variant="primary" tone="destructive" className="w-full" onClick={handleDeleteAvatar}>
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
             </Button>
           </div>
         </DialogContent>

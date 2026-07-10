@@ -100,9 +100,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
     <Dialog modal={modal} open={isShow} onOpenChange={handleOpenChange}>
       <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
+          {t($ => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
         </DialogTitle>
-        <DialogCloseButton aria-label={t('operation.close', { ns: 'common' })} />
+        <DialogCloseButton aria-label={t($ => $['operation.close'], { ns: 'common' })} />
         {(isLoading && datasets.length === 0) && (
           <div className="flex h-50">
             <Loading type="area" />
@@ -111,9 +111,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
         {hasNoData && (
           <div className="mt-6 flex h-32 items-center justify-center space-x-1 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg text-[13px]">
-            <span className="text-text-tertiary">{t('feature.dataSet.noDataSet', { ns: 'appDebug' })}</span>
+            <span className="text-text-tertiary">{t($ => $['feature.dataSet.noDataSet'], { ns: 'appDebug' })}</span>
             {canCreateDataset && (
-              <Link href="/datasets/create" className="font-normal text-text-accent">{t('feature.dataSet.toCreate', { ns: 'appDebug' })}</Link>
+              <Link href="/datasets/create" className="font-normal text-text-accent">{t($ => $['feature.dataSet.toCreate'], { ns: 'appDebug' })}</Link>
             )}
           </div>
         )}
@@ -145,7 +145,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     </div>
                     <div className={cn('max-w-50 truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && 'max-w-30! opacity-30')}>{item.name}</div>
                     {!item.embedding_available && (
-                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">{t('unavailable', { ns: 'dataset' })}</span>
+                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">{t($ => $['unavailable'], { ns: 'dataset' })}</span>
                     )}
                   </div>
                   {item.is_multimodal && (
@@ -163,7 +163,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   }
                   {
                     item.provider === 'external' && (
-                      <Badge className="shrink-0" text={t('externalTag', { ns: 'dataset' })} />
+                      <Badge className="shrink-0" text={t($ => $['externalTag'], { ns: 'dataset' })} />
                     )
                   }
                 </button>
@@ -175,11 +175,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         {!isLoading && (
           <div className="mt-8 flex items-center justify-between">
             <div className="text-sm font-medium text-text-secondary">
-              {selected.length > 0 && `${selected.length} ${t('feature.dataSet.selected', { ns: 'appDebug' })}`}
+              {selected.length > 0 && `${selected.length} ${t($ => $['feature.dataSet.selected'], { ns: 'appDebug' })}`}
             </div>
             <div className="flex space-x-2">
-              <Button onClick={handleClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-              <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>{t('operation.add', { ns: 'common' })}</Button>
+              <Button onClick={handleClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+              <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>{t($ => $['operation.add'], { ns: 'common' })}</Button>
             </div>
           </div>
         )}

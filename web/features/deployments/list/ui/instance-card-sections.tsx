@@ -23,9 +23,9 @@ const VISIBLE_ENVIRONMENT_COUNT = 3
 
 function releaseSourceLabel(release: Release | undefined, t: ReturnType<typeof useTranslation<'deployments'>>['t']) {
   if (release?.source === ReleaseSource.RELEASE_SOURCE_SOURCE_APP || release?.sourceAppId)
-    return t('versions.sourceAppOption')
+    return t($ => $['versions.sourceAppOption'])
   if (release?.source === ReleaseSource.RELEASE_SOURCE_UPLOAD)
-    return t('versions.manualDslOption')
+    return t($ => $['versions.manualDslOption'])
   return '—'
 }
 
@@ -40,10 +40,10 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
     return children
 
   const rows = [
-    { label: t('card.tooltip.releaseName'), value: release.displayName },
-    { label: t('card.tooltip.deploymentStatus'), value: deployed ? t('card.tooltip.deployed') : t('card.tooltip.notDeployedShort') },
-    { label: t('card.tooltip.source'), value: releaseSourceLabel(release, t) },
-    { label: t('card.tooltip.createdAt'), value: formatDate(release.createdAt) },
+    { label: t($ => $['card.tooltip.releaseName']), value: release.displayName },
+    { label: t($ => $['card.tooltip.deploymentStatus']), value: deployed ? t($ => $['card.tooltip.deployed']) : t($ => $['card.tooltip.notDeployedShort']) },
+    { label: t($ => $['card.tooltip.source']), value: releaseSourceLabel(release, t) },
+    { label: t($ => $['card.tooltip.createdAt']), value: formatDate(release.createdAt) },
   ]
 
   return (
@@ -69,7 +69,7 @@ function EnvironmentChip({ row }: {
   const { t } = useTranslation('deployments')
   const name = row.environment.displayName
   const status = row.status
-  const statusLabel = t(deploymentStatusLabelKey(status))
+  const statusLabel = t($ => $[deploymentStatusLabelKey(status)])
   const tooltipSummary = [
     name,
     row.currentRelease ? row.currentRelease.displayName : undefined,
@@ -108,7 +108,7 @@ function EnvironmentOverflow({ rows }: {
             type="button"
             className="inline-flex h-5 cursor-pointer items-center rounded-md bg-background-section-burn px-1.5 system-xs-medium text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            {t('card.envOverflow', { count: rows.length })}
+            {t($ => $['card.envOverflow'], { count: rows.length })}
           </button>
         )}
       />
@@ -119,7 +119,7 @@ function EnvironmentOverflow({ rows }: {
             const summary = [
               row.environment.displayName,
               row.currentRelease ? row.currentRelease.displayName : undefined,
-              t(deploymentStatusLabelKey(status)),
+              t($ => $[deploymentStatusLabelKey(status)]),
             ].filter(Boolean).join(' · ')
 
             return (
@@ -168,7 +168,7 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
 
   if (isLoading) {
     return (
-      <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-2">
+      <div role="group" aria-label={t($ => $['overview.accessStatus'])} className="flex min-w-0 grow items-center gap-2">
         <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
         <SkeletonRectangle className="my-0 size-4 animate-pulse rounded-sm" />
       </div>
@@ -180,7 +180,7 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
       ? [{
           key: 'webapp',
           href: getInstanceTabHref(appInstanceId, 'access'),
-          label: t('card.access.webApp'),
+          label: t($ => $['card.access.webApp']),
           icon: 'i-ri-global-line',
         }]
       : []),
@@ -188,7 +188,7 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
       ? [{
           key: 'cli',
           href: getInstanceTabHref(appInstanceId, 'access'),
-          label: t('card.access.cli'),
+          label: t($ => $['card.access.cli']),
           icon: 'i-ri-terminal-box-line',
         }]
       : []),
@@ -196,7 +196,7 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
       ? [{
           key: 'api-tokens',
           href: getInstanceTabHref(appInstanceId, 'api-tokens'),
-          label: t('card.access.api'),
+          label: t($ => $['card.access.api']),
           icon: 'i-ri-code-s-slash-line',
         }]
       : []),
@@ -204,15 +204,15 @@ export function DeploymentAccessLinks({ appInstanceId, access, isLoading }: {
 
   if (links.length === 0) {
     return (
-      <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-1.5 text-text-quaternary">
+      <div role="group" aria-label={t($ => $['overview.accessStatus'])} className="flex min-w-0 grow items-center gap-1.5 text-text-quaternary">
         <span aria-hidden className="i-ri-link-unlink size-3.5 shrink-0" />
-        <span className="truncate system-xs-regular">{t('card.access.none')}</span>
+        <span className="truncate system-xs-regular">{t($ => $['card.access.none'])}</span>
       </div>
     )
   }
 
   return (
-    <div role="group" aria-label={t('overview.accessStatus')} className="flex min-w-0 grow items-center gap-2">
+    <div role="group" aria-label={t($ => $['overview.accessStatus'])} className="flex min-w-0 grow items-center gap-2">
       {links.map(link => (
         <Tooltip key={link.key}>
           <TooltipTrigger

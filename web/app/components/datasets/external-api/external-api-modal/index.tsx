@@ -77,7 +77,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
   }
   const handleSave = async () => {
     if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
-      toast.error(t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }))
+      toast.error(t($ => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' }))
       setLoading(false)
       return
     }
@@ -125,21 +125,21 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
         <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
           <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="grow self-stretch title-2xl-semi-bold text-text-primary">
-              {isEditMode ? t('editExternalAPIFormTitle', { ns: 'dataset' }) : t('createExternalAPI', { ns: 'dataset' })}
+              {isEditMode ? t($ => $['editExternalAPIFormTitle'], { ns: 'dataset' }) : t($ => $['createExternalAPI'], { ns: 'dataset' })}
             </DialogTitle>
             {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
               <div className="flex items-center system-xs-regular text-text-tertiary">
-                {t('editExternalAPIFormWarning.front', { ns: 'dataset' })}
+                {t($ => $['editExternalAPIFormWarning.front'], { ns: 'dataset' })}
                 <span className="flex cursor-pointer items-center text-text-accent">
                   &nbsp;
                   {datasetBindings?.length}
                   {' '}
-                  {t('editExternalAPIFormWarning.end', { ns: 'dataset' })}
+                  {t($ => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
 &nbsp;
                   <Popover>
                     <PopoverTrigger
                       openOnHover
-                      aria-label={t('editExternalAPIFormWarning.end', { ns: 'dataset' })}
+                      aria-label={t($ => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
                       render={(
                         <button
                           type="button"
@@ -155,7 +155,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
-                          <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t('editExternalAPITooltipTitle', { ns: 'dataset' })}`}</div>
+                          <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t($ => $['editExternalAPITooltipTitle'], { ns: 'dataset' })}`}</div>
                         </div>
                         {datasetBindings?.map(binding => (
                           <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">
@@ -176,7 +176,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
           <Form value={formData} onChange={handleDataChange} formSchemas={formSchemas} className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3" />
           <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
             <Button type="button" variant="secondary" onClick={onCancel}>
-              {t('externalAPIForm.cancel', { ns: 'dataset' })}
+              {t($ => $['externalAPIForm.cancel'], { ns: 'dataset' })}
             </Button>
             <Button
               type="submit"
@@ -191,18 +191,18 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               }}
               disabled={hasEmptyInputs || loading}
             >
-              {t('externalAPIForm.save', { ns: 'dataset' })}
+              {t($ => $['externalAPIForm.save'], { ns: 'dataset' })}
             </Button>
           </div>
           <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle
             bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary"
           >
             <RiLock2Fill className="size-3 text-text-quaternary" />
-            {t('externalAPIForm.encrypted.front', { ns: 'dataset' })}
+            {t($ => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
             <a className="text-text-accent" target="_blank" rel="noopener noreferrer" href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html">
               PKCS1_OAEP
             </a>
-            {t('externalAPIForm.encrypted.end', { ns: 'dataset' })}
+            {t($ => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
           </div>
         </div>
         <AlertDialog
@@ -215,13 +215,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                 Warning
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {`${t('editExternalAPIConfirmWarningContent.front', { ns: 'dataset' })} ${datasetBindings?.length} ${t('editExternalAPIConfirmWarningContent.end', { ns: 'dataset' })}`}
+                {`${t($ => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t($ => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleSave}>
-                {t('operation.confirm', { ns: 'common' })}
+                {t($ => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </AlertDialogContent>

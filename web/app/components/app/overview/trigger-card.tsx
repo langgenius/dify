@@ -166,8 +166,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
               <div className="group w-full">
                 <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
-                    ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
-                    : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
+                    ? t($ => $['overview.triggerInfo.triggersAdded'], { ns: 'appOverview', count: triggerCount })
+                    : t($ => $['overview.triggerInfo.noTriggerAdded'], { ns: 'appOverview' })}
                 </div>
               </div>
             </div>
@@ -189,8 +189,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <div className="flex shrink-0 items-center">
                   <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
                     {trigger.status === 'enabled'
-                      ? t('overview.status.running', { ns: 'appOverview' })
-                      : t('overview.status.disable', { ns: 'appOverview' })}
+                      ? t($ => $['overview.status.running'], { ns: 'appOverview' })
+                      : t($ => $['overview.status.disable'], { ns: 'appOverview' })}
                   </div>
                 </div>
                 <div className="shrink-0">
@@ -208,7 +208,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
+              {t($ => $['overview.triggerInfo.triggerStatusDescription'], { ns: 'appOverview' })}
               {' '}
               <Link
                 href={docLink('/use-dify/nodes/trigger/overview')}
@@ -216,7 +216,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 rel="noopener noreferrer"
                 className="text-text-accent hover:underline"
               >
-                {t('overview.triggerInfo.learnAboutTriggers', { ns: 'appOverview' })}
+                {t($ => $['overview.triggerInfo.learnAboutTriggers'], { ns: 'appOverview' })}
               </Link>
             </div>
           </div>

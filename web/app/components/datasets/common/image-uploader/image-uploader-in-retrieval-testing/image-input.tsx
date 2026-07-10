@@ -43,7 +43,7 @@ const ImageUploader = () => {
             </div>
             {files.length === 0 && (
               <span className="system-sm-regular text-text-quaternary group-hover:text-text-tertiary">
-                {t('imageUploader.tip', {
+                {t($ => $['imageUploader.tip'], {
                   ns: 'datasetHitTesting',
                   size: fileUploadConfig.imageFileSizeLimit,
                   batchCount: fileUploadConfig.imageFileBatchLimit,
@@ -52,7 +52,7 @@ const ImageUploader = () => {
             )}
           </TooltipTrigger>
           <TooltipContent sideOffset={4} className="rounded-lg p-1.5 system-xs-medium text-text-secondary">
-            {t('imageUploader.tooltip', {
+            {t($ => $['imageUploader.tooltip'], {
               ns: 'datasetHitTesting',
               size: fileUploadConfig.imageFileSizeLimit,
               batchCount: fileUploadConfig.imageFileBatchLimit,

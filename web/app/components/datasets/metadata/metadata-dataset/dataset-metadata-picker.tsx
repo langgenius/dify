@@ -126,13 +126,13 @@ export function DatasetMetadataPicker({
         render={(
           <button
             type="button"
-            aria-label={t('metadata.addMetadata', { ns: 'dataset' })}
+            aria-label={t($ => $['metadata.addMetadata'], { ns: 'dataset' })}
             aria-expanded={open}
             className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 py-0 text-xs font-medium text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:bg-components-button-tertiary-bg-hover"
           >
             <span className="flex min-w-0 items-center justify-center gap-1">
               <span className="i-ri-add-line size-3.5 shrink-0 text-components-button-tertiary-text" aria-hidden="true" />
-              <span className="truncate text-components-button-tertiary-text">{t('metadata.addMetadata', { ns: 'dataset' })}</span>
+              <span className="truncate text-components-button-tertiary-text">{t($ => $['metadata.addMetadata'], { ns: 'dataset' })}</span>
             </span>
           </button>
         )}
@@ -196,13 +196,13 @@ function MetadataPickerSelectPanel({
         <ComboboxInputGroup>
           <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <ComboboxInput
-            aria-label={t(`${i18nPrefix}.search`, { ns: 'dataset' })}
-            placeholder={t(`${i18nPrefix}.search`, { ns: 'dataset' })}
+            aria-label={t($ => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
+            placeholder={t($ => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             className="pl-2"
           />
           {query && (
             <ComboboxClear
-              aria-label={t('operation.clear', { ns: 'common' })}
+              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
             />
           )}
         </ComboboxInputGroup>
@@ -213,7 +213,7 @@ function MetadataPickerSelectPanel({
         )}
       </ComboboxList>
       <ComboboxEmpty>
-        {t('noData', { ns: 'common' })}
+        {t($ => $['noData'], { ns: 'common' })}
       </ComboboxEmpty>
       <ComboboxSeparator />
       <MetadataPickerActions
@@ -264,7 +264,7 @@ function MetadataPickerActions({
         onClick={onNewMetadata}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
-        <span className="truncate system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</span>
+        <span className="truncate system-sm-medium">{t($ => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}</span>
       </button>
       <div className="flex h-8 shrink-0 items-center text-text-secondary">
         <div className="mx-1 h-3 w-px bg-divider-regular" />
@@ -276,7 +276,7 @@ function MetadataPickerActions({
           )}
           onClick={onOpenMetadataManagement}
         >
-          <span className="system-sm-medium">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</span>
+          <span className="system-sm-medium">{t($ => $[`${i18nPrefix}.manageAction`], { ns: 'dataset' })}</span>
           <span className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
         </button>
       </div>

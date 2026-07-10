@@ -74,7 +74,7 @@ export const useImageFiles = () => {
           setFiles(newFiles)
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+          const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t as any)
           toast.error(errorMessage)
           const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)]
           filesRef.current = newFiles
@@ -116,7 +116,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
     if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]!))
       return
     if (limit && file.size > limit * 1024 * 1024) {
-      toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: limit }))
+      toast.error(t($ => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: limit }))
       return
     }
     const reader = new FileReader()
@@ -140,14 +140,14 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
           onUpload({ ...imageFile, fileId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+          const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t as any)
           toast.error(errorMessage)
           onUpload({ ...imageFile, progress: -1 })
         },
       }, !!params?.token)
     }, false)
     reader.addEventListener('error', () => {
-      toast.error(t('imageUploader.uploadFromComputerReadError', { ns: 'common' }))
+      toast.error(t($ => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' }))
     }, false)
     reader.readAsDataURL(file)
   }, [disabled, limit, t, onUpload, params?.token])

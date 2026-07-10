@@ -11,20 +11,23 @@ import ToolSelectorTrigger from '../trigger/tool-selector'
 // ================================
 
 // Mock i18n translation hook
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      const translations: Record<string, string> = {
-        'pluginTags.allTags': 'All Tags',
-        'pluginTags.searchTags': 'Search tags',
-        'plugin.searchPlugins': 'Search plugins',
-      }
-      return translations[fullKey] || key
-    },
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        // Build full key with namespace prefix if provided
+        const fullKey = options?.ns ? `${options.ns}.${key}` : key
+        const translations: Record<string, string> = {
+          'pluginTags.allTags': 'All Tags',
+          'pluginTags.searchTags': 'Search tags',
+          'plugin.searchPlugins': 'Search plugins',
+        }
+        return translations[fullKey] || key
+      }),
+    }),
+  })
+})
 
 // Mock marketplace state hooks
 const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPluginTags, mockHandleFilterPluginTagsChange } = vi.hoisted(() => {

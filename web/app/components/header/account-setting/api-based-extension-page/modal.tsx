@@ -31,9 +31,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   const updateApiBasedExtensionMutation = useMutation(consoleQuery.apiBasedExtension.byId.post.mutationOptions())
   const editingApiBasedExtension = mode === 'edit' ? props.apiBasedExtension : null
   const isSaving = createApiBasedExtensionMutation.isPending || updateApiBasedExtensionMutation.isPending
-  const nameLabel = t('apiBasedExtension.modal.name.title', { ns: 'common' })
-  const apiEndpointLabel = t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })
-  const apiKeyLabel = t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })
+  const nameLabel = t($ => $['apiBasedExtension.modal.name.title'], { ns: 'common' })
+  const apiEndpointLabel = t($ => $['apiBasedExtension.modal.apiEndpoint.title'], { ns: 'common' })
+  const apiKeyLabel = t($ => $['apiBasedExtension.modal.apiKey.title'], { ns: 'common' })
 
   const handleSubmit = (formValues: ApiBasedExtensionPayload) => {
     const body: ApiBasedExtensionPayload = {
@@ -53,7 +53,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
         },
       }, {
         onSuccess: () => {
-          toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+          toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onSaved()
         },
       })
@@ -77,8 +77,8 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
 
         <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
           {mode === 'edit'
-            ? t('apiBasedExtension.modal.editTitle', { ns: 'common' })
-            : t('apiBasedExtension.modal.title', { ns: 'common' })}
+            ? t($ => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
+            : t($ => $['apiBasedExtension.modal.title'], { ns: 'common' })}
         </DialogTitle>
         <Form<ApiBasedExtensionPayload> className="grid gap-4 pt-2" onFormSubmit={handleSubmit}>
           <FieldRoot name="name">
@@ -86,9 +86,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             <FieldControl
               required
               defaultValue={editingApiBasedExtension?.name || ''}
-              placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''}
+              placeholder={t($ => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''}
             />
-            <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
+            <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}</FieldError>
           </FieldRoot>
 
           <FieldRoot name="api_endpoint">
@@ -96,7 +96,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             <FieldControl
               required
               defaultValue={editingApiBasedExtension?.api_endpoint || ''}
-              placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''}
+              placeholder={t($ => $['apiBasedExtension.modal.apiEndpoint.placeholder'], { ns: 'common' }) || ''}
             />
             <FieldDescription>
               <a
@@ -106,17 +106,17 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
                 className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               >
                 <span className="mr-1 i-custom-vender-line-education-book-open-01 size-3" aria-hidden="true" />
-                {t('apiBasedExtension.link', { ns: 'common' })}
+                {t($ => $['apiBasedExtension.link'], { ns: 'common' })}
               </a>
             </FieldDescription>
-            <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: apiEndpointLabel })}</FieldError>
+            <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: apiEndpointLabel })}</FieldError>
           </FieldRoot>
 
           <FieldRoot
             name="api_key"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && value.length < 5)
-                return t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' })
+                return t($ => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' })
 
               return null
             }}
@@ -125,18 +125,18 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             <FieldControl
               required
               defaultValue={editingApiBasedExtension?.api_key || ''}
-              placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''}
+              placeholder={t($ => $['apiBasedExtension.modal.apiKey.placeholder'], { ns: 'common' }) || ''}
             />
-            <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: apiKeyLabel })}</FieldError>
+            <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}</FieldError>
             <FieldError match="customError" />
           </FieldRoot>
 
           <div className="mt-2 flex items-center justify-end gap-2">
             <Button type="button" onClick={() => onOpenChange(false)}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </Form>

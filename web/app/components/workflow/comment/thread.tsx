@@ -435,7 +435,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             id="comment-thread-title"
             className="font-semibold text-text-primary uppercase"
           >
-            {t('comments.panelTitle', { ns: 'workflow' })}
+            {t($ => $['comments.panelTitle'], { ns: 'workflow' })}
           </div>
           <div className="flex items-center gap-1">
             <Tooltip>
@@ -446,14 +446,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     disabled={loading}
                     className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onDelete}
-                    aria-label={t('comments.aria.deleteComment', { ns: 'workflow' })}
+                    aria-label={t($ => $['comments.aria.deleteComment'], { ns: 'workflow' })}
                   >
                     <RiDeleteBinLine className="size-4" />
                   </button>
                 )}
               />
               <TooltipContent placement="top" className="px-2! py-1.5!">
-                {t('comments.aria.deleteComment', { ns: 'workflow' })}
+                {t($ => $['comments.aria.deleteComment'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -464,14 +464,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     disabled={comment.resolved || loading}
                     className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onResolve}
-                    aria-label={t('comments.aria.resolveComment', { ns: 'workflow' })}
+                    aria-label={t($ => $['comments.aria.resolveComment'], { ns: 'workflow' })}
                   >
                     {comment.resolved ? <RiCheckboxCircleFill className="size-4" /> : <RiCheckboxCircleLine className="size-4" />}
                   </button>
                 )}
               />
               <TooltipContent placement="top" className="px-2! py-1.5!">
-                {t('comments.aria.resolveComment', { ns: 'workflow' })}
+                {t($ => $['comments.aria.resolveComment'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <Divider type="vertical" className="h-3.5" />
@@ -483,14 +483,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     disabled={!canGoPrev || loading}
                     className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onPrev}
-                    aria-label={t('comments.aria.previousComment', { ns: 'workflow' })}
+                    aria-label={t($ => $['comments.aria.previousComment'], { ns: 'workflow' })}
                   >
                     <RiArrowUpSLine className="size-4" />
                   </button>
                 )}
               />
               <TooltipContent placement="top" className="px-2! py-1.5!">
-                {t('comments.aria.previousComment', { ns: 'workflow' })}
+                {t($ => $['comments.aria.previousComment'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -501,21 +501,21 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     disabled={!canGoNext || loading}
                     className={cn('flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                     onClick={onNext}
-                    aria-label={t('comments.aria.nextComment', { ns: 'workflow' })}
+                    aria-label={t($ => $['comments.aria.nextComment'], { ns: 'workflow' })}
                   >
                     <RiArrowDownSLine className="size-4" />
                   </button>
                 )}
               />
               <TooltipContent placement="top" className="px-2! py-1.5!">
-                {t('comments.aria.nextComment', { ns: 'workflow' })}
+                {t($ => $['comments.aria.nextComment'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <button
               type="button"
               className="flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
               onClick={onClose}
-              aria-label={t('comments.aria.closeComment', { ns: 'workflow' })}
+              aria-label={t($ => $['comments.aria.closeComment'], { ns: 'workflow' })}
             >
               <RiCloseLine className="size-4" />
             </button>
@@ -539,7 +539,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                 >
                   <DropdownMenuTrigger
                     className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                    aria-label={t('comments.aria.commentActions', { ns: 'workflow' })}
+                    aria-label={t($ => $['comments.aria.commentActions'], { ns: 'workflow' })}
                   >
                     <RiMoreFill className="size-4" />
                   </DropdownMenuTrigger>
@@ -555,7 +555,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         handleStartCommentEdit()
                       }}
                     >
-                      {t('comments.actions.editComment', { ns: 'workflow' })}
+                      {t($ => $['comments.actions.editComment'], { ns: 'workflow' })}
                     </button>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -566,7 +566,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <div className="flex gap-3 pt-1">
                     <div className="shrink-0">
                       <Avatar
-                        name={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                        name={comment.created_by_account?.name || t($ => $['comments.fallback.user'], { ns: 'workflow' })}
                         avatar={comment.created_by_account?.avatar_url || null}
                         size="sm"
                         className="size-8 rounded-full"
@@ -579,7 +579,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           onChange={setEditingCommentContent}
                           onSubmit={handleCommentEditSubmit}
                           onCancel={handleCancelCommentEdit}
-                          placeholder={t('comments.placeholder.editComment', { ns: 'workflow' })}
+                          placeholder={t($ => $['comments.placeholder.editComment'], { ns: 'workflow' })}
                           disabled={loading}
                           loading={isSubmittingEdit}
                           isEditing={true}
@@ -593,7 +593,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
               : (
                   <ThreadMessage
                     authorId={comment.created_by_account?.id || ''}
-                    authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                    authorName={comment.created_by_account?.name || t($ => $['comments.fallback.user'], { ns: 'workflow' })}
                     avatarUrl={comment.created_by_account?.avatar_url || null}
                     createdAt={comment.created_at ?? comment.updated_at ?? 0}
                     content={comment.content}
@@ -629,7 +629,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         >
                           <DropdownMenuTrigger
                             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                            aria-label={t('comments.aria.replyActions', { ns: 'workflow' })}
+                            aria-label={t($ => $['comments.aria.replyActions'], { ns: 'workflow' })}
                           >
                             <RiMoreFill className="size-4" />
                           </DropdownMenuTrigger>
@@ -647,7 +647,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                   handleStartEdit(reply)
                                 }}
                               >
-                                {t('comments.actions.editReply', { ns: 'workflow' })}
+                                {t($ => $['comments.actions.editReply'], { ns: 'workflow' })}
                               </button>
                               <button
                                 className="text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -663,13 +663,13 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                   }
                                 }}
                               >
-                                {t('comments.actions.deleteReply', { ns: 'workflow' })}
+                                {t($ => $['comments.actions.deleteReply'], { ns: 'workflow' })}
                               </button>
                             </div>
 
                             <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
                               <InlineDeleteConfirm
-                                title={t('comments.actions.deleteReply', { ns: 'workflow' })}
+                                title={t($ => $['comments.actions.deleteReply'], { ns: 'workflow' })}
                                 onConfirm={() => {
                                   setDeletingReplyId(null)
                                   setActiveReplyMenuId(null)
@@ -690,7 +690,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           <div className="flex gap-3 pt-1">
                             <div className="shrink-0">
                               <Avatar
-                                name={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                                name={reply.created_by_account?.name || t($ => $['comments.fallback.user'], { ns: 'workflow' })}
                                 avatar={reply.created_by_account?.avatar_url || null}
                                 size="sm"
                                 className="size-8 rounded-full"
@@ -703,7 +703,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                   onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
                                   onSubmit={handleEditSubmit}
                                   onCancel={handleCancelEdit}
-                                  placeholder={t('comments.placeholder.editReply', { ns: 'workflow' })}
+                                  placeholder={t($ => $['comments.placeholder.editReply'], { ns: 'workflow' })}
                                   disabled={loading}
                                   loading={replyUpdating || isSubmittingEdit}
                                   isEditing={true}
@@ -717,7 +717,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                       : (
                           <ThreadMessage
                             authorId={reply.created_by_account?.id || ''}
-                            authorName={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                            authorName={reply.created_by_account?.name || t($ => $['comments.fallback.user'], { ns: 'workflow' })}
                             avatarUrl={reply.created_by_account?.avatar_url || null}
                             createdAt={reply.created_at ?? 0}
                             content={reply.content}
@@ -732,7 +732,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         </div>
         {loading && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
-            {t('comments.loading', { ns: 'workflow' })}
+            {t($ => $['comments.loading'], { ns: 'workflow' })}
           </div>
         )}
         {onReply && (
@@ -740,7 +740,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className="flex items-center gap-3">
               <Avatar
                 avatar={userProfile?.avatar_url || null}
-                name={userProfile?.name || t('you', { ns: 'common' })}
+                name={userProfile?.name || t($ => $['you'], { ns: 'common' })}
                 size="sm"
                 className="size-8"
               />
@@ -750,7 +750,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   value={replyContent}
                   onChange={setReplyContent}
                   onSubmit={handleReplySubmit}
-                  placeholder={t('comments.placeholder.reply', { ns: 'workflow' })}
+                  placeholder={t($ => $['comments.placeholder.reply'], { ns: 'workflow' })}
                   disabled={loading}
                   loading={replySubmitting}
                 />

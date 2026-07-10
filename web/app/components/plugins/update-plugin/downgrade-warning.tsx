@@ -18,15 +18,15 @@ const DowngradeWarningModal = ({
   return (
     <>
       <div className="flex flex-col items-start gap-2 self-stretch">
-        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</div>
+        <div className="title-2xl-semi-bold text-text-primary">{t($ => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</div>
         <div className="system-md-regular text-text-secondary">
-          {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
+          {t($ => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
         </div>
       </div>
       <div className="mt-9 flex items-start justify-end space-x-2 self-stretch">
-        <Button variant="secondary" onClick={() => onCancel()}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-        <Button variant="secondary" tone="destructive" onClick={onJustDowngrade}>{t(`${i18nPrefix}.downgrade`, { ns: 'plugin' })}</Button>
-        <Button variant="primary" onClick={onExcludeAndDowngrade}>{t(`${i18nPrefix}.exclude`, { ns: 'plugin' })}</Button>
+        <Button variant="secondary" onClick={() => onCancel()}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
+        <Button variant="secondary" tone="destructive" onClick={onJustDowngrade}>{t($ => $[`${i18nPrefix}.downgrade`], { ns: 'plugin' })}</Button>
+        <Button variant="primary" onClick={onExcludeAndDowngrade}>{t($ => $[`${i18nPrefix}.exclude`], { ns: 'plugin' })}</Button>
       </div>
     </>
   )

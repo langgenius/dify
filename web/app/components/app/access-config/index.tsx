@@ -80,9 +80,9 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
       <header className="flex min-h-15.5 flex-col justify-center px-6 py-3">
-        <h1 className="system-xl-semibold text-text-primary">{t('settings.resourceAccess', { ns: 'common' })}</h1>
+        <h1 className="system-xl-semibold text-text-primary">{t($ => $['settings.resourceAccess'], { ns: 'common' })}</h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
-          {t('accessRule.appDescription', { ns: 'permission' })}
+          {t($ => $['accessRule.appDescription'], { ns: 'permission' })}
         </p>
       </header>
       <main className="w-full px-6 pt-8 pb-10">

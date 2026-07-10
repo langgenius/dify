@@ -37,7 +37,7 @@ export function AgentBuildDraftBar({
   const isActionPending = isApplying || isDiscarding
   const applyDisabled = disabled || isActionPending
   const discardDisabled = disabled || isActionPending
-  const changesLabel = t('agentDetail.configure.buildDraft.changesToApply', { count: changesCount })
+  const changesLabel = t($ => $['agentDetail.configure.buildDraft.changesToApply'], { count: changesCount })
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       const width = collapsedBarRef.current?.getBoundingClientRect().width
@@ -57,7 +57,7 @@ export function AgentBuildDraftBar({
       open={open}
       onOpenChange={handleOpenChange}
       role="group"
-      aria-label={t('agentDetail.configure.buildDraft.title')}
+      aria-label={t($ => $['agentDetail.configure.buildDraft.title'])}
       className="group/build-draft pointer-events-auto relative w-full max-w-full min-w-0 overflow-hidden rounded-xl border-[1.5px] border-[#A0BDFF] bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
     >
       <AgentBuildGridTexture
@@ -76,7 +76,7 @@ export function AgentBuildDraftBar({
       <div ref={collapsedBarRef} className="relative z-1 flex h-[50px] max-w-full min-w-0 items-center gap-2 p-2 group-data-open/build-draft:justify-end">
         <div className="flex min-w-0 flex-1 items-center gap-3 pr-8 pl-2 group-data-open/build-draft:hidden">
           <p className="min-w-0 truncate system-sm-semibold text-text-primary">
-            {t('agentDetail.configure.buildDraft.title')}
+            {t($ => $['agentDetail.configure.buildDraft.title'])}
           </p>
           <button
             type="button"
@@ -101,7 +101,7 @@ export function AgentBuildDraftBar({
             disabled={discardDisabled}
             className="relative z-1 h-8 shrink-0 rounded-lg px-3"
           >
-            {t('agentDetail.configure.buildDraft.discard')}
+            {t($ => $['agentDetail.configure.buildDraft.discard'])}
           </Button>
         </AgentConfigureClearSessionConfirmDialog>
         <Button
@@ -112,7 +112,7 @@ export function AgentBuildDraftBar({
           className="relative z-1 h-8 min-w-20 shrink-0 rounded-lg px-3"
           onClick={onApply}
         >
-          {tCustom('apply')}
+          {tCustom($ => $['apply'])}
         </Button>
       </div>
     </CollapsibleRoot>

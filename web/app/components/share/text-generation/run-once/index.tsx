@@ -74,7 +74,7 @@ const RunOnce: FC<IRunOnceProps> = ({
     onSend()
   }
   const isRunning = !!runControl
-  const stopLabel = t('generation.stopRun', { ns: 'share', defaultValue: 'Stop Run' })
+  const stopLabel = t($ => $['generation.stopRun'], { ns: 'share', defaultValue: 'Stop Run' })
   const handlePrimaryClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     if (!isRunning)
       return
@@ -128,7 +128,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     {item.type !== 'checkbox' && (
                       <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
                         <div className="truncate">{item.name}</div>
-                        {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                        {!item.required && <span className="system-xs-regular text-text-tertiary">{t($ => $['panel.optional'], { ns: 'workflow' })}</span>}
                       </div>
                     )}
                     <div className="mt-1">
@@ -142,7 +142,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                           }}
                         >
                           <SelectTrigger className="w-full">
-                            {selectValue ?? defaultSelectValue ?? t('placeholder.select', { ns: 'common' })}
+                            {selectValue ?? defaultSelectValue ?? t($ => $['placeholder.select'], { ns: 'common' })}
                           </SelectTrigger>
                           <SelectContent>
                             {(item.options || []).map(option => (
@@ -230,7 +230,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="flex h-6 items-center system-md-semibold text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="flex h-6 items-center system-md-semibold text-text-secondary">{t($ => $['imageUploader.imageUpload'], { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -251,7 +251,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 onClick={onClear}
                 disabled={false}
               >
-                <span className="text-[13px]">{t('operation.clear', { ns: 'common' })}</span>
+                <span className="text-[13px]">{t($ => $['operation.clear'], { ns: 'common' })}</span>
               </Button>
               <Button
                 className={cn(!isPC && 'grow')}
@@ -272,7 +272,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   : (
                       <>
                         <RiPlayLargeLine className="mr-1 size-4 shrink-0" aria-hidden="true" />
-                        <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
+                        <span className="text-[13px]">{t($ => $['generation.run'], { ns: 'share' })}</span>
                       </>
                     )}
               </Button>

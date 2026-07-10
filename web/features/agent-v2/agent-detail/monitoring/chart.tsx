@@ -53,10 +53,10 @@ export function AgentMonitoringChart({
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center gap-1">
           <h3 className="truncate system-md-semibold text-text-secondary">
-            {t(titleKey)}
+            {t($ => $[titleKey])}
           </h3>
-          <Infotip aria-label={t(explanationKey)}>
-            {t(explanationKey)}
+          <Infotip aria-label={t($ => $[explanationKey])}>
+            {t($ => $[explanationKey])}
           </Infotip>
         </div>
       </div>
@@ -67,12 +67,12 @@ export function AgentMonitoringChart({
         </div>
         {chartType !== 'tokenUsage' && unitKey && (
           <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
-            {t(unitKey)}
+            {t($ => $[unitKey])}
           </div>
         )}
         {chartType === 'tokenUsage' && (
           <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
-            {t('agentDetail.monitoring.tokenUsageConsumed')}
+            {t($ => $['agentDetail.monitoring.tokenUsageConsumed'])}
             {' '}
             <span className="text-util-colors-orange-orange-600">
               (~

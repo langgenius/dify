@@ -87,7 +87,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       || (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall)
     )
 
-  useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
+  useDocumentTitle(datasetRes?.name || t($ => $['menus.datasets'], { ns: 'common' }))
 
   useEffect(() => {
     if (shouldRedirect)

@@ -42,7 +42,7 @@ const AddCondition = ({
             variant="secondary"
           >
             <RiAddLine className="size-3.5" />
-            {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflow' })}
           </Button>
         )}
       />
@@ -55,7 +55,7 @@ const AddCondition = ({
           <div className="p-2 pb-1">
             <Input
               showLeftIcon
-              placeholder={t('nodes.knowledgeRetrieval.metadata.panel.search', { ns: 'workflow' })}
+              placeholder={t($ => $['nodes.knowledgeRetrieval.metadata.panel.search'], { ns: 'workflow' })}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
             />

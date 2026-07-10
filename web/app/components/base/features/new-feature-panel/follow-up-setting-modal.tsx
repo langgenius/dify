@@ -129,12 +129,12 @@ const FollowUpSettingModal = ({
       <DialogContent className="w-[640px]! max-w-none! p-8! pb-6!">
         <DialogCloseButton className="top-8 right-8" />
         <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
-          {t('feature.suggestedQuestionsAfterAnswer.modal.title', { ns: 'appDebug' })}
+          {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
         </DialogTitle>
         <div className="mt-6 space-y-4">
           <div>
             <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-              {t('feature.suggestedQuestionsAfterAnswer.modal.modelLabel', { ns: 'appDebug' })}
+              {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.modelLabel'], { ns: 'appDebug' })}
             </div>
             <ModelParameterModal
               popupClassName="w-[520px]!"
@@ -158,7 +158,7 @@ const FollowUpSettingModal = ({
               )}
             >
               <FieldsetLegend className="mb-1.5 py-0 system-sm-semibold-uppercase text-text-secondary">
-                {t('feature.suggestedQuestionsAfterAnswer.modal.promptLabel', { ns: 'appDebug' })}
+                {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.promptLabel'], { ns: 'appDebug' })}
               </FieldsetLegend>
               <FieldItem>
                 <RadioItem<PromptMode>
@@ -175,10 +175,10 @@ const FollowUpSettingModal = ({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="system-sm-semibold text-text-primary">
-                        {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption', { ns: 'appDebug' })}
+                        {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption'], { ns: 'appDebug' })}
                       </div>
                       <div className="mt-1 system-xs-regular text-text-tertiary">
-                        {t('feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOptionDescription', { ns: 'appDebug' })}
+                        {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOptionDescription'], { ns: 'appDebug' })}
                       </div>
                     </div>
                     <RadioControl aria-hidden="true" />
@@ -207,22 +207,22 @@ const FollowUpSettingModal = ({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="system-sm-semibold text-text-primary">
-                        {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
+                        {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.customPromptOption'], { ns: 'appDebug' })}
                       </div>
                       <div className="mt-1 system-xs-regular text-text-tertiary">
-                        {t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOptionDescription', { ns: 'appDebug' })}
+                        {t($ => $['feature.suggestedQuestionsAfterAnswer.modal.customPromptOptionDescription'], { ns: 'appDebug' })}
                       </div>
                     </div>
                     <RadioControl aria-hidden="true" />
                   </div>
                   {promptMode === PROMPT_MODE.custom && (
                     <Textarea
-                      aria-label={t('feature.suggestedQuestionsAfterAnswer.modal.customPromptOption', { ns: 'appDebug' })}
+                      aria-label={t($ => $['feature.suggestedQuestionsAfterAnswer.modal.customPromptOption'], { ns: 'appDebug' })}
                       className="mt-3 min-h-32 resize-y border-components-input-border-active bg-components-input-bg-normal"
                       value={prompt}
                       onValueChange={value => setPrompt(value)}
                       maxLength={CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH}
-                      placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
+                      placeholder={t($ => $['feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder'], { ns: 'appDebug' }) || ''}
                     />
                   )}
                 </RadioItem>
@@ -232,14 +232,14 @@ const FollowUpSettingModal = ({
         </div>
         <div className="mt-6 flex items-center justify-end gap-2">
           <Button onClick={onCancel}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
             disabled={isCustomPromptInvalid}
             onClick={handleSave}
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

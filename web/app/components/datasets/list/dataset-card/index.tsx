@@ -64,7 +64,7 @@ const DatasetCard = ({
   const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
   }
 
   const handleCardClick = (e: MouseEvent) => {

@@ -119,8 +119,8 @@ function AgentRosterDrawer({
 }) {
   const { t } = useTranslation()
   const isSetup = mode === 'setup'
-  const title = isInlineSetup ? t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' }) : agent.name
-  const description = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' }) : agent.role
+  const title = isInlineSetup ? t($ => $[`${i18nPrefix}.roster.inlineSetup.name`], { ns: 'workflow' }) : agent.name
+  const description = isSetup ? t($ => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflow' }) : agent.role
   const showInlineActions = isInlineSetup && !!onSaveInlineToRoster
 
   return (
@@ -178,7 +178,7 @@ function AgentRosterDrawer({
                       <>
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger
-                            aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
+                            aria-label={t($ => $[`${i18nPrefix}.roster.more`], { ns: 'workflow' })}
                             className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
@@ -186,7 +186,7 @@ function AgentRosterDrawer({
                           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
                             <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
                               <span aria-hidden className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary" />
-                              <span>{t('roster.saveToRoster', { ns: 'agentV2' })}</span>
+                              <span>{t($ => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -196,7 +196,7 @@ function AgentRosterDrawer({
                       </>
                     )}
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -212,7 +212,7 @@ function AgentRosterDrawer({
                       >
                         <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
                         <span className="truncate">
-                          {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
+                          {t($ => $[`${i18nPrefix}.roster.editInConsole`], { ns: 'workflow' })}
                         </span>
                       </Link>
                     )}
@@ -225,7 +225,7 @@ function AgentRosterDrawer({
                     >
                       <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
                       <span className="truncate">
-                        {t(`${i18nPrefix}.roster.makeCopy`, { ns: 'workflow' })}
+                        {t($ => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
                       </span>
                     </Button>
                   </div>
@@ -233,7 +233,7 @@ function AgentRosterDrawer({
               </header>
               <div
                 role="region"
-                aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
+                aria-label={t($ => $[`${i18nPrefix}.roster.panelLabel`], { ns: 'workflow', name: agent.name })}
                 className="min-h-0 flex-1 overflow-hidden bg-components-panel-bg"
               >
                 {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
@@ -273,7 +273,7 @@ function AgentRosterInlineConfigureDialog({
           {agent.name}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          {t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflow' })}
         </DialogDescription>
         {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
       </DialogContent>
@@ -323,11 +323,11 @@ export function AgentRosterField({
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
-  const inlineSetupName = t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' })
-  const inlineSetupType = t(`${i18nPrefix}.roster.inlineSetup.type`, { ns: 'workflow' })
-  const rosterRequiredMessage = t('errorMsg.fieldRequired', {
+  const inlineSetupName = t($ => $[`${i18nPrefix}.roster.inlineSetup.name`], { ns: 'workflow' })
+  const inlineSetupType = t($ => $[`${i18nPrefix}.roster.inlineSetup.type`], { ns: 'workflow' })
+  const rosterRequiredMessage = t($ => $['errorMsg.fieldRequired'], {
     ns: 'workflow',
-    field: t(`${i18nPrefix}.roster.label`, { ns: 'workflow' }),
+    field: t($ => $[`${i18nPrefix}.roster.label`], { ns: 'workflow' }),
   })
   const agentContent = agent
     ? (
@@ -356,7 +356,7 @@ export function AgentRosterField({
   const renderPanelTrigger = (name: string, onClick?: () => void) => (
     <button
       type="button"
-      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name })}
+      aria-label={t($ => $[`${i18nPrefix}.roster.openPanel`], { ns: 'workflow', name })}
       aria-busy={isLoading || undefined}
       className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       onClick={onClick}
@@ -372,7 +372,7 @@ export function AgentRosterField({
     <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
-          {t('nodes.agent.roster.label', { ns: 'workflow' })}
+          {t($ => $['nodes.agent.roster.label'], { ns: 'workflow' })}
         </FieldLabel>
         <Popover
           open={isPending ? false : isSelectorOpen}
@@ -388,7 +388,7 @@ export function AgentRosterField({
                 disabled={isPending}
                 className={cn('flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden', isPending && 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary')}
               >
-                {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
+                {t($ => $[`${i18nPrefix}.roster.change`], { ns: 'workflow' })}
               </button>
             )}
           />
@@ -398,7 +398,7 @@ export function AgentRosterField({
             popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <PopoverTitle className="sr-only">
-              {t('roster.nodeSelector.dialogLabel', { ns: 'agentV2' })}
+              {t($ => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}
             </PopoverTitle>
             <AgentSelectorContent
               open={isSelectorOpen}

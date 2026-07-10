@@ -119,7 +119,7 @@ const Chart: React.FC<IChartProps> = ({
         </div>
         {showTokenSummary && (
           <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
-            {t('analysis.tokenUsage.consumed', { ns: 'appOverview' })}
+            {t($ => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })}
             {' '}
             Tokens
             {' '}
@@ -192,15 +192,15 @@ const createBizChartComponent = ({
     return (
       <Chart
         basicInfo={{
-          title: t(titleKey, titleKey, { ns: 'appOverview' }),
-          explanation: t(explanationKey, explanationKey, { ns: 'appOverview' }),
+          title: t($ => $[titleKey], titleKey, { ns: 'appOverview' }),
+          explanation: t($ => $[explanationKey], explanationKey, { ns: 'appOverview' }),
           timePeriod: period.name,
         }}
         chartData={noDataFlag ? fallbackData : response}
         chartType={chartType}
         valueKey={valueKey}
         isAvg={isAvg}
-        unit={unitKey ? t(unitKey, unitKey, { ns: 'appOverview' }) : undefined}
+        unit={unitKey ? t($ => $[unitKey], unitKey, { ns: 'appOverview' }) : undefined}
         className={className}
         {...(noDataFlag && { yMax: yMaxWhenEmpty })}
       />

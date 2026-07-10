@@ -17,7 +17,7 @@ export function CopyPill({ label, value, prefix, className }: CopyPillProps) {
   const { t } = useTranslation('deployments')
   const { copied, copy } = useClipboard({
     onCopyError: () => {
-      toast.error(t('access.copyFailed'))
+      toast.error(t($ => $['access.copyFailed']))
     },
   })
 
@@ -39,7 +39,7 @@ export function CopyPill({ label, value, prefix, className }: CopyPillProps) {
       <button
         type="button"
         onClick={() => copy(value)}
-        aria-label={t('access.copy')}
+        aria-label={t($ => $['access.copy'])}
         className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
       >
         <span className={cn(copied ? 'i-ri-check-line' : 'i-ri-file-copy-line', 'size-3.5')} />

@@ -48,7 +48,7 @@ const MemberSelector: FC<Props> = ({
             variant="ghost-accent"
           >
             <RiContactsBookLine className="mr-1 size-4" />
-            <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
+            <div>{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`], { ns: 'workflow' })}</div>
           </Button>
         )}
       />

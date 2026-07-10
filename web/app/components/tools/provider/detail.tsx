@@ -148,7 +148,7 @@ const ProviderDetail = ({
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
@@ -157,7 +157,7 @@ const ProviderDetail = ({
 
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -187,7 +187,7 @@ const ProviderDetail = ({
 
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
@@ -201,7 +201,7 @@ const ProviderDetail = ({
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
@@ -282,7 +282,7 @@ const ProviderDetail = ({
                         {collection.type === CollectionType.workflow || collection.type === CollectionType.custom
                           ? (
                               <div className="truncate system-xs-regular text-text-tertiary">
-                                {collection.author && `${t('author', { ns: 'tools' })} ${collection.author}`}
+                                {collection.author && `${t($ => $['author'], { ns: 'tools' })} ${collection.author}`}
                               </div>
                             )
                           : (
@@ -295,7 +295,7 @@ const ProviderDetail = ({
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
+                      <ActionButton aria-label={t($ => $['operation.close'], { ns: 'common' })} onClick={onHide}>
                         <RiCloseLine className="size-4" />
                       </ActionButton>
                     </div>
@@ -312,7 +312,7 @@ const ProviderDetail = ({
                       disabled={!canManageTools}
                     >
                       <span aria-hidden className="mr-1 i-ri-equalizer-2-line size-4 text-components-button-secondary-text" />
-                      <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
+                      <div className="system-sm-medium text-text-secondary">{t($ => $['createTool.editAction'], { ns: 'tools' })}</div>
                     </Button>
                   )}
                   {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
@@ -321,9 +321,9 @@ const ProviderDetail = ({
                         nativeButton={false}
                         variant="primary"
                         className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
-                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t('openInStudio', { ns: 'tools' })} />}
+                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t($ => $['openInStudio'], { ns: 'tools' })} />}
                       >
-                        <span className="min-w-0 truncate px-0.5 system-sm-medium">{t('openInStudio', { ns: 'tools' })}</span>
+                        <span className="min-w-0 truncate px-0.5 system-sm-medium">{t($ => $['openInStudio'], { ns: 'tools' })}</span>
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
                       </Button>
                       <Button
@@ -333,7 +333,7 @@ const ProviderDetail = ({
                         disabled={!canManageTools}
                       >
                         <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text" />
-                        <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">{t('createTool.editAction', { ns: 'tools' })}</span>
+                        <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">{t($ => $['createTool.editAction'], { ns: 'tools' })}</span>
                       </Button>
                     </>
                   )}
@@ -345,7 +345,7 @@ const ProviderDetail = ({
                       <div className="shrink-0">
                         {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
                           <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
-                            {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
+                            {t($ => $['detailPanel.actionNum'], { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                             {needAuth && (
                               <Button
                                 variant="secondary"
@@ -357,7 +357,7 @@ const ProviderDetail = ({
                                 disabled={!canOpenCredentialSettings}
                               >
                                 <StatusDot className="mr-2" status="success" />
-                                {t('auth.authorized', { ns: 'tools' })}
+                                {t($ => $['auth.authorized'], { ns: 'tools' })}
                               </Button>
                             )}
                           </div>
@@ -365,9 +365,9 @@ const ProviderDetail = ({
                         {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
                           <>
                             <div className="system-sm-semibold-uppercase text-text-secondary">
-                              <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                              <span className="">{t($ => $['includeToolNum'], { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                               <span className="px-1">·</span>
-                              <span className="text-util-colors-orange-orange-600">{t('auth.setup', { ns: 'tools' }).toLocaleUpperCase()}</span>
+                              <span className="text-util-colors-orange-orange-600">{t($ => $['auth.setup'], { ns: 'tools' }).toLocaleUpperCase()}</span>
                             </div>
                             <Button
                               variant="primary"
@@ -378,18 +378,18 @@ const ProviderDetail = ({
                               }}
                               disabled={!canOpenCredentialSettings}
                             >
-                              {t('auth.unauthorized', { ns: 'tools' })}
+                              {t($ => $['auth.unauthorized'], { ns: 'tools' })}
                             </Button>
                           </>
                         )}
                         {(collection.type === CollectionType.custom) && (
                           <div className="system-sm-semibold-uppercase text-text-secondary">
-                            <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                            <span className="">{t($ => $['includeToolNum'], { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                           </div>
                         )}
                         {(collection.type === CollectionType.workflow) && (
                           <div className="system-sm-semibold-uppercase text-text-secondary">
-                            <span className="">{t('createTool.toolInput.title', { ns: 'tools' }).toLocaleUpperCase()}</span>
+                            <span className="">{t($ => $['createTool.toolInput.title'], { ns: 'tools' }).toLocaleUpperCase()}</span>
                           </div>
                         )}
                       </div>
@@ -409,7 +409,7 @@ const ProviderDetail = ({
                             <div className="mb-1 flex items-center gap-2">
                               <span className="code-sm-semibold text-text-secondary">{item.name}</span>
                               <span className="system-xs-regular text-text-tertiary">{item.type}</span>
-                              <span className="system-xs-medium text-text-warning-secondary">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
+                              <span className="system-xs-medium text-text-warning-secondary">{item.required ? t($ => $['createTool.toolInput.required'], { ns: 'tools' }) : ''}</span>
                             </div>
                             <div className="system-xs-regular text-text-tertiary">{item.llm_description}</div>
                           </div>
@@ -427,7 +427,7 @@ const ProviderDetail = ({
                         return
 
                       await updateBuiltInToolCredential(collection.name, value)
-                      toast.success(t('api.actionSuccess', { ns: 'common' }))
+                      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -436,7 +436,7 @@ const ProviderDetail = ({
                         return
 
                       await removeBuiltInToolCredential(collection.name)
-                      toast.success(t('api.actionSuccess', { ns: 'common' }))
+                      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -463,16 +463,16 @@ const ProviderDetail = ({
                   <AlertDialogContent>
                     <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                       <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                        {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+                        {t($ => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
                       </AlertDialogTitle>
                       <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                        {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+                        {t($ => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
                     </div>
                     <AlertDialogActions>
-                      <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                      <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
-                        {t('operation.confirm', { ns: 'common' })}
+                        {t($ => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
                     </AlertDialogActions>
                   </AlertDialogContent>

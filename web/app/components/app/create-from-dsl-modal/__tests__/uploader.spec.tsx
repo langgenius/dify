@@ -2,11 +2,14 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Uploader from '../uploader'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {

@@ -131,8 +131,8 @@ const PluginPage = ({
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
   useDocumentTitle(isExploringMarketplace
-    ? t('mainNav.marketplace', { ns: 'common' })
-    : t('metadata.title', { ns: 'plugin' }))
+    ? t($ => $['mainNav.marketplace'], { ns: 'common' })
+    : t($ => $['metadata.title'], { ns: 'plugin' }))
 
   const handleFileChange = (file: File | null) => {
     if (!canInstallPlugin) {
@@ -203,7 +203,7 @@ const PluginPage = ({
                       variant="ghost"
                       className="text-text-tertiary"
                     >
-                      {t('requestAPlugin', { ns: 'plugin' })}
+                      {t($ => $['requestAPlugin'], { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <Link
@@ -215,7 +215,7 @@ const PluginPage = ({
                       variant="secondary-accent"
                     >
                       <RiBookOpenLine className="mr-1 size-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
+                      {t($ => $['publishPlugins'], { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
@@ -249,7 +249,7 @@ const PluginPage = ({
                   <TooltipTrigger
                     render={(
                       <Button
-                        aria-label={t('privilege.title', { ns: 'plugin' })}
+                        aria-label={t($ => $['privilege.title'], { ns: 'plugin' })}
                         className="group size-full p-2 text-components-button-secondary-text"
                         disabled={isReferenceSettingLoading || !referenceSetting}
                         loading={isReferenceSettingLoading}
@@ -260,7 +260,7 @@ const PluginPage = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('privilege.title', { ns: 'plugin' })}
+                    {t($ => $['privilege.title'], { ns: 'plugin' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -287,7 +287,7 @@ const PluginPage = ({
           {canInstallPlugin && (
             <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
               <RiDragDropLine className="size-4" />
-              <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+              <span className="system-xs-regular">{t($ => $['installModal.dropPluginToInstall'], { ns: 'plugin' })}</span>
             </div>
           )}
           {currentFile && (

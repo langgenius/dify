@@ -58,7 +58,7 @@ const FileItem = ({
         {
           showDeleteAction && (
             <Button
-              aria-label={t('operation.remove', { ns: 'common' })}
+              aria-label={t($ => $['operation.remove'], { ns: 'common' })}
               className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
             >
@@ -95,7 +95,7 @@ const FileItem = ({
           {
             showDownloadAction && download_url && (
               <ActionButton
-                aria-label={t('operation.download', { ns: 'common' })}
+                aria-label={t($ => $['operation.download'], { ns: 'common' })}
                 size="m"
                 className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
                 onClick={(e) => {
@@ -112,7 +112,7 @@ const FileItem = ({
               <ProgressCircle
                 value={progress}
                 className="shrink-0"
-                aria-label={t('uploading', { ns: 'custom' })}
+                aria-label={t($ => $['uploading'], { ns: 'custom' })}
               />
             )
           }
@@ -120,7 +120,7 @@ const FileItem = ({
             uploadError && (
               <button
                 type="button"
-                aria-label={t('operation.retry', { ns: 'common' })}
+                aria-label={t($ => $['operation.retry'], { ns: 'common' })}
                 className="size-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => onReUpload?.(id)}
               >

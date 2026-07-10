@@ -46,7 +46,7 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
         onClick={onAccount}
       >
         <span className="i-ri-user-3-line h-4 w-4" />
-        {t('chooser.signInAccount')}
+        {t($ => $['chooser.signInAccount'])}
       </Button>
       {ssoAvailable && (
         <Button
@@ -56,7 +56,7 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
           onClick={onSSO}
         >
           <span className="i-ri-shield-line h-4 w-4" />
-          {t('chooser.signInSSO')}
+          {t($ => $['chooser.signInSSO'])}
         </Button>
       )}
     </div>

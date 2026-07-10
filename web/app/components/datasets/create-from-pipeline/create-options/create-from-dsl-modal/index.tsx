@@ -73,7 +73,7 @@ const CreateFromDSLModal = ({
                   DSL URL
                 </div>
                 <Input
-                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                  placeholder={t($ => $['importFromDSLUrlPlaceholder'], { ns: 'app' }) || ''}
                   value={dslUrlValue}
                   onChange={e => setDslUrlValue(e.target.value)}
                 />
@@ -82,7 +82,7 @@ const CreateFromDSLModal = ({
           </div>
           <div className="flex justify-end gap-x-2 p-6 pt-5">
             <Button onClick={onClose}>
-              {t('newApp.Cancel', { ns: 'app' })}
+              {t($ => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
             <Button
               disabled={buttonDisabled}
@@ -90,7 +90,7 @@ const CreateFromDSLModal = ({
               onClick={handleCreateApp}
               className="gap-1"
             >
-              <span>{t('newApp.import', { ns: 'app' })}</span>
+              <span>{t($ => $['newApp.import'], { ns: 'app' })}</span>
             </Button>
           </div>
         </DialogContent>

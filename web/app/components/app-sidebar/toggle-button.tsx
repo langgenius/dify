@@ -19,7 +19,7 @@ const ToggleTooltipContent = ({
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t($ => $['sidebar.collapseSidebar'], { ns: 'layout' }) : t($ => $['sidebar.expandSidebar'], { ns: 'layout' })}</span>
       <KbdGroup>
         {TOGGLE_SHORTCUT.map(key => (
           <Kbd key={key}>{formatForDisplay(key)}</Kbd>

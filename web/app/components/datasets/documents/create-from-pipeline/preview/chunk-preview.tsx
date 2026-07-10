@@ -63,7 +63,7 @@ const ChunkPreview = ({
     <PreviewContainer
       header={(
         <PreviewHeader
-          title={t('stepTwo.preview', { ns: 'datasetCreation' })}
+          title={t($ => $['stepTwo.preview'], { ns: 'datasetCreation' })}
         >
           <div className="flex items-center gap-1">
             {dataSourceType === DatasourceType.localFile
@@ -150,7 +150,7 @@ const ChunkPreview = ({
             {
               currentDocForm !== ChunkingMode.qa
               && (
-                <Badge text={t('stepTwo.previewChunkCount', {
+                <Badge text={t($ => $['stepTwo.previewChunkCount'], {
                   ns: 'datasetCreation',
                   count: estimateData?.total_segments || 0,
                 }) as string}
@@ -220,10 +220,10 @@ const ChunkPreview = ({
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
-              {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
+              {t($ => $['stepTwo.previewChunkTip'], { ns: 'datasetCreation' })}
             </p>
             <Button onClick={onPreview}>
-              {t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}
+              {t($ => $['addDocuments.stepTwo.previewChunks'], { ns: 'datasetPipeline' })}
             </Button>
           </div>
         </div>

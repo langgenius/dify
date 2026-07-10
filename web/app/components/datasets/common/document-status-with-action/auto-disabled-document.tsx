@@ -23,7 +23,7 @@ const AutoDisabledDocument: FC<Props> = ({
   const handleEnableDocuments = useCallback(async () => {
     await enableDocument({ datasetId, documentIds })
     invalidDisabledDocument()
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [])
   if (!hasDisabledDocument || isLoading)
     return null
@@ -31,8 +31,8 @@ const AutoDisabledDocument: FC<Props> = ({
   return (
     <StatusWithAction
       type="info"
-      description={t('documentsDisabled', { ns: 'dataset', num: documentIds?.length })}
-      actionText={t('enable', { ns: 'dataset' })}
+      description={t($ => $['documentsDisabled'], { ns: 'dataset', num: documentIds?.length })}
+      actionText={t($ => $['enable'], { ns: 'dataset' })}
       onAction={handleEnableDocuments}
     />
   )

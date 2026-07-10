@@ -49,14 +49,14 @@ const FileTypeItem: FC<Props> = ({
             <div>
               <div className="flex items-center border-b border-divider-subtle p-3 pb-2">
                 <FileTypeIcon className="shrink-0" type={type} size="lg" />
-                <div className="mx-2 grow system-sm-medium text-text-primary">{t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })}</div>
-                <Checkbox className="shrink-0" checked={selected} aria-label={t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })} />
+                <div className="mx-2 grow system-sm-medium text-text-primary">{t($ => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })}</div>
+                <Checkbox className="shrink-0" checked={selected} aria-label={t($ => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })} />
               </div>
               <div className="p-3" onClick={e => e.stopPropagation()}>
                 <TagInput
                   items={customFileTypes}
                   onChange={onCustomFileTypesChange}
-                  placeholder={t('variableConfig.file.custom.createPlaceholder', { ns: 'appDebug' })!}
+                  placeholder={t($ => $['variableConfig.file.custom.createPlaceholder'], { ns: 'appDebug' })!}
                 />
               </div>
             </div>
@@ -65,10 +65,10 @@ const FileTypeItem: FC<Props> = ({
             <div className="flex items-center">
               <FileTypeIcon className="shrink-0" type={type} size="lg" />
               <div className="mx-2 grow">
-                <div className="system-sm-medium text-text-primary">{t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })}</div>
-                <div className="mt-1 system-2xs-regular-uppercase text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type]!.join(', ') : t('variableConfig.file.custom.description', { ns: 'appDebug' })}</div>
+                <div className="system-sm-medium text-text-primary">{t($ => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })}</div>
+                <div className="mt-1 system-2xs-regular-uppercase text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type]!.join(', ') : t($ => $['variableConfig.file.custom.description'], { ns: 'appDebug' })}</div>
               </div>
-              <Checkbox className="shrink-0" checked={selected} aria-label={t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })} />
+              <Checkbox className="shrink-0" checked={selected} aria-label={t($ => $[`variableConfig.file.${type}.name`], { ns: 'appDebug' })} />
             </div>
           )}
 

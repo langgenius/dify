@@ -57,7 +57,7 @@ function CreateReleaseScopedControl({
           />
         )}
       >
-        {label ?? t('versions.createRelease')}
+        {label ?? t($ => $['versions.createRelease'])}
       </DialogTrigger>
       <CreateReleaseDialogContent />
     </Dialog>

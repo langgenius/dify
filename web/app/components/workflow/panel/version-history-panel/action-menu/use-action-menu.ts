@@ -18,36 +18,36 @@ const useActionMenu = (props: ActionMenuProps) => {
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
-    name: t('operation.delete', { ns: 'common' }),
+    name: t($ => $['operation.delete'], { ns: 'common' }),
   }
 
   const options = useMemo(() => {
     return [
       {
         key: VersionHistoryContextMenuOptions.restore,
-        name: t('common.restore', { ns: 'workflow' }),
+        name: t($ => $['common.restore'], { ns: 'workflow' }),
         ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
       },
       isNamedVersion
         ? {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.editVersionInfo', { ns: 'workflow' }),
+            name: t($ => $['versionHistory.editVersionInfo'], { ns: 'workflow' }),
           }
         : {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.nameThisVersion', { ns: 'workflow' }),
+            name: t($ => $['versionHistory.nameThisVersion'], { ns: 'workflow' }),
           },
       // todo: pipeline support export specific version DSL
       ...(canImportExportDSL && !pipelineId
         ? [{
             key: VersionHistoryContextMenuOptions.exportDSL,
-            name: t('export', { ns: 'app' }),
+            name: t($ => $['export'], { ns: 'app' }),
             ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
           }]
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: t('versionHistory.copyId', { ns: 'workflow' }),
+        name: t($ => $['versionHistory.copyId'], { ns: 'workflow' }),
       },
     ]
   }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, shouldShowUpgrade, t])

@@ -71,7 +71,7 @@ const VariableInspectTrigger: FC = () => {
             setShowVariableInspectPanel(true)
           }}
         >
-          {t('debug.variableInspect.trigger.normal', { ns: 'workflow' })}
+          {t($ => $['debug.variableInspect.trigger.normal'], { ns: 'workflow' })}
         </div>
       )}
       {!isRunning && currentVars.length > 0 && (
@@ -84,7 +84,7 @@ const VariableInspectTrigger: FC = () => {
               setShowVariableInspectPanel(true)
             }}
           >
-            {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
+            {t($ => $['debug.variableInspect.trigger.cached'], { ns: 'workflow' })}
           </div>
           <div
             className={cn('flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
@@ -94,7 +94,7 @@ const VariableInspectTrigger: FC = () => {
               handleClearAll()
             }}
           >
-            {t('debug.variableInspect.trigger.clear', { ns: 'workflow' })}
+            {t($ => $['debug.variableInspect.trigger.clear'], { ns: 'workflow' })}
           </div>
         </>
       )}
@@ -105,7 +105,7 @@ const VariableInspectTrigger: FC = () => {
             onClick={() => setShowVariableInspectPanel(true)}
           >
             <RiLoader2Line className="size-4 shrink-0 animate-spin" />
-            <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
+            <span className="text-text-accent">{t($ => $['debug.variableInspect.trigger.running'], { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
             <Tooltip>
@@ -120,7 +120,7 @@ const VariableInspectTrigger: FC = () => {
                 )}
               />
               <TooltipContent>
-                {t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
+                {t($ => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
           )}

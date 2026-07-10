@@ -104,13 +104,13 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             isSelected ? 'text-text-accent' : 'text-text-secondary',
           )}
           >
-            {isDraft ? t('versionHistory.currentDraft', { ns: 'workflow' }) : item.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}
+            {isDraft ? t($ => $['versionHistory.currentDraft'], { ns: 'workflow' }) : item.marked_name || t($ => $['versionHistory.defaultName'], { ns: 'workflow' })}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm
             px-[5px] system-2xs-medium-uppercase text-text-accent-secondary"
             >
-              {t('versionHistory.latest', { ns: 'workflow' })}
+              {t($ => $['versionHistory.latest'], { ns: 'workflow' })}
             </div>
           )}
         </div>

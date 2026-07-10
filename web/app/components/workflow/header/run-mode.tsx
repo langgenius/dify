@@ -77,7 +77,7 @@ const RunMode = ({
         isValid = false
     })
     if (!isValid) {
-      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
+      toast.error(t($ => $['panel.checklistTip'], { ns: 'workflow' }))
       return
     }
 
@@ -127,7 +127,7 @@ const RunMode = ({
                 style={{ userSelect: 'none' }}
               >
                 <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
-                {text ?? t('common.run', { ns: 'workflow' })}
+                {text ?? t($ => $['common.run'], { ns: 'workflow' })}
                 <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
               </button>
             )
@@ -142,7 +142,7 @@ const RunMode = ({
                       disabled={true}
                     >
                       <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
-                      {isListening ? t('common.listening', { ns: 'workflow' }) : t('common.running', { ns: 'workflow' })}
+                      {isListening ? t($ => $['common.listening'], { ns: 'workflow' }) : t($ => $['common.running'], { ns: 'workflow' })}
                     </button>
                   )
                 : (
@@ -159,7 +159,7 @@ const RunMode = ({
                         style={{ userSelect: 'none' }}
                       >
                         <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
-                        {text ?? t('common.run', { ns: 'workflow' })}
+                        {text ?? t($ => $['common.run'], { ns: 'workflow' })}
                         <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
                       </button>
                     </TestRunMenu>
@@ -170,7 +170,7 @@ const RunMode = ({
         isRunning && !isRunDisabled && (
           <button
             type="button"
-            aria-label={t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
+            aria-label={t($ => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
             className={cn(
               'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
             )}

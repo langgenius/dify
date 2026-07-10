@@ -63,7 +63,7 @@ function CurrentReleaseMobileSummary({ release }: {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className="system-2xs-medium-uppercase text-text-tertiary">
-        {t('deployTab.col.currentRelease')}
+        {t($ => $['deployTab.col.currentRelease'])}
       </span>
       <CurrentReleaseSummary release={release} />
     </div>
@@ -141,10 +141,10 @@ export function DeploymentEnvironmentList({ rows }: {
         <DetailTable>
           <DetailTableHeader>
             <DetailTableRow>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('deployTab.col.environment')}</DetailTableHead>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t('deployTab.col.status')}</DetailTableHead>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t('deployTab.col.currentRelease')}</DetailTableHead>
-              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t('deployTab.col.actions')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t($ => $['deployTab.col.environment'])}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t($ => $['deployTab.col.status'])}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t($ => $['deployTab.col.currentRelease'])}</DetailTableHead>
+              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t($ => $['deployTab.col.actions'])}</DetailTableHead>
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>

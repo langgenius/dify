@@ -66,7 +66,7 @@ const InviteModal = ({
       catch { }
     }
     else {
-      toast.error(t('members.emailInvalid', { ns: 'common' }))
+      toast.error(t($ => $['members.emailInvalid'], { ns: 'common' }))
     }
     setIsSubmitted()
   }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, queryClient, setIsSubmitted, setIsSubmitting])
@@ -86,10 +86,10 @@ const InviteModal = ({
         <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
-            {t('members.inviteTeamMember', { ns: 'common' })}
+            {t($ => $['members.inviteTeamMember'], { ns: 'common' })}
           </DialogTitle>
         </div>
-        <div className="mb-3 text-[13px] text-text-tertiary">{t('members.inviteTeamMemberTip', { ns: 'common' })}</div>
+        <div className="mb-3 text-[13px] text-text-tertiary">{t($ => $['members.inviteTeamMemberTip'], { ns: 'common' })}</div>
         {!isEmailSetup && (
           <div className="grow basis-0 overflow-y-auto pb-4">
             <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
@@ -99,7 +99,7 @@ const InviteModal = ({
                   <div className="i-ri-error-warning-fill size-5 text-text-warning" />
                 </div>
                 <div className="system-xs-medium text-text-primary">
-                  <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
+                  <span>{t($ => $['members.emailNotSetup'], { ns: 'common' })}</span>
                 </div>
               </div>
             </div>
@@ -107,7 +107,7 @@ const InviteModal = ({
         )}
 
         <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t('members.email', { ns: 'common' })}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">{t($ => $['members.email'], { ns: 'common' })}</div>
           <div className="mb-8 flex h-36 flex-col items-stretch">
             <ReactMultiEmail
               className={cn('size-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden', 'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!')}
@@ -121,7 +121,7 @@ const InviteModal = ({
                   <button
                     type="button"
                     data-tag-handle
-                    aria-label={`${t('operation.remove', { ns: 'common' })} ${email}`}
+                    aria-label={`${t($ => $['operation.remove'], { ns: 'common' })} ${email}`}
                     className="border-none bg-transparent p-0 text-inherit"
                     onClick={() => removeEmail(index)}
                   >
@@ -129,7 +129,7 @@ const InviteModal = ({
                   </button>
                 </div>
               )}
-              placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}
+              placeholder={t($ => $['members.emailPlaceholder'], { ns: 'common' }) || ''}
             />
             <div className={
               cn('flex items-center justify-end system-xs-regular text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
@@ -137,7 +137,7 @@ const InviteModal = ({
             >
               <span>{usedSize}</span>
               <span>/</span>
-              <span>{isLimited ? licenseLimit.workspace_members.limit : t('license.unlimited', { ns: 'common' })}</span>
+              <span>{isLimited ? licenseLimit.workspace_members.limit : t($ => $['license.unlimited'], { ns: 'common' })}</span>
             </div>
           </div>
           <div className="mb-6">
@@ -150,7 +150,7 @@ const InviteModal = ({
             disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
             variant="primary"
           >
-            {t('members.sendInvite', { ns: 'common' })}
+            {t($ => $['members.sendInvite'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

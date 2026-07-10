@@ -14,10 +14,11 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 vi.mock('react-i18next', async (importOriginal) => {
+  const { withSelectorKeyProps } = await import('@/test/i18n-mock')
   const actual = await importOriginal<typeof import('react-i18next')>()
   return {
     ...actual,
-    Trans: ({
+    Trans: withSelectorKeyProps(({
       i18nKey,
       components,
     }: {
@@ -28,7 +29,7 @@ vi.mock('react-i18next', async (importOriginal) => {
         {i18nKey}
         {components.upgradeLink}
       </>
-    ),
+    )),
   }
 })
 

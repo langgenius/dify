@@ -92,7 +92,7 @@ export function SaveInlineAgentToRosterDialog({
         if (binding?.binding_type !== 'roster_agent' || !binding.agent_id)
           return
 
-        toast.success(t('roster.saveToRosterSuccess'))
+        toast.success(t($ => $['roster.saveToRosterSuccess']))
         onSaved(binding)
         handleOpenChange(false)
       },
@@ -106,10 +106,10 @@ export function SaveInlineAgentToRosterDialog({
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('roster.saveToRosterDialog.title')}
+              {t($ => $['roster.saveToRosterDialog.title'])}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              {t('roster.saveToRosterDialog.description')}
+              {t($ => $['roster.saveToRosterDialog.description'])}
             </DialogDescription>
           </div>
           <Form<AgentFormValues>
@@ -120,7 +120,7 @@ export function SaveInlineAgentToRosterDialog({
             <AgentFormFields
               description={description}
               icon={agentIcon}
-              iconAriaLabel={t('roster.saveToRosterForm.changeIcon')}
+              iconAriaLabel={t($ => $['roster.saveToRosterForm.changeIcon'])}
               name={name}
               role={role}
               onDescriptionChange={setDescription}
@@ -130,7 +130,7 @@ export function SaveInlineAgentToRosterDialog({
             />
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={saveToRosterMutation.isPending}>
-                {tCommon('operation.cancel')}
+                {tCommon($ => $['operation.cancel'])}
               </Button>
               <Button
                 type="submit"
@@ -138,7 +138,7 @@ export function SaveInlineAgentToRosterDialog({
                 className="min-w-18"
                 loading={saveToRosterMutation.isPending}
               >
-                {tCommon('operation.save')}
+                {tCommon($ => $['operation.save'])}
               </Button>
             </div>
           </Form>

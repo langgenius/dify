@@ -205,14 +205,14 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
   const resetKeysRef = useRef(props.resetKeys)
   const prevResetKeysRef = useRef<Array<string | number> | undefined>(undefined)
   const copy = {
-    componentStack: t('errorBoundary.componentStack', { ns: 'common' }),
-    details: t('errorBoundary.details', { ns: 'common' }),
-    error: `${t('error', { ns: 'common' })}:`,
-    formatErrorCount: (count: number) => t('errorBoundary.errorCount', { ns: 'common', count }),
-    message: t('errorBoundary.message', { ns: 'common' }),
-    reload: t('errorBoundary.reloadPage', { ns: 'common' }),
-    title: t('errorBoundary.title', { ns: 'common' }),
-    tryAgain: t('errorBoundary.tryAgain', { ns: 'common' }),
+    componentStack: t($ => $['errorBoundary.componentStack'], { ns: 'common' }),
+    details: t($ => $['errorBoundary.details'], { ns: 'common' }),
+    error: `${t($ => $['error'], { ns: 'common' })}:`,
+    formatErrorCount: (count: number) => t($ => $['errorBoundary.errorCount'], { ns: 'common', count }),
+    message: t($ => $['errorBoundary.message'], { ns: 'common' }),
+    reload: t($ => $['errorBoundary.reloadPage'], { ns: 'common' }),
+    title: t($ => $['errorBoundary.title'], { ns: 'common' }),
+    tryAgain: t($ => $['errorBoundary.tryAgain'], { ns: 'common' }),
   }
 
   const resetErrorBoundary = useCallback(() => {

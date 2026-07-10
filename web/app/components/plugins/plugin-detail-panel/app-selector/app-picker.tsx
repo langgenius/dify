@@ -132,7 +132,7 @@ export function AppPicker({
       disabled={disabled}
     >
       <ComboboxTrigger
-        aria-label={t('appSelector.label', { ns: 'app' })}
+        aria-label={t($ => $['appSelector.label'], { ns: 'app' })}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
       >
@@ -148,14 +148,14 @@ export function AppPicker({
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
               <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
               <ComboboxInput
-                aria-label={t('appSelector.placeholder', { ns: 'app' })}
-                placeholder={t('appSelector.placeholder', { ns: 'app' })}
+                aria-label={t($ => $['appSelector.placeholder'], { ns: 'app' })}
+                placeholder={t($ => $['appSelector.placeholder'], { ns: 'app' })}
                 className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
               {searchText && (
                 <button
                   type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
+                  aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                   className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
                   onClick={() => onSearchChange('')}
                 >
@@ -167,7 +167,7 @@ export function AppPicker({
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
             {isLoading && (
               <ComboboxStatus>
-                {t('loading', { ns: 'common' })}
+                {t($ => $['loading'], { ns: 'common' })}
               </ComboboxStatus>
             )}
             <ComboboxList className="max-h-none p-0">
@@ -176,7 +176,7 @@ export function AppPicker({
               )}
             </ComboboxList>
             <ComboboxEmpty>
-              {t('noData', { ns: 'common' })}
+              {t($ => $['noData'], { ns: 'common' })}
             </ComboboxEmpty>
             {hasMore && (
               <div className="flex justify-center px-3 py-2">
@@ -185,7 +185,7 @@ export function AppPicker({
                   disabled={isLoading}
                   onClick={() => onLoadMore()}
                 >
-                  {isLoading ? t('loading', { ns: 'common' }) : t('common.loadMore', { ns: 'workflow' })}
+                  {isLoading ? t($ => $['loading'], { ns: 'common' }) : t($ => $['common.loadMore'], { ns: 'workflow' })}
                 </Button>
               </div>
             )}

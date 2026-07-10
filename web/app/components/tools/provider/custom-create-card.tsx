@@ -24,7 +24,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
       return
 
     await createCustomCollection(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }
@@ -39,7 +39,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const addSwaggerAPIAsToolLabel = t('addSwaggerAPIAsTool', { ns: 'tools' })
+  const addSwaggerAPIAsToolLabel = t($ => $['addSwaggerAPIAsTool'], { ns: 'tools' })
   const {
     canManageTools,
     doCreateCustomToolCollection,
@@ -88,8 +88,8 @@ const Contribute = ({ onRefreshData }: Props) => {
       {canManageTools && (
         <CreateEntryCard
           className="min-w-0"
-          title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
-          linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
+          title={t($ => $['createSwaggerAPIAsTool'], { ns: 'tools' })}
+          linkText={t($ => $['swaggerAPIAsToolTip'], { ns: 'tools' })}
           linkUrl={docLink('/use-dify/workspace/tools#swagger-api')}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />

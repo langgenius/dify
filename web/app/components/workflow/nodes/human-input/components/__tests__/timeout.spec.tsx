@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import TimeoutInput from '../timeout'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 
@@ -29,7 +30,7 @@ describe('TimeoutInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 

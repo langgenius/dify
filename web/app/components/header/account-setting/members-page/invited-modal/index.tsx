@@ -30,7 +30,7 @@ const InvitedModal = ({
     (item): item is FailedInvitationResult => item.status === 'failed',
   )
   const onlyAlreadyMembers = alreadyMemberInvitationResults.length > 0 && successInvitationResults.length === 0 && failedInvitationResults.length === 0
-  const description = t(onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip', { ns: 'common' })
+  const description = t($ => $[onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip'], { ns: 'common' })
 
   return (
     <Dialog
@@ -56,7 +56,7 @@ const InvitedModal = ({
           </div>
         </div>
         <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
-          {t(onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent', { ns: 'common' })}
+          {t($ => $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'], { ns: 'common' })}
         </DialogTitle>
         {!IS_CE_EDITION && (
           <div className="mb-5 text-sm text-text-tertiary">{description}</div>
@@ -71,7 +71,7 @@ const InvitedModal = ({
                 IS_CE_EDITION && !!successInvitationResults.length
                 && (
                   <>
-                    <div className="py-2 text-sm font-medium text-text-primary">{t('members.invitationLink', { ns: 'common' })}</div>
+                    <div className="py-2 text-sm font-medium text-text-primary">{t($ => $['members.invitationLink'], { ns: 'common' })}</div>
                     {successInvitationResults.map(item =>
                       <InvitationLink key={item.email} value={item} />)}
                   </>
@@ -81,9 +81,9 @@ const InvitedModal = ({
                 !!alreadyMemberInvitationResults.length
                 && (
                   <>
-                    <div className="py-2 text-sm font-medium text-text-primary">{t('members.alreadyInTeam', { ns: 'common' })}</div>
+                    <div className="py-2 text-sm font-medium text-text-primary">{t($ => $['members.alreadyInTeam'], { ns: 'common' })}</div>
                     {!onlyAlreadyMembers && (
-                      <div className="text-sm text-text-tertiary">{t('members.alreadyInTeamTip', { ns: 'common' })}</div>
+                      <div className="text-sm text-text-tertiary">{t($ => $['members.alreadyInTeamTip'], { ns: 'common' })}</div>
                     )}
                     <div className="flex flex-wrap justify-between gap-y-1">
                       {
@@ -104,7 +104,7 @@ const InvitedModal = ({
                 IS_CE_EDITION && !!failedInvitationResults.length
                 && (
                   <>
-                    <div className="py-2 text-sm font-medium text-text-primary">{t('members.failedInvitationEmails', { ns: 'common' })}</div>
+                    <div className="py-2 text-sm font-medium text-text-primary">{t($ => $['members.failedInvitationEmails'], { ns: 'common' })}</div>
                     <div className="flex flex-wrap justify-between gap-y-1">
                       {
                         failedInvitationResults.map(item => (
@@ -139,7 +139,7 @@ const InvitedModal = ({
             onClick={onCancel}
             variant="primary"
           >
-            {t('members.ok', { ns: 'common' })}
+            {t($ => $['members.ok'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

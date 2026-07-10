@@ -122,7 +122,7 @@ const FeaturedTools = ({
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
+        <span className="system-xs-medium text-text-primary">{t($ => $['tabs.featuredTools'], { ns: 'workflow' })}</span>
         <span className={cn(
           'i-custom-vender-solid-arrows-arrow-down-round-fill',
           'ml-0.5 size-4 text-text-tertiary transition-transform',
@@ -142,7 +142,7 @@ const FeaturedTools = ({
           {showEmptyState && (
             <p className="py-2 system-xs-regular text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)} target="_blank" rel="noopener noreferrer">
-                {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
+                {t($ => $['tabs.noFeaturedPlugins'], { ns: 'workflow' })}
               </Link>
             </p>
           )}
@@ -204,7 +204,7 @@ const FeaturedTools = ({
                     )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
+                {t($ => $[isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured'], { ns: 'workflow' })}
               </div>
             </div>
           )}

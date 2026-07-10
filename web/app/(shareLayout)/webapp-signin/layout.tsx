@@ -10,7 +10,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  useDocumentTitle(t('webapp.login', { ns: 'login' }))
+  useDocumentTitle(t($ => $['webapp.login'], { ns: 'login' }))
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

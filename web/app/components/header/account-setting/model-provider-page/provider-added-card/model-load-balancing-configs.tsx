@@ -152,17 +152,17 @@ const ModelLoadBalancingConfigs = ({
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t('modelProvider.loadBalancing', { ns: 'common' })}
+              {t($ => $['modelProvider.loadBalancing'], { ns: 'common' })}
               <Infotip
-                aria-label={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                aria-label={t($ => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
                 className="size-3"
                 iconClassName="h-full w-full"
                 popupClassName="max-w-[300px]"
               >
-                {t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                {t($ => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
               </Infotip>
             </div>
-            <div className="text-xs text-text-tertiary">{t('modelProvider.loadBalancingDescription', { ns: 'common' })}</div>
+            <div className="text-xs text-text-tertiary">{t($ => $['modelProvider.loadBalancingDescription'], { ns: 'common' })}</div>
           </div>
           {
             withSwitch && (
@@ -198,16 +198,16 @@ const ModelLoadBalancingConfigs = ({
                                 )}
                               />
                               <TooltipContent>
-                                {t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}
+                                {t($ => $['modelProvider.apiKeyStatusNormal'], { ns: 'common' })}
                               </TooltipContent>
                             </Tooltip>
                           )}
                     </div>
                     <div className="mr-1 text-[13px] text-text-secondary">
-                      {isProviderManaged ? t('modelProvider.defaultConfig', { ns: 'common' }) : config.name}
+                      {isProviderManaged ? t($ => $['modelProvider.defaultConfig'], { ns: 'common' }) : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
-                      <Badge className="ml-2">{t('modelProvider.providerManaged', { ns: 'common' })}</Badge>
+                      <Badge className="ml-2">{t($ => $['modelProvider.providerManaged'], { ns: 'common' })}</Badge>
                     )}
                     {
                       credential?.from_enterprise && (
@@ -232,7 +232,7 @@ const ModelLoadBalancingConfigs = ({
                               )}
                             />
                             <TooltipContent>
-                              {t('operation.remove', { ns: 'common' })}
+                              {t($ => $['operation.remove'], { ns: 'common' })}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -272,7 +272,7 @@ const ModelLoadBalancingConfigs = ({
           draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
               <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
-              {t('modelProvider.loadBalancingLeastKeyWarning', { ns: 'common' })}
+              {t($ => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'common' })}
             </div>
           )
         }
@@ -284,7 +284,7 @@ const ModelLoadBalancingConfigs = ({
             <div
               className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}
             >
-              {t('modelProvider.upgradeForLoadBalancing', { ns: 'common' })}
+              {t($ => $['modelProvider.upgradeForLoadBalancing'], { ns: 'common' })}
             </div>
             <UpgradeBtn />
           </div>

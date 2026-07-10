@@ -15,7 +15,7 @@ export function DeployedToBadge({ item }: {
 }) {
   const { t } = useTranslation('deployments')
   const status = item.status
-  const statusLabel = t(`versions.deployedStatus.${status}`)
+  const statusLabel = t($ => $[`versions.deployedStatus.${status}`])
   const dotStatus = deploymentStatusDotStatus(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
   const textClassName = deploymentStatusDotTextClassName(status)

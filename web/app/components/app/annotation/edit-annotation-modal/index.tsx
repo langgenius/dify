@@ -88,10 +88,10 @@ const EditAnnotationModal: FC<Props> = ({
         onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
       }
 
-      toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }) as string)
     }
     catch (error) {
-      const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
+      const fallbackMessage = t($ => $['api.actionFailed'], { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
       toast.error(message)
       // Re-throw to preserve edit mode behavior for UI components
@@ -122,10 +122,10 @@ const EditAnnotationModal: FC<Props> = ({
                 <div className="shrink-0 border-b border-divider-subtle py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {t('editModal.title', { ns: 'appAnnotation' })}
+                      {t($ => $['editModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -148,15 +148,15 @@ const EditAnnotationModal: FC<Props> = ({
                       <AlertDialogContent>
                         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                           <AlertDialogTitle
-                            title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                            title={t($ => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                             className="w-full truncate title-2xl-semi-bold text-text-primary"
                           >
-                            {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                            {t($ => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </div>
                         <AlertDialogActions>
                           <AlertDialogCancelButton>
-                            {t('operation.cancel', { ns: 'common' })}
+                            {t($ => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
                             tone="destructive"
@@ -166,7 +166,7 @@ const EditAnnotationModal: FC<Props> = ({
                               onHide()
                             }}
                           >
-                            {t('operation.confirm', { ns: 'common' })}
+                            {t($ => $['operation.confirm'], { ns: 'common' })}
                           </AlertDialogConfirmButton>
                         </AlertDialogActions>
                       </AlertDialogContent>
@@ -189,13 +189,13 @@ const EditAnnotationModal: FC<Props> = ({
                               onClick={() => setShowModal(true)}
                             >
                               <MessageCheckRemove />
-                              <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                              <div>{t($ => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                             </div>
                             {!!createdAt && (
                               <div>
-                                {t('editModal.createdAt', { ns: 'appAnnotation' })}
+                                {t($ => $['editModal.createdAt'], { ns: 'appAnnotation' })}
 &nbsp;
-                                {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                                {formatTime(createdAt, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}
                               </div>
                             )}
                           </div>

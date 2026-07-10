@@ -153,7 +153,7 @@ export const useCommonModalState = ({
         },
         {
           onError: async (error: unknown) => {
-            const errorMessage = await parsePluginErrorMessage(error) || t('modal.errors.updateFailed', { ns: 'pluginTrigger' })
+            const errorMessage = await parsePluginErrorMessage(error) || t($ => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
             console.error('Failed to update subscription builder:', error)
             toast.error(errorMessage)
           },
@@ -238,11 +238,11 @@ export const useCommonModalState = ({
       },
       {
         onSuccess: () => {
-          toast.success(t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }))
+          toast.success(t($ => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t($ => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           apiKeyCredentialsFormRef.current?.setFields([{
             name: credentialFieldName,
             errors: [errorMessage],
@@ -277,12 +277,12 @@ export const useCommonModalState = ({
       params,
       {
         onSuccess: () => {
-          toast.success(t('subscription.createSuccess', { ns: 'pluginTrigger' }))
+          toast.success(t($ => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
           onClose()
           refetch?.()
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('subscription.createFailed', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t($ => $['subscription.createFailed'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
       },

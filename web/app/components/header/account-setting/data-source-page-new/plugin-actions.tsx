@@ -132,12 +132,12 @@ const DataSourcePluginActions = ({
                 className="h-5 rounded-md px-1.5 py-0 system-xs-medium"
                 onClick={handleTriggerLatestUpdate}
               >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
+                {t($ => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
             )}
           />
           <TooltipContent>
-            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+            {t($ => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )}

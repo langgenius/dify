@@ -92,7 +92,7 @@ const DebugItem: FC<DebugItemProps> = ({
             render={(
               <ActionButton
                 className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-                aria-label={t('operation.more', { ns: 'common' })}
+                aria-label={t($ => $['operation.more'], { ns: 'common' })}
               >
                 <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
               </ActionButton>
@@ -105,19 +105,19 @@ const DebugItem: FC<DebugItemProps> = ({
           >
             {showDuplicate && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
-                {t('duplicateModel', { ns: 'appDebug' })}
+                {t($ => $['duplicateModel'], { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showDebugAsSingleModel && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDebugAsSingleModel}>
-                {t('debugAsSingleModel', { ns: 'appDebug' })}
+                {t($ => $['debugAsSingleModel'], { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showRemove && (
               <>
                 {(showDuplicate || showDebugAsSingleModel) && <DropdownMenuSeparator />}
                 <DropdownMenuItem variant="destructive" className="system-md-regular" onClick={handleRemove}>
-                  {t('operation.remove', { ns: 'common' })}
+                  {t($ => $['operation.remove'], { ns: 'common' })}
                 </DropdownMenuItem>
               </>
             )}

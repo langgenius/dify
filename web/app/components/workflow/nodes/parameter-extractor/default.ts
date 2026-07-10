@@ -33,32 +33,32 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
   checkValid(payload: ParameterExtractorNodeType, t: any) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.inputVar`, { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.inputVar`], { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.model`, { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.model`], { ns: 'workflow' }) })
 
     if (!errorMessages && (!payload.parameters || payload.parameters.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.extractParameters`, { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.extractParameters`], { ns: 'workflow' }) })
 
     if (!errorMessages) {
       payload.parameters.forEach((param) => {
         if (errorMessages)
           return
         if (!param.name) {
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.namePlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.namePlaceholder`], { ns: 'workflow' }) })
           return
         }
         if (!param.type) {
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.typePlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.typePlaceholder`], { ns: 'workflow' }) })
           return
         }
         if (!param.description)
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`], { ns: 'workflow' }) })
       })
     }
     if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.visionVariable`, { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}errorMsg.fields.visionVariable`], { ns: 'workflow' }) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

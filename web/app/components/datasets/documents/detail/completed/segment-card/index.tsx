@@ -119,11 +119,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
-    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count: word_count })}`
+    return `${total} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count: word_count })}`
   }, [word_count, t])
 
   const labelPrefix = useMemo(() => {
-    return isParentChildMode ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
+    return isParentChildMode ? t($ => $['segment.parentChunk'], { ns: 'datasetDocuments' }) : t($ => $['segment.chunk'], { ns: 'datasetDocuments' })
   }, [isParentChildMode, t])
 
   const images = useMemo(() => {
@@ -164,11 +164,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             <Dot />
             <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('segment.hitCount', { ns: 'datasetDocuments' })}`}</div>
+            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t($ => $['segment.hitCount'], { ns: 'datasetDocuments' })}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
-                <Badge text={t('segment.edited', { ns: 'datasetDocuments' }) as string} uppercase className={contentOpacity} />
+                <Badge text={t($ => $['segment.edited'], { ns: 'datasetDocuments' }) as string} uppercase className={contentOpacity} />
               </>
             )}
           </div>
@@ -187,7 +187,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                               render={(
                                 <button
                                   type="button"
-                                  aria-label={t('operation.edit', { ns: 'common' })}
+                                  aria-label={t($ => $['operation.edit'], { ns: 'common' })}
                                   className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover"
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -205,7 +205,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                               render={(
                                 <button
                                   type="button"
-                                  aria-label={t('operation.delete', { ns: 'common' })}
+                                  aria-label={t($ => $['operation.delete'], { ns: 'common' })}
                                   className="group/delete flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-destructive-hover"
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -270,7 +270,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 className="mt-0.5 mb-2 border-none bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent"
                 onClick={() => onClick?.()}
               >
-                {t('operation.viewMore', { ns: 'common' })}
+                {t($ => $['operation.viewMore'], { ns: 'common' })}
               </button>
             )
           : null
@@ -293,13 +293,13 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('segment.delete', { ns: 'datasetDocuments' })}
+              {t($ => $['segment.delete'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={async () => { await onDelete?.(id) }}>
-              {t('operation.sure', { ns: 'common' })}
+              {t($ => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

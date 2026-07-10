@@ -75,14 +75,14 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       ? 'task.errorMsg.github'
       : 'task.errorMsg.unknown'
 
-  const errorMsg = t(errorMsgKey, { ns: 'plugin' })
+  const errorMsg = t($ => $[errorMsgKey], { ns: 'plugin' })
 
   const renderAction = () => {
     if (source === PluginSource.marketplace && canInstallPlugin) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small" loading={isFetching} onClick={handleInstallFromMarketplace}>
-            {t('task.installFromMarketplace', { ns: 'plugin' })}
+            {t($ => $['task.installFromMarketplace'], { ns: 'plugin' })}
           </Button>
         </div>
       )
@@ -91,7 +91,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small">
-            {t('task.installFromGithub', { ns: 'plugin' })}
+            {t($ => $['task.installFromGithub'], { ns: 'plugin' })}
           </Button>
         </div>
       )

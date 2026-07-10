@@ -55,11 +55,14 @@ const storeState = {
   showResolvedComments: true,
 }
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
+    }),
+  })
+})
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),

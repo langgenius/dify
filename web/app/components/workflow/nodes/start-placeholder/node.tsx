@@ -15,7 +15,7 @@ const Node: FC<NodeProps> = ({
     <div className="px-2.5 py-1">
       <div className="rounded-md bg-workflow-block-parma-bg px-1.5 py-[5px]">
         <div className="system-xs-regular wrap-break-word text-text-tertiary">
-          {t(`${i18nPrefix}.${descriptionKey}`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.${descriptionKey}`], { ns: 'workflow' })}
         </div>
       </div>
     </div>

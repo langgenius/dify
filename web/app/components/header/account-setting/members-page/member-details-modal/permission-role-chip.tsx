@@ -30,7 +30,7 @@ const PermissionRoleChip = ({
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
   const permissionLabels = permissions
-    .map(key => t(key, {
+    .map(key => t($ => $[key], {
       ns: 'permissionKeys',
       defaultValue: key,
     }))
@@ -44,7 +44,7 @@ const PermissionRoleChip = ({
     className,
   )
 
-  const removeLabel = `${t('operation.remove', { ns: 'common' })} ${label}`
+  const removeLabel = `${t($ => $['operation.remove'], { ns: 'common' })} ${label}`
 
   const chip = (
     <span className={chipRootClassName}>
@@ -83,7 +83,7 @@ const PermissionRoleChip = ({
         {hasPermissionLabels
           ? (
               <Trans
-                i18nKey="members.memberDetails.rolePermissionSummary"
+                i18nKey={$ => $["members.memberDetails.rolePermissionSummary"]}
                 ns="common"
                 values={{
                   role: label,
@@ -94,7 +94,7 @@ const PermissionRoleChip = ({
                 }}
               />
             )
-          : t('members.memberDetails.roleNoPermissionSummary', {
+          : t($ => $['members.memberDetails.roleNoPermissionSummary'], {
               ns: 'common',
               defaultValue: 'Current role has no permissions.',
             })}

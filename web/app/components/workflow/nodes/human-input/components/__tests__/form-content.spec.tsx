@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import FormContent from '../form-content'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariableType = vi.hoisted(() => vi.fn())
@@ -10,22 +11,25 @@ const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockAddInputField = vi.hoisted(() => vi.fn())
 const mockOnInsert = vi.hoisted(() => vi.fn())
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-  Trans: ({
-    i18nKey,
-    components,
-  }: {
-    i18nKey: string
-    components?: Record<string, ReactNode>
-  }) => (
-    <div>
-      <div>{i18nKey}</div>
-      {components?.CtrlKey}
-      {components?.Key}
-    </div>
-  ),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => mockUseTranslation(),
+    Trans: withSelectorKeyProps(({
+      i18nKey,
+      components,
+    }: {
+      i18nKey: string
+      components?: Record<string, ReactNode>
+    }) => (
+      <div>
+        <div>{i18nKey}</div>
+        {components?.CtrlKey}
+        {components?.Key}
+      </div>
+    )),
+  })
+})
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowVariableType: () => mockUseWorkflowVariableType(),
@@ -125,7 +129,7 @@ describe('FormContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseWorkflowVariableType.mockReturnValue(() => 'string')
     mockFormatForDisplay.mockImplementation((hotkey: string) => hotkey)

@@ -32,9 +32,9 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
       !errorMessages
       && (!payload.iterator_selector || payload.iterator_selector.length === 0)
     ) {
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, {
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], {
         ns: 'workflow',
-        field: t(`${i18nPrefix}nodes.iteration.input`, { ns: 'workflow' }),
+        field: t($ => $[`${i18nPrefix}nodes.iteration.input`], { ns: 'workflow' }),
       })
     }
 
@@ -42,9 +42,9 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
       !errorMessages
       && (!payload.output_selector || payload.output_selector.length === 0)
     ) {
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, {
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], {
         ns: 'workflow',
-        field: t(`${i18nPrefix}nodes.iteration.output`, { ns: 'workflow' }),
+        field: t($ => $[`${i18nPrefix}nodes.iteration.output`], { ns: 'workflow' }),
       })
     }
 

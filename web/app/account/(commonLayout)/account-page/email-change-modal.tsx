@@ -250,12 +250,12 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
         </div>
         {step === STEP.start && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.title', { ns: 'common' })}</div>
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t($ => $['account.changeEmail.title'], { ns: 'common' })}</div>
             <div className="space-y-0.5 pt-1 pb-2">
-              <div className="body-md-medium text-text-warning">{t('account.changeEmail.authTip', { ns: 'common' })}</div>
+              <div className="body-md-medium text-text-warning">{t($ => $['account.changeEmail.authTip'], { ns: 'common' })}</div>
               <div className="body-md-regular text-text-secondary">
                 <Trans
-                  i18nKey="account.changeEmail.content1"
+                  i18nKey={$ => $["account.changeEmail.content1"]}
                   ns="common"
                   components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email }}
@@ -269,24 +269,24 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 variant="primary"
                 onClick={sendCodeToOriginEmail}
               >
-                {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
+                {t($ => $['account.changeEmail.sendVerifyCode'], { ns: 'common' })}
               </Button>
               <Button
                 className="w-full!"
                 onClick={onClose}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
           </>
         )}
         {step === STEP.verifyOrigin && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.verifyEmail', { ns: 'common' })}</div>
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t($ => $['account.changeEmail.verifyEmail'], { ns: 'common' })}</div>
             <div className="space-y-0.5 pt-1 pb-2">
               <div className="body-md-regular text-text-secondary">
                 <Trans
-                  i18nKey="account.changeEmail.content2"
+                  i18nKey={$ => $["account.changeEmail.content2"]}
                   ns="common"
                   components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email }}
@@ -294,10 +294,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t($ => $['account.changeEmail.codeLabel'], { ns: 'common' })}</div>
               <Input
                 className="w-full!"
-                placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
+                placeholder={t($ => $['account.changeEmail.codePlaceholder'], { ns: 'common' })}
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 maxLength={6}
@@ -310,46 +310,46 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 variant="primary"
                 onClick={handleVerifyOriginEmail}
               >
-                {t('account.changeEmail.continue', { ns: 'common' })}
+                {t($ => $['account.changeEmail.continue'], { ns: 'common' })}
               </Button>
               <Button
                 className="w-full!"
                 onClick={onClose}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
             <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
-              <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
+              <span>{t($ => $['account.changeEmail.resendTip'], { ns: 'common' })}</span>
               {time > 0 && (
-                <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
+                <span>{t($ => $['account.changeEmail.resendCount'], { ns: 'common', count: time })}</span>
               )}
               {!time && (
-                <span onClick={sendCodeToOriginEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+                <span onClick={sendCodeToOriginEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t($ => $['account.changeEmail.resend'], { ns: 'common' })}</span>
               )}
             </div>
           </>
         )}
         {step === STEP.newEmail && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.newEmail', { ns: 'common' })}</div>
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t($ => $['account.changeEmail.newEmail'], { ns: 'common' })}</div>
             <div className="space-y-0.5 pt-1 pb-2">
-              <div className="body-md-regular text-text-secondary">{t('account.changeEmail.content3', { ns: 'common' })}</div>
+              <div className="body-md-regular text-text-secondary">{t($ => $['account.changeEmail.content3'], { ns: 'common' })}</div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.emailLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t($ => $['account.changeEmail.emailLabel'], { ns: 'common' })}</div>
               <Input
                 className="w-full!"
-                placeholder={t('account.changeEmail.emailPlaceholder', { ns: 'common' })}
+                placeholder={t($ => $['account.changeEmail.emailPlaceholder'], { ns: 'common' })}
                 value={mail}
                 onChange={e => handleNewEmailValueChange(e.target.value)}
                 destructive={newEmailExited || unAvailableEmail}
               />
               {newEmailExited && (
-                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t('account.changeEmail.existingEmail', { ns: 'common' })}</div>
+                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t($ => $['account.changeEmail.existingEmail'], { ns: 'common' })}</div>
               )}
               {unAvailableEmail && (
-                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t('account.changeEmail.unAvailableEmail', { ns: 'common' })}</div>
+                <div className="mt-1 py-0.5 body-xs-regular text-text-destructive">{t($ => $['account.changeEmail.unAvailableEmail'], { ns: 'common' })}</div>
               )}
             </div>
             <div className="mt-3 space-y-2">
@@ -359,24 +359,24 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 variant="primary"
                 onClick={sendCodeToNewEmail}
               >
-                {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
+                {t($ => $['account.changeEmail.sendVerifyCode'], { ns: 'common' })}
               </Button>
               <Button
                 className="w-full!"
                 onClick={onClose}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
           </>
         )}
         {step === STEP.verifyNew && (
           <>
-            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('account.changeEmail.verifyNew', { ns: 'common' })}</div>
+            <div className="pb-3 title-2xl-semi-bold text-text-primary">{t($ => $['account.changeEmail.verifyNew'], { ns: 'common' })}</div>
             <div className="space-y-0.5 pt-1 pb-2">
               <div className="body-md-regular text-text-secondary">
                 <Trans
-                  i18nKey="account.changeEmail.content4"
+                  i18nKey={$ => $["account.changeEmail.content4"]}
                   ns="common"
                   components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                   values={{ email: mail }}
@@ -384,10 +384,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
               </div>
             </div>
             <div className="pt-3">
-              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">{t($ => $['account.changeEmail.codeLabel'], { ns: 'common' })}</div>
               <Input
                 className="w-full!"
-                placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
+                placeholder={t($ => $['account.changeEmail.codePlaceholder'], { ns: 'common' })}
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 maxLength={6}
@@ -400,22 +400,22 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
                 variant="primary"
                 onClick={submitNewEmail}
               >
-                {t('account.changeEmail.changeTo', { ns: 'common', email: mail })}
+                {t($ => $['account.changeEmail.changeTo'], { ns: 'common', email: mail })}
               </Button>
               <Button
                 className="w-full!"
                 onClick={onClose}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
             <div className="mt-3 flex items-center gap-1 system-xs-regular text-text-tertiary">
-              <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
+              <span>{t($ => $['account.changeEmail.resendTip'], { ns: 'common' })}</span>
               {time > 0 && (
-                <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
+                <span>{t($ => $['account.changeEmail.resendCount'], { ns: 'common', count: time })}</span>
               )}
               {!time && (
-                <span onClick={sendCodeToNewEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+                <span onClick={sendCodeToNewEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">{t($ => $['account.changeEmail.resend'], { ns: 'common' })}</span>
               )}
             </div>
           </>

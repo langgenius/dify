@@ -35,7 +35,7 @@ const ApiAccess = ({
               )}
               >
                 <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
-                {expand && <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">{t('appMenus.apiAccess', { ns: 'common' })}</div>}
+                {expand && <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">{t($ => $['appMenus.apiAccess'], { ns: 'common' })}</div>}
                 <StatusDot
                   className={cn('shrink-0', !expand && 'absolute -top-px -right-px')}
                   status={apiEnabled ? 'success' : 'warning'}

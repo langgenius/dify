@@ -70,8 +70,8 @@ export function IntegrationSidebarActions({
     <IntegrationSidebarInstallActions
       canManagement={canManagement}
       installContextCategory={installContextCategory}
-      installLabel={t('installAction', { ns: 'plugin' })}
-      permissionTooltip={t('privilege.noInstallPermissionTooltip', { ns: 'plugin' })}
+      installLabel={t($ => $['installAction'], { ns: 'plugin' })}
+      permissionTooltip={t($ => $['privilege.noInstallPermissionTooltip'], { ns: 'plugin' })}
       onSwitchToMarketplace={onSwitchToMarketplace}
     />
   )
@@ -140,8 +140,8 @@ export function IntegrationSidebarUtilityActions({
   onPermissionChange: (key: PermissionSettingKey, value: PermissionType) => void
 }) {
   const { t } = useTranslation()
-  const debugLabel = t('debugInfo.title', { ns: 'plugin' })
-  const permissionsLabel = t('privilege.permissions', { ns: 'plugin' })
+  const debugLabel = t($ => $['debugInfo.title'], { ns: 'plugin' })
+  const permissionsLabel = t($ => $['privilege.permissions'], { ns: 'plugin' })
 
   return (
     <div className="flex w-46 shrink-0 flex-col gap-px pt-2 pb-2.5">

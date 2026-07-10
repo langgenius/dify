@@ -52,7 +52,7 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const placeholderLabel = t('tag.placeholder', { ns: 'common' })
+  const placeholderLabel = t($ => $['tag.placeholder'], { ns: 'common' })
   const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : placeholderLabel
   const handleValueChange = useCallback((nextTags: Tag[]) => {
     const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
@@ -106,7 +106,7 @@ export const TagFilter = ({
         {!!value.length && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
+            aria-label={t($ => $['operation.clear'], { ns: 'common' })}
             className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={(event) => {
               event.stopPropagation()

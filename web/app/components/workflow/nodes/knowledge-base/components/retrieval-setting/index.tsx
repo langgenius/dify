@@ -73,12 +73,12 @@ const RetrievalSetting = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
+        title: t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' }),
         subTitle: (
           <div className="flex items-center body-xs-regular text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}</a>
             &nbsp;
-            {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeBase.aboutRetrieval'], { ns: 'workflow' })}
           </div>
         ),
       }}
@@ -95,7 +95,7 @@ const RetrievalSetting = ({
           )}
         >
           <FieldsetLegend className="sr-only">
-            {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+            {t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
           </FieldsetLegend>
           {options.map(option => (
             <SearchMethodOption

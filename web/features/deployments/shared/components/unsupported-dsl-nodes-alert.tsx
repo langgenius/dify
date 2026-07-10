@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next'
 
 function translatedNodeType(type: string | undefined, t: ReturnType<typeof useTranslation>['t']) {
   if (!type)
-    return t('unsupportedDslNodes.unknownType')
+    return t($ => $['unsupportedDslNodes.unknownType'])
 
-  return t(`blocks.${type}`, {
+  return t($ => $[`blocks.${type}`], {
     defaultValue: type,
     ns: 'workflow',
   })
@@ -42,8 +42,8 @@ export function UnsupportedDslNodesAlert({ nodes, className }: {
   const nodeTypeLabels = unsupportedNodeTypeLabels(nodes, t)
   const nodeTypes = formattedNodeTypeList(nodeTypeLabels, i18n.language)
   const description = nodeTypes
-    ? t('unsupportedDslNodes.descriptionWithTypes', { nodeTypes })
-    : t('unsupportedDslNodes.description')
+    ? t($ => $['unsupportedDslNodes.descriptionWithTypes'], { nodeTypes })
+    : t($ => $['unsupportedDslNodes.description'])
 
   return (
     <div
@@ -57,7 +57,7 @@ export function UnsupportedDslNodesAlert({ nodes, className }: {
         <span aria-hidden className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
         <div className="min-w-0 grow">
           <div className="system-sm-semibold text-text-primary">
-            {t('unsupportedDslNodes.title')}
+            {t($ => $['unsupportedDslNodes.title'])}
           </div>
           <p className="mt-0.5 system-xs-regular text-text-secondary">
             {description}

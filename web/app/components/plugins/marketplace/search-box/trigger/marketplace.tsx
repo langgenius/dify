@@ -34,7 +34,7 @@ const MarketplaceTrigger = ({
       </div>
       <div className="flex items-center gap-x-1 p-1 system-sm-medium">
         {
-          !selectedTagsLength && <span>{t('allTags', { ns: 'pluginTags' })}</span>
+          !selectedTagsLength && <span>{t($ => $['allTags'], { ns: 'pluginTags' })}</span>
         }
         {
           !!selectedTagsLength && (

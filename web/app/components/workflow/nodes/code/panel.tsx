@@ -68,7 +68,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
           operations={
             !readOnly
               ? (
@@ -77,15 +77,15 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                       <TooltipTrigger
                         className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                         onClick={handleSyncFunctionSignature}
-                        aria-label={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}
+                        aria-label={t($ => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}
                       >
                         <span className="i-ri-refresh-line size-4 text-text-tertiary" aria-hidden="true" />
                       </TooltipTrigger>
-                      <TooltipContent>{t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}</TooltipContent>
+                      <TooltipContent>{t($ => $[`${i18nPrefix}.syncFunctionSignature`], { ns: 'workflow' })}</TooltipContent>
                     </Tooltip>
                     <button
                       type="button"
-                      aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}`}
+                      aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}`}
                       className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={handleAddVariable}
                     >
@@ -127,11 +127,11 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
       <Split />
       <div className="px-4 pt-4 pb-2">
         <Field
-          title={t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
           operations={(
             <button
               type="button"
-              aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}`}
+              aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
               className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleAddOutputVariable}
             >

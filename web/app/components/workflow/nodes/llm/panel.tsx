@@ -94,11 +94,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )
         const keys = Object.keys(removedDetails)
         if (keys.length)
-          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
+          toast.warning(`${t($ => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
         handleCompletionParamsChange(filtered)
       }
       catch {
-        toast.error(t('error', { ns: 'common' }))
+        toast.error(t($ => $['error'], { ns: 'common' }))
         handleCompletionParamsChange({})
       }
       finally {
@@ -111,7 +111,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
           required
           warningDot={hasModelWarning}
         >
@@ -134,8 +134,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {/* knowledge */}
         <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+          title={t($ => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
+          tooltip={t($ => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
         >
           <>
             <VarReferencePicker
@@ -147,7 +147,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">{t($ => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}</div>
             )}
           </>
         </Field>
@@ -172,13 +172,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {isShowVars && (
           <Field
-            title={t('nodes.templateTransform.inputVars', { ns: 'workflow' })}
+            title={t($ => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}
             operations={
               !readOnly
                 ? (
                     <button
                       type="button"
-                      aria-label={`${t('operation.add', { ns: 'common' })} ${t('nodes.templateTransform.inputVars', { ns: 'workflow' })}`}
+                      aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}`}
                       className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={handleAddEmptyVariable}
                     >

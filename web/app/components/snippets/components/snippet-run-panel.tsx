@@ -173,26 +173,26 @@ const SnippetRunPanel = ({
               className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'INPUT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'}`}
               onClick={() => setSelectedTab('INPUT')}
             >
-              {t('input', { ns: 'runLog' })}
+              {t($ => $['input'], { ns: 'runLog' })}
             </div>
           )}
           <div
             className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'RESULT' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('RESULT')}
           >
-            {t('result', { ns: 'runLog' })}
+            {t($ => $['result'], { ns: 'runLog' })}
           </div>
           <div
             className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'DETAIL' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('DETAIL')}
           >
-            {t('detail', { ns: 'runLog' })}
+            {t($ => $['detail'], { ns: 'runLog' })}
           </div>
           <div
             className={`mr-6 cursor-pointer border-b-2 py-3 text-[13px] leading-[18px] font-semibold ${currentTab === 'TRACING' ? '!border-[rgb(21,94,239)] text-text-secondary' : 'border-transparent text-text-tertiary'} ${!workflowRunningData ? '!cursor-not-allowed opacity-30' : ''}`}
             onClick={() => workflowRunningData && setSelectedTab('TRACING')}
           >
-            {t('tracing', { ns: 'runLog' })}
+            {t($ => $['tracing'], { ns: 'runLog' })}
           </div>
         </div>
         <div className={`h-0 grow overflow-y-auto rounded-b-2xl ${(currentTab === 'RESULT' || currentTab === 'TRACING') ? '!bg-background-section-burn' : 'bg-components-panel-bg'}`}>
@@ -221,7 +221,7 @@ const SnippetRunPanel = ({
                   disabled={workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
                   onClick={handleSubmit}
                 >
-                  {t('singleRun.startRun', { ns: 'workflow' })}
+                  {t($ => $['singleRun.startRun'], { ns: 'workflow' })}
                 </Button>
               </div>
             </>
@@ -240,11 +240,11 @@ const SnippetRunPanel = ({
                   className="mb-4 ml-4 space-x-1"
                   onClick={() => {
                     copy(workflowRunningData?.resultText || '')
-                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                    toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                   }}
                 >
                   <span className="i-ri-clipboard-line h-3.5 w-3.5" />
-                  <div>{t('operation.copy', { ns: 'common' })}</div>
+                  <div>{t($ => $['operation.copy'], { ns: 'common' })}</div>
                 </Button>
               )}
             </div>

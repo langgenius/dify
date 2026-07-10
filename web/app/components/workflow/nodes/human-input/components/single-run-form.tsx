@@ -59,7 +59,7 @@ const FormContent = ({
             onClick={handleBack}
           >
             <RiArrowLeftLine className="mr-1 size-4" aria-hidden />
-            {t('nodes.humanInput.singleRun.back', { ns: 'workflow' })}
+            {t($ => $['nodes.humanInput.singleRun.back'], { ns: 'workflow' })}
           </button>
           <div className="mx-1 system-xs-regular text-divider-deep">/</div>
           <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>

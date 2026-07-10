@@ -30,10 +30,10 @@ export function OutputTypeSelect({
       }}
     >
       <SelectLabel className="sr-only">
-        {t('nodes.agent.outputVars.typeLabel', { ns: 'workflow' })}
+        {t($ => $['nodes.agent.outputVars.typeLabel'], { ns: 'workflow' })}
       </SelectLabel>
       <SelectTrigger
-        aria-label={t('nodes.agent.outputVars.typeLabel', { ns: 'workflow' })}
+        aria-label={t($ => $['nodes.agent.outputVars.typeLabel'], { ns: 'workflow' })}
         className="h-6 w-auto rounded-md bg-transparent px-1 py-0 system-xs-medium text-text-tertiary hover:bg-state-base-hover"
       >
         {selected.label}

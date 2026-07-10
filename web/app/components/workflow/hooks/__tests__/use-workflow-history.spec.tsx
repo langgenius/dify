@@ -27,11 +27,12 @@ vi.mock('reactflow', async () => {
 })
 
 vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     }),
   }
 })

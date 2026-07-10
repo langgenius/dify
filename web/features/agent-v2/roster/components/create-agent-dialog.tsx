@@ -63,7 +63,7 @@ export function CreateAgentDialog() {
       body,
     }, {
       onSuccess: (createdAgent) => {
-        toast.success(t('roster.createSuccess'))
+        toast.success(t($ => $['roster.createSuccess']))
         handleOpenChange(false)
         router.push(getAgentDetailPath(createdAgent.id, 'configure'))
       },
@@ -82,16 +82,16 @@ export function CreateAgentDialog() {
           )}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
-          <span className="px-0.5 system-sm-medium">{t('roster.createAgent')}</span>
+          <span className="px-0.5 system-sm-medium">{t($ => $['roster.createAgent'])}</span>
         </DialogTrigger>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('roster.createDialog.title')}
+              {t($ => $['roster.createDialog.title'])}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              {t('roster.createDialog.description')}
+              {t($ => $['roster.createDialog.description'])}
             </DialogDescription>
           </div>
           <Form<AgentFormValues>
@@ -102,7 +102,7 @@ export function CreateAgentDialog() {
             <AgentFormFields
               description={description}
               icon={agentIcon}
-              iconAriaLabel={t('roster.createForm.changeIcon')}
+              iconAriaLabel={t($ => $['roster.createForm.changeIcon'])}
               name={name}
               role={role}
               onDescriptionChange={setDescription}
@@ -112,7 +112,7 @@ export function CreateAgentDialog() {
             />
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={createAgentMutation.isPending}>
-                {tCommon('operation.cancel')}
+                {tCommon($ => $['operation.cancel'])}
               </Button>
               <Button
                 type="submit"
@@ -120,7 +120,7 @@ export function CreateAgentDialog() {
                 className="min-w-18"
                 loading={createAgentMutation.isPending}
               >
-                {tCommon('operation.create')}
+                {tCommon($ => $['operation.create'])}
               </Button>
             </div>
           </Form>

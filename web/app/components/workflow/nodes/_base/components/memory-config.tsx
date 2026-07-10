@@ -70,7 +70,7 @@ const MemoryConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const payload = config.data
-  const windowSizeLabel = t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })
+  const windowSizeLabel = t($ => $[`${i18nPrefix}.windowSize`], { ns: 'workflow' })
   const handleMemoryEnabledChange = useCallback((enabled: boolean) => {
     onChange(enabled ? defaultMemory : undefined)
   }, [defaultMemory, onChange])
@@ -136,8 +136,8 @@ const MemoryConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.memory`, { ns: 'workflow' })}
-        tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
+        title={t($ => $[`${i18nPrefix}.memory`], { ns: 'workflow' })}
+        tooltip={t($ => $[`${i18nPrefix}.memoryTip`], { ns: 'workflow' })!}
         operations={(
           <Switch
             checked={!!payload}
@@ -189,17 +189,17 @@ const MemoryConfig: FC<Props> = ({
             </div>
             {canSetRoleName && (
               <div className="mt-4">
-                <div className="text-xs/6 font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
+                <div className="text-xs/6 font-medium text-text-tertiary uppercase">{t($ => $[`${i18nPrefix}.conversationRoleName`], { ns: 'workflow' })}</div>
                 <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.user`, { ns: 'workflow' })}
+                    title={t($ => $[`${i18nPrefix}.user`], { ns: 'workflow' })}
                     value={payload.role_prefix?.user || ''}
                     onChange={handleRolePrefixChange(MemoryRole.user)}
                   />
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.assistant`, { ns: 'workflow' })}
+                    title={t($ => $[`${i18nPrefix}.assistant`], { ns: 'workflow' })}
                     value={payload.role_prefix?.assistant || ''}
                     onChange={handleRolePrefixChange(MemoryRole.assistant)}
                   />

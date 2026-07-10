@@ -73,8 +73,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploying',
-      label: t('versions.deployingTo', { name: envName }),
-      disabledReason: t('versions.disabledReason.deploying'),
+      label: t($ => $['versions.deployingTo'], { name: envName }),
+      disabledReason: t($ => $['versions.disabledReason.deploying']),
     }
   }
   if (isCurrent) {
@@ -82,8 +82,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'current',
-      label: t('versions.currentOn', { name: envName }),
-      disabledReason: t('versions.disabledReason.current', { name: envName }),
+      label: t($ => $['versions.currentOn'], { name: envName }),
+      disabledReason: t($ => $['versions.disabledReason.current'], { name: envName }),
     }
   }
 
@@ -99,7 +99,7 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploy',
-      label: t('versions.deployTo', { name: envName }),
+      label: t($ => $['versions.deployTo'], { name: envName }),
     }
   }
   if (action === 'rollback') {
@@ -107,14 +107,14 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'rollback',
-      label: t('versions.rollbackTo', { name: envName }),
+      label: t($ => $['versions.rollbackTo'], { name: envName }),
     }
   }
   return {
     env,
     environmentId: envId,
     state: 'deploy',
-    label: t('versions.deployTo', { name: envName }),
+    label: t($ => $['versions.deployTo'], { name: envName }),
   }
 }
 

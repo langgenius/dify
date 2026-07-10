@@ -87,9 +87,9 @@ export const useImportDSL = () => {
         if (!app_id)
           return
 
-        const message = t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' })
+        const message = t($ => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'], { ns: 'app' })
         const description = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-          ? t('newApp.appCreateDSLWarning', { ns: 'app' })
+          ? t($ => $['newApp.appCreateDSLWarning'], { ns: 'app' })
           : undefined
 
         if (status === DSLImportStatus.COMPLETED)
@@ -116,12 +116,12 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {
@@ -152,7 +152,7 @@ export const useImportDSL = () => {
 
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.(response)
-        toast.success(t('newApp.appCreated', { ns: 'app' }))
+        toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
@@ -164,12 +164,12 @@ export const useImportDSL = () => {
         })
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {

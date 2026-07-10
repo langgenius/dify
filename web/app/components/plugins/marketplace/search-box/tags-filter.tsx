@@ -77,11 +77,11 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('searchTags', { ns: 'pluginTags' }) || ''}
+              placeholder={t($ => $['searchTags'], { ns: 'pluginTags' }) || ''}
             />
           </div>
           <CheckboxGroup
-            aria-label={t('allTags', { ns: 'pluginTags' })}
+            aria-label={t($ => $['allTags'], { ns: 'pluginTags' })}
             value={tags}
             onValueChange={nextTags => onTagsChange(nextTags)}
             className="max-h-[448px] overflow-y-auto p-1"

@@ -18,11 +18,14 @@ const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
   return translations[fullKey] || key
 })
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: mockTranslation,
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((...args: Parameters<typeof mockTranslation>) => mockTranslation(...args)),
+    }),
+  })
+})
 
 let mockSort: { sortBy: string, sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
 const mockHandleSortChange = vi.fn()

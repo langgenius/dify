@@ -49,7 +49,7 @@ export default function AccessRulesEditor({
 }: AccessRulesEditorProps) {
   const { t } = useTranslation()
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
-  const individualPermissionSettingsTip = t('accessRule.individualPermissionSettingsTip', { ns: 'permission' })
+  const individualPermissionSettingsTip = t($ => $['accessRule.individualPermissionSettingsTip'], { ns: 'permission' })
   const policyOptions = useMemo(() => {
     return rules.map(rule => ({
       id: rule.policy.id,
@@ -67,7 +67,7 @@ export default function AccessRulesEditor({
       <div className="flex min-h-8 items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <h2 className="system-sm-semibold text-text-secondary">
-            {t('accessRule.individualPermissionSettings', { ns: 'permission' })}
+            {t($ => $['accessRule.individualPermissionSettings'], { ns: 'permission' })}
           </h2>
           <TitleInfotip content={individualPermissionSettingsTip} />
         </div>
@@ -86,15 +86,15 @@ export default function AccessRulesEditor({
                 disabled
               >
                 <span className="i-ri-add-line size-3.5" aria-hidden />
-                <span>{t('operation.add', { ns: 'common' })}</span>
+                <span>{t($ => $['operation.add'], { ns: 'common' })}</span>
               </Button>
             )}
       </div>
       <section className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
         <div className={cn('grid items-center gap-4 border-b border-divider-deep px-10 py-4 system-sm-semibold text-text-tertiary', ACCESS_RULE_TABLE_GRID)}>
-          <div>{t('accessRule.member', { ns: 'permission' })}</div>
-          <div>{t('accessRule.permission', { ns: 'permission' })}</div>
-          <div>{t('accessRule.actions', { ns: 'permission' })}</div>
+          <div>{t($ => $['accessRule.member'], { ns: 'permission' })}</div>
+          <div>{t($ => $['accessRule.permission'], { ns: 'permission' })}</div>
+          <div>{t($ => $['accessRule.actions'], { ns: 'permission' })}</div>
         </div>
         {isLoading
           ? (
@@ -105,7 +105,7 @@ export default function AccessRulesEditor({
           : userAccessSettings.length === 0
             ? (
                 <div className="px-4 py-8 text-center system-sm-regular text-text-tertiary">
-                  {t('accessRule.noUserAccessSettings', { ns: 'permission' })}
+                  {t($ => $['accessRule.noUserAccessSettings'], { ns: 'permission' })}
                 </div>
               )
             : (

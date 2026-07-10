@@ -79,7 +79,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   }
   const notifyError = useCallback((message?: string) => {
     setLoading(false)
-    toast.error(message || t('common.importFailure', { ns: 'workflow' }))
+    toast.error(message || t($ => $['common.importFailure'], { ns: 'workflow' }))
   }, [t])
   const updateWorkflow = useCallback(async (pipelineId: string) => {
     const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
@@ -103,9 +103,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     updateWorkflow(pipelineId)
     onImport?.()
     const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-    toast(t(isWarning ? 'common.importWarning' : 'common.importSuccess', { ns: 'workflow' }), {
+    toast(t($ => $[isWarning ? 'common.importWarning' : 'common.importSuccess'], { ns: 'workflow' }), {
       type: isWarning ? 'warning' : 'success',
-      description: isWarning && t('common.importWarningDetails', { ns: 'workflow' }),
+      description: isWarning && t($ => $['common.importWarningDetails'], { ns: 'workflow' }),
     })
     await handleCheckPluginDependencies(pipelineId, true)
     setLoading(false)

@@ -21,9 +21,12 @@ const {
   textGenerationResPropsSpy: vi.fn(),
 }))
 
-vi.mock('i18next', () => ({
-  t: (key: string) => key,
-}))
+vi.mock('i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    t: withSelectorKey((key: string) => key),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {

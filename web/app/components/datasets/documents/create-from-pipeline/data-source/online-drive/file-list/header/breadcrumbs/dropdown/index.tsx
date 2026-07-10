@@ -27,7 +27,7 @@ const Dropdown = ({
         render={(
           <button
             type="button"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t($ => $['operation.more'], { ns: 'common' })}
             className={cn(
               'flex size-6 items-center justify-center rounded-md',
               'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover',

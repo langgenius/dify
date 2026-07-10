@@ -104,9 +104,9 @@ const ProviderList = ({
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPluginPreferences
   const showLabelFilter = activeTab === 'builtin'
   const options = [
-    { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
-    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
-    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+    { value: 'builtin', text: t($ => $['type.builtIn'], { ns: 'tools' }) },
+    { value: 'api', text: t($ => $['type.custom'], { ns: 'tools' }) },
+    { value: 'workflow', text: t($ => $['type.workflow'], { ns: 'tools' }) },
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
@@ -199,7 +199,7 @@ const ProviderList = ({
         <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
-            aria-label={t('menus.tools', { ns: 'common' })}
+            aria-label={t($ => $['menus.tools'], { ns: 'common' })}
             className="overscroll-contain"
             role="region"
           >
@@ -221,7 +221,7 @@ const ProviderList = ({
                 />
               )}
               {!isCollectionListLoading && !activeTabCollectionList.length && activeTab === 'builtin' && (
-                <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+                <Empty lightCard text={t($ => $['noTools'], { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
               )}
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
                 <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />

@@ -50,7 +50,7 @@ const SnippetTagsFilter = ({
   })
   const triggerLabel = selectedTags.length
     ? selectedTags.map(tag => tag.name).join(', ')
-    : t('tag.placeholder', { ns: 'common' })
+    : t($ => $['tag.placeholder'], { ns: 'common' })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -94,12 +94,12 @@ const SnippetTagsFilter = ({
               className="pl-6.5"
               value={searchText}
               onChange={event => setSearchText(event.target.value)}
-              placeholder={t('searchTags', { ns: 'pluginTags' }) || ''}
+              placeholder={t($ => $['searchTags'], { ns: 'pluginTags' }) || ''}
             />
           </div>
         </div>
         <CheckboxGroup
-          aria-label={t('allTags', { ns: 'pluginTags' })}
+          aria-label={t($ => $['allTags'], { ns: 'pluginTags' })}
           value={value}
           onValueChange={onChange}
           className="max-h-112 overflow-y-auto p-1"
@@ -117,7 +117,7 @@ const SnippetTagsFilter = ({
           ))}
           {!filteredTags.length && (
             <div className="px-3 py-2 system-xs-regular text-text-tertiary">
-              {t('tag.noTag', { ns: 'common' })}
+              {t($ => $['tag.noTag'], { ns: 'common' })}
             </div>
           )}
         </CheckboxGroup>

@@ -170,7 +170,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({
               value={content}
               onChange={setContent}
               onSubmit={handleMentionSubmit}
-              placeholder={t('comments.placeholder.add', { ns: 'workflow' })}
+              placeholder={t($ => $['comments.placeholder.add'], { ns: 'workflow' })}
               autoFocus={autoFocus}
               disabled={disabled}
               className="relative"

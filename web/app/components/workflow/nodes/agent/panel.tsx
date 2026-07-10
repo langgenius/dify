@@ -51,9 +51,9 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     <div className="my-2">
       <Field
         required
-        title={t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        title={t($ => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
         className="px-4 py-2"
-        tooltip={t('nodes.agent.strategy.tooltip', { ns: 'workflow' })}
+        tooltip={t($ => $['nodes.agent.strategy.tooltip'], { ns: 'workflow' })}
       >
         <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
           <AgentStrategy
@@ -107,22 +107,22 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           <VarItem
             name="text"
             type="String"
-            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.text`], { ns: 'workflow' })}
           />
           <VarItem
             name="usage"
             type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
           />
           <VarItem
             name="files"
             type="Array[File]"
-            description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.files.title`], { ns: 'workflow' })}
           />
           <VarItem
             name="json"
             type="Array[Object]"
-            description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflow' })}
           />
           {outputSchema.map(({ name, type, description }) => (
             <VarItem

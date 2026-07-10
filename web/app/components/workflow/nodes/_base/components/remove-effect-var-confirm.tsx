@@ -25,8 +25,8 @@ const RemoveVarConfirm: FC<Props> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const title = t(`${i18nPrefix}.title`, { ns: 'workflow' })
-  const content = t(`${i18nPrefix}.content`, { ns: 'workflow' })
+  const title = t($ => $[`${i18nPrefix}.title`], { ns: 'workflow' })
+  const content = t($ => $[`${i18nPrefix}.content`], { ns: 'workflow' })
 
   return (
     <AlertDialog open={isShow} onOpenChange={open => !open && onCancel()}>
@@ -41,10 +41,10 @@ const RemoveVarConfirm: FC<Props> = ({
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

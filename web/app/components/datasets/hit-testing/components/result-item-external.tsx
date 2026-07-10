@@ -48,7 +48,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
           <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-[800px]! flex-col overflow-hidden! border-none text-left align-middle">
             <DialogCloseButton />
             <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-              {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+              {t($ => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
             </DialogTitle>
 
             <div className="mt-4 flex min-h-0 flex-1 flex-col">

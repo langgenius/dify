@@ -84,9 +84,9 @@ const UpdatePluginModal = ({
 
   const configBtnText = useMemo(() => {
     return ({
-      [UploadStep.notStarted]: t(`${i18nPrefix}.upgrade`, { ns: 'plugin' }),
-      [UploadStep.upgrading]: t(`${i18nPrefix}.upgrading`, { ns: 'plugin' }),
-      [UploadStep.installed]: t(`${i18nPrefix}.close`, { ns: 'plugin' }),
+      [UploadStep.notStarted]: t($ => $[`${i18nPrefix}.upgrade`], { ns: 'plugin' }),
+      [UploadStep.upgrading]: t($ => $[`${i18nPrefix}.upgrading`], { ns: 'plugin' }),
+      [UploadStep.installed]: t($ => $[`${i18nPrefix}.close`], { ns: 'plugin' }),
     })[uploadStep]
   }, [t, uploadStep])
 
@@ -102,7 +102,7 @@ const UpdatePluginModal = ({
         if (response.task?.status === TaskStatus.failed) {
           const failedPlugin = response.task.plugins?.find(plugin => plugin.plugin_unique_identifier === targetPackageInfo.id)
             ?? response.task.plugins?.[0]
-          toast.error(failedPlugin?.message || t('error', { ns: 'common' }))
+          toast.error(failedPlugin?.message || t($ => $['error'], { ns: 'common' }))
           setUploadStep(UploadStep.notStarted)
           return
         }
@@ -167,10 +167,10 @@ const UpdatePluginModal = ({
         {!doShowDowngradeWarningModal && (
           <>
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
+              {t($ => $[`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`], { ns: 'plugin' })}
             </DialogTitle>
             <div className="mt-3 mb-2 system-md-regular text-text-secondary">
-              {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
+              {t($ => $[`${i18nPrefix}.description`], { ns: 'plugin' })}
             </div>
             <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
               <Card
@@ -194,7 +194,7 @@ const UpdatePluginModal = ({
                 <Button
                   onClick={handleCancel}
                 >
-                  {t('operation.cancel', { ns: 'common' })}
+                  {t($ => $['operation.cancel'], { ns: 'common' })}
                 </Button>
               )}
               <Button

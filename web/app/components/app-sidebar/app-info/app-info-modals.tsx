@@ -150,15 +150,15 @@ const AppInfoModals = ({
           >
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('deleteAppConfirmTitle', { ns: 'app' })}
+                {t($ => $['deleteAppConfirmTitle'], { ns: 'app' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('deleteAppConfirmContent', { ns: 'app' })}
+                {t($ => $['deleteAppConfirmContent'], { ns: 'app' })}
               </AlertDialogDescription>
               <div className="mt-2">
                 <label className="mb-1 block system-sm-regular text-text-secondary">
                   <Trans
-                    i18nKey="deleteAppConfirmInputLabel"
+                    i18nKey={$ => $["deleteAppConfirmInputLabel"]}
                     ns="app"
                     values={{ appName: appDetail.name }}
                     components={{
@@ -171,7 +171,7 @@ const AppInfoModals = ({
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
+                    placeholder={t($ => $['deleteAppConfirmInputPlaceholder'], { ns: 'app' })}
                     value={confirmDeleteInput}
                     onChange={e => setConfirmDeleteInput(e.target.value)}
                     className="pr-20"
@@ -181,17 +181,17 @@ const AppInfoModals = ({
                     onClick={() => setConfirmDeleteInput(appDetail.name)}
                     className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
                   >
-                    {t('operation.fill', { ns: 'common' })}
+                    {t($ => $['operation.fill'], { ns: 'common' })}
                   </button>
                 </div>
               </div>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button">
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
-                {t('operation.confirm', { ns: 'common' })}
+                {t($ => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </form>
@@ -217,14 +217,14 @@ const AppInfoModals = ({
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('sidebar.exportWarning', { ns: 'workflow' })}
+                  {t($ => $['sidebar.exportWarning'], { ns: 'workflow' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
+                  {t($ => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
                 </AlertDialogDescription>
               </div>
               <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
                 <AlertDialogConfirmButton
                   tone="default"
                   loading={isConfirmingExport}
@@ -232,8 +232,8 @@ const AppInfoModals = ({
                   onClick={handleExportWarningConfirm}
                 >
                   {isConfirmingExport
-                    ? t('operation.exporting', { ns: 'common' })
-                    : t('operation.confirm', { ns: 'common' })}
+                    ? t($ => $['operation.exporting'], { ns: 'common' })
+                    : t($ => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>

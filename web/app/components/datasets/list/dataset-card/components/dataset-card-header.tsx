@@ -33,7 +33,7 @@ const DocModeInfo = ({
   if (isExternalProvider) {
     return (
       <div className={docModeInfoClassName}>
-        <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>
+        <span>{t($ => $['externalKnowledgeBase'], { ns: 'dataset' })}</span>
       </div>
     )
   }
@@ -52,15 +52,15 @@ const DocModeInfo = ({
     <div className={docModeInfoClassName}>
       {isPipeline && (
         <span className="max-w-full min-w-0 truncate">
-          {t('cornerLabel.pipeline', { ns: 'dataset' })}
+          {t($ => $['cornerLabel.pipeline'], { ns: 'dataset' })}
         </span>
       )}
       {isShowDocModeInfo && !!dataset.doc_form && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
+          title={t($ => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
         >
-          {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
+          {t($ => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
         </span>
       )}
       {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
@@ -74,9 +74,9 @@ const DocModeInfo = ({
       {isShowDocModeInfo && dataset.is_multimodal && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t('multimodal', { ns: 'dataset' })}
+          title={t($ => $['multimodal'], { ns: 'dataset' })}
         >
-          {t('multimodal', { ns: 'dataset' })}
+          {t($ => $['multimodal'], { ns: 'dataset' })}
         </span>
       )}
     </div>

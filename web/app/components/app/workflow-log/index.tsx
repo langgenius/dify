@@ -69,8 +69,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   return (
     <div className="flex h-full flex-col">
       <PageTitle
-        title={t('workflowTitle', { ns: 'appLog' })}
-        description={t('workflowSubtitle', { ns: 'appLog' })}
+        title={t($ => $['workflowTitle'], { ns: 'appLog' })}
+        description={t($ => $['workflowSubtitle'], { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
@@ -88,17 +88,17 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 totalPages={totalPages}
                 onPageChange={page => setCurrPage(page - 1)}
                 labels={{
-                  previous: t('pagination.previous', { ns: 'common' }),
-                  next: t('pagination.next', { ns: 'common' }),
-                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                  previous: t($ => $['pagination.previous'], { ns: 'common' }),
+                  next: t($ => $['pagination.next'], { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+                  pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
                 }}
                 pageSize={{
                   value: limit,
                   options: [10, 25, 50],
                   onValueChange: setLimit,
-                  label: t('pagination.perPage', { ns: 'common' }),
-                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                  label: t($ => $['pagination.perPage'], { ns: 'common' }),
+                  ariaLabel: t($ => $['pagination.perPage'], { ns: 'common' }),
                 }}
               />
             )

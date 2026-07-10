@@ -46,7 +46,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
     <div className="pt-2">
       <div className="space-y-4 px-4">
         <Field
-          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })}
           required
         >
           <VarReferencePicker
@@ -62,7 +62,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         </Field>
 
         <Field
-          title={t(`${i18nPrefix}.filterCondition`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.filterCondition`], { ns: 'workflow' })}
           operations={(
             <Switch
               checked={inputs.filter_by?.enabled}
@@ -87,7 +87,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         </Field>
         <Split />
         <Field
-          title={t(`${i18nPrefix}.extractsCondition`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.extractsCondition`], { ns: 'workflow' })}
           operations={(
             <Switch
               checked={inputs.extract_by?.enabled}
@@ -120,7 +120,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         />
         <Split />
         <Field
-          title={t(`${i18nPrefix}.orderBy`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.orderBy`], { ns: 'workflow' })}
           operations={(
             <Switch
               checked={inputs.order_by?.enabled}
@@ -143,12 +143,12 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                   )}
                   <div className={!hasSubVariable ? 'grid w-full grid-cols-2 gap-1' : 'flex shrink-0 space-x-1'}>
                     <OptionCard
-                      title={t(`${i18nPrefix}.asc`, { ns: 'workflow' })}
+                      title={t($ => $[`${i18nPrefix}.asc`], { ns: 'workflow' })}
                       onSelect={handleOrderByTypeChange(OrderBy.ASC)}
                       selected={inputs.order_by.value === OrderBy.ASC}
                     />
                     <OptionCard
-                      title={t(`${i18nPrefix}.desc`, { ns: 'workflow' })}
+                      title={t($ => $[`${i18nPrefix}.desc`], { ns: 'workflow' })}
                       onSelect={handleOrderByTypeChange(OrderBy.DESC)}
                       selected={inputs.order_by.value === OrderBy.DESC}
                     />
@@ -165,17 +165,17 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             <VarItem
               name="result"
               type={`Array[${itemVarTypeShowName}]`}
-              description={t(`${i18nPrefix}.outputVars.result`, { ns: 'workflow' })}
+              description={t($ => $[`${i18nPrefix}.outputVars.result`], { ns: 'workflow' })}
             />
             <VarItem
               name="first_record"
               type={itemVarTypeShowName}
-              description={t(`${i18nPrefix}.outputVars.first_record`, { ns: 'workflow' })}
+              description={t($ => $[`${i18nPrefix}.outputVars.first_record`], { ns: 'workflow' })}
             />
             <VarItem
               name="last_record"
               type={itemVarTypeShowName}
-              description={t(`${i18nPrefix}.outputVars.last_record`, { ns: 'workflow' })}
+              description={t($ => $[`${i18nPrefix}.outputVars.last_record`], { ns: 'workflow' })}
             />
           </>
         </OutputVars>

@@ -24,13 +24,13 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     const validateVariables = (variables: any[], field: 'errorMsg.fields.variableValue') => {
       variables.forEach((variable) => {
         if (!variable || variable.length === 0)
-          errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t(field, { ns: 'workflow' }) })
+          errorMessages = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $[field], { ns: 'workflow' }) })
       })
     }
 
     if (group_enabled) {
       if (!groups || groups.length === 0) {
-        errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.variableAssigner.title', { ns: 'workflow' }) })
+        errorMessages = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.variableAssigner.title'], { ns: 'workflow' }) })
       }
       else if (!errorMessages) {
         groups.forEach((group) => {
@@ -40,7 +40,7 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     }
     else {
       if (!variables || variables.length === 0)
-        errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.variableAssigner.title', { ns: 'workflow' }) })
+        errorMessages = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.variableAssigner.title'], { ns: 'workflow' }) })
       else if (!errorMessages)
         validateVariables(variables, 'errorMsg.fields.variableValue')
     }

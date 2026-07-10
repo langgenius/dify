@@ -82,7 +82,7 @@ const CreateAppModal = ({
 
   const submit = useCallback(() => {
     if (!name.trim()) {
-      toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
+      toast(t($ => $['appCustomize.nameRequired'], { ns: 'explore' }), { type: 'error' })
       return
     }
     const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
@@ -117,15 +117,15 @@ const CreateAppModal = ({
         <DialogContent backdropProps={{ forceRender: true }} className="px-8">
           <DialogCloseButton />
           {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t($ => $['editAppTitle'], { ns: 'app' })}</DialogTitle>
           )}
           {!isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t($ => $['appCustomize.title'], { ns: 'explore', name: appName })}</DialogTitle>
           )}
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t($ => $['newApp.captionName'], { ns: 'app' })}</div>
               <div className="flex items-center justify-between space-x-2">
                 <AppIcon
                   size="large"
@@ -139,18 +139,18 @@ const CreateAppModal = ({
                 <Input
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                  placeholder={t($ => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   className="h-10 grow"
                 />
               </div>
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t($ => $['newApp.captionDescription'], { ns: 'app' })}</div>
               <Textarea
-                aria-label={t('newApp.captionDescription', { ns: 'app' })}
+                aria-label={t($ => $['newApp.captionDescription'], { ns: 'app' })}
                 className="resize-none"
-                placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                placeholder={t($ => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                 value={description}
                 onValueChange={value => setDescription(value)}
               />
@@ -159,29 +159,29 @@ const CreateAppModal = ({
             {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
               <div className="pt-2">
                 <div className="flex items-center justify-between">
-                  <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                  <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t($ => $['answerIcon.title'], { ns: 'app' })}</div>
                   <Switch
                     checked={useIconAsAnswerIcon}
                     onCheckedChange={v => setUseIconAsAnswerIcon(v)}
                   />
                 </div>
-                <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
+                <p className="body-xs-regular text-text-tertiary">{t($ => $['answerIcon.descriptionInExplore'], { ns: 'app' })}</p>
               </div>
             )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t($ => $['maxActiveRequests'], { ns: 'app' })}</div>
                 <Input
                   type="number"
                   min={1}
-                  placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
+                  placeholder={t($ => $['maxActiveRequestsPlaceholder'], { ns: 'app' })}
                   value={maxActiveRequestsInput}
                   onChange={(e) => {
                     setMaxActiveRequestsInput(e.target.value)
                   }}
                   className="h-10 w-full"
                 />
-                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
+                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t($ => $['maxActiveRequestsTip'], { ns: 'app' })}</p>
               </div>
             )}
             {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
@@ -193,14 +193,14 @@ const CreateAppModal = ({
               variant="primary"
               onClick={handleSubmit}
             >
-              <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
+              <span>{!isEditModal ? t($ => $['operation.create'], { ns: 'common' }) : t($ => $['operation.save'], { ns: 'common' })}</span>
               <KbdGroup>
                 {['Mod', 'Enter'].map(key => (
                   <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
                 ))}
               </KbdGroup>
             </Button>
-            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button className="w-24" onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
           </div>
         </DialogContent>
       </Dialog>

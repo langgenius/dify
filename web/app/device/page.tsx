@@ -137,9 +137,9 @@ export default function DevicePage() {
       {view.kind === 'code_entry' && (
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">{t('codeEntry.title')}</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">{t($ => $['codeEntry.title'])}</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              {t('codeEntry.subtitle')}
+              {t($ => $['codeEntry.subtitle'])}
             </p>
           </div>
           <CodeInput value={typed} onChange={setTyped} autoFocus />
@@ -150,7 +150,7 @@ export default function DevicePage() {
             onClick={onContinue}
             disabled={!isValidUserCode(typed)}
           >
-            {t('codeEntry.continue')}
+            {t($ => $['codeEntry.continue'])}
           </Button>
         </div>
       )}
@@ -158,10 +158,10 @@ export default function DevicePage() {
       {view.kind === 'chooser' && (
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">{t('chooser.title')}</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">{t($ => $['chooser.title'])}</h1>
             <p className="mt-2 text-sm text-text-secondary">
               <Trans
-                i18nKey="chooser.subtitle"
+                i18nKey={$ => $["chooser.subtitle"]}
                 ns="deviceFlow"
                 values={{ code: view.userCode }}
                 components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
@@ -197,11 +197,11 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-success-hover">
             <span className="i-ri-checkbox-circle-line h-[18px] w-[18px] text-util-colors-green-green-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">{t('success.title')}</h1>
-          <p className="text-sm text-text-secondary">{t('success.subtitle')}</p>
+          <h1 className="text-xl font-semibold text-text-primary">{t($ => $['success.title'])}</h1>
+          <p className="text-sm text-text-secondary">{t($ => $['success.subtitle'])}</p>
           <Divider className="my-3" />
           <Button variant="ghost" className="w-full" onClick={() => router.push('/')}>
-            {t('success.goToConsole')}
+            {t($ => $['success.goToConsole'])}
           </Button>
         </div>
       )}
@@ -211,10 +211,10 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">{t('errorExpired.title')}</h1>
+          <h1 className="text-xl font-semibold text-text-primary">{t($ => $['errorExpired.title'])}</h1>
           <p className="text-sm text-text-secondary">
             <Trans
-              i18nKey="errorExpired.body"
+              i18nKey={$ => $["errorExpired.body"]}
               ns="deviceFlow"
               components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
             />
@@ -228,7 +228,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            {t('errorExpired.tryDifferentCode')}
+            {t($ => $['errorExpired.tryDifferentCode'])}
           </Button>
         </div>
       )}
@@ -238,8 +238,8 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">{t('errorRateLimited.title')}</h1>
-          <p className="text-sm text-text-secondary">{t('errorRateLimited.body')}</p>
+          <h1 className="text-xl font-semibold text-text-primary">{t($ => $['errorRateLimited.title'])}</h1>
+          <p className="text-sm text-text-secondary">{t($ => $['errorRateLimited.body'])}</p>
           <Divider className="my-3" />
           <Button
             variant="ghost"
@@ -249,7 +249,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            {t('tryAgain')}
+            {t($ => $['tryAgain'])}
           </Button>
         </div>
       )}
@@ -259,9 +259,9 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-destructive-hover">
             <span className="i-ri-close-circle-line h-[18px] w-[18px] text-util-colors-red-red-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">{t('errorLookupFailed.title')}</h1>
+          <h1 className="text-xl font-semibold text-text-primary">{t($ => $['errorLookupFailed.title'])}</h1>
           <p className="text-sm text-text-secondary">
-            {t('errorLookupFailed.body')}
+            {t($ => $['errorLookupFailed.body'])}
           </p>
           <Divider className="my-3" />
           <Button
@@ -272,7 +272,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            {t('tryAgain')}
+            {t($ => $['tryAgain'])}
           </Button>
         </div>
       )}
@@ -282,7 +282,7 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span aria-hidden="true" className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">{t('errorSso.title')}</h1>
+          <h1 className="text-xl font-semibold text-text-primary">{t($ => $['errorSso.title'])}</h1>
           <p className="text-sm text-text-secondary">{ssoErrorCopy(view.code, t)}</p>
           <Divider className="my-3" />
           <Button
@@ -297,7 +297,7 @@ export default function DevicePage() {
                 setView({ kind: 'code_entry' })
             }}
           >
-            {t('errorSso.backToLoginOptions')}
+            {t($ => $['errorSso.backToLoginOptions'])}
           </Button>
         </div>
       )}

@@ -55,10 +55,10 @@ const InstallFromMarketplace = ({
           aria-expanded={!collapse}
         >
           <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
-          {t('modelProvider.installProvider', { ns: 'common' })}
+          {t($ => $['modelProvider.installProvider'], { ns: 'common' })}
         </button>
         <div className="flex items-center gap-1">
-          <span className="system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
+          <span className="system-sm-regular text-text-tertiary">{t($ => $['modelProvider.discoverMore'], { ns: 'common' })}</span>
           {onOpenMarketplace
             ? (
                 <button
@@ -66,7 +66,7 @@ const InstallFromMarketplace = ({
                   className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
                   onClick={onOpenMarketplace}
                 >
-                  {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                  {t($ => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                   <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
                 </button>
               )
@@ -77,7 +77,7 @@ const InstallFromMarketplace = ({
                   href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
                   className="inline-flex items-center system-sm-medium text-text-accent"
                 >
-                  {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                  {t($ => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                   <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
                 </Link>
               )}

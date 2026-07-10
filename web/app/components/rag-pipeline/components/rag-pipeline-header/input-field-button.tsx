@@ -20,7 +20,7 @@ const InputFieldButton = () => {
       onClick={handleClick}
     >
       <InputField className="size-4" />
-      <span className="px-0.5">{t('inputField', { ns: 'datasetPipeline' })}</span>
+      <span className="px-0.5">{t($ => $['inputField'], { ns: 'datasetPipeline' })}</span>
     </Button>
   )
 }

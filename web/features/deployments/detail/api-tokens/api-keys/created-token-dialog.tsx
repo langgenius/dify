@@ -27,7 +27,7 @@ function CurlExample({ apiUrl, token }: {
   const curlExample = buildCurlExample(apiUrl, token)
   const { copied, copy } = useClipboard({
     onCopyError: () => {
-      toast.error(t('access.copyFailed'))
+      toast.error(t($ => $['access.copyFailed']))
     },
   })
 
@@ -35,12 +35,12 @@ function CurlExample({ apiUrl, token }: {
     <div className="min-w-0 overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal">
       <div className="flex h-8 items-center justify-between gap-2 border-b border-divider-subtle pr-1.5 pl-3">
         <div className="min-w-0 truncate system-xs-semibold-uppercase text-text-secondary">
-          {t('access.api.curlExampleTitle')}
+          {t($ => $['access.api.curlExampleTitle'])}
         </div>
         <button
           type="button"
           onClick={() => copy(curlExample)}
-          aria-label={t('access.api.copyCurlExample')}
+          aria-label={t($ => $['access.api.copyCurlExample'])}
           className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         >
           <span className={cn(copied ? 'i-ri-check-line' : 'i-ri-file-copy-line', 'size-3.5')} />
@@ -66,16 +66,16 @@ export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
         <DialogCloseButton />
         <div className="border-b border-divider-subtle px-6 py-5 pr-14">
           <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t('access.api.newTokenTitle')}
+            {t($ => $['access.api.newTokenTitle'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t('access.api.newTokenDescription')}
+            {t($ => $['access.api.newTokenDescription'])}
           </DialogDescription>
         </div>
 
         <div className="flex flex-col gap-5 px-6 py-5">
           <CopyPill
-            label={t('access.api.newTokenLabel')}
+            label={t($ => $['access.api.newTokenLabel'])}
             value={token}
           />
           {apiUrl && (
@@ -88,7 +88,7 @@ export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
 
         <div className="flex justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
           <Button variant="primary" onClick={onDismiss}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

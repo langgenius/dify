@@ -55,7 +55,7 @@ const InitPasswordPopup = () => {
               <div className="mx-12 block min-w-28">
                 <div className="mb-4">
                   <label htmlFor="password" className="block text-sm font-medium text-text-secondary">
-                    {t('adminInitPassword', { ns: 'login' })}
+                    {t($ => $['adminInitPassword'], { ns: 'login' })}
 
                   </label>
                   <div className="relative mt-1 rounded-md shadow-sm">
@@ -70,7 +70,7 @@ const InitPasswordPopup = () => {
                 </div>
                 <div className="flex flex-row flex-wrap justify-stretch p-0">
                   <Button variant="primary" onClick={handleValidation} className="min-w-28 basis-full">
-                    {t('validate', { ns: 'login' })}
+                    {t($ => $['validate'], { ns: 'login' })}
                   </Button>
                 </div>
               </div>

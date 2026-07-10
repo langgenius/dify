@@ -6,6 +6,7 @@ import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
@@ -59,7 +60,7 @@ describe('PanelContextmenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,

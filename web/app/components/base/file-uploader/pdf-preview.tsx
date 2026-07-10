@@ -45,9 +45,9 @@ const PdfPreview: FC<PdfPreviewProps> = ({
   useHotkey('ArrowUp', zoomIn)
   useHotkey('ArrowDown', zoomOut)
 
-  const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
-  const zoomInLabel = t('operation.zoomIn', { ns: 'common' })
-  const cancelLabel = t('operation.cancel', { ns: 'common' })
+  const zoomOutLabel = t($ => $['operation.zoomOut'], { ns: 'common' })
+  const zoomInLabel = t($ => $['operation.zoomIn'], { ns: 'common' })
+  const cancelLabel = t($ => $['operation.cancel'], { ns: 'common' })
 
   return (
     <Dialog

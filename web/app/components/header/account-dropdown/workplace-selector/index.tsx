@@ -56,7 +56,7 @@ export const WorkplaceSelectorContent = memo(({
     <SelectContent popupClassName={popupClassName}>
       <SelectGroup>
         <SelectGroupLabel>
-          {t('userProfile.workspace', { ns: 'common' })}
+          {t($ => $['userProfile.workspace'], { ns: 'common' })}
         </SelectGroupLabel>
         {workspaces.map(workspace => (
           <WorkplaceSelectorItem key={workspace.id} workspace={workspace} />

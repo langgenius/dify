@@ -76,7 +76,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      toast.error(t('exportFailed', { ns: 'app' }))
+      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
     }
     finally {
       setExporting(false)
@@ -88,8 +88,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     try {
       const { is_using: isUsedByApp } = await checkUsage(dataset.id)
       const message = isUsedByApp
-        ? t('datasetUsedByApp', { ns: 'dataset' })!
-        : t('deleteDatasetConfirmContent', { ns: 'dataset' })!
+        ? t($ => $['datasetUsedByApp'], { ns: 'dataset' })!
+        : t($ => $['deleteDatasetConfirmContent'], { ns: 'dataset' })!
       setModalState(prev => ({
         ...prev,
         confirmMessage: message,
@@ -99,10 +99,10 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     catch (e: unknown) {
       if (e instanceof Response) {
         const res = await e.json()
-        toast.error(res?.message || t('unknownError', { ns: 'dataset' }))
+        toast.error(res?.message || t($ => $['unknownError'], { ns: 'dataset' }))
       }
       else {
-        toast.error((e as Error)?.message || t('unknownError', { ns: 'dataset' }))
+        toast.error((e as Error)?.message || t($ => $['unknownError'], { ns: 'dataset' }))
       }
     }
   }, [dataset.id, checkUsage, t])
@@ -110,7 +110,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDatasetMutation(dataset.id)
-      toast.success(t('datasetDeleted', { ns: 'dataset' }))
+      toast.success(t($ => $['datasetDeleted'], { ns: 'dataset' }))
       onSuccess?.()
     }
     finally {

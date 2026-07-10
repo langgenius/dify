@@ -7,11 +7,14 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number, ns?: string }) => options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { count?: number, ns?: string }) => options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key),
+    }),
+  })
+})
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: () => <div data-testid="card-icon" />,

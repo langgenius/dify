@@ -397,7 +397,7 @@ export const useInsertSnippet = () => {
       return true
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('createFailed', { ns: 'snippet' }))
+      toast.error(error instanceof Error ? error.message : t($ => $['createFailed'], { ns: 'snippet' }))
       return false
     }
   }, [handleSyncWorkflowDraft, incrementSnippetUseCount, queryClient, saveStateToHistory, store, t])

@@ -16,7 +16,7 @@ const ExecutedAction = ({
       <div className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
         <div className="i-custom-vender-workflow-trigger-all size-3.5 shrink-0" />
         <Trans
-          i18nKey="nodes.humanInput.userActions.triggered"
+          i18nKey={$ => $["nodes.humanInput.userActions.triggered"]}
           ns="workflow"
           components={{ strong: <span className="system-xs-medium text-text-secondary"></span> }}
           values={{ actionName: executedAction.id }}

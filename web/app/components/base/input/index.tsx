@@ -110,8 +110,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           className,
         )}
         placeholder={placeholder ?? (showLeftIcon
-          ? (t('operation.search', { ns: 'common' }) || '')
-          : (t('placeholder.input', { ns: 'common' }) || ''))}
+          ? (t($ => $['operation.search'], { ns: 'common' }) || '')
+          : (t($ => $['placeholder.input'], { ns: 'common' }) || ''))}
         value={value}
         onChange={props.type === 'number' ? handleNumberChange : onChange}
         onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
@@ -121,7 +121,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <button
           type="button"
-          aria-label={t('operation.clear', { ns: 'common' })}
+          aria-label={t($ => $['operation.clear'], { ns: 'common' })}
           className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px')}
           onClick={onClear}
         >

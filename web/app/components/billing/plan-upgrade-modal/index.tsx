@@ -51,7 +51,7 @@ export function PlanUpgradeModal({
           <Button
             onClick={onClose}
           >
-            {t('triggerLimitModal.dismiss', { ns: 'billing' })}
+            {t($ => $['triggerLimitModal.dismiss'], { ns: 'billing' })}
           </Button>
           <UpgradeBtn
             size="custom"

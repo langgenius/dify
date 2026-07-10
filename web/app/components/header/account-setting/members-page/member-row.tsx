@@ -48,7 +48,7 @@ const MemberRow = ({
     >
       <button
         type="button"
-        aria-label={t('members.memberDetails.openAria', {
+        aria-label={t($ => $['members.memberDetails.openAria'], {
           ns: 'common',
           name: member.name,
           defaultValue: 'Open member details for {{name}}',
@@ -66,12 +66,12 @@ const MemberRow = ({
               {member.name}
               {member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
-                  {t('members.pending', { ns: 'common' })}
+                  {t($ => $['members.pending'], { ns: 'common' })}
                 </span>
               )}
               {isCurrentUser && (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('members.you', { ns: 'common' })}
+                  {t($ => $['members.you'], { ns: 'common' })}
                 </span>
               )}
             </span>

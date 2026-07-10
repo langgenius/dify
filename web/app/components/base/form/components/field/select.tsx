@@ -55,7 +55,7 @@ const SelectField = ({
 }: SelectFieldProps) => {
   const { t } = useTranslation()
   const field = useFieldContext<string>()
-  const placeholderText = placeholder || t('placeholder.select', { ns: 'common' })
+  const placeholderText = placeholder || t($ => $['placeholder.select'], { ns: 'common' })
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>

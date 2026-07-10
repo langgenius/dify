@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { getHoveredParallelId } from '../get-hovered-parallel-id'
 import TracingPanel from '../tracing-panel'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockFormatNodeList = vi.hoisted(() => vi.fn())
@@ -43,7 +44,7 @@ describe('TracingPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseLogs.mockReturnValue({
       showSpecialResultPanel: false,

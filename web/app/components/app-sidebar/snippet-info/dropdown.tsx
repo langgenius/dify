@@ -69,7 +69,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     }
     catch {
-      toast.error(t('exportFailed'))
+      toast.error(t($ => $['exportFailed']))
     }
   }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
@@ -85,11 +85,11 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       },
     }, {
       onSuccess: () => {
-        toast.success(t('editDone'))
+        toast.success(t($ => $['editDone']))
         setIsEditDialogOpen(false)
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('editFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $['editFailed']))
       },
     })
   }, [snippet.id, t, updateSnippetMutation])
@@ -99,12 +99,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
     }, {
       onSuccess: () => {
-        toast.success(t('deleted'))
+        toast.success(t($ => $['deleted']))
         setIsDeleteDialogOpen(false)
         replace('/snippets')
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('deleteFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $['deleteFailed']))
       },
     })
   }, [deleteSnippetMutation, replace, snippet.id, t])
@@ -129,11 +129,11 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
                 <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-                <span className="grow">{t('menu.editInfo')}</span>
+                <span className="grow">{t($ => $['menu.editInfo'])}</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
                 <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
-                <span className="grow">{t('menu.exportSnippet')}</span>
+                <span className="grow">{t($ => $['menu.exportSnippet'])}</span>
               </DropdownMenuItem>
             </>
           )}
@@ -149,7 +149,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
                 }}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                <span className="grow">{t('menu.deleteSnippet')}</span>
+                <span className="grow">{t($ => $['menu.deleteSnippet'])}</span>
               </DropdownMenuItem>
             </>
           )}
@@ -160,8 +160,8 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
           initialValue={initialValue}
-          title={t('editDialogTitle')}
-          confirmText={t('operation.save', { ns: 'common' })}
+          title={t($ => $['editDialogTitle'])}
+          confirmText={t($ => $['operation.save'], { ns: 'common' })}
           isSubmitting={updateSnippetMutation.isPending}
           onClose={() => setIsEditDialogOpen(false)}
           onConfirm={handleEditSnippet}
@@ -172,21 +172,21 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t('deleteConfirmTitle')}
+              {t($ => $['deleteConfirmTitle'])}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t('deleteConfirmContent')}
+              {t($ => $['deleteConfirmContent'])}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-0">
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={deleteSnippetMutation.isPending}
               onClick={handleDeleteSnippet}
             >
-              {t('menu.deleteSnippet')}
+              {t($ => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

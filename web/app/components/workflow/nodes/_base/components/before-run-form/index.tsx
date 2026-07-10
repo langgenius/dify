@@ -77,7 +77,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
+      toast.error(t($ => $['errorMsg.invalidJson'], { ns: 'workflow', field: parseErrorJsonField }))
       return
     }
 
@@ -140,12 +140,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
+                <div>{t($ => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
               </Button>
             )}
             {isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t('nodes.humanInput.singleRun.button', { ns: 'workflow' })}</div>
+                <div>{t($ => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
               </Button>
             )}
           </div>

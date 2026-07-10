@@ -6,12 +6,15 @@ import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { AppCardAccessControlSection, AppCardDialogs, AppCardOperations, AppCardUrlSection, createAppCardOperations, WorkflowLaunchDialog } from '../app-card-sections'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>),
+  })
+})
 
 vi.mock('../settings', () => ({
   default: () => <div data-testid="settings-modal" />,

@@ -9,7 +9,7 @@ type EmptyProps = {
 const Empty = ({ message }: EmptyProps) => {
   const { t } = useTranslation()
 
-  return <FilterEmptyState title={message ?? t('filterEmpty.noApps', { ns: 'app' })} />
+  return <FilterEmptyState title={message ?? t($ => $['filterEmpty.noApps'], { ns: 'app' })} />
 }
 
 export default React.memo(Empty)

@@ -45,7 +45,7 @@ function IntegrationsToolProviderCard({
   const description = renderI18nObject(collection.description, language)
   const { org, name } = getCollectionPluginIdentity(collection)
   const toolsCount = collection.tools?.length ?? 0
-  const builtInLabel = t('metadata.datasetMetadata.builtIn', { ns: 'dataset' })
+  const builtInLabel = t($ => $['metadata.datasetMetadata.builtIn'], { ns: 'dataset' })
   const shouldShowBuiltInBadge = showBuiltInBadge && !collection.plugin_id
   const isLabeledVariant = variant === 'labeled'
 
@@ -66,8 +66,8 @@ function IntegrationsToolProviderCard({
             <div className="min-w-0 truncate system-md-semibold text-text-secondary" title={title}>
               {title}
             </div>
-            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t('author', { ns: 'tools' })} ${collection.author}` : undefined}>
-              {collection.author && `${t('author', { ns: 'tools' })} ${collection.author}`}
+            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t($ => $['author'], { ns: 'tools' })} ${collection.author}` : undefined}>
+              {collection.author && `${t($ => $['author'], { ns: 'tools' })} ${collection.author}`}
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ function IntegrationsToolProviderCard({
             <div className="flex min-w-0 flex-1 items-center gap-1">
               <RiLoginCircleLine className="size-3 shrink-0 text-text-tertiary" />
               <div className="truncate system-xs-regular text-text-tertiary">
-                {t('mcp.toolsCount', { ns: 'tools', count: toolsCount })}
+                {t($ => $['mcp.toolsCount'], { ns: 'tools', count: toolsCount })}
               </div>
             </div>
           </>

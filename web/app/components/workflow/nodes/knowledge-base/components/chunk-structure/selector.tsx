@@ -62,7 +62,7 @@ const Selector = ({
                   />
                 )}
               >
-                {t('panel.change', { ns: 'workflow' })}
+                {t($ => $['panel.change'], { ns: 'workflow' })}
               </PopoverTrigger>
             )
       }
@@ -74,7 +74,7 @@ const Selector = ({
       >
         <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="px-3 pt-3.5 system-sm-semibold text-text-primary">
-            {t('nodes.knowledgeBase.changeChunkStructure', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeBase.changeChunkStructure'], { ns: 'workflow' })}
           </div>
           <div className="space-y-1 p-3 pt-2">
             {

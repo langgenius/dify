@@ -19,7 +19,7 @@ const nodeDefault: NodeDefault<EndNodeType> = {
 
     let errorMessage = ''
     if (!outputs.length) {
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
+      errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.end.output.variable'], { ns: 'workflow' }) })
     }
     else {
       const invalidOutput = outputs.find((output) => {
@@ -29,7 +29,7 @@ const nodeDefault: NodeDefault<EndNodeType> = {
       })
 
       if (invalidOutput)
-        errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.end.output.variable', { ns: 'workflow' }) })
+        errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.end.output.variable'], { ns: 'workflow' }) })
     }
 
     return {

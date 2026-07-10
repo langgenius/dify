@@ -67,9 +67,9 @@ const DeliveryMethodForm: React.FC<Props> = ({
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
-          <Infotip aria-label={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}>
-            {t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
+          <div className="system-sm-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}</div>
+          <Infotip aria-label={t($ => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}>
+            {t($ => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
           </Infotip>
         </div>
         {!readonly && (
@@ -83,7 +83,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         )}
       </div>
       {!value.length && (
-        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
+        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflow' })}</div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">

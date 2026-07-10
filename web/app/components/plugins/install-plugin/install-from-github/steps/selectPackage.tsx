@@ -69,7 +69,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+        onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     }
     finally {
       setIsUploading(false)
@@ -90,12 +90,12 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectVersion`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">
-                {selectedVersionOption?.name ?? t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ?? ''}
+                {selectedVersionOption?.name ?? t($ => $[`${i18nPrefix}.selectVersionPlaceholder`], { ns: 'plugin' }) ?? ''}
               </span>
               {!!(updatePayload?.originalPackageInfo.version && selectedVersionOption && selectedVersionOption.value !== updatePayload.originalPackageInfo.version) && (
                 <Badge>
@@ -134,10 +134,10 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectPackage`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
-            {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
+            {selectedPackageOption?.name ?? t($ => $[`${i18nPrefix}.selectPackagePlaceholder`], { ns: 'plugin' }) ?? ''}
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
             {packages.map(item => (
@@ -158,7 +158,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onClick={onBack}
               disabled={isUploading}
             >
-              {t('installModal.back', { ns: 'plugin' })}
+              {t($ => $['installModal.back'], { ns: 'plugin' })}
             </Button>
           )}
         <Button
@@ -167,7 +167,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
-          {t('installModal.next', { ns: 'plugin' })}
+          {t($ => $['installModal.next'], { ns: 'plugin' })}
         </Button>
       </div>
     </>

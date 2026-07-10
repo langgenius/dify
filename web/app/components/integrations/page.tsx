@@ -145,13 +145,13 @@ export default function IntegrationsPage({
       )
     : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
-  const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t('modelProvider.pageDesc', { ns: 'common' }) : undefined)
+  const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t($ => $['modelProvider.pageDesc'], { ns: 'common' }) : undefined)
   const headerDescriptionDocPath = headerDescriptionDocPaths[section]
   const headerDescriptionWithLink = headerDescription && headerDescriptionDocPath
     ? (
         <DescriptionWithLearnMore
           href={docLink(headerDescriptionDocPath)}
-          label={t('modelProvider.learnMore', { ns: 'common' })}
+          label={t($ => $['modelProvider.learnMore'], { ns: 'common' })}
         >
           {headerDescription}
         </DescriptionWithLearnMore>
@@ -192,7 +192,7 @@ export default function IntegrationsPage({
           ? <span className="i-ri-arrow-up-s-line hidden size-4 group-hover:inline-block" />
           : <span className="i-ri-arrow-down-s-line hidden size-4 group-hover:inline-block" />}
       </span>
-      <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
+      <span className="min-w-0 flex-1 truncate">{t($ => $['menus.tools'], { ns: 'common' })}</span>
     </>
   )
 
@@ -214,7 +214,7 @@ export default function IntegrationsPage({
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
               <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                {t('settings.integrations', { ns: 'common' })}
+                {t($ => $['settings.integrations'], { ns: 'common' })}
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function IntegrationsPage({
             <div>
               <button
                 type="button"
-                aria-label={t('menus.tools', { ns: 'common' })}
+                aria-label={t($ => $['menus.tools'], { ns: 'common' })}
                 aria-expanded={isToolsExpanded}
                 className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
                 onClick={handleToggleTools}

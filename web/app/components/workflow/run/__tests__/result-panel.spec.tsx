@@ -3,6 +3,7 @@ import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockCodeEditor = vi.hoisted(() => vi.fn())
@@ -196,7 +197,7 @@ describe('ResultPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 

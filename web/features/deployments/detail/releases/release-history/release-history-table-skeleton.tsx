@@ -55,12 +55,12 @@ export function ReleaseHistoryTableSkeleton() {
         <DetailTable className="min-w-[840px]">
           <DetailTableHeader>
             <DetailTableRow>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t('versions.col.sourceApp')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
-              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('versions.col.action')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t($ => $['versions.col.release'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t($ => $['versions.col.sourceApp'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t($ => $['versions.col.createdAt'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t($ => $['versions.col.author'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t($ => $['versions.col.deployedTo'])}</DetailTableHead>
+              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t($ => $['versions.col.action'])}</DetailTableHead>
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>

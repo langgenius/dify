@@ -92,7 +92,7 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
           credential_id: credential.credential_id,
         })
       }
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       handleRefreshModel(provider, undefined, true)
     }
     finally {
@@ -142,7 +142,7 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
         }
         await deleteModelService(payload)
       }
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
@@ -164,7 +164,7 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
       else
         res = await getAddCredentialService(!!isModelCredential)(payload as any)
       if (res.result === 'success') {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }

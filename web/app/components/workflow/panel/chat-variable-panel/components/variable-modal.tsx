@@ -79,7 +79,7 @@ const ChatVariableModal = ({
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
       <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
-        {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
+        {!chatVar ? t($ => $['chatVariable.modal.title'], { ns: 'workflow' }) : t($ => $['chatVariable.modal.editTitle'], { ns: 'workflow' })}
         <div className="flex items-center">
           <div
             className="flex size-6 cursor-pointer items-center justify-center"
@@ -94,14 +94,14 @@ const ChatVariableModal = ({
           name={name}
           onBlur={nextName => validateVariableName({ name: nextName, notify, t })}
           onChange={handleNameChange}
-          placeholder={t('chatVariable.modal.namePlaceholder', { ns: 'workflow' }) || ''}
-          title={t('chatVariable.modal.name', { ns: 'workflow' })}
+          placeholder={t($ => $['chatVariable.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
+          title={t($ => $['chatVariable.modal.name'], { ns: 'workflow' })}
         />
         <TypeSection
           type={type}
           list={typeList}
           onSelect={handleTypeChange}
-          title={t('chatVariable.modal.type', { ns: 'workflow' })}
+          title={t($ => $['chatVariable.modal.type'], { ns: 'workflow' })}
         />
         <ValueSection
           type={type}
@@ -131,14 +131,14 @@ const ChatVariableModal = ({
           description={description}
           maxLength={MAX_DESCRIPTION_LENGTH}
           onChange={setDescription}
-          placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
-          title={t('chatVariable.modal.description', { ns: 'workflow' })}
+          placeholder={t($ => $['chatVariable.modal.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
+          title={t($ => $['chatVariable.modal.description'], { ns: 'workflow' })}
         />
       </div>
       <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
         <div className="flex gap-2">
-          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+          <Button onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handleSave}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
         </div>
       </div>
     </div>

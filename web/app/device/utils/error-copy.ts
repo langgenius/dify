@@ -29,8 +29,8 @@ const APPROVE_KEY: Record<string, DeviceFlowKey> = {
 
 export function approveErrorCopy(err: unknown, t: TFunction<'deviceFlow'>): string {
   if (err instanceof DeviceFlowError)
-    return t(APPROVE_KEY[err.code] ?? 'approveError.default')
-  return t('approveError.default')
+    return t($ => $[APPROVE_KEY[err.code] ?? 'approveError.default'])
+  return t($ => $['approveError.default'])
 }
 
 // SSO-branch failures arrive as a `sso_error` query param set by the backend
@@ -40,7 +40,7 @@ const SSO_ERROR_KEY: Record<string, DeviceFlowKey> = {
 }
 
 export function ssoErrorCopy(code: string, t: TFunction<'deviceFlow'>): string {
-  return t(SSO_ERROR_KEY[code] ?? 'ssoError.default')
+  return t($ => $[SSO_ERROR_KEY[code] ?? 'ssoError.default'])
 }
 
 export type LookupOutcome = 'expired' | 'rate_limited' | 'failed'

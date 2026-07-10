@@ -207,9 +207,9 @@ export function AgentPromptSlashMenu({
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
                 <span className="system-sm-regular text-text-secondary">
-                  {view === 'skills' && t('agentDetail.configure.skills.add')}
-                  {view === 'files' && t('agentDetail.configure.files.add')}
-                  {view === 'knowledge' && t('agentDetail.configure.knowledgeRetrieval.add')}
+                  {view === 'skills' && t($ => $['agentDetail.configure.skills.add'])}
+                  {view === 'files' && t($ => $['agentDetail.configure.files.add'])}
+                  {view === 'knowledge' && t($ => $['agentDetail.configure.knowledgeRetrieval.add'])}
                 </span>
               </button>
             </div>
@@ -326,13 +326,13 @@ function AgentPromptToolRows({
 
   const selectedTools = useMemo(() => configuredTools.flatMap(toSelectedToolValue), [configuredTools])
   const tabs = [
-    { key: 'all' as const, label: t('agentDetail.configure.tools.toolTabs.all') },
-    { key: ToolTabEnum.BuiltIn, label: t('agentDetail.configure.tools.toolTabs.plugins') },
-    { key: ToolTabEnum.Workflow, label: t('agentDetail.configure.tools.toolTabs.workflow') },
-    { key: ToolTabEnum.Custom, label: t('agentDetail.configure.tools.toolTabs.custom') },
-    { key: ToolTabEnum.MCP, label: t('agentDetail.configure.tools.toolTabs.mcp') },
+    { key: 'all' as const, label: t($ => $['agentDetail.configure.tools.toolTabs.all']) },
+    { key: ToolTabEnum.BuiltIn, label: t($ => $['agentDetail.configure.tools.toolTabs.plugins']) },
+    { key: ToolTabEnum.Workflow, label: t($ => $['agentDetail.configure.tools.toolTabs.workflow']) },
+    { key: ToolTabEnum.Custom, label: t($ => $['agentDetail.configure.tools.toolTabs.custom']) },
+    { key: ToolTabEnum.MCP, label: t($ => $['agentDetail.configure.tools.toolTabs.mcp']) },
     ...(ENABLE_AGENT_CLI_TOOLS
-      ? [{ key: 'cli' as const, label: t('agentDetail.configure.tools.toolTabs.cli') }]
+      ? [{ key: 'cli' as const, label: t($ => $['agentDetail.configure.tools.toolTabs.cli']) }]
       : []),
   ]
 
@@ -499,13 +499,13 @@ function getProviderTypeLabel(
   t: ReturnType<typeof useTranslation>['t'],
 ) {
   if (provider.type === CollectionType.workflow)
-    return t('agentDetail.configure.tools.toolTabs.workflow')
+    return t($ => $['agentDetail.configure.tools.toolTabs.workflow'])
   if (provider.type === CollectionType.custom)
-    return t('agentDetail.configure.tools.toolTabs.custom')
+    return t($ => $['agentDetail.configure.tools.toolTabs.custom'])
   if (provider.type === CollectionType.mcp)
-    return t('agentDetail.configure.tools.toolTabs.mcp')
+    return t($ => $['agentDetail.configure.tools.toolTabs.mcp'])
 
-  return t('agentDetail.configure.tools.toolTabs.plugins')
+  return t($ => $['agentDetail.configure.tools.toolTabs.plugins'])
 }
 
 function AgentPromptProviderToolRow({
@@ -599,7 +599,7 @@ function AgentPromptToolFooter({
         className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       >
         <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
-        <span className="system-sm-regular text-text-secondary">{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+        <span className="system-sm-regular text-text-secondary">{t($ => $['findMoreInMarketplace'], { ns: 'plugin' })}</span>
       </a>
       {onAddCliTool && (
         <button
@@ -609,7 +609,7 @@ function AgentPromptToolFooter({
           onClick={onAddCliTool}
         >
           <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-          <span className="system-sm-regular text-text-secondary">{t('agentDetail.configure.tools.cliDialog.title', { ns: 'agentV2' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t($ => $['agentDetail.configure.tools.cliDialog.title'], { ns: 'agentV2' })}</span>
         </button>
       )}
     </div>
@@ -664,7 +664,7 @@ function AgentPromptCliToolRow({
         </span>
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">{tool.name}</span>
         <span className="shrink-0 system-xs-regular text-text-quaternary">
-          {t('agentDetail.configure.tools.toolTabs.cli')}
+          {t($ => $['agentDetail.configure.tools.toolTabs.cli'])}
         </span>
       </span>
     </button>
@@ -698,7 +698,7 @@ function getKnowledgeRetrievalName(
   retrieval: AgentKnowledgeRetrievalItem,
   t: ReturnType<typeof useTranslation>['t'],
 ) {
-  return retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)
+  return retrieval.name ?? (retrieval.nameKey ? t($ => $[retrieval.nameKey]) : retrieval.id)
 }
 
 function AgentPromptSubmenuRow({

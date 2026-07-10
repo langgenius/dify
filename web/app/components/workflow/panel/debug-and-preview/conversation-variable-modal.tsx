@@ -80,7 +80,7 @@ const ConversationVariableModal = ({
 
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
@@ -89,7 +89,7 @@ const ConversationVariableModal = ({
         <div className="flex size-full">
           {/* LEFT */}
           <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
-            <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
+            <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">{t($ => $['chatVariable.panelTitle'], { ns: 'workflow' })}</div>
             <div className="grow overflow-y-auto px-3 py-2">
               {varList.map(chatVar => (
                 <button
@@ -114,7 +114,7 @@ const ConversationVariableModal = ({
             </div>
             <div className="flex h-0 grow flex-col p-4 pt-2">
               <div className="mb-2 flex shrink-0 items-center gap-2">
-                <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('chatVariable.storedContent', { ns: 'workflow' }).toLocaleUpperCase()}</div>
+                <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t($ => $['chatVariable.storedContent'], { ns: 'workflow' }).toLocaleUpperCase()}</div>
                 <div
                   className="h-px grow"
                   style={{
@@ -124,8 +124,8 @@ const ConversationVariableModal = ({
                 </div>
                 {!!latestValueTimestampMap[currentVar.id] && (
                   <div className="shrink-0 system-xs-regular text-text-tertiary">
-                    {t('chatVariable.updatedAt', { ns: 'workflow' })}
-                    {formatTime(latestValueTimestampMap[currentVar.id]!, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                    {t($ => $['chatVariable.updatedAt'], { ns: 'workflow' })}
+                    {formatTime(latestValueTimestampMap[currentVar.id]!, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}
                   </div>
                 )}
               </div>

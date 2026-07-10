@@ -264,7 +264,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               popupClassName="max-w-[300px]"
             >
               <Trans
-                i18nKey="variableConfig.hiddenDescription"
+                i18nKey={$ => $["variableConfig.hiddenDescription"]}
                 ns="appDebug"
                 components={{
                   docLink: (

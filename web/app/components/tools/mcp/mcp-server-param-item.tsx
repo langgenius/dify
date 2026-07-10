@@ -28,7 +28,7 @@ const MCPServerParamItem = ({
         aria-label={data.label}
         className="h-8 resize-none"
         value={value}
-        placeholder={t('mcp.server.modal.parametersPlaceholder', { ns: 'tools' })}
+        placeholder={t($ => $['mcp.server.modal.parametersPlaceholder'], { ns: 'tools' })}
         onValueChange={value => onChange(value)}
       />
     </div>

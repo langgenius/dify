@@ -103,11 +103,11 @@ function ComplianceDocRowItem({
       try {
         const ret = await getDocDownloadUrl(docName)
         downloadUrl({ url: ret.url })
-        toast.success(t('operation.downloadSuccess', { ns: 'common' }))
+        toast.success(t($ => $['operation.downloadSuccess'], { ns: 'common' }))
       }
       catch (error) {
         console.error(error)
-        toast.error(t('operation.downloadFailed', { ns: 'common' }))
+        toast.error(t($ => $['operation.downloadFailed'], { ns: 'common' }))
       }
     },
   })
@@ -135,8 +135,8 @@ function ComplianceDocRowItem({
   }, [downloadCompliance, isCurrentPlanCanDownload, isFreePlan, isPending, setShowAccountSettingModal, setShowPricingModal])
 
   const upgradeTooltip: Record<Plan, string> = {
-    [Plan.sandbox]: t('compliance.sandboxUpgradeTooltip', { ns: 'common' }),
-    [Plan.professional]: t('compliance.professionalUpgradeTooltip', { ns: 'common' }),
+    [Plan.sandbox]: t($ => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
+    [Plan.professional]: t($ => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
     [Plan.team]: '',
     [Plan.enterprise]: '',
   }
@@ -154,8 +154,8 @@ function ComplianceDocRowItem({
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}
         tooltipText={upgradeTooltip[plan.type]}
-        downloadText={t('operation.download', { ns: 'common' })}
-        upgradeText={t('upgradeBtn.encourageShort', { ns: 'billing' })}
+        downloadText={t($ => $['operation.download'], { ns: 'common' })}
+        upgradeText={t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       />
     </DropdownMenuItem>
   )
@@ -170,7 +170,7 @@ export default function Compliance() {
       <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
-          label={t('userProfile.compliance', { ns: 'common' })}
+          label={t($ => $['userProfile.compliance'], { ns: 'common' })}
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
@@ -179,22 +179,22 @@ export default function Compliance() {
         <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
-            label={t('compliance.soc2Type1', { ns: 'common' })}
+            label={t($ => $['compliance.soc2Type1'], { ns: 'common' })}
             docName={DocName.SOC2_Type_I}
           />
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}
-            label={t('compliance.soc2Type2', { ns: 'common' })}
+            label={t($ => $['compliance.soc2Type2'], { ns: 'common' })}
             docName={DocName.SOC2_Type_II}
           />
           <ComplianceDocRowItem
             icon={<Iso aria-hidden className="size-7 shrink-0" />}
-            label={t('compliance.iso27001', { ns: 'common' })}
+            label={t($ => $['compliance.iso27001'], { ns: 'common' })}
             docName={DocName.ISO_27001}
           />
           <ComplianceDocRowItem
             icon={<Gdpr aria-hidden className="size-7 shrink-0" />}
-            label={t('compliance.gdpr', { ns: 'common' })}
+            label={t($ => $['compliance.gdpr'], { ns: 'common' })}
             docName={DocName.GDPR}
           />
         </DropdownMenuGroup>

@@ -34,12 +34,15 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    language: 'ja',
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    getI18n: () => ({
+      language: 'ja',
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: mockSetLocale,

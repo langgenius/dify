@@ -231,7 +231,7 @@ function List({
         <StudioListHeader
           title={(
             <div className="flex items-center">
-              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
+              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $['menus.apps'], { ns: 'common' })}</h1>
             </div>
           )}
         >
@@ -299,10 +299,10 @@ function List({
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
+            aria-label={t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
           >
             <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
+            <span className="system-xs-regular">{t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}</span>
           </div>
         )}
         <CheckModal />

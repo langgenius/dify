@@ -27,12 +27,12 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.error(t('error.emailEmpty', { ns: 'login' }))
+        toast.error(t($ => $['error.emailEmpty'], { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.error(t('error.emailInValid', { ns: 'login' }))
+        toast.error(t($ => $['error.emailInValid'], { ns: 'login' }))
         return
       }
       setLoading(true)
@@ -60,18 +60,18 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       }}
     >
       <FieldRoot name="email" disabled={isInvite} className="mb-2">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</FieldLabel>
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t($ => $['email'], { ns: 'login' })}</FieldLabel>
         <FieldControl
           type="email"
           autoComplete="email"
           spellCheck={false}
           disabled={isInvite}
           value={email}
-          placeholder={t('emailPlaceholder', { ns: 'login' }) as string}
+          placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) as string}
           onValueChange={setEmail}
         />
         <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
+          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t($ => $['signup.verifyMail'], { ns: 'login' })}</Button>
         </div>
       </FieldRoot>
     </Form>

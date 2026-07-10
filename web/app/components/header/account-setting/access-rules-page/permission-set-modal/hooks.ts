@@ -13,13 +13,13 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
   const groups = useMemo(() => {
     return (permissionCatalog?.groups || []).map(group => ({
       ...group,
-      group_name: t(`group.${resourceType}_acl`, {
+      group_name: t($ => $[`group.${resourceType}_acl`], {
         ns: 'permission',
         defaultValue: group.group_name,
       }),
       permissions: group.permissions.map(permission => ({
         ...permission,
-        name: t(permission.key, {
+        name: t($ => $[permission.key], {
           ns: 'permissionKeys',
           defaultValue: permission.name,
         }),

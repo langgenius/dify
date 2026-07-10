@@ -34,7 +34,7 @@ const ChunkDetailModal = ({
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
-  const labelPrefix = isParentChildRetrieval ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
+  const labelPrefix = isParentChildRetrieval ? t($ => $['segment.parentChunk'], { ns: 'datasetDocuments' }) : t($ => $['segment.chunk'], { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
     if (!files)
@@ -67,7 +67,7 @@ const ChunkDetailModal = ({
           }}
         />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+          {t($ => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
         </DialogTitle>
 
         <div className="mt-4 flex">
@@ -126,7 +126,7 @@ const ChunkDetailModal = ({
                 )}
                 {showKeywords && (
                   <div className="flex flex-col gap-y-1">
-                    <div className="text-xs font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
+                    <div className="text-xs font-medium text-text-tertiary uppercase">{t($ => $[`${i18nPrefix}keyword`], { ns: 'datasetHitTesting' })}</div>
                     <div className="flex flex-wrap gap-x-2">
                       {keywords.map(keyword => (
                         <Tag key={keyword} text={keyword} />
@@ -140,7 +140,7 @@ const ChunkDetailModal = ({
 
           {isParentChildRetrieval && (
             <div className="flex-1 pb-6 pl-6">
-              <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
+              <div className="system-xs-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}hitChunks`], { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
               <div className={cn('mt-1 space-y-2', heighClassName)}>
                 {child_chunks.map(item => (
                   <ChildChunksItem key={item.id} payload={item} isShowAll />

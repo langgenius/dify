@@ -32,7 +32,7 @@ const Apps = () => {
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 
-  useDocumentTitle(t('menus.apps', { ns: 'common' }))
+  useDocumentTitle(t($ => $['menus.apps'], { ns: 'common' }))
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<TryAppSelection | undefined>(undefined)

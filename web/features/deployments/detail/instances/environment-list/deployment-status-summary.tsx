@@ -18,7 +18,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t(`status.${status}`)}
+        label={t($ => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -28,7 +28,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}
-        label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}`)}
+        label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}`])}
         variant="status-dot"
       />
     )
@@ -40,7 +40,7 @@ export function DeploymentStatusSummary({ row }: {
       return (
         <DeploymentStatusBadge
           status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}
-          label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}`)}
+          label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}`])}
           variant="status-dot"
         />
       )
@@ -49,7 +49,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t('deployTab.status.deployingRelease', { release: targetRelease.displayName })}
+        label={t($ => $['deployTab.status.deployingRelease'], { release: targetRelease.displayName })}
         variant="status-dot"
       />
     )
@@ -60,7 +60,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t(hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed')}
+        label={t($ => $[hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed'])}
         variant="status-dot"
       />
     )
@@ -71,7 +71,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t(hasRunningRelease ? 'deployTab.status.runningOutOfSync' : `status.${status}`)}
+        label={t($ => $[hasRunningRelease ? 'deployTab.status.runningOutOfSync' : `status.${status}`])}
         variant="status-dot"
       />
     )
@@ -81,7 +81,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t(`status.${status}`)}
+        label={t($ => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -91,7 +91,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t(`status.${status}`)}
+        label={t($ => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -100,7 +100,7 @@ export function DeploymentStatusSummary({ row }: {
   return (
     <DeploymentStatusBadge
       status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}
-      label={t(`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}`)}
+      label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}`])}
       variant="status-dot"
     />
   )

@@ -137,7 +137,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const LoopIndex = useMemo(() => {
     const translationKey = getLoopIndexTextKey(data._runningStatus)
     const text = translationKey
-      ? t(translationKey, { ns: 'workflow', count: data._loopIndex })
+      ? t($ => $[translationKey], { ns: 'workflow', count: data._loopIndex })
       : ''
 
     if (text) {
@@ -174,7 +174,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         <button
           type="button"
           disabled
-          aria-label={t('installPlugin', { ns: 'plugin' })}
+          aria-label={t($ => $['installPlugin'], { ns: 'plugin' })}
           className="pointer-events-auto absolute inset-0 z-30 rounded-2xl border-0 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]"
         />
       )}
@@ -188,7 +188,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         data.type === BlockEnum.DataSource && (
           <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
             <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
-              {t('blocks.datasource', { ns: 'workflow' })}
+              {t($ => $['blocks.datasource'], { ns: 'workflow' })}
             </div>
           </div>
         )

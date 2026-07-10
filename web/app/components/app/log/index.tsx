@@ -123,10 +123,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   return (
     <div className="flex h-full grow flex-col">
       <PageTitle
-        title={t('title', { ns: 'appLog' })}
-        description={t('description', { ns: 'appLog' })}
+        title={t($ => $['title'], { ns: 'appLog' })}
+        description={t($ => $['description'], { ns: 'appLog' })}
         learnMoreHref={docLink('/use-dify/monitor/logs')}
-        learnMoreLabel={t('operation.learnMore', { ns: 'common' })}
+        learnMoreLabel={t($ => $['operation.learnMore'], { ns: 'common' })}
       />
       <div className="flex min-h-0 flex-1 grow flex-col py-4">
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
@@ -143,17 +143,17 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 totalPages={totalPages}
                 onPageChange={page => handlePageChange(page - 1)}
                 labels={{
-                  previous: t('pagination.previous', { ns: 'common' }),
-                  next: t('pagination.next', { ns: 'common' }),
-                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                  previous: t($ => $['pagination.previous'], { ns: 'common' }),
+                  next: t($ => $['pagination.next'], { ns: 'common' }),
+                  editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+                  pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
                 }}
                 pageSize={{
                   value: limit,
                   options: [10, 25, 50],
                   onValueChange: setLimit,
-                  label: t('pagination.perPage', { ns: 'common' }),
-                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                  label: t($ => $['pagination.perPage'], { ns: 'common' }),
+                  ariaLabel: t($ => $['pagination.perPage'], { ns: 'common' }),
                 }}
               />
             )

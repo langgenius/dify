@@ -61,15 +61,15 @@ function ModelSelectorTrigger({
   const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
   const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
   const statusLabel = isModelCompatible && statusI18nKey
-    ? t(statusI18nKey, { ns: 'common' })
-    : t('modelProvider.selector.incompatible', { ns: 'common' })
+    ? t($ => $[statusI18nKey], { ns: 'common' })
+    : t($ => $['modelProvider.selector.incompatible'], { ns: 'common' })
   const tooltipLabel = isModelCompatible && tooltipI18nKey
-    ? t(tooltipI18nKey, { ns: 'common' })
-    : t('modelProvider.selector.incompatibleTip', { ns: 'common' })
+    ? t($ => $[tooltipI18nKey], { ns: 'common' })
+    : t($ => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
-  const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
-  const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
+  const deprecatedStatusLabel = statusLabel || t($ => $['modelProvider.selector.incompatible'], { ns: 'common' })
+  const deprecatedTooltipLabel = tooltipLabel || t($ => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
 
   return (
     <div
@@ -116,7 +116,7 @@ function ModelSelectorTrigger({
         )}
         {isEmpty && (
           <div className="grow truncate text-[13px] text-components-input-text-placeholder">
-            {t('detailPanel.configureModel', { ns: 'plugin' })}
+            {t($ => $['detailPanel.configureModel'], { ns: 'plugin' })}
           </div>
         )}
 

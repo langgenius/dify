@@ -121,16 +121,16 @@ function DropdownContent({
         <AlertDialogContent>
           <div className="p-6 pb-0">
             <AlertDialogTitle className="system-xl-semibold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={doingAction}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

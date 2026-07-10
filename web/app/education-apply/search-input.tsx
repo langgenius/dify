@@ -81,7 +81,7 @@ const SearchInput = ({
         render={(
           <Input
             className="w-full"
-            placeholder={t('form.schoolName.placeholder', { ns: 'education' })}
+            placeholder={t($ => $['form.schoolName.placeholder'], { ns: 'education' })}
             value={value}
             onChange={handleValueChange}
           />

@@ -34,10 +34,10 @@ const EditModal: FC<Props> = ({
     >
       <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-6 text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('feature.conversationHistory.editModal.title', { ns: 'appDebug' })}
+          {t($ => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}
         </DialogTitle>
 
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.userPrefix', { ns: 'appDebug' })}</div>
+        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t($ => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}</div>
         <input
           className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
           value={tempData.user_prefix}
@@ -47,7 +47,7 @@ const EditModal: FC<Props> = ({
           })}
         />
 
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.assistantPrefix', { ns: 'appDebug' })}</div>
+        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t($ => $['feature.conversationHistory.editModal.assistantPrefix'], { ns: 'appDebug' })}</div>
         <input
           className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
           value={tempData.assistant_prefix}
@@ -55,12 +55,12 @@ const EditModal: FC<Props> = ({
             ...tempData,
             assistant_prefix: e.target.value,
           })}
-          placeholder={t('chat.conversationNamePlaceholder', { ns: 'common' }) || ''}
+          placeholder={t($ => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''}
         />
 
         <div className="mt-10 flex justify-end">
-          <Button className="mr-2 shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" className="shrink-0" onClick={() => onSave(tempData)} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
+          <Button className="mr-2 shrink-0" onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button variant="primary" className="shrink-0" onClick={() => onSave(tempData)} loading={saveLoading}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
         </div>
       </DialogContent>
     </Dialog>

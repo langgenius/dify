@@ -121,10 +121,10 @@ const ConfigPromptItem: FC<Props> = ({
 
           {!!payload.role && (
             <Infotip
-              aria-label={t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}
+              aria-label={t($ => $[`${i18nPrefix}.roleDescription.${payload.role}`], { ns: 'workflow' })}
               popupClassName="w-[180px]"
             >
-              {t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.roleDescription.${payload.role}`], { ns: 'workflow' })}
             </Infotip>
           )}
         </div>

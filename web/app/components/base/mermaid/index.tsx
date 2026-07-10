@@ -488,8 +488,8 @@ const Flowchart = (props: FlowchartProps) => {
     )
   }
   const themeToggleTitleByTheme = {
-    light: t('theme.switchDark', { ns: 'app' }),
-    dark: t('theme.switchLight', { ns: 'app' }),
+    light: t($ => $['theme.switchDark'], { ns: 'app' }),
+    dark: t($ => $['theme.switchLight'], { ns: 'app' }),
   } as const
 
   return (
@@ -508,7 +508,7 @@ const Flowchart = (props: FlowchartProps) => {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('mermaid.classic', { ns: 'app' })}</div>
+              <div className="msh-segmented-item-label">{t($ => $['mermaid.classic'], { ns: 'app' })}</div>
             </div>
             <div
               key="handDrawn"
@@ -521,7 +521,7 @@ const Flowchart = (props: FlowchartProps) => {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('mermaid.handDrawn', { ns: 'app' })}</div>
+              <div className="msh-segmented-item-label">{t($ => $['mermaid.handDrawn'], { ns: 'app' })}</div>
             </div>
           </label>
         </div>
@@ -533,7 +533,7 @@ const Flowchart = (props: FlowchartProps) => {
         <div className="px-[26px] py-4">
           <LoadingAnim type="text" />
           <div className="mt-2 text-sm text-gray-500">
-            {t('wait_for_completion', { ns: 'common', defaultValue: 'Waiting for diagram code to complete...' })}
+            {t($ => $['wait_for_completion'], { ns: 'common', defaultValue: 'Waiting for diagram code to complete...' })}
           </div>
         </div>
       )}

@@ -5,11 +5,14 @@ import WorkflowBody from '../workflow-body'
 const mockSubmit = vi.fn()
 const mockSwitchTab = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('@/app/components/base/chat/chat/answer/workflow-process', () => ({
   default: () => <div>workflow-process</div>,

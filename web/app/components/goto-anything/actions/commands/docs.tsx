@@ -33,8 +33,8 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
     const i18n = getI18n()
     return [{
       id: 'doc',
-      title: i18n.t('userProfile.helpCenter', { ns: 'common', lng: locale }),
-      description: i18n.t('gotoAnything.actions.docDesc', { ns: 'app', lng: locale }) || 'Open help documentation',
+      title: i18n.t($ => $['userProfile.helpCenter'], { ns: 'common', lng: locale }),
+      description: i18n.t($ => $['gotoAnything.actions.docDesc'], { ns: 'app', lng: locale }) || 'Open help documentation',
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

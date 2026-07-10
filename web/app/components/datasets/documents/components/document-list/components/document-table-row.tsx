@@ -139,7 +139,7 @@ const DocumentTableRow = React.memo(({
                   )}
                 />
                 <TooltipContent>
-                  {t('list.table.rename', { ns: 'datasetDocuments' })}
+                  {t($ => $['list.table.rename'], { ns: 'datasetDocuments' })}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -155,7 +155,7 @@ const DocumentTableRow = React.memo(({
       <td>{renderCount(doc.word_count)}</td>
       <td>{renderCount(doc.hit_count)}</td>
       <td className="text-[13px] text-text-secondary">
-        {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
+        {formatTime(doc.created_at, t($ => $['dateTimeFormat'], { ns: 'datasetHitTesting' }) as string)}
       </td>
       <td>
         <StatusItem status={doc.display_status} />

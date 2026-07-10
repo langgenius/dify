@@ -75,7 +75,7 @@ const ViewHistory = ({
                 render={(
                   <button
                     type="button"
-                    aria-label={t('common.showRunHistory', { ns: 'workflow' })}
+                    aria-label={t($ => $['common.showRunHistory'], { ns: 'workflow' })}
                     className={cn(
                       'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
                       'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
@@ -83,7 +83,7 @@ const ViewHistory = ({
                     )}
                   >
                     <span className="mr-1 i-custom-vender-line-time-clock-play size-4" />
-                    {t('common.showRunHistory', { ns: 'workflow' })}
+                    {t($ => $['common.showRunHistory'], { ns: 'workflow' })}
                   </button>
                 )}
               />
@@ -97,7 +97,7 @@ const ViewHistory = ({
                     render={(
                       <button
                         type="button"
-                        aria-label={t('common.viewRunHistory', { ns: 'workflow' })}
+                        aria-label={t($ => $['common.viewRunHistory'], { ns: 'workflow' })}
                         className="group flex size-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
                         onClick={() => {
                           onClearLogAndMessageModal?.()
@@ -109,7 +109,7 @@ const ViewHistory = ({
                   />
                 </TooltipTrigger>
                 <TooltipContent>
-                  {t('common.viewRunHistory', { ns: 'workflow' })}
+                  {t($ => $['common.viewRunHistory'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -126,10 +126,10 @@ const ViewHistory = ({
             }}
           >
             <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
-              <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
+              <div className="grow">{t($ => $['common.runHistory'], { ns: 'workflow' })}</div>
               <button
                 type="button"
-                aria-label={t('operation.close', { ns: 'common' })}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
                 className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
                   onClearLogAndMessageModal?.()
@@ -154,7 +154,7 @@ const ViewHistory = ({
                       <div className="py-12">
                         <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim size-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
-                          {t('common.notRunning', { ns: 'workflow' })}
+                          {t($ => $['common.notRunning'], { ns: 'workflow' })}
                         </div>
                       </div>
                     )

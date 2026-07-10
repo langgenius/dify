@@ -31,7 +31,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     if (!payload.webhook_url || payload.webhook_url.trim() === '') {
       return {
         isValid: false,
-        errorMessage: t('nodes.triggerWebhook.validation.webhookUrlRequired', { ns: 'workflow' }),
+        errorMessage: t($ => $['nodes.triggerWebhook.validation.webhookUrlRequired'], { ns: 'workflow' }),
       }
     }
 
@@ -46,7 +46,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
       if (!isValidParameterType(param.type)) {
         return {
           isValid: false,
-          errorMessage: t('nodes.triggerWebhook.validation.invalidParameterType', {
+          errorMessage: t($ => $['nodes.triggerWebhook.validation.invalidParameterType'], {
             ns: 'workflow',
             name: param.name,
             type: param.type,

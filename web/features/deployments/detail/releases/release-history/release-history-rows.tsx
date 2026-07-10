@@ -45,7 +45,7 @@ function ReleaseTitleTooltip({ release }: {
         )}
       />
       <TooltipContent>
-        {t('versions.commitTooltip', { commit: releaseCommit(release) })}
+        {t($ => $['versions.commitTooltip'], { commit: releaseCommit(release) })}
       </TooltipContent>
     </Tooltip>
   )
@@ -81,7 +81,7 @@ function ReleaseSourceCell({ release }: {
   if (!sourceAppId) {
     return (
       <span className="text-text-tertiary">
-        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t('versions.manualDslOption') : '—'}
+        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t($ => $['versions.manualDslOption']) : '—'}
       </span>
     )
   }
@@ -143,7 +143,7 @@ function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
                       <>
                         <span aria-hidden>·</span>
                         <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
-                          <span className="shrink-0">{t('versions.col.sourceApp')}</span>
+                          <span className="shrink-0">{t($ => $['versions.col.sourceApp'])}</span>
                           <ReleaseSourceCell release={release} />
                         </span>
                       </>
@@ -189,12 +189,12 @@ export function ReleaseHistoryRows({ releaseRows, onReleaseDeleted }: {
         <DetailTable className="min-w-[840px]">
           <DetailTableHeader>
             <DetailTableRow>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t('versions.col.release')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t('versions.col.sourceApp')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t('versions.col.createdAt')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t('versions.col.author')}</DetailTableHead>
-              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t('versions.col.deployedTo')}</DetailTableHead>
-              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('versions.col.action')}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>{t($ => $['versions.col.release'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>{t($ => $['versions.col.sourceApp'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt}>{t($ => $['versions.col.createdAt'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author}>{t($ => $['versions.col.author'])}</DetailTableHead>
+              <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>{t($ => $['versions.col.deployedTo'])}</DetailTableHead>
+              <DetailTableHead className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t($ => $['versions.col.action'])}</DetailTableHead>
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>

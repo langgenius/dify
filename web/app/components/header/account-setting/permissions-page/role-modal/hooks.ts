@@ -9,13 +9,13 @@ export const useWorkspacePermissionGroups = () => {
   const groups = useMemo(() => {
     return (workspacePermissionCatalog?.groups || []).map(group => ({
       ...group,
-      group_name: t(`group.${group.group_key}`, {
+      group_name: t($ => $[`group.${group.group_key}`], {
         ns: 'permission',
         defaultValue: group.group_name,
       }),
       permissions: group.permissions.map(permission => ({
         ...permission,
-        name: t(permission.key, {
+        name: t($ => $[permission.key], {
           ns: 'permissionKeys',
           defaultValue: permission.name,
         }),

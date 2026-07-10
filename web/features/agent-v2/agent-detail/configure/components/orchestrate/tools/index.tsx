@@ -335,7 +335,7 @@ function AddToolMenu({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={(
-          <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />
+          <ConfigureSectionAddButton ariaLabel={t($ => $['agentDetail.configure.tools.add'])} />
         )}
       />
       <PopoverContent
@@ -350,16 +350,16 @@ function AddToolMenu({
               <>
                 <AddToolMenuItem
                   iconClassName="i-ri-box-3-line"
-                  label={t('agentDetail.configure.tools.addMenu.tool.label')}
-                  description={t('agentDetail.configure.tools.addMenu.tool.description')}
+                  label={t($ => $['agentDetail.configure.tools.addMenu.tool.label'])}
+                  description={t($ => $['agentDetail.configure.tools.addMenu.tool.description'])}
                   onClick={openToolPicker}
                 />
                 {ENABLE_AGENT_CLI_TOOLS && (
                   <AddToolMenuItem
                     iconClassName="i-ri-terminal-box-line"
-                    label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
-                    badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
-                    description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
+                    label={t($ => $['agentDetail.configure.tools.addMenu.cliTool.label'])}
+                    badge={t($ => $['agentDetail.configure.tools.addMenu.cliTool.badge'])}
+                    description={t($ => $['agentDetail.configure.tools.addMenu.cliTool.description'])}
                     onClick={openCliToolDialog}
                   />
                 )}
@@ -479,7 +479,7 @@ export function AgentTools() {
     'cli',
     ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => { },
   )
-  const toolsTip = t('agentDetail.configure.tools.tip')
+  const toolsTip = t($ => $['agentDetail.configure.tools.tip'])
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetTool = settingTarget
     ? tools.find(tool => tool.kind === 'provider' && tool.id === settingTarget.toolId)
@@ -492,7 +492,7 @@ export function AgentTools() {
   return (
     <>
       <ConfigureSection
-        label={t('agentDetail.configure.tools.label')}
+        label={t($ => $['agentDetail.configure.tools.label'])}
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
@@ -512,8 +512,8 @@ export function AgentTools() {
         {displayTools.length === 0
           ? (
               <ConfigureSectionEmpty
-                title={t('agentDetail.configure.tools.empty.title')}
-                description={t('agentDetail.configure.tools.empty.description')}
+                title={t($ => $['agentDetail.configure.tools.empty.title'])}
+                description={t($ => $['agentDetail.configure.tools.empty.description'])}
               />
             )
           : displayTools.map(tool => (

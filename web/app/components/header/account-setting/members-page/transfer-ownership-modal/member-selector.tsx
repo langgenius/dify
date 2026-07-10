@@ -58,7 +58,7 @@ const MemberSelector: FC<Props> = ({
             className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           >
             {!currentValue && (
-              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t($ => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}</div>
             )}
             {currentValue && (
               <>

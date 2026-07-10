@@ -105,21 +105,21 @@ const Card = ({
                 <div className="truncate system-md-medium text-text-primary">
                   {getLocalizedText(label)}
                 </div>
-                {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-                {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+                {isPartner && <Partner className="ml-0.5 size-4" text={t($ => $['marketplace.partnerTip'], { ns: 'plugin' })} />}
+                {verified && <Verified className="ml-0.5 size-4" text={t($ => $['marketplace.verifiedTip'], { ns: 'plugin' })} />}
                 {titleLeft}
               </div>
               <div className="flex h-4 min-w-0 items-center gap-2 system-xs-regular text-text-tertiary">
                 {org && (
                   <div className="flex min-w-0 items-center gap-1">
-                    <span className="shrink-0 lowercase">{t('author', { ns: 'tools' })}</span>
+                    <span className="shrink-0 lowercase">{t($ => $['author'], { ns: 'tools' })}</span>
                     <span className="truncate">{org}</span>
                   </div>
                 )}
                 {org && payload.install_count !== undefined && <span className="shrink-0 text-text-quaternary">·</span>}
                 {payload.install_count !== undefined && (
                   <span className="shrink-0">
-                    {t('install', { ns: 'plugin', num: formatNumber(payload.install_count) })}
+                    {t($ => $['install'], { ns: 'plugin', num: formatNumber(payload.install_count) })}
                   </span>
                 )}
               </div>
@@ -146,8 +146,8 @@ const Card = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {isPartner && <Partner className="ml-0.5 size-4" text={t($ => $['marketplace.partnerTip'], { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 size-4" text={t($ => $['marketplace.verifiedTip'], { ns: 'plugin' })} />}
               {titleLeft}
               {' '}
               {/* This can be version badge */}
@@ -171,7 +171,7 @@ const Card = ({
           <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
             <span aria-hidden className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
             <p className="z-10 grow system-xs-regular text-text-secondary">
-              {t('installModal.installWarning', { ns: 'plugin' })}
+              {t($ => $['installModal.installWarning'], { ns: 'plugin' })}
             </p>
           </div>
         )}

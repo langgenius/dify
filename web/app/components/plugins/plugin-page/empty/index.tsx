@@ -93,9 +93,9 @@ const Empty = ({
 
   const text = useMemo(() => {
     if (pluginList?.plugins.length === 0)
-      return t('list.noInstalled', { ns: 'plugin' })
+      return t($ => $['list.noInstalled'], { ns: 'plugin' })
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
-      return t('list.notFound', { ns: 'plugin' })
+      return t($ => $['list.notFound'], { ns: 'plugin' })
   }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
   const installMethods = useMemo<InstallMethod[]>(() => {
@@ -104,13 +104,13 @@ const Empty = ({
 
     const methods: InstallMethod[] = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, integrationIcon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({ icon: MagicBox, integrationIcon: MarketplaceInstallSourceIcon, text: t($ => $['source.marketplace'], { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only)
       return methods
 
-    methods.push({ icon: Github, integrationIcon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-    methods.push({ icon: FileZip, integrationIcon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    methods.push({ icon: Github, integrationIcon: GithubInstallSourceIcon, text: t($ => $['source.github'], { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: FileZip, integrationIcon: LocalPackageInstallSourceIcon, text: t($ => $['source.local'], { ns: 'plugin' }), action: 'local' })
     return methods
   }, [canInstall, plugin_installation_permission, enable_marketplace, t])
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
@@ -126,11 +126,11 @@ const Empty = ({
     contentPaddingClassName,
   )
   const emptyText = isIntegrationsTrigger
-    ? t('list.noTriggerFound', { ns: 'plugin' })
+    ? t($ => $['list.noTriggerFound'], { ns: 'plugin' })
     : isIntegrationsAgentStrategy
-      ? t('list.noAgentStrategyFound', { ns: 'plugin' })
+      ? t($ => $['list.noAgentStrategyFound'], { ns: 'plugin' })
       : isIntegrationsExtension
-        ? t('list.noExtensionFound', { ns: 'plugin' })
+        ? t($ => $['list.noExtensionFound'], { ns: 'plugin' })
         : text
   const placeholderItemCount = isIntegrationsCategory ? 14 : 20
 
@@ -235,7 +235,7 @@ const Empty = ({
             className="flex shrink-0 items-center justify-center gap-2 px-6 py-4 text-text-quaternary"
           >
             <DropHintInstallSourceIcon />
-            <span className="system-xs-regular">{t('installModal.dropIntegrationToInstall', { ns: 'plugin' })}</span>
+            <span className="system-xs-regular">{t($ => $['installModal.dropIntegrationToInstall'], { ns: 'plugin' })}</span>
           </div>
         )}
         {selectedAction === 'github' && (

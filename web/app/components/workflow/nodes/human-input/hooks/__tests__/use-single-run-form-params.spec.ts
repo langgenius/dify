@@ -6,6 +6,7 @@ import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseAppStore = vi.hoisted(() => vi.fn())
@@ -91,7 +92,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     }
 
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseAppStore.mockImplementation((selector: (state: { appDetail?: { id?: string, mode?: AppModeEnum } }) => unknown) => selector({ appDetail }))
     mockUseNodeCrud.mockImplementation(() => ({

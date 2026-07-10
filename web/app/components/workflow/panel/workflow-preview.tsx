@@ -120,7 +120,7 @@ const WorkflowPreview = () => {
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={() => handleCancelDebugAndPreviewPanel()}
         >
@@ -137,7 +137,7 @@ const WorkflowPreview = () => {
               )}
               onClick={() => switchTab('INPUT')}
             >
-              {t('input', { ns: 'runLog' })}
+              {t($ => $['input'], { ns: 'runLog' })}
             </div>
           )}
           <div
@@ -152,7 +152,7 @@ const WorkflowPreview = () => {
               switchTab('RESULT')
             }}
           >
-            {t('result', { ns: 'runLog' })}
+            {t($ => $['result'], { ns: 'runLog' })}
           </div>
           <div
             className={cn(
@@ -166,7 +166,7 @@ const WorkflowPreview = () => {
               switchTab('DETAIL')
             }}
           >
-            {t('detail', { ns: 'runLog' })}
+            {t($ => $['detail'], { ns: 'runLog' })}
           </div>
           <div
             className={cn(
@@ -180,7 +180,7 @@ const WorkflowPreview = () => {
               switchTab('TRACING')
             }}
           >
-            {t('tracing', { ns: 'runLog' })}
+            {t($ => $['tracing'], { ns: 'runLog' })}
           </div>
         </div>
         <div className={cn(
@@ -232,11 +232,11 @@ const WorkflowPreview = () => {
                       copy(content)
                     else
                       copy(JSON.stringify(content))
-                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                    toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                   }}
                 >
                   <span className="i-ri-clipboard-line size-3.5" />
-                  <div>{t('operation.copy', { ns: 'common' })}</div>
+                  <div>{t($ => $['operation.copy'], { ns: 'common' })}</div>
                 </Button>
               )}
             </div>

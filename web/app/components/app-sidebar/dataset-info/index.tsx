@@ -58,11 +58,11 @@ const DatasetInfo = ({
               </div>
               <div className="flex w-full min-w-0 items-center gap-2 system-2xs-medium-uppercase text-text-tertiary">
                 {isExternalProvider && (
-                  <span className="truncate">{t('externalTag', { ns: 'dataset' })}</span>
+                  <span className="truncate">{t($ => $['externalTag'], { ns: 'dataset' })}</span>
                 )}
                 {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                   <>
-                    <span className="shrink-0 truncate">{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
+                    <span className="shrink-0 truncate">{t($ => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}</span>
                     <span className="min-w-0 truncate">{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                   </>
                 )}

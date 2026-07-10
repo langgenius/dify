@@ -29,7 +29,7 @@ const List = () => {
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
-  useDocumentTitle(t('knowledge', { ns: 'dataset' }))
+  useDocumentTitle(t($ => $['knowledge'], { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -117,7 +117,7 @@ const List = () => {
               />
               <Datasets
                 datasetList={datasetListQuery.data}
-                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
+                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t($ => $['filterEmpty.noKnowledge'], { ns: 'dataset' })} /> : undefined}
                 fetchNextPage={datasetListQuery.fetchNextPage}
                 hasNextPage={datasetListQuery.hasNextPage}
                 isFetching={datasetListQuery.isFetching}

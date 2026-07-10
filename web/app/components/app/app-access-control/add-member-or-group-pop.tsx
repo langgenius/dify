@@ -107,14 +107,14 @@ export default function AddMemberOrGroupDialog() {
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('operation.add', { ns: 'common' })}
+        aria-label={t($ => $['operation.add'], { ns: 'common' })}
         icon={false}
         size="small"
         className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
           <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
-          <span className="shrink-0">{t('operation.add', { ns: 'common' })}</span>
+          <span className="shrink-0">{t($ => $['operation.add'], { ns: 'common' })}</span>
         </span>
       </ComboboxTrigger>
       <ComboboxContent
@@ -127,8 +127,8 @@ export default function AddMemberOrGroupDialog() {
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
               <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
               <ComboboxInput
-                aria-label={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' })}
-                placeholder={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' })}
+                aria-label={t($ => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'], { ns: 'app' })}
+                placeholder={t($ => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'], { ns: 'app' })}
                 className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
             </ComboboxInputGroup>
@@ -158,7 +158,7 @@ export default function AddMemberOrGroupDialog() {
                       )
                     : (
                         <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
-                          {t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}
+                          {t($ => $['accessControlDialog.operateGroupAndMember.noResult'], { ns: 'app' })}
                         </ComboboxEmpty>
                       )}
                 </>
@@ -230,11 +230,11 @@ function SelectedGroupsBreadCrumb() {
               className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleReset}
             >
-              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
+              {t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
             </button>
           )
         : (
-            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+            <span className="system-xs-regular text-text-tertiary">{t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}</span>
           )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
         const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
@@ -297,7 +297,7 @@ function GroupItem({ group, subject }: GroupItemProps) {
         onPointerDown={event => event.preventDefault()}
         onClick={handleExpandClick}
       >
-        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
+        <span className="px-[3px]">{t($ => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}</span>
         <RiArrowRightSLine className="size-4" aria-hidden="true" />
       </Button>
     </div>
@@ -326,7 +326,7 @@ function MemberItem({ member, subject }: MemberItemProps) {
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
             (
-            {t('you', { ns: 'common' })}
+            {t($ => $['you'], { ns: 'common' })}
             )
           </span>
         )}

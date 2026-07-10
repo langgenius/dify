@@ -85,7 +85,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
             {runState.isStopping
               ? <span aria-hidden className="mr-[5px] i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
               : <span aria-hidden className="mr-[5px] i-ri-stop-circle-fill h-3.5 w-3.5" />}
-            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+            <span className="text-xs font-normal">{t($ => $['operation.stopResponding'], { ns: 'appDebug' })}</span>
           </Button>
         </div>
       )}

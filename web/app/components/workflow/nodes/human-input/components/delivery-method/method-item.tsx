@@ -76,12 +76,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
       return ''
     }
     if (method.config?.debug_mode) {
-      return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`, { ns: 'workflow', email })
+      return t($ => $[`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`], { ns: 'workflow', email })
     }
-    return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
+    return t($ => $[`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`], { ns: 'workflow' })
   }, [method.type, method.config?.debug_mode, t, email])
-  const configureLabel = t('common.configure', { ns: 'workflow' })
-  const removeLabel = t('operation.remove', { ns: 'common' })
+  const configureLabel = t($ => $['common.configure'], { ns: 'workflow' })
+  const removeLabel = t($ => $['operation.remove'], { ns: 'common' })
 
   const jumpToEmailConfigModal = useCallback(() => {
     setShowTestEmailModal(false)
@@ -177,7 +177,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               onClick={() => setShowEmailModal(true)}
               disabled={readonly}
             >
-              {t(`${i18nPrefix}.deliveryMethod.notConfigured`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.deliveryMethod.notConfigured`], { ns: 'workflow' })}
               <StatusDot status="warning" className="ml-1" />
             </Button>
           )}

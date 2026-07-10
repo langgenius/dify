@@ -72,10 +72,10 @@ export function WebAppAccessCard({
             }
           : agentDetail,
       )
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     },
   }))
   const resetAccessTokenMutation = useMutation(consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
@@ -96,10 +96,10 @@ export function WebAppAccessCard({
           }
         },
       )
-      toast.success(tCommon('actionMsg.generatedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.generatedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.generatedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.generatedUnsuccessfully']))
     },
   }))
   const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
@@ -163,23 +163,23 @@ export function WebAppAccessCard({
           : agentDetail,
       )
       await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     }
     catch {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     }
   }
 
   return (
     <AccessSurfaceCard
-      title={t('agentDetail.access.webApp.title')}
+      title={t($ => $['agentDetail.access.webApp.title'])}
       icon="i-ri-window-line"
       iconClassName="bg-state-accent-solid text-text-primary-on-surface"
-      endpointLabel={t('agentDetail.access.webApp.accessUrl')}
+      endpointLabel={t($ => $['agentDetail.access.webApp.accessUrl'])}
       endpoint={webAppUrl}
       enabled={isEnabled}
       onEnabledChange={handleEnabledChange}
-      copyLabel={t('agentDetail.access.copyAccessUrl')}
+      copyLabel={t($ => $['agentDetail.access.copyAccessUrl'])}
       badge={showSsoBadge ? <SsoBadge /> : undefined}
       endpointActions={webAppUrl
         ? (
@@ -190,7 +190,7 @@ export function WebAppAccessCard({
                 variant="ghost"
                 size="small"
                 className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
-                aria-label={t('agentDetail.access.webApp.refreshUrl')}
+                aria-label={t($ => $['agentDetail.access.webApp.refreshUrl'])}
                 disabled={!canManageWebApp || isBusy}
                 onClick={handleRefreshUrl}
               >
@@ -208,17 +208,17 @@ export function WebAppAccessCard({
               href={webAppUrl}
               target="_blank"
               rel="noreferrer"
-              aria-label={t('agentDetail.access.webApp.actions.launch')}
+              aria-label={t($ => $['agentDetail.access.webApp.actions.launch'])}
               className={accessSurfaceActionClassName}
             >
               <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
+              {t($ => $['agentDetail.access.webApp.actions.launch'])}
             </a>
           )
         : (
             <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
               <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
+              {t($ => $['agentDetail.access.webApp.actions.launch'])}
             </Button>
           )}
       <Button
@@ -229,7 +229,7 @@ export function WebAppAccessCard({
         onClick={() => setShowEmbeddedModal(true)}
       >
         <span aria-hidden className="i-ri-window-line size-4" />
-        {t('agentDetail.access.webApp.actions.embedded')}
+        {t($ => $['agentDetail.access.webApp.actions.embedded'])}
       </Button>
       <Button
         variant="secondary"
@@ -239,7 +239,7 @@ export function WebAppAccessCard({
         onClick={() => setShowCustomizeModal(true)}
       >
         <span aria-hidden className="i-ri-paint-brush-line size-4" />
-        {t('agentDetail.access.webApp.actions.customize')}
+        {t($ => $['agentDetail.access.webApp.actions.customize'])}
       </Button>
       <Button
         variant="secondary"
@@ -249,7 +249,7 @@ export function WebAppAccessCard({
         onClick={() => setShowSettingsModal(true)}
       >
         <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-        {t('agentDetail.access.webApp.actions.settings')}
+        {t($ => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
       {settingsAppInfo && (
         <SettingsModal
@@ -363,7 +363,7 @@ function SsoBadge() {
   return (
     <span className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-sm border border-divider-deep px-1.5 system-2xs-semibold-uppercase text-text-tertiary">
       <span aria-hidden className="i-ri-shield-check-line size-3" />
-      {t('agentDetail.access.webApp.ssoEnabled')}
+      {t($ => $['agentDetail.access.webApp.ssoEnabled'])}
     </span>
   )
 }

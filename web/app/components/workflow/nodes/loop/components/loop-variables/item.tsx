@@ -28,7 +28,7 @@ const Item = ({
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }))
+      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: t($ => $['env.modal.name'], { ns: 'workflow' }) }))
       return false
     }
     return true
@@ -74,7 +74,7 @@ const Item = ({
             onChange={handleUpdateItemLabel}
             onBlur={e => checkVariableName(e.target.value)}
             autoFocus={!item.label}
-            placeholder={t('nodes.loop.variableName', { ns: 'workflow' })}
+            placeholder={t($ => $['nodes.loop.variableName'], { ns: 'workflow' })}
           />
           <VariableTypeSelect
             value={item.var_type}

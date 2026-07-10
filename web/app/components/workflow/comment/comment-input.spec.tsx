@@ -26,11 +26,14 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: stableT,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((...args: Parameters<typeof stableT>) => stableT(...args)),
+    }),
+  })
+})
 
 vi.mock('@/context/account-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')

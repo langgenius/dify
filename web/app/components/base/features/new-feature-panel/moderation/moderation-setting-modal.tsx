@@ -95,15 +95,15 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const providers: Provider[] = [
     {
       key: 'openai_moderation',
-      name: t('feature.moderation.modal.provider.openai', { ns: 'appDebug' }),
+      name: t($ => $['feature.moderation.modal.provider.openai'], { ns: 'appDebug' }),
     },
     {
       key: 'keywords',
-      name: t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }),
+      name: t($ => $['feature.moderation.modal.provider.keywords'], { ns: 'appDebug' }),
     },
     {
       key: 'api',
-      name: t('apiBasedExtension.selector.title', { ns: 'common' }),
+      name: t($ => $['apiBasedExtension.selector.title'], { ns: 'common' }),
     },
     ...(
       codeBasedExtensionList
@@ -226,36 +226,36 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
 
     if (!currentLocaleData.config?.inputs_config?.enabled && !currentLocaleData.config?.outputs_config?.enabled) {
-      toast.error(t('feature.moderation.modal.content.condition', { ns: 'appDebug' }))
+      toast.error(t($ => $['feature.moderation.modal.content.condition'], { ns: 'appDebug' }))
       return
     }
 
     if (currentLocaleData.type === 'keywords' && !currentLocaleData.config.keywords) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
+      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
       return
     }
 
     if (currentLocaleData.type === 'api' && !currentLocaleData.config.api_based_extension_id) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
+      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
       return
     }
 
     if (systemTypes.findIndex(t => t === currentLocaleData.type) < 0 && providerForSave?.form_schema) {
       for (let i = 0; i < providerForSave.form_schema.length; i++) {
         if (!currentLocaleData.config?.[providerForSave.form_schema[i]!.variable] && providerForSave.form_schema[i]!.required) {
-          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? providerForSave.form_schema[i]!.label['en-US'] : providerForSave.form_schema[i]!.label['zh-Hans'] }))
+          toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? providerForSave.form_schema[i]!.label['en-US'] : providerForSave.form_schema[i]!.label['zh-Hans'] }))
           return
         }
       }
     }
 
     if (currentLocaleData.config.inputs_config?.enabled && !currentLocaleData.config.inputs_config.preset_response && currentLocaleData.type !== 'api') {
-      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
+      toast.error(t($ => $['feature.moderation.modal.content.errorMessage'], { ns: 'appDebug' }))
       return
     }
 
     if (currentLocaleData.config.outputs_config?.enabled && !currentLocaleData.config.outputs_config.preset_response && currentLocaleData.type !== 'api') {
-      toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
+      toast.error(t($ => $['feature.moderation.modal.content.errorMessage'], { ns: 'appDebug' }))
       return
     }
 
@@ -267,11 +267,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       <DialogContent className="mt-14! w-[600px]! max-w-none! overflow-hidden border-[0.5px]! border-components-panel-border! p-0! text-left align-middle">
         <div className="flex items-start gap-2 px-6 pt-6 pr-14 pb-3">
           <div className="title-2xl-semi-bold text-text-primary">
-            {t('feature.moderation.modal.title', { ns: 'appDebug' })}
+            {t($ => $['feature.moderation.modal.title'], { ns: 'appDebug' })}
           </div>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={onCancel}
           >
@@ -281,7 +281,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         <div className="flex flex-col gap-4 px-6 py-3">
           <div className="flex flex-col gap-1">
             <div className="system-sm-medium text-text-secondary">
-              {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
+              {t($ => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
             </div>
             <div className="grid grid-cols-3 gap-2">
               {providers.map(provider => (
@@ -309,40 +309,40 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
                 <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
                 <div className="flex items-center text-xs font-medium text-gray-700">
-                  {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
+                  {t($ => $['feature.moderation.modal.openaiNotConfig.before'], { ns: 'appDebug' })}
                   <button
                     type="button"
                     className="cursor-pointer text-primary-600"
                     onClick={handleOpenSettingsModal}
                   >
                     &nbsp;
-                    {t('settings.provider', { ns: 'common' })}
+                    {t($ => $['settings.provider'], { ns: 'common' })}
                     &nbsp;
                   </button>
-                  {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
+                  {t($ => $['feature.moderation.modal.openaiNotConfig.after'], { ns: 'appDebug' })}
                 </div>
               </div>
             )}
           </div>
           {localeData.type === 'keywords' && (
             <div className="flex flex-col gap-1">
-              <div className="system-sm-medium text-text-secondary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
-              <div className="system-xs-regular text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
+              <div className="system-sm-medium text-text-secondary">{t($ => $['feature.moderation.modal.provider.keywords'], { ns: 'appDebug' })}</div>
+              <div className="system-xs-regular text-text-tertiary">{t($ => $['feature.moderation.modal.keywords.tip'], { ns: 'appDebug' })}</div>
               {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
               <div className="relative h-[88px]">
                 <Textarea
-                  aria-label={t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }) as string}
+                  aria-label={t($ => $['feature.moderation.modal.provider.keywords'], { ns: 'appDebug' }) as string}
                   value={localeData.config?.keywords || ''}
                   onValueChange={handleDataKeywordsChange}
                   className="size-full resize-none pb-8"
-                  placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
+                  placeholder={t($ => $['feature.moderation.modal.keywords.placeholder'], { ns: 'appDebug' }) || ''}
                 />
                 <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
                   <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>
                   /
                   <span className="text-text-tertiary">
                     100
-                    {t('feature.moderation.modal.keywords.line', { ns: 'appDebug' })}
+                    {t($ => $['feature.moderation.modal.keywords.line'], { ns: 'appDebug' })}
                   </span>
                 </div>
               </div>
@@ -351,7 +351,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           {localeData.type === 'api' && (
             <div className="flex flex-col gap-1">
               <div className="flex h-6 items-center justify-between">
-                <div className="system-sm-medium text-text-secondary">{t('apiBasedExtension.selector.title', { ns: 'common' })}</div>
+                <div className="system-sm-medium text-text-secondary">{t($ => $['apiBasedExtension.selector.title'], { ns: 'common' })}</div>
                 <a
                   href={docLink('/use-dify/workspace/api-extension/api-extension')}
                   target="_blank"
@@ -359,7 +359,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                   className="group flex items-center system-xs-regular text-text-tertiary hover:text-primary-600"
                 >
                   <span className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-primary-600" />
-                  {t('apiBasedExtension.link', { ns: 'common' })}
+                  {t($ => $['apiBasedExtension.link'], { ns: 'common' })}
                 </a>
               </div>
               <ApiBasedExtensionSelector
@@ -378,24 +378,24 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               />
             )}
           <div className="flex flex-col gap-2">
-            <LabeledDivider>{t('feature.moderation.title', { ns: 'appDebug' })}</LabeledDivider>
+            <LabeledDivider>{t($ => $['feature.moderation.title'], { ns: 'appDebug' })}</LabeledDivider>
             <ModerationContent
               key={`inputs-${localeData.type}-${localeData.config?.inputs_config?.preset_response ?? ''}`}
-              title={t('feature.moderation.modal.content.input', { ns: 'appDebug' }) || ''}
+              title={t($ => $['feature.moderation.modal.content.input'], { ns: 'appDebug' }) || ''}
               config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
               onConfigChange={config => handleDataContentChange('inputs_config', config)}
-              info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+              info={(localeData.type === 'api' && t($ => $['feature.moderation.modal.content.fromApi'], { ns: 'appDebug' })) || ''}
               showPreset={localeData.type !== 'api'}
             />
             <ModerationContent
               key={`outputs-${localeData.type}-${localeData.config?.outputs_config?.preset_response ?? ''}`}
-              title={t('feature.moderation.modal.content.output', { ns: 'appDebug' }) || ''}
+              title={t($ => $['feature.moderation.modal.content.output'], { ns: 'appDebug' }) || ''}
               config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
               onConfigChange={config => handleDataContentChange('outputs_config', config)}
-              info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+              info={(localeData.type === 'api' && t($ => $['feature.moderation.modal.content.fromApi'], { ns: 'appDebug' })) || ''}
               showPreset={localeData.type !== 'api'}
             />
-            <div className="py-0.5 system-xs-regular text-text-tertiary">{t('feature.moderation.modal.content.condition', { ns: 'appDebug' })}</div>
+            <div className="py-0.5 system-xs-regular text-text-tertiary">{t($ => $['feature.moderation.modal.content.condition'], { ns: 'appDebug' })}</div>
           </div>
         </div>
         <div className="flex h-[76px] items-center justify-end gap-2 px-6 pt-5 pb-6">
@@ -404,7 +404,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             size="medium"
             className="min-w-[72px]"
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
@@ -413,7 +413,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             disabled={localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured}
             className="min-w-[72px]"
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

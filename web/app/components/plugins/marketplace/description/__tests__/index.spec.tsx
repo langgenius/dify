@@ -35,19 +35,22 @@ const commonTranslations: Record<string, string> = {
 }
 
 // Mock i18n hooks
-vi.mock('#i18n', () => ({
-  useLocale: vi.fn(() => mockDefaultLocale),
-  useTranslation: vi.fn((ns: string) => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const namespace = options?.ns ?? ns
-      if (namespace === 'plugin')
-        return pluginTranslations[key] || key
-      if (namespace === 'common')
-        return commonTranslations[key] || key
-      return key
-    },
-  })),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useLocale: vi.fn(() => mockDefaultLocale),
+    useTranslation: vi.fn((ns: string) => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        const namespace = options?.ns ?? ns
+        if (namespace === 'plugin')
+          return pluginTranslations[key] || key
+        if (namespace === 'common')
+          return commonTranslations[key] || key
+        return key
+      }),
+    })),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,

@@ -40,10 +40,10 @@ function WorkspaceSwitchControls({
   const { t } = useTranslation()
   const [searchVisible, setSearchVisible] = useState(false)
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
-  const sortMenuLabel = t(workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu'), { ns: 'common' })
+  const sortMenuLabel = t($ => $[workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu')], { ns: 'common' })
   const sortOptions: Array<{ value: WorkspaceSort, label: string }> = [
-    { value: 'lastOpened', label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened'), { ns: 'common' }) },
-    { value: 'createdAt', label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime'), { ns: 'common' }) },
+    { value: 'lastOpened', label: t($ => $[workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened')], { ns: 'common' }) },
+    { value: 'createdAt', label: t($ => $[workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime')], { ns: 'common' }) },
   ]
 
   return (
@@ -51,7 +51,7 @@ function WorkspaceSwitchControls({
       <div className="flex items-start gap-0.5 py-1 pr-2 pl-3">
         <div className="flex min-w-0 flex-1 items-center justify-center py-1">
           <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase text-text-tertiary">
-            {t('userProfile.workspace', { ns: 'common' })}
+            {t($ => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
         <DropdownMenu open={sortMenuOpen} onOpenChange={setSortMenuOpen}>
@@ -93,7 +93,7 @@ function WorkspaceSwitchControls({
         </DropdownMenu>
         <button
           type="button"
-          aria-label={t('operation.search', { ns: 'common' })}
+          aria-label={t($ => $['operation.search'], { ns: 'common' })}
           className={cn(
             workspaceSwitchActionButtonClassName,
             searchVisible && 'bg-state-base-hover text-text-secondary',
@@ -110,7 +110,7 @@ function WorkspaceSwitchControls({
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
-            placeholder={t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), { ns: 'common' })}
+            placeholder={t($ => $[workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder')], { ns: 'common' })}
             autoFocus
           />
         </div>

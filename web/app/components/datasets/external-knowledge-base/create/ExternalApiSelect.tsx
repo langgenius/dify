@@ -74,7 +74,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               </div>
             )
           : (
-              <span className="system-sm-regular text-components-input-text-placeholder">{t('selectExternalKnowledgeAPI.placeholder', { ns: 'dataset' })}</span>
+              <span className="system-sm-regular text-components-input-text-placeholder">{t($ => $['selectExternalKnowledgeAPI.placeholder'], { ns: 'dataset' })}</span>
             )}
         <RiArrowDownSLine className={`size-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
@@ -99,7 +99,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               onClick={handleAddNewAPI}
             >
               <RiAddLine className="size-4 text-text-secondary" />
-              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
+              <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">{t($ => $['createNewExternalAPI'], { ns: 'dataset' })}</span>
             </div>
           </div>
         </div>

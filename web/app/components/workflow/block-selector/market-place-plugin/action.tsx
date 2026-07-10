@@ -63,7 +63,7 @@ const OperationDropdown: FC<Props> = ({
         render={(
           <ActionButton
             className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t($ => $['operation.more'], { ns: 'common' })}
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-components-button-secondary-accent-text" />
           </ActionButton>
@@ -75,7 +75,7 @@ const OperationDropdown: FC<Props> = ({
         popupClassName="min-w-[176px]"
       >
         <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
-          {t('operation.download', { ns: 'common' })}
+          {t($ => $['operation.download'], { ns: 'common' })}
         </DropdownMenuItem>
         <DropdownMenuLinkItem
           className="system-md-regular"
@@ -83,7 +83,7 @@ const OperationDropdown: FC<Props> = ({
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t('operation.viewDetails', { ns: 'common' })}
+          {t($ => $['operation.viewDetails'], { ns: 'common' })}
         </DropdownMenuLinkItem>
       </DropdownMenuContent>
     </DropdownMenu>

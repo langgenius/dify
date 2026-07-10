@@ -68,7 +68,7 @@ const PluginsPicker: FC<Props> = ({
         ? (
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1 system-xs-medium text-text-tertiary">
-                {t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, {
+                {t($ => $[`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`], {
                   ns: 'plugin',
                   count: visiblePlugins.length,
                   num: visiblePlugins.length,
@@ -79,7 +79,7 @@ const PluginsPicker: FC<Props> = ({
                 className="shrink-0 cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-tertiary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={handleClear}
               >
-                {t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}
+                {t($ => $[`${i18nPrefix}.operation.clearAll`], { ns: 'plugin' })}
               </button>
             </div>
           )
@@ -98,7 +98,7 @@ const PluginsPicker: FC<Props> = ({
         trigger={(
           <Button className="h-6 w-full gap-1" size="small" variant="secondary-accent">
             <RiAddLine className="size-3.5" />
-            {t(`${i18nPrefix}.operation.select`, { ns: 'plugin' })}
+            {t($ => $[`${i18nPrefix}.operation.select`], { ns: 'plugin' })}
           </Button>
         )}
         value={visiblePlugins}

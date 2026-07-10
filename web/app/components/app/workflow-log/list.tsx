@@ -135,18 +135,18 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={handleSort}
               >
-                {t('table.header.startTime', { ns: 'appLog' })}
+                {t($ => $['table.header.startTime'], { ns: 'appLog' })}
                 <ArrowDownIcon
                   className={cn('ml-0.5 size-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')}
                   aria-hidden="true"
                 />
               </button>
             </td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.runtime', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.tokens', { ns: 'appLog' })}</td>
-            <td className={cn('bg-background-section-burn py-1.5 pl-3 whitespace-nowrap', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
-            {isWorkflow && <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.status'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.runtime'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.tokens'], { ns: 'appLog' })}</td>
+            <td className={cn('bg-background-section-burn py-1.5 pl-3 whitespace-nowrap', !isWorkflow ? 'rounded-r-lg' : '')}>{t($ => $['table.header.user'], { ns: 'appLog' })}</td>
+            {isWorkflow && <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.triggered_from'], { ns: 'appLog' })}</td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -168,7 +168,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     </div>
                   )}
                 </td>
-                <td className="w-[180px] p-3 pr-2">{formatTime(log.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                <td className="w-[180px] p-3 pr-2">{formatTime(log.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</td>
                 <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
                 <td className="p-3 pr-2">
                   <div className={cn(

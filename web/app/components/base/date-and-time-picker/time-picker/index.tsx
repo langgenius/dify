@@ -188,7 +188,7 @@ const TimePicker = ({
 
   const placeholderDate = isOpen && isDayjsObject(selectedTime)
     ? selectedTime.format(timeFormat)
-    : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
+    : (placeholder || t($ => $['defaultPlaceholder'], { ns: 'time' }))
 
   const inputElem = (
     <input
@@ -230,7 +230,7 @@ const TimePicker = ({
                 <button
                   type="button"
                   className={cn('hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block')}
-                  aria-label={t('operation.clear', { ns: 'common' })}
+                  aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                   onClick={handleClear}
                 >
                   <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />

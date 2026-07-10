@@ -26,7 +26,7 @@ const KeyWordNumber = ({
   onKeywordNumberChange,
 }: KeyWordNumberProps) => {
   const { t } = useTranslation()
-  const label = t('form.numberOfKeywords', { ns: 'datasetSettings' })
+  const label = t($ => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
   const handleInputChange = useCallback((value: number | null) => {
     onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)

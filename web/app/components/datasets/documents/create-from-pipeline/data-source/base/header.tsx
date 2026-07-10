@@ -21,7 +21,7 @@ const Header = ({
   ...rest
 }: HeaderProps) => {
   const { t } = useTranslation()
-  const configurationTip = t('configurationTip', { ns: 'datasetPipeline', pluginName })
+  const configurationTip = t($ => $['configurationTip'], { ns: 'datasetPipeline', pluginName })
 
   return (
     <div className="flex items-center justify-between gap-x-2">

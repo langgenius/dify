@@ -29,13 +29,13 @@ export default function TriggerEventsLimitModal({
       onClose={onClose}
       onUpgrade={onUpgrade}
       Icon={TriggerAll}
-      title={t('triggerLimitModal.title', { ns: 'billing' })}
-      description={t('triggerLimitModal.description', { ns: 'billing' })}
+      title={t($ => $['triggerLimitModal.title'], { ns: 'billing' })}
+      description={t($ => $['triggerLimitModal.description'], { ns: 'billing' })}
       extraInfo={(
         <UsageInfo
           className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
           Icon={TriggerAll}
-          name={t('triggerLimitModal.usageTitle', { ns: 'billing' })}
+          name={t($ => $['triggerLimitModal.usageTitle'], { ns: 'billing' })}
           usage={usage}
           total={total}
           resetInDays={resetInDays}

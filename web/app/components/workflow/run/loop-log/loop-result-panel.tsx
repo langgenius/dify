@@ -99,7 +99,7 @@ const LoopResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 size-4" />
-        <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
+        <div className="system-sm-medium">{t($ => $[`${i18nPrefix}.back`], { ns: 'workflow' })}</div>
       </div>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
@@ -118,7 +118,7 @@ const LoopResultPanel: FC<Props> = ({
                   <Loop className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
-                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
+                  {t($ => $[`${i18nPrefix}.loop`], { ns: 'workflow' })}
                   {' '}
                   {index + 1}
                 </span>
@@ -143,7 +143,7 @@ const LoopResultPanel: FC<Props> = ({
                   <div className="p-2 pb-0">
                     <CodeEditor
                       readOnly
-                      title={<div>{t('nodes.loop.loopVariables', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
+                      title={<div>{t($ => $['nodes.loop.loopVariables'], { ns: 'workflow' }).toLocaleUpperCase()}</div>}
                       language={CodeLanguage.json}
                       height={112}
                       value={loopVariableMap[getLoopRunKey(loop, index)]}

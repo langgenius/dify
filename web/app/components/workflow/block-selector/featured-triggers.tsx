@@ -121,7 +121,7 @@ const FeaturedTriggers = ({
         className="flex w-full items-center rounded-md px-4 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
+        <span className="system-xs-medium text-text-primary">{t($ => $['tabs.featuredTools'], { ns: 'workflow' })}</span>
         <span className={cn(
           'i-custom-vender-solid-arrows-arrow-down-round-fill',
           'ml-0.5 size-4 text-text-tertiary transition-transform',
@@ -141,7 +141,7 @@ const FeaturedTriggers = ({
           {showEmptyState && (
             <p className="px-4 py-2 system-xs-regular text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)} target="_blank" rel="noopener noreferrer">
-                {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
+                {t($ => $['tabs.noFeaturedTriggers'], { ns: 'workflow' })}
               </Link>
             </p>
           )}
@@ -197,7 +197,7 @@ const FeaturedTriggers = ({
                     )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
+                {t($ => $[isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured'], { ns: 'workflow' })}
               </div>
             </div>
           )}

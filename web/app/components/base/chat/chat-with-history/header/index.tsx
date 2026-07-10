@@ -134,7 +134,7 @@ const Header = () => {
                 )}
               />
               <TooltipContent>
-                {t('chat.newChatTip', { ns: 'share' })}
+                {t($ => $['chat.newChatTip'], { ns: 'share' })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -150,7 +150,7 @@ const Header = () => {
                 )}
               />
               <TooltipContent>
-                {t('chat.resetChat', { ns: 'share' })}
+                {t($ => $['chat.resetChat'], { ns: 'share' })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -163,16 +163,16 @@ const Header = () => {
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('chat.deleteConversation.title', { ns: 'share' })}
+              {t($ => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+              {t($ => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

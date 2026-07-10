@@ -34,8 +34,8 @@ export function DeploymentRowActions({ envId, row }: {
   const currentReleaseId = row.currentRelease?.id
   const failedReleaseId = row.desiredRelease?.id ?? row.currentRelease?.id
   const deployActionLabel = isUndeployed
-    ? t('deployDrawer.deploy')
-    : t('deployTab.deployOtherVersion')
+    ? t($ => $['deployDrawer.deploy'])
+    : t($ => $['deployTab.deployOtherVersion'])
 
   if (!routeAppInstanceId)
     return null

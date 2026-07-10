@@ -145,7 +145,7 @@ export const WorkflowLaunchDialog = ({
           </DialogTitle>
           <DialogDescription className="system-md-regular text-text-tertiary">
             <Trans
-              i18nKey="overview.appInfo.workflowLaunchHiddenInputs.description"
+              i18nKey={$ => $["overview.appInfo.workflowLaunchHiddenInputs.description"]}
               ns="appOverview"
               components={{ bold: <span className="system-md-medium" /> }}
             />

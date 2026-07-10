@@ -91,7 +91,7 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             <div className="flex system-2xs-medium-uppercase text-text-tertiary">{type}</div>
           )}
           {!hideType && !isExtraInLine && (
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{isExternal ? t('externalTag', { ns: 'dataset' }) : type}</div>
+            <div className="system-2xs-medium-uppercase text-text-tertiary">{isExternal ? t($ => $['externalTag'], { ns: 'dataset' }) : type}</div>
           )}
         </div>
       )}

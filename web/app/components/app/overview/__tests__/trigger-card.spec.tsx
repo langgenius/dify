@@ -4,15 +4,18 @@ import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import TriggerCard from '../trigger-card'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
-      return key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { count?: number }) => {
+        if (options?.count !== undefined)
+          return `${key} (${options.count})`
+        return key
+      }),
+    }),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
