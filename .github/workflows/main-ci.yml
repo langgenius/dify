@@ -53,8 +53,12 @@ jobs:
           filters: |
             api:
               - 'api/**'
+              - 'scripts/ast_grep_guard.py'
               - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/lint_controller_sqlalchemy.py'
               - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
               - '.github/workflows/style.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/api-tests.yml'
