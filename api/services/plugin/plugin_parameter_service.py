@@ -4,11 +4,12 @@ from typing import Any, Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
 from extensions.ext_database import db
@@ -44,10 +45,11 @@ class PluginParameterService:
         match provider_type:
             case "tool":
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                # init tool configuration
-                encrypter, _ = create_tool_provider_encrypter(
+                # init tool configuration (no caching — dynamic-select needs fresh credentials)
+                encrypter, _ = create_provider_encrypter(
                     tenant_id=tenant_id,
-                    controller=provider_controller,
+                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+                    cache=NoOpProviderCredentialCache(),
                 )
 
                 # check if credentials are required
