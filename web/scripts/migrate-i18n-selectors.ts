@@ -389,9 +389,13 @@ function quoteSelectorKey(key: string) {
   return `'${key.replaceAll('\\', '\\\\').replaceAll('\'', '\\\'')}'`
 }
 
+function isSelectorPropertyName(key: string) {
+  return /^[A-Z_$][\w$]*$/i.test(key)
+}
+
 function selectorAccessFor(expression: ts.Expression, sourceFile: ts.SourceFile) {
   if (ts.isStringLiteral(expression)) {
-    return ts.isIdentifierText(expression.text, ts.ScriptTarget.Latest)
+    return isSelectorPropertyName(expression.text)
       ? `$.${expression.text}`
       : `$[${quoteSelectorKey(expression.text)}]`
   }
@@ -799,7 +803,7 @@ function transformAnalyzedSource(
       && isSelectorAccessRoot(node.body.expression, node.parameters[0]!.name.text)
       && ts.isStringLiteral(node.body.argumentExpression)) {
       const argument = node.body.argumentExpression
-      if (ts.isIdentifierText(argument.text, ts.ScriptTarget.Latest)) {
+      if (isSelectorPropertyName(argument.text)) {
         edits.push({
           end: node.body.end,
           replacement: `${node.body.expression.getText(sourceFile)}.${argument.text}`,
