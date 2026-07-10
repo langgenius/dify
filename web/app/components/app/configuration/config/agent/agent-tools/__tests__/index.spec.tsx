@@ -468,7 +468,10 @@ describe('AgentTools', () => {
       }),
     ])
     const authorizationButtons = screen.getAllByRole('button', { name: /tools.notAuthorized/ })
-    await userEvent.click(authorizationButtons[1])
+    const secondAuthorizationButton = authorizationButtons[1]
+    if (!secondAuthorizationButton)
+      throw new Error('Second authorization button not found')
+    await userEvent.click(secondAuthorizationButton)
     settingPanelCredentialId = 'credential-updated'
     await userEvent.click(screen.getByRole('button', { name: 'auth-from-panel' }))
 
