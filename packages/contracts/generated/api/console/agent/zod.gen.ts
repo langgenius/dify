@@ -48,6 +48,13 @@ export const zApiKeyList = z.object({
 })
 
 /**
+ * AudioTranscriptResponse
+ */
+export const zAudioTranscriptResponse = z.object({
+  text: z.string(),
+})
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -2841,6 +2848,20 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdPath = z.object({
  * Agent service API key deleted
  */
 export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
+
+export const zPostAgentByAgentIdAudioToTextBody = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
+  file: z.custom<Blob | File>(),
+})
+
+export const zPostAgentByAgentIdAudioToTextPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Audio transcription successful
+ */
+export const zPostAgentByAgentIdAudioToTextResponse = zAudioTranscriptResponse
 
 export const zPostAgentByAgentIdBuildChatFinalizePath = z.object({
   agent_id: z.uuid(),

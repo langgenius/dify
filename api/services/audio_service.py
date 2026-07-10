@@ -10,10 +10,14 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
+from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.model_manager import ModelManager
+from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
+from services.agent.roster_service import AgentRosterService
 from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -41,7 +45,20 @@ class AudioService:
         return session.scalar(stmt.limit(1))
 
     @classmethod
-    def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None):
+    def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None) -> dict[str, str]:
+        if app_model.mode == AppMode.AGENT:
+            agent_soul = AgentRosterService(db.session).get_published_agent_soul_for_app(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+            )
+            if agent_soul is not None:
+                return cls.transcript_agent_asr(
+                    app_model=app_model,
+                    agent_soul=agent_soul,
+                    file=file,
+                    end_user=end_user,
+                )
+
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
@@ -58,6 +75,30 @@ class AudioService:
             if not app_model_config.speech_to_text_dict["enabled"]:
                 raise ValueError("Speech to text is not enabled")
 
+        return cls._invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
+
+    @classmethod
+    def transcript_agent_asr(
+        cls,
+        app_model: App,
+        agent_soul: AgentSoulConfig,
+        file: FileStorage | None,
+        end_user: str | None = None,
+    ) -> dict[str, str]:
+        """Transcribe Agent audio after applying the Agent runtime feature projection."""
+        features = merge_agent_app_features(
+            agent_soul=agent_soul,
+            app_model_config=app_model.app_model_config,
+        )
+        if not features.get("speech_to_text", {}).get("enabled"):
+            raise ValueError("Speech to text is not enabled")
+
+        return cls._invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
+
+    @classmethod
+    def _invoke_speech_to_text(
+        cls, app_model: App, file: FileStorage | None, end_user: str | None = None
+    ) -> dict[str, str]:
         if file is None:
             raise NoAudioUploadedServiceError()
 

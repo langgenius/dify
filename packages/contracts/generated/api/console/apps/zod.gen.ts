@@ -5094,6 +5094,10 @@ export const zPostAppsByAppIdApiEnablePath = z.object({
  */
 export const zPostAppsByAppIdApiEnableResponse = zAppDetail
 
+export const zPostAppsByAppIdAudioToTextBody = z.object({
+  file: z.custom<Blob | File>(),
+})
+
 export const zPostAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),
 })

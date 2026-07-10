@@ -359,6 +359,32 @@ class AgentComposerService:
         return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
 
     @classmethod
+    def load_agent_soul_for_debug(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        draft_type: AgentConfigDraftType,
+        session: Session,
+    ) -> AgentSoulConfig:
+        """Load the same normal or account-owned build draft used by Agent debug chat."""
+        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            state = cls.load_agent_app_build_draft(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                session=session,
+            )
+        else:
+            state = cls.load_agent_composer(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                session=session,
+            )
+        return AgentSoulConfig.model_validate(state["agent_soul"])
+
+    @classmethod
     def _load_agent_composer_for_agent(cls, *, tenant_id: str, agent: Agent, session: Session) -> dict[str, Any]:
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
