@@ -448,27 +448,27 @@ export default function StepByStepTourMount({
 
   if (!visible && !skipRecoveryVisible)
     return null
-  const title = t('stepByStepTour.title')
+  const title = t($ => $['stepByStepTour.title'])
   const taskCopy: Record<StepByStepTourTaskId, Pick<StepByStepTourTaskView, 'title' | 'description' | 'primaryActionLabel'>> = {
     home: {
-      title: canCreateApp ? t('stepByStepTour.tasks.home.title') : t('stepByStepTour.tasks.home.noCreate.title'),
-      description: canCreateApp ? t('stepByStepTour.tasks.home.description') : t('stepByStepTour.tasks.home.noCreate.description'),
-      primaryActionLabel: t('stepByStepTour.tasks.home.primaryActionLabel'),
+      title: canCreateApp ? t($ => $['stepByStepTour.tasks.home.title']) : t($ => $['stepByStepTour.tasks.home.noCreate.title']),
+      description: canCreateApp ? t($ => $['stepByStepTour.tasks.home.description']) : t($ => $['stepByStepTour.tasks.home.noCreate.description']),
+      primaryActionLabel: t($ => $['stepByStepTour.tasks.home.primaryActionLabel']),
     },
     studio: {
-      title: canCreateApp ? t('stepByStepTour.tasks.studio.title') : t('stepByStepTour.tasks.studio.noCreate.title'),
-      description: canCreateApp ? t('stepByStepTour.tasks.studio.description') : t('stepByStepTour.tasks.studio.noCreate.description'),
-      primaryActionLabel: t('stepByStepTour.tasks.studio.primaryActionLabel'),
+      title: canCreateApp ? t($ => $['stepByStepTour.tasks.studio.title']) : t($ => $['stepByStepTour.tasks.studio.noCreate.title']),
+      description: canCreateApp ? t($ => $['stepByStepTour.tasks.studio.description']) : t($ => $['stepByStepTour.tasks.studio.noCreate.description']),
+      primaryActionLabel: t($ => $['stepByStepTour.tasks.studio.primaryActionLabel']),
     },
     knowledge: {
-      title: hasKnowledgeWalkthroughPermissions ? t('stepByStepTour.tasks.knowledge.title') : t('stepByStepTour.tasks.knowledge.noPermission.title'),
-      description: hasKnowledgeWalkthroughPermissions ? t('stepByStepTour.tasks.knowledge.description') : t('stepByStepTour.tasks.knowledge.noPermission.description'),
-      primaryActionLabel: hasKnowledgeWalkthroughPermissions ? t('stepByStepTour.tasks.knowledge.primaryActionLabel') : t('stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel'),
+      title: hasKnowledgeWalkthroughPermissions ? t($ => $['stepByStepTour.tasks.knowledge.title']) : t($ => $['stepByStepTour.tasks.knowledge.noPermission.title']),
+      description: hasKnowledgeWalkthroughPermissions ? t($ => $['stepByStepTour.tasks.knowledge.description']) : t($ => $['stepByStepTour.tasks.knowledge.noPermission.description']),
+      primaryActionLabel: hasKnowledgeWalkthroughPermissions ? t($ => $['stepByStepTour.tasks.knowledge.primaryActionLabel']) : t($ => $['stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel']),
     },
     integration: {
-      title: hasIntegrationWalkthroughPermissions ? t('stepByStepTour.tasks.integration.title') : t('stepByStepTour.tasks.integration.noPermission.title'),
-      description: hasIntegrationWalkthroughPermissions ? t('stepByStepTour.tasks.integration.description') : t('stepByStepTour.tasks.integration.noPermission.description'),
-      primaryActionLabel: t('stepByStepTour.tasks.integration.primaryActionLabel'),
+      title: hasIntegrationWalkthroughPermissions ? t($ => $['stepByStepTour.tasks.integration.title']) : t($ => $['stepByStepTour.tasks.integration.noPermission.title']),
+      description: hasIntegrationWalkthroughPermissions ? t($ => $['stepByStepTour.tasks.integration.description']) : t($ => $['stepByStepTour.tasks.integration.noPermission.description']),
+      primaryActionLabel: t($ => $['stepByStepTour.tasks.integration.primaryActionLabel']),
     },
   }
   const tasks = availableTasks.map((task): StepByStepTourTaskView => {
@@ -660,10 +660,10 @@ export default function StepByStepTourMount({
   const floatingChecklist = (
     <FloatingChecklist
       title={title}
-      duration={t('stepByStepTour.duration')}
+      duration={t($ => $['stepByStepTour.duration'])}
       minimized={checklistMinimized}
       progress={{
-        ariaValueText: t('stepByStepTour.progressAriaValueText', {
+        ariaValueText: t($ => $['stepByStepTour.progressAriaValueText'], {
           completed: completedAvailableTaskIds.length,
           total: availableTasks.length,
         }),
@@ -672,19 +672,19 @@ export default function StepByStepTourMount({
       }}
       completionPrompt={completionPromptVisible
         ? {
-            label: t('stepByStepTour.completion.label'),
-            title: t('stepByStepTour.completion.title'),
-            description: t('stepByStepTour.completion.description'),
-            dismissLabel: t('stepByStepTour.completion.dismiss'),
+            label: t($ => $['stepByStepTour.completion.label']),
+            title: t($ => $['stepByStepTour.completion.title']),
+            description: t($ => $['stepByStepTour.completion.description']),
+            dismissLabel: t($ => $['stepByStepTour.completion.dismiss']),
             onDismiss: dismissCompletedTour,
           }
         : undefined}
       tasks={tasks}
-      skipLabel={t('stepByStepTour.skip')}
-      minimizeLabel={t('stepByStepTour.minimize')}
-      restoreLabel={t('stepByStepTour.restore')}
-      getTaskCompleteLabel={taskTitle => t('stepByStepTour.markTaskComplete', { title: taskTitle })}
-      getTaskIncompleteLabel={taskTitle => t('stepByStepTour.markTaskIncomplete', { title: taskTitle })}
+      skipLabel={t($ => $['stepByStepTour.skip'])}
+      minimizeLabel={t($ => $['stepByStepTour.minimize'])}
+      restoreLabel={t($ => $['stepByStepTour.restore'])}
+      getTaskCompleteLabel={taskTitle => t($ => $['stepByStepTour.markTaskComplete'], { title: taskTitle })}
+      getTaskIncompleteLabel={taskTitle => t($ => $['stepByStepTour.markTaskIncomplete'], { title: taskTitle })}
       onMinimize={() => {
         updateAccountState({ ...accountState, minimized: true })
         setShellMode('collapsed')
@@ -780,19 +780,19 @@ export default function StepByStepTourMount({
         <StepByStepTourCoachmark
           guide={{
             ...activeGuide,
-            description: t(activeGuide.description),
+            description: t($ => $[activeGuide.description]),
             learnMoreHref: activeGuide.learnMoreDocPath ? docLink(activeGuide.learnMoreDocPath) : undefined,
-            learnMoreLabel: t(activeGuide.learnMoreLabel),
-            primaryActionLabel: t(activeGuide.primaryActionLabel),
-            title: t(activeGuide.title),
+            learnMoreLabel: t($ => $[activeGuide.learnMoreLabel]),
+            primaryActionLabel: t($ => $[activeGuide.primaryActionLabel]),
+            title: t($ => $[activeGuide.title]),
           }}
           targetElement={activeTargetElement}
           placement={activeGuidePlacement}
-          stepLabel={t('stepByStepTour.stepLabel', {
+          stepLabel={t($ => $['stepByStepTour.stepLabel'], {
             current: activeStepIndex + 1,
             total: activeStepTotal,
           })}
-          skipLabel={t('stepByStepTour.skip')}
+          skipLabel={t($ => $['stepByStepTour.skip'])}
           interactionPolicy={getStepByStepTourGuideInteractionPolicy(activeGuide, activeTask.canClickThrough)}
           onSkip={skipActiveGuide}
           onComplete={completeActiveGuide}
@@ -824,9 +824,9 @@ export default function StepByStepTourMount({
       )}
       {skipRecoveryVisible && (
         <SkipRecoveryPrompt
-          label={t('stepByStepTour.skipRecovery.label')}
-          message={t('stepByStepTour.skipRecovery.message')}
-          dismissLabel={t('stepByStepTour.skipRecovery.dismiss')}
+          label={t($ => $['stepByStepTour.skipRecovery.label'])}
+          message={t($ => $['stepByStepTour.skipRecovery.message'])}
+          dismissLabel={t($ => $['stepByStepTour.skipRecovery.dismiss'])}
           onDismiss={() => setSkipRecoveryVisible(false)}
         />
       )}

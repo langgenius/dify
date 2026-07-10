@@ -398,6 +398,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       mockStepByStepTour.setTestState({

@@ -307,6 +307,7 @@ const testSystemFeatures = {
   enable_trial_app: false,
   enable_explore_banner: false,
   enable_learn_app: true,
+  enable_step_by_step_tour: false,
 } satisfies GetSystemFeaturesResponse
 
 const seedResolvedAppContextQueries = () => {

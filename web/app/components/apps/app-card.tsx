@@ -776,7 +776,6 @@ export function AppCard({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
   })
-  const closeOperationsMenu = operationsMenu.close
   const isOperationsMenuOpen = operationsMenu.open
   const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
@@ -1217,8 +1216,8 @@ export function AppCard({
                   sideOffset={4}
                   popupClassName={operationsMenuWidthClassName}
                   {...getStepByStepTourDropdownMenuContentProps({
-                    close: closeOperationsMenu,
                     highlightPart: stepByStepTourActionMenuHighlightPart,
+                    interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
                   })}
                 >
                   {systemFeatures.webapp_auth.enabled

@@ -83,8 +83,8 @@ const OperationsDropdown = ({
           placement="bottom-end"
           popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
-            close: operationsMenu.close,
             highlightPart: stepByStepTourHighlightPart,
+            interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
           })}
         >
           <Operations

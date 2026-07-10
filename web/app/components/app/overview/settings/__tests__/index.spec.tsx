@@ -55,6 +55,7 @@ const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
 
 const buildModalContext = (): ModalContextState => ({
+  hasBlockingModalOpen: false,
   setShowAccountSettingModal: mockSetShowAccountSettingModal,
   setShowModerationSettingModal: vi.fn(),
   setShowExternalDataToolModal: vi.fn(),

@@ -140,7 +140,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       isAppListError: exploreAppListQuery.isError || (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
     }),
   })
-  const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
+  const allCategoriesEn = t($ => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const stepByStepTourAccountState = useStepByStepTourAccountStateValue()

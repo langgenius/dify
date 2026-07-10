@@ -25,6 +25,7 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
+    hasBlockingModalOpen: false,
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),

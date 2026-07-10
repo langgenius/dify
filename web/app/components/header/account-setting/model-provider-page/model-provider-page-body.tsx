@@ -87,7 +87,7 @@ function EmptyProviderState({
                       aria-label={t($ => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
                       className="system-xs-medium text-text-accent hover:underline"
                     >
-                      {t('mainNav.marketplace', { ns: 'common' })}
+                      {t($ => $['mainNav.marketplace'], { ns: 'common' })}
                     </a>
                   ),
                 }}
