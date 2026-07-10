@@ -86,6 +86,20 @@ export function createAgentSoulConfigWithModel(
   }
 }
 
+export function createAgentSoulConfigWithSpeechToText(
+  agentSoul: AgentSoulConfig,
+): AgentSoulConfig {
+  return {
+    ...agentSoul,
+    app_features: {
+      ...agentSoul.app_features,
+      speech_to_text: {
+        enabled: true,
+      },
+    },
+  }
+}
+
 export function createPublishableAgentSoulConfig(agentSoul: AgentSoulConfig): AgentSoulConfig {
   if (agentSoul.model)
     return agentSoul

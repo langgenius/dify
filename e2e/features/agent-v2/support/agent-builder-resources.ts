@@ -1,5 +1,6 @@
 export const agentBuilderPreseededResources = {
   stableChatModel: 'E2E Stable Chat Model',
+  speechToTextModel: 'Workspace default Speech-to-Text model',
   summarySkill: 'e2e-summary-skill',
   jsonReplaceTool: 'JSON Process / JSON Replace',
   tavilySearchTool: 'Tavily / Tavily Search',

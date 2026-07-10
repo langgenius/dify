@@ -1,4 +1,7 @@
-import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  DefaultModelDataResponse,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
@@ -148,6 +151,45 @@ export async function skipMissingAgentBuilderStableChatModel(
   world: DifyWorld,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
   return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
+    requireActive: true,
+  })
+}
+
+export async function skipMissingAgentBuilderSpeechToTextModel(
+  world: DifyWorld,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['speechToTextModel']>> {
+  const ctx = await createApiContext()
+  let defaultModel: NonNullable<DefaultModelDataResponse['data']>
+
+  try {
+    const response = await ctx.get(
+      '/console/api/workspaces/current/default-model?model_type=speech2text',
+    )
+    await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.speechToTextModel}`)
+    const body = (await response.json()) as DefaultModelDataResponse
+    if (!body.data) {
+      return skipBlockedPrecondition(
+        world,
+        `${agentBuilderPreseededResources.speechToTextModel} is not configured.`,
+        {
+          owner: 'model-provider/seed',
+          remediation: 'Configure an active workspace default Speech-to-Text model before running the external scenario.',
+        },
+      )
+    }
+    defaultModel = body.data
+  }
+  finally {
+    await ctx.dispose()
+  }
+
+  return skipMissingAgentBuilderModel(world, {
+    ok: true,
+    provider: defaultModel.provider.provider,
+    resourceName: agentBuilderPreseededResources.speechToTextModel,
+    type: 'speech2text',
+    value: defaultModel.model,
+  }, {
     requireActive: true,
   })
 }
