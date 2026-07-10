@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { VoiceRecorder } from './recorder'
 import type { SpeechToTextTarget } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -12,6 +13,7 @@ const MAX_RECORDING_DURATION = 600
 type VoiceInputStatus = 'starting' | 'recording' | 'converting'
 
 type VoiceInputProps = {
+  ref?: Ref<HTMLDivElement>
   onConverted: (text: string) => void
   onCancel: () => void
   onBeforeTranscribe?: () => Promise<unknown>
@@ -21,6 +23,7 @@ type VoiceInputProps = {
 }
 
 function VoiceInput({
+  ref,
   onCancel,
   onBeforeTranscribe,
   onConverted,
@@ -215,7 +218,7 @@ function VoiceInput({
   const isConverting = status === 'converting'
 
   return (
-    <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
+    <div ref={ref} className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
         {(isStarting || isConverting) && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" aria-hidden="true" data-testid="voice-input-loader" />}

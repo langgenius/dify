@@ -73,6 +73,9 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
   const queryRef = useRef('')
+  const voiceInputRef = useRef<HTMLDivElement>(null)
+  const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
+  const voiceInputCompletedRef = useRef(false)
   const handleQueryChange = useCallback((value: string) => {
     queryRef.current = value
     setQuery(value)
@@ -163,8 +166,17 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
     }
   }
   const handleShowVoiceInput = useCallback(() => {
+    const textareaElement = textareaRef.current
+    if (textareaElement) {
+      const activeElement = textareaElement.ownerDocument.activeElement
+      voiceInputReturnFocusRef.current = activeElement instanceof HTMLElement
+        && activeElement !== textareaElement.ownerDocument.body
+        ? activeElement
+        : textareaElement
+    }
+    voiceInputCompletedRef.current = false
     setShowVoiceInput(true)
-  }, [])
+  }, [textareaRef])
   const handleVoiceInputStartError = useCallback((error: unknown) => {
     toast.error(t($ => $[isMicrophonePermissionDenied(error) ? 'voiceInput.notAllow' : 'api.actionFailed'], { ns: 'common' }))
   }, [t])
@@ -172,9 +184,32 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
     toast.error(t($ => $['api.actionFailed'], { ns: 'common' }))
   }, [t])
   const handleHideVoiceInput = useCallback(() => {
+    const textareaElement = textareaRef.current
+    const documentElement = textareaElement?.ownerDocument
+    const activeElement = documentElement?.activeElement
+    const shouldRestoreFocus = !!documentElement && (
+      activeElement === documentElement.body
+      || !!(activeElement && voiceInputRef.current?.contains(activeElement))
+    )
+    const returnFocusElement = voiceInputReturnFocusRef.current
+    const voiceInputCompleted = voiceInputCompletedRef.current
+    voiceInputReturnFocusRef.current = null
+    voiceInputCompletedRef.current = false
     setShowVoiceInput(false)
-  }, [])
+    if (voiceInputCompleted || !shouldRestoreFocus || !documentElement)
+      return
+
+    queueMicrotask(() => {
+      const currentActiveElement = documentElement.activeElement
+      if (currentActiveElement !== documentElement.body && currentActiveElement !== activeElement)
+        return
+
+      const elementToFocus = returnFocusElement?.isConnected ? returnFocusElement : textareaElement
+      elementToFocus?.focus({ preventScroll: true })
+    })
+  }, [textareaRef])
   const handleVoiceInputConverted = (text: string) => {
+    voiceInputCompletedRef.current = true
     handleQueryChange(text)
     queueMicrotask(() => {
       const textareaElement = textareaRef.current
@@ -184,7 +219,8 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
       const activeElement = textareaElement.ownerDocument.activeElement
       if (activeElement
         && activeElement !== textareaElement.ownerDocument.body
-        && activeElement !== textareaElement) {
+        && activeElement !== textareaElement
+        && !voiceInputRef.current?.contains(activeElement)) {
         return
       }
 
@@ -237,6 +273,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
           </div>
           {showVoiceInput && speechToTextTarget && (
             <VoiceInput
+              ref={voiceInputRef}
               target={speechToTextTarget}
               onCancel={handleHideVoiceInput}
               onBeforeTranscribe={onBeforeSpeechToText}

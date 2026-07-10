@@ -56,6 +56,30 @@ export type VoiceRecorder = {
   cancel: () => Promise<void>
 }
 
+function waitForAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal)
+    return promise
+
+  signal.throwIfAborted()
+  return new Promise<T>((resolve, reject) => {
+    const handleAbort = () => {
+      signal.removeEventListener('abort', handleAbort)
+      reject(signal.reason)
+    }
+    signal.addEventListener('abort', handleAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', handleAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener('abort', handleAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRecorder> {
   let stream: MediaStream | undefined
   let audioContext: AudioContext | undefined
@@ -70,7 +94,7 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
 
   try {
     signal?.throwIfAborted()
-    const { createMp3Encoder } = await import('./mp3-encoder')
+    const { createMp3Encoder } = await waitForAbort(import('./mp3-encoder'), signal)
     signal?.throwIfAborted()
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -90,7 +114,7 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
     audioContext = context
     const workletUrl = URL.createObjectURL(new Blob([AUDIO_WORKLET_SOURCE], { type: 'application/javascript' }))
     try {
-      await context.audioWorklet.addModule(workletUrl)
+      await waitForAbort(context.audioWorklet.addModule(workletUrl), signal)
     }
     finally {
       URL.revokeObjectURL(workletUrl)
@@ -99,7 +123,7 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
     const encoder = createMp3Encoder()
     const { audioSource, target } = encoder
     output = encoder.output
-    await output.start()
+    await waitForAbort(output.start(), signal)
 
     const analyser = context.createAnalyser()
     analyser.fftSize = 2048
@@ -137,7 +161,7 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
     streamSource.connect(workletNode)
     workletNode.connect(context.destination)
     if (context.state === 'suspended')
-      await context.resume()
+      await waitForAbort(context.resume(), signal)
 
     let releasePromise: Promise<void> | undefined
     const release = () => {
@@ -198,6 +222,7 @@ export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRec
       await Promise.allSettled([output!.cancel()])
     }
 
+    signal?.throwIfAborted()
     signal?.removeEventListener('abort', stopStream)
     return { analyser, stop, cancel }
   }

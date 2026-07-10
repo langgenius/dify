@@ -208,6 +208,49 @@ describe('startVoiceRecorder', () => {
       expect(trackStop).toHaveBeenCalledTimes(1)
       expect(addModule).not.toHaveBeenCalled()
     })
+
+    it('should abort and clean up while the worklet module is still loading', async () => {
+      addModule.mockReturnValueOnce(new Promise(() => {}))
+      const abortController = new AbortController()
+      const recorderPromise = startVoiceRecorder(abortController.signal)
+      await vi.waitFor(() => expect(addModule).toHaveBeenCalledTimes(1))
+
+      abortController.abort()
+
+      await expect(recorderPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:voice-worklet')
+    })
+
+    it('should abort and clean up while the encoder is still starting', async () => {
+      mediaMocks.outputStart.mockReturnValueOnce(new Promise(() => {}))
+      const abortController = new AbortController()
+      const recorderPromise = startVoiceRecorder(abortController.signal)
+      await vi.waitFor(() => expect(mediaMocks.outputStart).toHaveBeenCalledTimes(1))
+
+      abortController.abort()
+
+      await expect(recorderPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      expect(mediaMocks.outputCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should abort and clean up while the audio context is still resuming', async () => {
+      audioContextState = 'suspended'
+      audioContextResume.mockReturnValueOnce(new Promise(() => {}))
+      const abortController = new AbortController()
+      const recorderPromise = startVoiceRecorder(abortController.signal)
+      await vi.waitFor(() => expect(audioContextResume).toHaveBeenCalledTimes(1))
+
+      abortController.abort()
+
+      await expect(recorderPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      expect(mediaMocks.outputCancel).toHaveBeenCalledTimes(1)
+    })
   })
 
   // Stopping flushes queued PCM before exposing the final MP3 blob.

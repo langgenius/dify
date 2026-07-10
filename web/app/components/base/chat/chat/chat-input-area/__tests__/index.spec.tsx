@@ -521,6 +521,25 @@ describe('ChatInputArea', () => {
       expect(textarea.selectionEnd).toBe(textarea.value.length)
     })
 
+    it('should focus the textarea when conversion completes while focus is in the voice input', async () => {
+      const user = userEvent.setup({ delay: null })
+      let resolveTranscription: ((value: { text: string }) => void) | undefined
+      vi.mocked(transcribeAudio).mockReturnValueOnce(new Promise((resolve) => {
+        resolveTranscription = resolve
+      }))
+      render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      const cancelButton = await screen.findByRole('button', { name: 'common.operation.cancel' })
+      cancelButton.focus()
+      await act(async () => resolveTranscription?.({ text: 'Converted voice text' }))
+
+      await waitFor(() => expect(textarea).toHaveFocus())
+      expect(textarea).toHaveValue('Converted voice text')
+    })
+
     it('should preserve focus when the user moves elsewhere during transcription', async () => {
       const user = userEvent.setup({ delay: null })
       let resolveTranscription: ((value: { text: string }) => void) | undefined
@@ -572,23 +591,26 @@ describe('ChatInputArea', () => {
       const user = userEvent.setup({ delay: null })
       vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
       await user.type(getTextarea()!, 'Keep this text')
 
-      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(voiceInputButton)
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
       })
       expect(getTextarea()!).toHaveValue('Keep this text')
+      await waitFor(() => expect(voiceInputButton).toHaveFocus())
     })
 
-    it('should handle cancel in VoiceInput', async () => {
+    it('should restore focus to the voice input trigger when conversion is cancelled', async () => {
       const user = userEvent.setup({ delay: null })
       vi.mocked(transcribeAudio).mockImplementationOnce(() => new Promise(() => {}))
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
-      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(voiceInputButton)
       await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
@@ -597,6 +619,60 @@ describe('ChatInputArea', () => {
       await waitFor(() => {
         expect(screen.queryByText(/voiceInput.converting/i)).not.toBeInTheDocument()
       })
+      await waitFor(() => expect(voiceInputButton).toHaveFocus())
+    })
+
+    it('should restore focus to the voice input trigger when setup is cancelled', async () => {
+      const user = userEvent.setup({ delay: null })
+      vi.mocked(startVoiceRecorder).mockReturnValueOnce(new Promise(() => {}))
+      render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
+
+      await user.click(voiceInputButton)
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => expect(voiceInputButton).toHaveFocus())
+    })
+
+    it('should restore focus to the voice input trigger when stopping the recorder fails', async () => {
+      const user = userEvent.setup({ delay: null })
+      recorderStop.mockRejectedValueOnce(new Error('Recorder failed'))
+      render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
+
+      await user.click(voiceInputButton)
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      })
+      await waitFor(() => expect(voiceInputButton).toHaveFocus())
+    })
+
+    it('should preserve focus when the user moves elsewhere before transcription fails', async () => {
+      const user = userEvent.setup({ delay: null })
+      let rejectTranscription: ((reason?: unknown) => void) | undefined
+      vi.mocked(transcribeAudio).mockReturnValueOnce(new Promise((_resolve, reject) => {
+        rejectTranscription = reject
+      }))
+      render(
+        <>
+          <button type="button">Elsewhere</button>
+          <ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />
+        </>,
+      )
+      const elsewhereButton = screen.getByRole('button', { name: 'Elsewhere' })
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
+      await user.click(elsewhereButton)
+      await act(async () => rejectTranscription?.(new Error('API error')))
+
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
+      })
+      expect(elsewhereButton).toHaveFocus()
     })
 
     it('should show error toast when voice permission is denied', async () => {
@@ -617,12 +693,14 @@ describe('ChatInputArea', () => {
       vi.mocked(startVoiceRecorder).mockRejectedValueOnce(new Error('AudioWorklet unavailable'))
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const voiceInputButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
-      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(voiceInputButton)
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
       })
+      expect(voiceInputButton).toHaveFocus()
     })
 
     it('should handle empty converted text in VoiceInput', async () => {
