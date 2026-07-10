@@ -48,13 +48,14 @@ describe('Operation', () => {
       expect(screen.queryByTestId('file-uploader')).not.toBeInTheDocument()
     })
 
-    it('should render voice input button when speechToTextConfig.enabled is true', () => {
+    it('should render voice input button when speech-to-text is enabled with a handler', () => {
       const speechConfig: EnableType = { enabled: true }
 
       render(
         <Operation
           onSend={vi.fn()}
           speechToTextConfig={speechConfig}
+          onShowVoiceInput={vi.fn()}
         />,
       )
 
@@ -71,6 +72,7 @@ describe('Operation', () => {
           onSend={vi.fn()}
           fileConfig={fileConfig}
           speechToTextConfig={speechConfig}
+          onShowVoiceInput={vi.fn()}
         />,
       )
 
