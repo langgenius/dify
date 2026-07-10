@@ -2,7 +2,7 @@
   "name": "dify",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.10.0",
   "devEngines": {
     "runtime": {
       "name": "node",

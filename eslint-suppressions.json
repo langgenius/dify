@@ -1836,11 +1836,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/input-with-copy/index.tsx": {
-    "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
   "web/app/components/base/input/index.stories.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 9
@@ -3080,11 +3075,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/hit-testing/index.tsx": {
-    "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/list/dataset-card/__tests__/index.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3292,11 +3282,6 @@
   },
   "web/app/components/goto-anything/components/__tests__/search-input.spec.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/goto-anything/components/footer.tsx": {
-    "react/unsupported-syntax": {
       "count": 1
     }
   },
@@ -5000,9 +4985,6 @@
   "web/app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "react/unsupported-syntax": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.trigger.tsx": {
@@ -5624,9 +5606,6 @@
     }
   },
   "web/app/components/workflow/nodes/llm/components/config-prompt.tsx": {
-    "react/unsupported-syntax": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5948,9 +5927,6 @@
     }
   },
   "web/app/components/workflow/nodes/trigger-plugin/node.tsx": {
-    "react/unsupported-syntax": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

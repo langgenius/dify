@@ -34,8 +34,12 @@ jobs:
         with:
           files: |
             api/**
+            scripts/ast_grep_guard.py
             scripts/check_no_new_getattr.py
+            scripts/check_no_new_controller_sqlalchemy.py
+            scripts/lint_controller_sqlalchemy.py
             scripts/ast_grep_rules/no_new_getattr.yml
+            scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml
             .github/workflows/style.yml
             .github/workflows/main-ci.yml
 
@@ -62,6 +66,10 @@ jobs:
       - name: Run No New Getattr Guard
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
+
+      - name: Run No New Controller SQLAlchemy Guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
