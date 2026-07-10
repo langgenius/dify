@@ -171,9 +171,10 @@ jobs:
         run: |
           vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
 
-      - name: Format frontend files
-        if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
-        run: vp fmt
+      # TODO: Enable after the repository-wide vp fmt baseline lands.
+      # - name: Format frontend files
+      #   if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
+      #   run: vp fmt
 
       - if: github.event_name != 'merge_group'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

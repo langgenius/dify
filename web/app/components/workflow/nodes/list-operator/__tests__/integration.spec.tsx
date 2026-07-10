@@ -18,7 +18,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
     availableVars: [
       { variable: ['node-1', 'size'], type: VarType.number },
       { variable: ['node-1', 'name'], type: VarType.string },
-    ].filter((varPayload) => (options?.filterVar ? options.filterVar(varPayload) : true)),
+    ].filter(varPayload => options?.filterVar ? options.filterVar(varPayload) : true),
     availableNodesWithParent: [{ id: 'node-1', data: { title: 'Answer', type: BlockEnum.Answer } }],
   })),
 }))
@@ -32,19 +32,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       readOnly={readOnly}
       onFocus={() => onFocusChange?.(true)}
       onBlur={() => onFocusChange?.(false)}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={event => onChange(event.target.value)}
     />
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      {children}
-    </div>
-  ),
+  default: ({ title, operations, children }: any) => <div><div>{title}</div><div>{operations}</div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slider', () => ({
@@ -56,20 +50,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-number-with-slid
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({ title, onSelect }: any) => (
-    <button type="button" onClick={onSelect}>
-      {title}
-    </button>
-  ),
+  default: ({ title, onSelect }: any) => <button type="button" onClick={onSelect}>{title}</button>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   default: ({ children }: any) => <div>{children}</div>,
-  VarItem: ({ name, type }: any) => (
-    <div>
-      {name}:{type}
-    </div>
-  ),
+  VarItem: ({ name, type }: any) => <div>{name}:{type}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
@@ -77,19 +63,11 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange(['node-1', 'items'])}>
-      pick-var
-    </button>
-  ),
+  default: ({ onChange }: any) => <button type="button" onClick={() => onChange(['node-1', 'items'])}>pick-var</button>,
 }))
 
 vi.mock('../components/filter-condition', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange({ key: 'size' })}>
-      filter-condition
-    </button>
-  ),
+  default: ({ onChange }: any) => <button type="button" onClick={() => onChange({ key: 'size' })}>filter-condition</button>,
 }))
 
 vi.mock('../use-config', () => ({
@@ -105,19 +83,14 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   variable: ['node-1', 'items'],
   var_type: VarType.arrayNumber,
   item_var_type: VarType.number,
-  filter_by: {
-    enabled: true,
-    conditions: [{ key: 'size', comparison_operator: 'equal', value: '1' }] as any,
-  },
+  filter_by: { enabled: true, conditions: [{ key: 'size', comparison_operator: 'equal', value: '1' }] as any },
   extract_by: { enabled: true, serial: '1' },
   limit: { enabled: true, size: 10 },
   order_by: { enabled: true, key: 'size', value: OrderBy.ASC },
   ...overrides,
 })
 
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
+const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   filterVar: vi.fn(() => true),
@@ -146,8 +119,9 @@ const panelProps: PanelProps = {
   runResult: null,
 }
 
-const renderPanel = (data: ListFilterNodeType = createData()) =>
+const renderPanel = (data: ListFilterNodeType = createData()) => (
   render(<Panel id="node-1" data={data} panelProps={panelProps} />)
+)
 
 describe('list-operator path', () => {
   beforeEach(() => {
@@ -160,14 +134,26 @@ describe('list-operator path', () => {
     it('should update the extract input', async () => {
       const onChange = vi.fn()
       const { rerender } = render(
-        <ExtractInput nodeId="node-1" readOnly={false} value="1" onChange={onChange} />,
+        <ExtractInput
+          nodeId="node-1"
+          readOnly={false}
+          value="1"
+          onChange={onChange}
+        />,
       )
 
       fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
       fireEvent.focus(screen.getByDisplayValue('1'))
       expect(screen.getByDisplayValue('1')).toHaveClass('border-components-input-border-active')
 
-      rerender(<ExtractInput nodeId="node-1" readOnly value="" onChange={onChange} />)
+      rerender(
+        <ExtractInput
+          nodeId="node-1"
+          readOnly
+          value=""
+          onChange={onChange}
+        />,
+      )
 
       expect(onChange).toHaveBeenCalled()
       expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
@@ -176,7 +162,12 @@ describe('list-operator path', () => {
     it('should change the selected sub variable', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const { unmount } = render(<SubVariablePicker value="size" onChange={onChange} />)
+      const { unmount } = render(
+        <SubVariablePicker
+          value="size"
+          onChange={onChange}
+        />,
+      )
 
       await user.click(screen.getByRole('combobox'))
       await user.click(screen.getByRole('option', { name: 'name' }))
@@ -186,7 +177,12 @@ describe('list-operator path', () => {
       })
 
       unmount()
-      render(<SubVariablePicker value="" onChange={onChange} />)
+      render(
+        <SubVariablePicker
+          value=""
+          onChange={onChange}
+        />,
+      )
 
       expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
     })
@@ -195,7 +191,11 @@ describe('list-operator path', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       const { rerender } = render(
-        <LimitConfig readonly={false} config={{ enabled: true, size: 10 }} onChange={onChange} />,
+        <LimitConfig
+          readonly={false}
+          config={{ enabled: true, size: 10 }}
+          onChange={onChange}
+        />,
       )
 
       await user.click(screen.getByText('slider-10'))
@@ -203,7 +203,11 @@ describe('list-operator path', () => {
       expect(onChange).toHaveBeenCalledWith({ enabled: true, size: 11 })
 
       rerender(
-        <LimitConfig readonly={false} config={{ enabled: false, size: 10 }} onChange={onChange} />,
+        <LimitConfig
+          readonly={false}
+          config={{ enabled: false, size: 10 }}
+          onChange={onChange}
+        />,
       )
 
       expect(screen.queryByText('slider-10')).not.toBeInTheDocument()
@@ -212,16 +216,16 @@ describe('list-operator path', () => {
     })
 
     it('should render the selected input variable in the node preview', () => {
-      renderWorkflowFlowComponent(<Node id="node-2" data={createData()} />, {
-        nodes: [
-          {
-            id: 'node-1',
-            position: { x: 0, y: 0 },
-            data: { type: BlockEnum.Answer, title: 'Answer' } as any,
-          },
-        ],
-        edges: [],
-      })
+      renderWorkflowFlowComponent(
+        <Node
+          id="node-2"
+          data={createData()}
+        />,
+        {
+          nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer, title: 'Answer' } as any }],
+          edges: [],
+        },
+      )
 
       expect(screen.getByText('Answer')).toBeInTheDocument()
       expect(screen.getByText('items')).toBeInTheDocument()
@@ -229,22 +233,24 @@ describe('list-operator path', () => {
 
     it('should resolve system variables through the start node and return null without a variable', () => {
       const { rerender } = renderWorkflowFlowComponent(
-        <Node id="node-2" data={createData({ variable: ['sys', 'files'] as any })} />,
+        <Node
+          id="node-2"
+          data={createData({ variable: ['sys', 'files'] as any })}
+        />,
         {
-          nodes: [
-            {
-              id: 'start',
-              position: { x: 0, y: 0 },
-              data: { type: BlockEnum.Start, title: 'Start' } as any,
-            },
-          ],
+          nodes: [{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start, title: 'Start' } as any }],
           edges: [],
         },
       )
 
       expect(screen.getByText('Start')).toBeInTheDocument()
 
-      rerender(<Node id="node-2" data={createData({ variable: [] as any })} />)
+      rerender(
+        <Node
+          id="node-2"
+          data={createData({ variable: [] as any })}
+        />,
+      )
 
       expect(screen.queryByText('workflow.nodes.listFilter.inputVar')).not.toBeInTheDocument()
       expect(screen.queryByText('Start')).not.toBeInTheDocument()
@@ -264,17 +270,15 @@ describe('list-operator path', () => {
     })
 
     it('should hide disabled sections and render order controls without sub variables', () => {
-      mockUseConfig.mockReturnValueOnce(
-        createConfigResult({
-          inputs: createData({
-            variable: undefined as any,
-            filter_by: { enabled: false, conditions: [] as any },
-            extract_by: { enabled: false, serial: '' },
-            order_by: { enabled: false, key: '', value: OrderBy.ASC },
-          }),
-          hasSubVariable: false,
+      mockUseConfig.mockReturnValueOnce(createConfigResult({
+        inputs: createData({
+          variable: undefined as any,
+          filter_by: { enabled: false, conditions: [] as any },
+          extract_by: { enabled: false, serial: '' },
+          order_by: { enabled: false, key: '', value: OrderBy.ASC },
         }),
-      )
+        hasSubVariable: false,
+      }))
 
       const { rerender } = renderPanel()
 
@@ -282,14 +286,12 @@ describe('list-operator path', () => {
       expect(screen.queryByDisplayValue('1')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.listFilter.asc')).not.toBeInTheDocument()
 
-      mockUseConfig.mockReturnValueOnce(
-        createConfigResult({
-          inputs: createData({
-            order_by: { enabled: true, key: '', value: OrderBy.ASC },
-          }),
-          hasSubVariable: false,
+      mockUseConfig.mockReturnValueOnce(createConfigResult({
+        inputs: createData({
+          order_by: { enabled: true, key: '', value: OrderBy.ASC },
         }),
-      )
+        hasSubVariable: false,
+      }))
 
       rerender(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
 
