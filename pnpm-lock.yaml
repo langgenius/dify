@@ -786,6 +786,9 @@ importers:
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
+      eventsource-parser:
+        specifier: 'catalog:'
+        version: 3.1.0
       tsx:
         specifier: 'catalog:'
         version: 4.23.0
@@ -798,6 +801,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@25.9.5)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(happy-dom@20.10.6)
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -8252,7 +8258,6 @@ packages:
               os: linux
               libc: musl
     version: 22.23.1
-    hasBin: true
 
   normalize-package-data@8.0.0:
     resolution: {integrity: sha512-RWk+PI433eESQ7ounYxIp67CYuVsS1uYSonX3kA6ps/3LWfjVQa/ptEg6Y3T6uAMq1mWpX9PQ+qx+QaHpsc7gQ==}
@@ -19771,7 +19776,6 @@ time:
   knip@6.25.0: '2026-07-07T08:47:13.416Z'
   ky@2.0.2: '2026-04-21T08:58:46.923Z'
   lamejs@1.2.1: '2021-12-02T15:44:40.036Z'
-  lexical-code-no-prism@0.41.0: '2026-03-08T16:50:40.266Z'
   lexical@0.46.0: '2026-06-26T04:53:00.532Z'
   lockfile@1.0.4: '2018-04-17T00:36:12.565Z'
   loro-crdt@1.13.6: '2026-06-21T15:40:04.671Z'
