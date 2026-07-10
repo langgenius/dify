@@ -4,6 +4,7 @@ from contextlib import nullcontext
 from inspect import getsource
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Select
@@ -18,53 +19,50 @@ from controllers.console.app.error import AppNotFoundError
 from models.model import App, AppMode, TrialApp
 
 
-class FakeSession:
-    app_model: object | None
-    scalar_called: bool
-
-    def __init__(self, app_model: object | None = None) -> None:
-        self.app_model = app_model
-        self.scalar_called = False
-
-    def scalar(self, *_args: object, **_kwargs: object) -> object | None:
-        self.scalar_called = True
-        return self.app_model
-
-    def commit(self) -> None:
-        pass
-
-    def rollback(self) -> None:
-        pass
+def _persist_app(sqlite_session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
+    app_model = App(
+        tenant_id=str(uuid4()),
+        name="Test App",
+        mode=mode,
+        enable_site=True,
+        enable_api=True,
+    )
+    app_model.id = str(uuid4())
+    sqlite_session.add(app_model)
+    sqlite_session.commit()
+    return app_model
 
 
-def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, "t1"))
-    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model))
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    app_model = _persist_app(sqlite_session)
+    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
+    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model
     def handler(app_model):
         return app_model.id
 
-    assert handler(app_id="app-1") == "app-1"
+    assert handler(app_id=app_model.id) == app_model.id
 
 
-def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, "t1"))
-    monkeypatch.setattr(wraps_module.db, "session", SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model))
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    app_model = _persist_app(sqlite_session)
+    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
+    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model(mode=[AppMode.COMPLETION])
     def handler(app_model):
         return app_model.id
 
     with pytest.raises(AppNotFoundError):
-        handler(app_id="app-1")
+        handler(app_id=app_model.id)
 
 
 def test_get_app_model_with_trial_requires_trial_app_registration(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    session = FakeSession()
+    session = MagicMock(spec=Session)
 
     def scalar(statement: Select[tuple[App]]) -> object | None:
         has_trial_app_join = any(
@@ -136,28 +134,30 @@ def test_wraps_with_session_reexports_common_session_decorator() -> None:
     assert wraps_module.with_session is with_session
 
 
-def test_get_app_model_prefers_injected_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    session = FakeSession(app_model)
-    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, "t1"))
-    monkeypatch.setattr(
-        wraps_module.db,
-        "session",
-        SimpleNamespace(scalar=lambda *_args, **_kwargs: pytest.fail("db.session should not be used")),
-    )
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_model_prefers_injected_session(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    app_model = _persist_app(sqlite_session)
+    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
 
     class Handler:
         @wraps_module.get_app_model
         def get(self, _injected_session, app_model):
             return app_model.id
 
-    assert Handler().get(session, app_id="app-1") == "app-1"
-    assert session.scalar_called
+    # An unbound real Session fails on query, so success proves the injected
+    # request Session was preferred over the legacy scoped-session fallback.
+    with Session() as scoped_session:
+        monkeypatch.setattr(wraps_module.db, "session", scoped_session)
+        assert Handler().get(sqlite_session, app_id=app_model.id) == app_model.id
 
 
 def test_get_app_model_with_trial_prefers_injected_session(monkeypatch: pytest.MonkeyPatch) -> None:
     app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal")
-    session = FakeSession(app_model)
+    session = MagicMock(spec=Session)
+    session.scalar.return_value = app_model
     monkeypatch.setattr(
         wraps_module.db,
         "session",
@@ -173,7 +173,7 @@ def test_get_app_model_with_trial_prefers_injected_session(monkeypatch: pytest.M
             return app_model.id
 
     assert Handler().get(app_id="app-1") == "app-1"
-    assert session.scalar_called
+    session.scalar.assert_called_once()
 
 
 def test_get_app_model_with_trial_requires_injected_session() -> None:
