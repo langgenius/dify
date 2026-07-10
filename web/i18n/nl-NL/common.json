@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "microphone not authorized",
   "voiceInput.speaking": "Speak now...",
   "voiceInput.start": "Spraakinvoer",
+  "voiceInput.stop": "Opname stoppen",
   "workflowAsToolPage.description": "Zet elke gepubliceerde workflow om in een herbruikbare tool. Gebruik deze in meerdere apps om modulair te blijven en herhaling te voorkomen.",
   "you": "You"
 }

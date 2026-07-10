@@ -167,6 +167,9 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const handleVoiceInputError = useCallback(() => {
     toast.error(t('api.actionFailed', { ns: 'common' }))
   }, [t])
+  const handleHideVoiceInput = useCallback(() => {
+    setShowVoiceInput(false)
+  }, [])
   const handleVoiceInputConverted = (text: string) => {
     handleQueryChange(text)
     queueMicrotask(() => {
@@ -231,7 +234,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
           {showVoiceInput && speechToTextTarget && (
             <VoiceInput
               target={speechToTextTarget}
-              onCancel={() => setShowVoiceInput(false)}
+              onCancel={handleHideVoiceInput}
               onBeforeTranscribe={onBeforeSpeechToText}
               onConverted={handleVoiceInputConverted}
               onError={handleVoiceInputError}

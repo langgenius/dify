@@ -36,6 +36,8 @@ function VoiceInput({
   const drawRecordIdRef = useRef<number | null>(null)
   const mountedRef = useRef(true)
   const stopRequestedRef = useRef(false)
+  const cancelledRef = useRef(false)
+  const transcriptionAbortControllerRef = useRef<AbortController | null>(null)
   const [duration, setDuration] = useState(0)
   const [status, setStatus] = useState<VoiceInputStatus>('starting')
 
@@ -85,23 +87,34 @@ function VoiceInput({
     stopDrawing()
     try {
       const mp3Blob = await recorder.stop()
+      if (cancelledRef.current)
+        return
+
       await onBeforeTranscribe?.()
+      if (cancelledRef.current)
+        return
+
       const file = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
-      const audioResponse = await transcribeAudio(target, file)
-      if (mountedRef.current)
+      const abortController = new AbortController()
+      transcriptionAbortControllerRef.current = abortController
+      const audioResponse = await transcribeAudio(target, file, abortController.signal)
+      if (mountedRef.current && !cancelledRef.current)
         onConverted(audioResponse.text)
     }
     catch {
-      if (mountedRef.current)
+      if (mountedRef.current && !cancelledRef.current)
         onError?.()
     }
     finally {
-      if (mountedRef.current)
+      transcriptionAbortControllerRef.current = null
+      if (mountedRef.current && !cancelledRef.current)
         onCancel()
     }
   }, [onBeforeTranscribe, onCancel, onConverted, onError, status, stopDrawing, target])
 
   const handleCancel = useCallback(() => {
+    cancelledRef.current = true
+    transcriptionAbortControllerRef.current?.abort()
     void recorderRef.current?.cancel()
     onCancel()
   }, [onCancel])
@@ -125,8 +138,10 @@ function VoiceInput({
 
   useEffect(() => {
     mountedRef.current = true
+    cancelledRef.current = false
+    let effectCancelled = false
     void startVoiceRecorder().then((recorder) => {
-      if (!mountedRef.current) {
+      if (effectCancelled) {
         void recorder.cancel()
         return
       }
@@ -134,14 +149,17 @@ function VoiceInput({
       setStatus('recording')
       drawRecord()
     }).catch(() => {
-      if (!mountedRef.current)
+      if (effectCancelled)
         return
       onStartError?.()
       onCancel()
     })
 
     return () => {
+      effectCancelled = true
       mountedRef.current = false
+      cancelledRef.current = true
+      transcriptionAbortControllerRef.current?.abort()
       stopDrawing()
       void recorderRef.current?.cancel()
     }
@@ -170,7 +188,7 @@ function VoiceInput({
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
-        {isConverting && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" data-testid="voice-input-loader" />}
+        {isConverting && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" aria-hidden="true" data-testid="voice-input-loader" />}
         <div className="grow">
           {isRecording && (
             <div className="text-sm text-gray-500">
@@ -178,7 +196,7 @@ function VoiceInput({
             </div>
           )}
           {isConverting && (
-            <div className={cn(s.convert, 'text-sm')} data-testid="voice-input-converting-text">
+            <div className={cn(s.convert, 'text-sm')} role="status" data-testid="voice-input-converting-text">
               {t('voiceInput.converting', { ns: 'common' })}
             </div>
           )}
@@ -187,9 +205,8 @@ function VoiceInput({
           <button
             type="button"
             className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t('operation.submit', { ns: 'common' })}
+            aria-label={t('voiceInput.stop', { ns: 'common' })}
             onClick={handleStopRecorder}
-            data-testid="voice-input-stop"
           >
             <span className="i-ri-stop-circle-line size-5 text-primary-600" aria-hidden="true" />
           </button>
@@ -200,7 +217,6 @@ function VoiceInput({
             className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             aria-label={t('operation.cancel', { ns: 'common' })}
             onClick={handleCancel}
-            data-testid="voice-input-cancel"
           >
             <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />
           </button>

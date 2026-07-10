@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "microphone non autorisé",
   "voiceInput.speaking": "Parle maintenant...",
   "voiceInput.start": "Saisie vocale",
+  "voiceInput.stop": "Arrêter l’enregistrement",
   "workflowAsToolPage.description": "Transformez tout workflow publié en outil réutilisable. Utilisez-le dans plusieurs apps pour garder vos projets modulaires et éviter les répétitions.",
   "you": "Vous"
 }

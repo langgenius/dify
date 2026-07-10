@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "माइक्रोफोन अधिकृत नहीं है",
   "voiceInput.speaking": "अब बोलें...",
   "voiceInput.start": "वॉइस इनपुट",
+  "voiceInput.stop": "रिकॉर्डिंग रोकें",
   "workflowAsToolPage.description": "किसी भी प्रकाशित workflow को reusable tool में बदलें। अपने builds को modular रखने और दोहराव से बचने के लिए इसे कई apps में उपयोग करें।",
   "you": "आप"
 }

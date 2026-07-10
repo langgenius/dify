@@ -1,5 +1,6 @@
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -32,6 +33,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling,
     onHumanInputFormSubmit,
     onFeatureBarClick,
+    speechToTextTarget,
   }: {
     chatNode: React.ReactNode
     inputDisabled?: boolean
@@ -40,8 +42,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling?: (siblingMessageId: string) => void
     onHumanInputFormSubmit?: (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
     onFeatureBarClick?: (state: boolean) => void
+    speechToTextTarget?: SpeechToTextTarget
   }) => (
-    <div data-testid="chat-shell">
+    <div
+      data-testid="chat-shell"
+      data-speech-app-id={speechToTextTarget?.type === 'consoleApp' ? speechToTextTarget.appId : undefined}
+      data-speech-target={speechToTextTarget?.type}
+    >
       <div data-testid="chat-input-disabled">{`${inputDisabled}`}</div>
       <button type="button" onClick={() => onSend?.('hello', [])}>send-chat</button>
       <button
@@ -331,5 +338,24 @@ describe('ChatWrapper', () => {
     await waitFor(() => {
       expect(onHide).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('passes the workflow App target to speech-to-text', () => {
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+      {
+        nodes: [createStartNode()],
+        edges: [],
+      },
+    )
+
+    expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-target', 'consoleApp')
+    expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-app-id', 'app-1')
   })
 })

@@ -483,12 +483,24 @@ describe('ChatInputArea', () => {
       expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
     })
 
+    it('should keep the active recorder when the chat input rerenders', async () => {
+      const user = userEvent.setup({ delay: null })
+      const { rerender } = render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await screen.findByRole('button', { name: 'common.voiceInput.stop' })
+
+      rerender(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+
+      expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
+      expect(recorderCancel).not.toHaveBeenCalled()
+    })
+
     it('should handle stop recording in VoiceInput', async () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => {
         expect(getTextarea()!).toHaveValue('Converted voice text')
@@ -501,7 +513,7 @@ describe('ChatInputArea', () => {
       const textarea = getTextarea()!
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => expect(textarea).toHaveValue('Converted voice text'))
       await waitFor(() => expect(textarea).toHaveFocus())
@@ -525,7 +537,7 @@ describe('ChatInputArea', () => {
       const elsewhereButton = screen.getByRole('button', { name: 'Elsewhere' })
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       await user.click(elsewhereButton)
       await act(async () => resolveTranscription?.({ text: 'Converted voice text' }))
@@ -547,7 +559,7 @@ describe('ChatInputArea', () => {
       )
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       expect(onBeforeSpeechToText).toHaveBeenCalledTimes(1)
@@ -563,7 +575,7 @@ describe('ChatInputArea', () => {
       await user.type(getTextarea()!, 'Keep this text')
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
@@ -577,7 +589,7 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
       await user.click(cancelBtn)
@@ -609,7 +621,7 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await user.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => {
         expect(screen.queryByText(/voiceInput.converting/i)).not.toBeInTheDocument()

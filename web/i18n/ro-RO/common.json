@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "microfonul nu este autorizat",
   "voiceInput.speaking": "Vorbiți acum...",
   "voiceInput.start": "Introducere vocală",
+  "voiceInput.stop": "Oprește înregistrarea",
   "workflowAsToolPage.description": "Transformă orice workflow publicat într-un instrument reutilizabil. Folosește-l în mai multe aplicații pentru a păstra buildurile modulare și a evita repetarea.",
   "you": "Tu"
 }

@@ -239,10 +239,10 @@ export const fetchSuggestedQuestions = (messageId: string, appSourceType: AppSou
   return (getAction('get', appSourceType))(getUrl(`/messages/${messageId}/suggested-questions`, appSourceType, installedAppId))
 }
 
-export const audioToText = (appSourceType: AppSourceType, appId: string | undefined, body: FormData) => {
+export const audioToText = (appSourceType: AppSourceType, appId: string | undefined, body: FormData, signal?: AbortSignal) => {
   if (appSourceType !== AppSourceType.webApp && !appId)
     throw new Error('An app ID is required for console speech-to-text requests.')
-  return (getAction('post', appSourceType))(getUrl('/audio-to-text', appSourceType, appId ?? ''), { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
+  return (getAction('post', appSourceType))(getUrl('/audio-to-text', appSourceType, appId ?? ''), { body, signal }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
 
 export const textToAudioStream = (url: string, appSourceType: AppSourceType, header: { content_type: string }, body: { streaming: boolean, voice?: string, message_id?: string, text?: string | null | undefined }) => {

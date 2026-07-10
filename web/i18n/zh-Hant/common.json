@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "麥克風未授權",
   "voiceInput.speaking": "現在講...",
   "voiceInput.start": "語音輸入",
+  "voiceInput.stop": "停止錄音",
   "workflowAsToolPage.description": "將任意已發布工作流程作為可重複使用的工具，在多個應用中使用以保持模組化並避免重複設定。",
   "you": "你"
 }

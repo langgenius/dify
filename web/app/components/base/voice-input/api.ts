@@ -1,7 +1,7 @@
 import type { SpeechToTextTarget } from './types'
 import { audioToText } from '@/service/share'
 
-export async function transcribeAudio(target: SpeechToTextTarget, file: File): Promise<{ text: string }> {
+export async function transcribeAudio(target: SpeechToTextTarget, file: File, signal?: AbortSignal): Promise<{ text: string }> {
   if (target.type === 'agent' || target.type === 'consoleApp') {
     const { consoleClient } = await import('@/service/client')
     if (target.type === 'agent') {
@@ -13,15 +13,15 @@ export async function transcribeAudio(target: SpeechToTextTarget, file: File): P
         params: {
           agent_id: target.agentId,
         },
-      })
+      }, { signal })
     }
     return consoleClient.apps.byAppId.audioToText.post({
       body: { file },
       params: { app_id: target.appId },
-    })
+    }, { signal })
   }
 
   const formData = new FormData()
   formData.append('file', file)
-  return audioToText(target.appSourceType, target.appId, formData)
+  return audioToText(target.appSourceType, target.appId, formData, signal)
 }

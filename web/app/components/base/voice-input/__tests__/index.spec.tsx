@@ -1,5 +1,6 @@
 import type { VoiceRecorder } from '../recorder'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { transcribeAudio } from '../api'
 import VoiceInput from '../index'
 import { startVoiceRecorder } from '../recorder'
@@ -81,7 +82,7 @@ describe('VoiceInput', () => {
       renderVoiceInput()
 
       expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
       expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
       expect(getByteFrequencyData).toHaveBeenCalledTimes(1)
     })
@@ -102,15 +103,46 @@ describe('VoiceInput', () => {
 
       expect(recorderCancel).toHaveBeenCalledTimes(1)
     })
+
+    it('should discard a stale recorder when effects are replayed', async () => {
+      let resolveFirstRecorder: (value: VoiceRecorder) => void = () => {}
+      let resolveSecondRecorder: (value: VoiceRecorder) => void = () => {}
+      const staleCancel = vi.fn().mockResolvedValue(undefined)
+      const activeCancel = vi.fn().mockResolvedValue(undefined)
+      vi.mocked(startVoiceRecorder)
+        .mockReturnValueOnce(new Promise((resolve) => {
+          resolveFirstRecorder = resolve
+        }))
+        .mockReturnValueOnce(new Promise((resolve) => {
+          resolveSecondRecorder = resolve
+        }))
+
+      render(
+        <StrictMode>
+          <VoiceInput
+            onCancel={vi.fn()}
+            onConverted={vi.fn()}
+            target={target}
+          />
+        </StrictMode>,
+      )
+      resolveSecondRecorder({ ...recorder, cancel: activeCancel })
+      expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
+
+      resolveFirstRecorder({ ...recorder, cancel: staleCancel })
+
+      await waitFor(() => expect(staleCancel).toHaveBeenCalledTimes(1))
+      expect(activeCancel).not.toHaveBeenCalled()
+    })
   })
 
   // Stopping must upload a real MP3 file to the explicit owner-provided target.
   describe('Conversion', () => {
     it('should upload MP3 bytes to the explicit app target', async () => {
       const { props } = renderVoiceInput()
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
-      expect(await screen.findByText('common.voiceInput.converting')).toBeInTheDocument()
+      expect(await screen.findByRole('status')).toHaveTextContent('common.voiceInput.converting')
       await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       const [requestTarget, file] = vi.mocked(transcribeAudio).mock.calls[0]!
       expect(requestTarget).toBe(target)
@@ -130,7 +162,7 @@ describe('VoiceInput', () => {
         resolveStop = resolve
       }))
       renderVoiceInput()
-      const stopButton = await screen.findByRole('button', { name: 'common.operation.submit' })
+      const stopButton = await screen.findByRole('button', { name: 'common.voiceInput.stop' })
 
       fireEvent.click(stopButton)
       fireEvent.click(stopButton)
@@ -143,7 +175,7 @@ describe('VoiceInput', () => {
     it('should report conversion failure without replacing the current text', async () => {
       vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
       const { props } = renderVoiceInput()
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => expect(props.onError).toHaveBeenCalledTimes(1))
       expect(props.onConverted).not.toHaveBeenCalled()
@@ -153,7 +185,7 @@ describe('VoiceInput', () => {
     it('should not upload when saving the owning draft fails', async () => {
       const onBeforeTranscribe = vi.fn().mockRejectedValue(new Error('save failed'))
       const { props } = renderVoiceInput({ onBeforeTranscribe })
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
       await waitFor(() => expect(props.onError).toHaveBeenCalledTimes(1))
       expect(transcribeAudio).not.toHaveBeenCalled()
@@ -161,14 +193,56 @@ describe('VoiceInput', () => {
     })
 
     it('should close without publishing late results when conversion is cancelled', async () => {
-      vi.mocked(transcribeAudio).mockImplementationOnce(() => new Promise(() => {}))
+      let requestSignal: AbortSignal | undefined
+      vi.mocked(transcribeAudio).mockImplementationOnce((_target, _file, signal) => {
+        requestSignal = signal
+        return new Promise(() => {})
+      })
       const { props } = renderVoiceInput()
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
       expect(recorderCancel).toHaveBeenCalledTimes(1)
+      expect(requestSignal?.aborted).toBe(true)
       expect(props.onCancel).toHaveBeenCalledTimes(1)
       expect(props.onConverted).not.toHaveBeenCalled()
+    })
+
+    it('should not upload when conversion is cancelled while the recorder is stopping', async () => {
+      let resolveStop: (blob: Blob) => void = () => {}
+      recorderStop.mockReturnValueOnce(new Promise((resolve) => {
+        resolveStop = resolve
+      }))
+      const { props } = renderVoiceInput()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+      resolveStop(new Blob(['mp3-data'], { type: 'audio/mp3' }))
+
+      await act(async () => {})
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      expect(props.onBeforeTranscribe).not.toHaveBeenCalled()
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(props.onError).not.toHaveBeenCalled()
+    })
+
+    it('should not upload when conversion is cancelled while the draft is saving', async () => {
+      let resolveDraftSave: () => void = () => {}
+      const onBeforeTranscribe = vi.fn(() => new Promise<void>((resolve) => {
+        resolveDraftSave = resolve
+      }))
+      const { props } = renderVoiceInput({ onBeforeTranscribe })
+
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      await waitFor(() => expect(onBeforeTranscribe).toHaveBeenCalledTimes(1))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      resolveDraftSave()
+
+      await act(async () => {})
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(props.onError).not.toHaveBeenCalled()
     })
   })
 

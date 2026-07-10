@@ -14,7 +14,7 @@
     "last 1 Firefox version",
     "last 1 Edge version",
     "last 1 Safari version",
-    "iOS >=15",
+    "iOS >=16.4",
     "Android >= 10",
     "and_chr >= 126",
     "and_ff >= 137",

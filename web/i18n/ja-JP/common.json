@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "マイクが許可されていません",
   "voiceInput.speaking": "今話しています...",
   "voiceInput.start": "音声入力",
+  "voiceInput.stop": "録音を停止",
   "workflowAsToolPage.description": "公開済みのワークフローを再利用可能なツールに変換し、複数のアプリで使い回せます。構成をモジュール化し、重複作業を防げます。",
   "you": "あなた"
 }
