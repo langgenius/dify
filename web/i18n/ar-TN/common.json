@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "الميكروفون غير مصرح به",
   "voiceInput.speaking": "تحدث الآن...",
   "voiceInput.start": "إدخال صوتي",
+  "voiceInput.starting": "جارٍ تشغيل الميكروفون...",
   "voiceInput.stop": "إيقاف التسجيل",
   "workflowAsToolPage.description": "حوّل أي workflow منشور إلى أداة قابلة لإعادة الاستخدام. استخدمها عبر تطبيقات متعددة للحفاظ على البنية المعيارية وتجنب التكرار.",
   "you": "أنت"

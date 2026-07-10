@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "micro không được ủy quyền",
   "voiceInput.speaking": "Hãy nói...",
   "voiceInput.start": "Nhập bằng giọng nói",
+  "voiceInput.starting": "Đang khởi động micrô...",
   "voiceInput.stop": "Dừng ghi âm",
   "workflowAsToolPage.description": "Biến bất kỳ workflow đã xuất bản nào thành công cụ có thể tái sử dụng. Dùng trong nhiều ứng dụng để giữ tính mô-đun và tránh lặp lại.",
   "you": "Bạn"

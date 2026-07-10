@@ -56,32 +56,41 @@ export type VoiceRecorder = {
   cancel: () => Promise<void>
 }
 
-export async function startVoiceRecorder(): Promise<VoiceRecorder> {
+export async function startVoiceRecorder(signal?: AbortSignal): Promise<VoiceRecorder> {
   let stream: MediaStream | undefined
   let audioContext: AudioContext | undefined
   let output: Awaited<ReturnType<typeof import('./mp3-encoder').createMp3Encoder>>['output'] | undefined
+  let streamStopped = false
+  const stopStream = () => {
+    if (!stream || streamStopped)
+      return
+    streamStopped = true
+    stream.getTracks().forEach(track => track.stop())
+  }
 
   try {
-    const [mediaStream, { createMp3Encoder }] = await Promise.all([
-      navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      }),
-      import('./mp3-encoder'),
-    ])
-    stream = mediaStream
+    signal?.throwIfAborted()
+    const { createMp3Encoder } = await import('./mp3-encoder')
+    signal?.throwIfAborted()
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    })
+    signal?.addEventListener('abort', stopStream, { once: true })
+    signal?.throwIfAborted()
 
     const audioTrack = stream.getAudioTracks()[0]
     if (!audioTrack)
       throw new Error('No audio track is available.')
 
-    audioContext = new AudioContext()
+    const context = new AudioContext()
+    audioContext = context
     const workletUrl = URL.createObjectURL(new Blob([AUDIO_WORKLET_SOURCE], { type: 'application/javascript' }))
     try {
-      await audioContext.audioWorklet.addModule(workletUrl)
+      await context.audioWorklet.addModule(workletUrl)
     }
     finally {
       URL.revokeObjectURL(workletUrl)
@@ -92,10 +101,10 @@ export async function startVoiceRecorder(): Promise<VoiceRecorder> {
     output = encoder.output
     await output.start()
 
-    const analyser = audioContext.createAnalyser()
+    const analyser = context.createAnalyser()
     analyser.fftSize = 2048
-    const streamSource = audioContext.createMediaStreamSource(stream)
-    const workletNode = new AudioWorkletNode(audioContext, AUDIO_WORKLET_NAME)
+    const streamSource = context.createMediaStreamSource(stream)
+    const workletNode = new AudioWorkletNode(context, AUDIO_WORKLET_NAME)
     let resolveWorkletStopped: () => void = () => {}
     const workletStopped = new Promise<void>((resolve) => {
       resolveWorkletStopped = resolve
@@ -110,7 +119,7 @@ export async function startVoiceRecorder(): Promise<VoiceRecorder> {
       }
 
       const samples = new Float32Array(event.data.buffer)
-      const audioBuffer = audioContext!.createBuffer(1, samples.length, audioContext!.sampleRate)
+      const audioBuffer = context.createBuffer(1, samples.length, context.sampleRate)
       audioBuffer.copyToChannel(samples, 0)
       writeQueue = writeQueue.then(async () => {
         if (writeError)
@@ -126,36 +135,51 @@ export async function startVoiceRecorder(): Promise<VoiceRecorder> {
 
     streamSource.connect(analyser)
     streamSource.connect(workletNode)
-    workletNode.connect(audioContext.destination)
-    if (audioContext.state === 'suspended')
-      await audioContext.resume()
+    workletNode.connect(context.destination)
+    if (context.state === 'suspended')
+      await context.resume()
 
-    let released = false
-    const release = async () => {
-      if (released)
-        return
-      released = true
-      streamSource.disconnect()
-      analyser.disconnect()
-      workletNode.disconnect()
-      stream?.getTracks().forEach(track => track.stop())
-      await audioContext?.close()
+    let releasePromise: Promise<void> | undefined
+    const release = () => {
+      releasePromise ??= (async () => {
+        stopStream()
+        await Promise.allSettled([
+          (async () => streamSource.disconnect())(),
+          (async () => analyser.disconnect())(),
+          (async () => workletNode.disconnect())(),
+          (async () => context.close())(),
+        ])
+      })()
+      return releasePromise
+    }
+
+    let cancelled = false
+    let resolveCancelled: () => void = () => {}
+    const cancellation = new Promise<void>((resolve) => {
+      resolveCancelled = resolve
+    })
+    const waitForCancellation = async <T>(promise: Promise<T>) => {
+      await Promise.race([promise, cancellation])
+      if (cancelled)
+        throw new DOMException('Recording cancelled.', 'AbortError')
+      return promise
     }
 
     let stopPromise: Promise<Blob> | undefined
     const stop = () => {
       stopPromise ??= (async () => {
         try {
-          if (audioContext?.state === 'suspended')
-            await audioContext.resume()
+          if (context.state === 'suspended')
+            await context.resume()
           workletNode.port.postMessage({ type: 'stop' })
-          await workletStopped
-          await writeQueue
+          await waitForCancellation(workletStopped)
+          await waitForCancellation(writeQueue)
+          await release()
           if (writeError) {
             await output!.cancel()
             throw writeError
           }
-          await output!.finalize()
+          await waitForCancellation(output!.finalize())
           if (!target.buffer?.byteLength)
             throw new Error('The MP3 encoder produced no audio data.')
           return new Blob([target.buffer], { type: AUDIO_MIME_TYPE })
@@ -168,27 +192,22 @@ export async function startVoiceRecorder(): Promise<VoiceRecorder> {
     }
 
     const cancel = async () => {
-      if (stopPromise) {
-        try {
-          await stopPromise
-        }
-        catch {}
-        return
-      }
-      try {
-        await output!.cancel()
-      }
-      finally {
-        await release()
-      }
+      cancelled = true
+      resolveCancelled()
+      await release()
+      await Promise.allSettled([output!.cancel()])
     }
 
+    signal?.removeEventListener('abort', stopStream)
     return { analyser, stop, cancel }
   }
   catch (error) {
-    await output?.cancel()
-    stream?.getTracks().forEach(track => track.stop())
-    await audioContext?.close()
+    signal?.removeEventListener('abort', stopStream)
+    stopStream()
+    await Promise.allSettled([
+      audioContext?.close(),
+      output?.cancel(),
+    ])
     throw error
   }
 }

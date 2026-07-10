@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "mikrofon tidak diizinkan",
   "voiceInput.speaking": "Bicaralah sekarang...",
   "voiceInput.start": "Input suara",
+  "voiceInput.starting": "Memulai mikrofon...",
   "voiceInput.stop": "Hentikan rekaman",
   "workflowAsToolPage.description": "Ubah workflow yang telah dipublikasikan menjadi alat yang dapat digunakan kembali. Gunakan di beberapa aplikasi agar build tetap modular dan tidak berulang.",
   "you": "Kamu"

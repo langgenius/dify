@@ -601,16 +601,27 @@ describe('ChatInputArea', () => {
 
     it('should show error toast when voice permission is denied', async () => {
       const user = userEvent.setup({ delay: null })
-      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(new Error('Permission denied'))
+      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(new DOMException('Permission denied', 'NotAllowedError'))
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
-        )
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.voiceInput.notAllow' })
+      })
+    })
+
+    it('should show a generic error when voice input setup fails after permission', async () => {
+      const user = userEvent.setup({ delay: null })
+      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(new Error('AudioWorklet unavailable'))
+
+      render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.api.actionFailed' })
       })
     })
 

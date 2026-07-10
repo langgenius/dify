@@ -105,6 +105,7 @@ class MockAudioContext {
 
 const workletConnect = vi.fn()
 const workletDisconnect = vi.fn()
+let workletRespondsToStop = true
 
 class MockAudioWorkletNode {
   port: {
@@ -116,7 +117,7 @@ class MockAudioWorkletNode {
     this.port = {
       onmessage: null,
       postMessage: vi.fn((message: { type: string }) => {
-        if (message.type !== 'stop')
+        if (message.type !== 'stop' || !workletRespondsToStop)
           return
         this.port.onmessage?.({
           data: { type: 'data', buffer: new Float32Array([0.25, -0.25]).buffer },
@@ -146,6 +147,7 @@ describe('startVoiceRecorder', () => {
       if (mediaMocks.target)
         mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
     })
+    workletRespondsToStop = true
     audioContextState = 'running'
     vi.stubGlobal('AudioContext', MockAudioContext)
     vi.stubGlobal('AudioWorkletNode', MockAudioWorkletNode)
@@ -189,6 +191,23 @@ describe('startVoiceRecorder', () => {
 
       expect(audioContextResume).toHaveBeenCalledTimes(1)
     })
+
+    it('should release a microphone stream that resolves after setup is cancelled', async () => {
+      let resolveStream: (stream: MediaStream) => void = () => {}
+      getUserMedia.mockReturnValueOnce(new Promise((resolve) => {
+        resolveStream = resolve
+      }))
+      const abortController = new AbortController()
+      const recorderPromise = startVoiceRecorder(abortController.signal)
+      await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
+
+      abortController.abort()
+      resolveStream(stream)
+
+      await expect(recorderPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(addModule).not.toHaveBeenCalled()
+    })
   })
 
   // Stopping flushes queued PCM before exposing the final MP3 blob.
@@ -205,6 +224,28 @@ describe('startVoiceRecorder', () => {
       expect(result.size).toBe(3)
       expect(trackStop).toHaveBeenCalled()
       expect(audioContextClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should release microphone resources before MP3 finalization completes', async () => {
+      let resolveFinalize: () => void = () => {}
+      mediaMocks.outputFinalize.mockReturnValueOnce(new Promise((resolve) => {
+        resolveFinalize = () => {
+          if (mediaMocks.target)
+            mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+          resolve()
+        }
+      }))
+      const recorder = await startVoiceRecorder()
+
+      const stopPromise = recorder.stop()
+      await vi.waitFor(() => expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1))
+      const trackStopCallsBeforeFinalize = trackStop.mock.calls.length
+      const audioContextCloseCallsBeforeFinalize = audioContextClose.mock.calls.length
+      resolveFinalize()
+      await stopPromise
+
+      expect(trackStopCallsBeforeFinalize).toBe(1)
+      expect(audioContextCloseCallsBeforeFinalize).toBe(1)
     })
 
     it('should reuse the in-flight stop operation', async () => {
@@ -265,14 +306,91 @@ describe('startVoiceRecorder', () => {
       expect(audioContextClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should wait for an in-flight stop when cancellation follows stop', async () => {
+    it('should release the microphone before canceling a failed encoder setup', async () => {
+      mediaMocks.outputStart.mockRejectedValueOnce(new Error('encoder unavailable'))
+      mediaMocks.outputCancel.mockRejectedValueOnce(new Error('encoder cleanup failed'))
+
+      await expect(startVoiceRecorder()).rejects.toThrow()
+
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should release capture while an in-flight stop finishes encoding', async () => {
+      let resolveFinalize: () => void = () => {}
+      mediaMocks.outputFinalize.mockReturnValueOnce(new Promise((resolve) => {
+        resolveFinalize = () => {
+          if (mediaMocks.target)
+            mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+          resolve()
+        }
+      }))
+      const recorder = await startVoiceRecorder()
+      const stopPromise = recorder.stop()
+      await vi.waitFor(() => expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1))
+
+      const cancelPromise = recorder.cancel()
+      await vi.waitFor(() => expect(trackStop).toHaveBeenCalledTimes(1))
+      resolveFinalize()
+
+      await cancelPromise
+      await expect(stopPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(mediaMocks.outputCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should cancel capture when the worklet stop acknowledgement is pending', async () => {
+      workletRespondsToStop = false
       const recorder = await startVoiceRecorder()
       const stopPromise = recorder.stop()
 
       await recorder.cancel()
 
-      await expect(stopPromise).resolves.toBeInstanceOf(Blob)
-      expect(mediaMocks.outputCancel).not.toHaveBeenCalled()
+      await expect(stopPromise).rejects.toMatchObject({ name: 'AbortError' })
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      expect(mediaMocks.outputCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should complete runtime cleanup when a node disconnect fails', async () => {
+      streamSourceDisconnect.mockImplementationOnce(() => {
+        throw new Error('disconnect failed')
+      })
+      const recorder = await startVoiceRecorder()
+
+      await expect(recorder.cancel()).resolves.toBeUndefined()
+
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(analyserDisconnect).toHaveBeenCalledTimes(1)
+      expect(workletDisconnect).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      expect(mediaMocks.outputCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should resolve cancellation when encoder cleanup fails', async () => {
+      mediaMocks.outputCancel.mockRejectedValueOnce(new Error('encoder cleanup failed'))
+      const recorder = await startVoiceRecorder()
+
+      await expect(recorder.cancel()).resolves.toBeUndefined()
+
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not open the microphone when the encoder module fails to load', async () => {
+      vi.resetModules()
+      vi.doMock('../mp3-encoder', () => {
+        throw new Error('encoder chunk unavailable')
+      })
+
+      try {
+        const { startVoiceRecorder: startWithUnavailableEncoder } = await import('../recorder')
+
+        await expect(startWithUnavailableEncoder()).rejects.toThrow()
+        expect(getUserMedia).not.toHaveBeenCalled()
+      }
+      finally {
+        vi.doUnmock('../mp3-encoder')
+      }
     })
   })
 })

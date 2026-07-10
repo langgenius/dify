@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "Mikrofon ni pooblaščen",
   "voiceInput.speaking": "Spregovorite zdaj ...",
   "voiceInput.start": "Glasovni vnos",
+  "voiceInput.starting": "Zagon mikrofona ...",
   "voiceInput.stop": "Ustavi snemanje",
   "workflowAsToolPage.description": "Vsak objavljen workflow pretvorite v ponovno uporabno orodje. Uporabite ga v več aplikacijah, da ohranite modularnost in se izognete ponavljanju.",
   "you": "Ti"

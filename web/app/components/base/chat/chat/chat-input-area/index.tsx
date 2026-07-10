@@ -24,6 +24,10 @@ import Operation from './operation'
 
 type SendAcceptance = void | boolean | Promise<void | boolean>
 
+function isMicrophonePermissionDenied(error: unknown) {
+  return error instanceof DOMException && error.name === 'NotAllowedError'
+}
+
 type ChatInputAreaProps = {
   readonly?: boolean
   botName?: string
@@ -161,8 +165,8 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const handleShowVoiceInput = useCallback(() => {
     setShowVoiceInput(true)
   }, [])
-  const handleVoiceInputStartError = useCallback(() => {
-    toast.error(t('voiceInput.notAllow', { ns: 'common' }))
+  const handleVoiceInputStartError = useCallback((error: unknown) => {
+    toast.error(t(isMicrophonePermissionDenied(error) ? 'voiceInput.notAllow' : 'api.actionFailed', { ns: 'common' }))
   }, [t])
   const handleVoiceInputError = useCallback(() => {
     toast.error(t('api.actionFailed', { ns: 'common' }))

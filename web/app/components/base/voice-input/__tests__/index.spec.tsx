@@ -78,6 +78,21 @@ describe('VoiceInput', () => {
 
   // The component owns the local recording state and browser-resource lifecycle.
   describe('Recording state', () => {
+    it('should expose a cancellable starting state while microphone permission is pending', async () => {
+      let setupSignal: AbortSignal | undefined
+      vi.mocked(startVoiceRecorder).mockImplementationOnce((signal) => {
+        setupSignal = signal
+        return new Promise(() => {})
+      })
+      const { props } = renderVoiceInput()
+
+      expect(screen.getByRole('status')).toHaveTextContent('common.voiceInput.starting')
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(setupSignal?.aborted).toBe(true)
+    })
+
     it('should show the recording state after microphone setup succeeds', async () => {
       renderVoiceInput()
 
@@ -87,11 +102,12 @@ describe('VoiceInput', () => {
       expect(getByteFrequencyData).toHaveBeenCalledTimes(1)
     })
 
-    it('should report setup failure and close the voice input', async () => {
-      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(new Error('microphone denied'))
+    it('should report the original setup failure and close the voice input', async () => {
+      const startError = new DOMException('microphone denied', 'NotAllowedError')
+      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(startError)
       const { props } = renderVoiceInput()
 
-      await waitFor(() => expect(props.onStartError).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(props.onStartError).toHaveBeenCalledWith(startError))
       expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
 
@@ -133,6 +149,23 @@ describe('VoiceInput', () => {
 
       await waitFor(() => expect(staleCancel).toHaveBeenCalledTimes(1))
       expect(activeCancel).not.toHaveBeenCalled()
+    })
+
+    it('should keep the active recorder when error callbacks change', async () => {
+      const { props, rerender } = renderVoiceInput()
+      await screen.findByText('common.voiceInput.speaking')
+
+      rerender(
+        <VoiceInput
+          {...props}
+          onCancel={vi.fn()}
+          onStartError={vi.fn()}
+        />,
+      )
+
+      expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
+      expect(recorderCancel).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
     })
   })
 
@@ -187,9 +220,10 @@ describe('VoiceInput', () => {
       const { props } = renderVoiceInput({ onBeforeTranscribe })
       fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
-      await waitFor(() => expect(props.onError).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(props.onCancel).toHaveBeenCalledTimes(1))
       expect(transcribeAudio).not.toHaveBeenCalled()
       expect(props.onConverted).not.toHaveBeenCalled()
+      expect(props.onError).not.toHaveBeenCalled()
     })
 
     it('should close without publishing late results when conversion is cancelled', async () => {

@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "ไม่ได้รับอนุญาตไมโครโฟน",
   "voiceInput.speaking": "พูดเดี๋ยวนี้...",
   "voiceInput.start": "ป้อนข้อมูลด้วยเสียง",
+  "voiceInput.starting": "กำลังเริ่มไมโครโฟน...",
   "voiceInput.stop": "หยุดการบันทึก",
   "workflowAsToolPage.description": "เปลี่ยน workflow ที่เผยแพร่แล้วให้เป็นเครื่องมือที่ใช้ซ้ำได้ ใช้ได้ในหลายแอปเพื่อให้การสร้างงานเป็นโมดูลและหลีกเลี่ยงการทำซ้ำ",
   "you": "คุณ"

@@ -596,6 +596,7 @@
   "voiceInput.notAllow": "microphone not authorized",
   "voiceInput.speaking": "Speak now...",
   "voiceInput.start": "Voice input",
+  "voiceInput.starting": "Starting microphone...",
   "voiceInput.stop": "Stop recording",
   "workflowAsToolPage.description": "Turn any published workflow into a reusable tool. Use it across multiple apps to keep your builds modular and avoid repetition.",
   "you": "You"

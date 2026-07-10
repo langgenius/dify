@@ -1,7 +1,7 @@
 import type { VoiceRecorder } from './recorder'
 import type { SpeechToTextTarget } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { transcribeAudio } from './api'
 import s from './index.module.css'
@@ -16,7 +16,7 @@ type VoiceInputProps = {
   onCancel: () => void
   onBeforeTranscribe?: () => Promise<unknown>
   onError?: () => void
-  onStartError?: () => void
+  onStartError?: (error: unknown) => void
   target: SpeechToTextTarget
 }
 
@@ -37,9 +37,14 @@ function VoiceInput({
   const mountedRef = useRef(true)
   const stopRequestedRef = useRef(false)
   const cancelledRef = useRef(false)
+  const setupAbortControllerRef = useRef<AbortController | null>(null)
   const transcriptionAbortControllerRef = useRef<AbortController | null>(null)
   const [duration, setDuration] = useState(0)
   const [status, setStatus] = useState<VoiceInputStatus>('starting')
+  const handleRecorderStartError = useEffectEvent((error: unknown) => {
+    onStartError?.(error)
+    onCancel()
+  })
 
   const stopDrawing = useCallback(() => {
     if (drawRecordIdRef.current !== null)
@@ -85,18 +90,35 @@ function VoiceInput({
     stopRequestedRef.current = true
     setStatus('converting')
     stopDrawing()
+    let mp3Blob: Blob
     try {
-      const mp3Blob = await recorder.stop()
-      if (cancelledRef.current)
-        return
+      mp3Blob = await recorder.stop()
+    }
+    catch {
+      if (mountedRef.current && !cancelledRef.current) {
+        onError?.()
+        onCancel()
+      }
+      return
+    }
+    if (cancelledRef.current)
+      return
 
+    try {
       await onBeforeTranscribe?.()
-      if (cancelledRef.current)
-        return
+    }
+    catch {
+      if (mountedRef.current && !cancelledRef.current)
+        onCancel()
+      return
+    }
+    if (cancelledRef.current)
+      return
 
-      const file = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
-      const abortController = new AbortController()
-      transcriptionAbortControllerRef.current = abortController
+    const file = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
+    const abortController = new AbortController()
+    transcriptionAbortControllerRef.current = abortController
+    try {
       const audioResponse = await transcribeAudio(target, file, abortController.signal)
       if (mountedRef.current && !cancelledRef.current)
         onConverted(audioResponse.text)
@@ -114,6 +136,7 @@ function VoiceInput({
 
   const handleCancel = useCallback(() => {
     cancelledRef.current = true
+    setupAbortControllerRef.current?.abort()
     transcriptionAbortControllerRef.current?.abort()
     void recorderRef.current?.cancel()
     onCancel()
@@ -140,7 +163,11 @@ function VoiceInput({
     mountedRef.current = true
     cancelledRef.current = false
     let effectCancelled = false
-    void startVoiceRecorder().then((recorder) => {
+    const abortController = new AbortController()
+    setupAbortControllerRef.current = abortController
+    void startVoiceRecorder(abortController.signal).then((recorder) => {
+      if (setupAbortControllerRef.current === abortController)
+        setupAbortControllerRef.current = null
       if (effectCancelled) {
         void recorder.cancel()
         return
@@ -148,22 +175,24 @@ function VoiceInput({
       recorderRef.current = recorder
       setStatus('recording')
       drawRecord()
-    }).catch(() => {
-      if (effectCancelled)
+    }).catch((error: unknown) => {
+      if (setupAbortControllerRef.current === abortController)
+        setupAbortControllerRef.current = null
+      if (effectCancelled || abortController.signal.aborted)
         return
-      onStartError?.()
-      onCancel()
+      handleRecorderStartError(error)
     })
 
     return () => {
       effectCancelled = true
       mountedRef.current = false
       cancelledRef.current = true
+      abortController.abort()
       transcriptionAbortControllerRef.current?.abort()
       stopDrawing()
       void recorderRef.current?.cancel()
     }
-  }, [drawRecord, onCancel, onStartError, stopDrawing])
+  }, [drawRecord, stopDrawing])
 
   useEffect(() => {
     if (status !== 'recording')
@@ -181,6 +210,7 @@ function VoiceInput({
 
   const minutes = Math.floor(duration / 60).toString().padStart(2, '0')
   const seconds = (duration % 60).toString().padStart(2, '0')
+  const isStarting = status === 'starting'
   const isRecording = status === 'recording'
   const isConverting = status === 'converting'
 
@@ -188,8 +218,13 @@ function VoiceInput({
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
-        {isConverting && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" aria-hidden="true" data-testid="voice-input-loader" />}
+        {(isStarting || isConverting) && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" aria-hidden="true" data-testid="voice-input-loader" />}
         <div className="grow">
+          {isStarting && (
+            <div className="text-sm text-gray-500" role="status">
+              {t('voiceInput.starting', { ns: 'common' })}
+            </div>
+          )}
           {isRecording && (
             <div className="text-sm text-gray-500">
               {t('voiceInput.speaking', { ns: 'common' })}
@@ -211,7 +246,7 @@ function VoiceInput({
             <span className="i-ri-stop-circle-line size-5 text-primary-600" aria-hidden="true" />
           </button>
         )}
-        {isConverting && (
+        {(isStarting || isConverting) && (
           <button
             type="button"
             className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
