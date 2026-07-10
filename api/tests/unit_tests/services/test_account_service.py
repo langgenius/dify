@@ -685,9 +685,7 @@ class TestTenantService:
             return FakeScalarResult([])
 
         batches = list(
-            TenantService.iter_member_account_id_batches(
-                "tenant-1", 2, session=SimpleNamespace(scalars=scalars)
-            )
+            TenantService.iter_member_account_id_batches("tenant-1", 2, session=SimpleNamespace(scalars=scalars))
         )
 
         assert batches == [["acct-1", "acct-2"], ["acct-3"]]

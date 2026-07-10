@@ -20722,6 +20722,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_policy_ids | [ string ] |  | No |
+| account_ids | [ string ] |  | No |
 
 #### ReplaceUserAccessPoliciesResponse
 
