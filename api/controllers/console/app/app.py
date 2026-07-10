@@ -42,7 +42,6 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -51,7 +50,6 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
-from services.account_service import TenantService
 from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -70,6 +68,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightVectorSetting,
 )
 from services.feature_service import FeatureService
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
@@ -79,37 +78,6 @@ _logger = logging.getLogger(__name__)
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
 APP_LIST_QUERY_ARRAY_FIELDS = ("tag_ids", "creator_ids")
-APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE = 500
-APP_RBAC_DEFAULT_ACCESS_POLICY_ID = "default"
-
-
-def _initialize_created_app_rbac_access(tenant_id: str, account_id: str, app_id: str) -> None:
-    """Initialize a newly created app's RBAC access for all current workspace members."""
-    if not dify_config.RBAC_ENABLED:
-        return
-
-    enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        app_id=app_id,
-        payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-    )
-
-    for account_ids in TenantService.iter_member_account_id_batches(
-        tenant_id,
-        APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
-        session=db.session(),
-    ):
-        enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
-            tenant_id=tenant_id,
-            account_id=account_id,
-            app_id=app_id,
-            target_account_id=None,
-            payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                account_ids=account_ids,
-            ),
-        )
 
 
 class AppListBaseQuery(BaseModel):
@@ -679,7 +647,7 @@ class AppListApi(Resource):
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=db.session())
         if dify_config.RBAC_ENABLED:
-            _initialize_created_app_rbac_access(str(current_tenant_id), current_user.id, str(app.id))
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
