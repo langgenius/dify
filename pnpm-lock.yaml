@@ -213,9 +213,6 @@ catalogs:
     '@types/js-cookie':
       specifier: 3.0.6
       version: 3.0.6
-    '@types/js-yaml':
-      specifier: 4.0.9
-      version: 4.0.9
     '@types/lockfile':
       specifier: 1.0.4
       version: 1.0.4
@@ -418,8 +415,8 @@ catalogs:
       specifier: 3.0.8
       version: 3.0.8
     js-yaml:
-      specifier: 4.3.0
-      version: 4.3.0
+      specifier: 5.2.1
+      version: 5.2.1
     jsonschema:
       specifier: 1.5.0
       version: 1.5.0
@@ -706,7 +703,7 @@ importers:
         version: 3.1.0
       js-yaml:
         specifier: 'catalog:'
-        version: 4.3.0
+        version: 5.2.1
       lockfile:
         specifier: 'catalog:'
         version: 1.0.4
@@ -735,9 +732,6 @@ importers:
       '@hono/node-server':
         specifier: 'catalog:'
         version: 2.0.8(hono@4.12.28)
-      '@types/js-yaml':
-        specifier: 'catalog:'
-        version: 4.0.9
       '@types/lockfile':
         specifier: 'catalog:'
         version: 1.0.4
@@ -829,9 +823,6 @@ importers:
       '@hey-api/openapi-ts':
         specifier: 'catalog:'
         version: 0.98.2(@typescript/typescript6@6.0.2)(magicast@0.5.3)
-      '@types/js-yaml':
-        specifier: 'catalog:'
-        version: 4.0.9
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.5
@@ -843,13 +834,16 @@ importers:
         version: 10.6.0(jiti@2.7.0)
       js-yaml:
         specifier: 'catalog:'
-        version: 4.3.0
+        version: 5.2.1
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@25.9.5)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(happy-dom@20.10.6)
 
   packages/dev-proxy:
     dependencies:
@@ -1286,7 +1280,7 @@ importers:
         version: 3.0.8
       js-yaml:
         specifier: 'catalog:'
-        version: 4.3.0
+        version: 5.2.1
       jsonschema:
         specifier: 'catalog:'
         version: 1.5.0
@@ -1525,9 +1519,6 @@ importers:
       '@types/js-cookie':
         specifier: 'catalog:'
         version: 3.0.6
-      '@types/js-yaml':
-        specifier: 'catalog:'
-        version: 4.0.9
       '@types/negotiator':
         specifier: 'catalog:'
         version: 0.6.4
@@ -4934,9 +4925,6 @@ packages:
   '@types/js-cookie@3.0.6':
     resolution: {integrity: sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==}
 
-  '@types/js-yaml@4.0.9':
-    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
-
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -7507,6 +7495,10 @@ packages:
 
   js-yaml@4.3.0:
     resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+    hasBin: true
+
+  js-yaml@5.2.1:
+    resolution: {integrity: sha512-zfLtNfQqxVqq3uaTqSkh4x4hZw3KHobGUA0fJUj4wawW8bsQLTVqpHdXSIzidh7o+4lEW36tANuAGdaFx6Zgnw==}
     hasBin: true
 
   jsdoc-type-pratt-parser@7.1.1:
@@ -13328,8 +13320,6 @@ snapshots:
 
   '@types/js-cookie@3.0.6': {}
 
-  '@types/js-yaml@4.0.9': {}
-
   '@types/json-schema@7.0.15': {}
 
   '@types/katex@0.16.8': {}
@@ -16291,6 +16281,10 @@ snapshots:
   js-tokens@9.0.1: {}
 
   js-yaml@4.3.0:
+    dependencies:
+      argparse: 2.0.1
+
+  js-yaml@5.2.1:
     dependencies:
       argparse: 2.0.1
 
@@ -19708,7 +19702,6 @@ time:
   '@tsslint/compat-eslint@3.1.4': '2026-06-16T18:21:23.786Z'
   '@tsslint/config@3.1.4': '2026-06-16T18:21:26.545Z'
   '@types/js-cookie@3.0.6': '2023-11-07T08:41:16.889Z'
-  '@types/js-yaml@4.0.9': '2023-11-07T20:20:13.264Z'
   '@types/lockfile@1.0.4': '2023-11-07T20:23:21.070Z'
   '@types/negotiator@0.6.4': '2025-06-07T02:18:17.532Z'
   '@types/node@25.9.5': '2026-07-08T06:47:58.834Z'
@@ -19777,7 +19770,7 @@ time:
   jotai@2.20.1: '2026-06-11T06:30:45.782Z'
   js-audio-recorder@1.0.7: '2021-01-09T10:20:49.923Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'
-  js-yaml@4.3.0: '2026-06-26T22:29:00.874Z'
+  js-yaml@5.2.1: '2026-07-02T00:55:21.714Z'
   jsonschema@1.5.0: '2025-01-07T15:09:11.287Z'
   katex@0.17.0: '2026-05-22T08:06:26.967Z'
   knip@6.25.0: '2026-07-07T08:47:13.416Z'

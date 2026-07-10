@@ -98,7 +98,6 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@hono/node-server": "catalog:",
-    "@types/js-yaml": "catalog:",
     "@types/lockfile": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",

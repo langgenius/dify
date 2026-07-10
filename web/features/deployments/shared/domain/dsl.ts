@@ -1,5 +1,5 @@
-import { load as yamlLoad } from 'js-yaml'
 import { AppModeEnum } from '@/types/app'
+import { loadYaml } from '@/utils/yaml'
 
 export type DslEnvVarSlot = {
   key: string
@@ -38,7 +38,7 @@ export function encodeDslContent(value: string) {
 
 function parseDsl(content: string) {
   try {
-    return yamlLoad(content) as DslMetadata | undefined
+    return loadYaml(content) as DslMetadata | undefined
   }
   catch {
     return undefined
