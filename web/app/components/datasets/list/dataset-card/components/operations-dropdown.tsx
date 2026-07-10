@@ -76,6 +76,10 @@ const OperationsDropdown = ({
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
