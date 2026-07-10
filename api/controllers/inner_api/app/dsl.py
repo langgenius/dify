@@ -5,6 +5,8 @@ to attribute the created app; workspace/membership validation is done by the
 Go admin-api caller.
 """
 
+from uuid import UUID
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -20,6 +22,7 @@ from models import Account, App
 from models.account import AccountStatus
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportMode, ImportStatus
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -84,22 +87,47 @@ class EnterpriseAppDSLExport(Resource):
         "enterprise_app_dsl_export",
         responses={
             200: "Export successful",
-            404: "App not found",
+            400: "Invalid workflow ID",
+            404: "App or workflow version not found",
+            422: "Workflow version is not published",
         },
     )
     def get(self, app_id: str):
         """Export an app's DSL as YAML."""
         include_secret = request.args.get("include_secret", "false").lower() == "true"
+        workflow_id = request.args.get("workflow_id")
 
         app_model = db.session.get(App, app_id)
         if not app_model:
             return {"message": "app not found"}, 404
 
-        data = AppDslService.export_dsl(
-            app_model=app_model,
-            session=db.session(),
-            include_secret=include_secret,
-        )
+        if not workflow_id:
+            data = AppDslService.export_dsl(
+                app_model=app_model,
+                session=db.session(),
+                include_secret=include_secret,
+            )
+        else:
+            try:
+                workflow_id = str(UUID(workflow_id))
+            except ValueError:
+                return {
+                    "code": "invalid_workflow_id",
+                    "message": "workflow_id must be a valid UUID",
+                    "status": 400,
+                }, 400
+
+            try:
+                data = AppDslService.export_dsl(
+                    app_model=app_model,
+                    session=db.session(),
+                    include_secret=include_secret,
+                    workflow_id=workflow_id,
+                )
+            except WorkflowNotFoundError as exc:
+                return {"code": "workflow_version_not_found", "message": str(exc), "status": 404}, 404
+            except IsDraftWorkflowError as exc:
+                return {"code": "workflow_version_not_published", "message": str(exc), "status": 422}, 422
 
         return {"data": data}, 200
 
