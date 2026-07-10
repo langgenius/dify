@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { ParameterExtractorNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -30,13 +31,13 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: ParameterExtractorNodeType, t: any) {
+  checkValid(payload: ParameterExtractorNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
       errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.inputVar`], { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.model`], { ns: 'workflow' }) })
+      errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}errorMsg.fields.model`], { ns: 'workflow' }) })
 
     if (!errorMessages && (!payload.parameters || payload.parameters.length === 0))
       errorMessages = t($ => $[`${i18nPrefix}errorMsg.fieldRequired`], { ns: 'workflow', field: t($ => $[`${i18nPrefix}nodes.parameterExtractor.extractParameters`], { ns: 'workflow' }) })

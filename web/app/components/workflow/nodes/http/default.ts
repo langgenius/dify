@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { BodyPayload, HttpNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -38,7 +39,7 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       retry_interval: 100,
     },
   },
-  checkValid(payload: HttpNodeType, t: any) {
+  checkValid(payload: HttpNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
 
     if (!errorMessages && !payload.url)

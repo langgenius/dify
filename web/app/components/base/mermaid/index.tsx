@@ -533,7 +533,7 @@ const Flowchart = (props: FlowchartProps) => {
         <div className="px-[26px] py-4">
           <LoadingAnim type="text" />
           <div className="mt-2 text-sm text-gray-500">
-            {t($ => $['wait_for_completion'], { ns: 'common', defaultValue: 'Waiting for diagram code to complete...' })}
+            {t($ => $['mermaid.waitForCompletion'], { ns: 'app' })}
           </div>
         </div>
       )}

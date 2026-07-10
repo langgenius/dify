@@ -234,7 +234,7 @@ function FeaturedTriggerUninstalledItem({
 }: FeaturedTriggerUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-  const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
+  const installCountLabel = t($ => $['install'], { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
@@ -276,7 +276,7 @@ function FeaturedTriggerUninstalledItem({
                 setIsInstallModalOpen(true)
               }}
             >
-              {t('installAction', { ns: 'plugin' })}
+              {t($ => $['installAction'], { ns: 'plugin' })}
             </button>
           )}
           <Action

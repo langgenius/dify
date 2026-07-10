@@ -27,7 +27,7 @@ type PermissionSelectorProps = {
   onChange: (permission?: PermissionLevel) => void
   onMemberSelect: (v: string[]) => void
   /** i18n namespace for label strings (defaults to datasetSettings for backward compat) */
-  i18nNamespace?: string
+  i18nNamespace?: 'datasetSettings'
   /**
    * Hide the "Partial members" option. Useful for surfaces (e.g. plugin
    * credential creation) where partial-member access is delegated to RBAC

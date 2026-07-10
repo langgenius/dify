@@ -161,7 +161,7 @@ vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return ({
     useTranslation: () => ({
-      t: withSelectorKey((...args: Parameters<typeof mockT>) => mockT(...args)),
+      t: withSelectorKey(mockT),
     }),
   })
 })

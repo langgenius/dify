@@ -157,20 +157,20 @@ function getTooltipContent({
     return ''
 
   if (appUnpublished)
-    return t('mcp.server.publishTip', { ns: 'tools' })
+    return t($ => $['mcp.server.publishTip'], { ns: 'tools' })
 
   if (missingStartNode) {
     return (
       <>
         <div className="mb-1 text-xs font-normal text-text-secondary">
-          {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+          {t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
         </div>
         <button
           type="button"
           className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
           onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
         >
-          {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+          {t($ => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
         </button>
       </>
     )

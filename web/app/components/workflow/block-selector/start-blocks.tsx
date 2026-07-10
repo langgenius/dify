@@ -201,8 +201,8 @@ function StartBlockPreviewCard({
 
   const { block } = payload
   const description = block.type === BlockEnumValues.Start
-    ? t('nodes.start.userInputTipDescription', { ns: 'workflow' })
-    : t(`blocksAbout.${block.type}`, { ns: 'workflow' })
+    ? t($ => $['nodes.start.userInputTipDescription'], { ns: 'workflow' })
+    : t($ => $[`blocksAbout.${block.type}`], { ns: 'workflow' })
   const showDifyTeamAuthor = [
     BlockEnumValues.Start,
     BlockEnumValues.TriggerWebhook,
@@ -218,16 +218,16 @@ function StartBlockPreviewCard({
           type={block.type}
         />
         <div className="mb-1 system-md-medium text-text-primary">
-          {t(`blocks.${block.type}`, { ns: 'workflow' })}
+          {t($ => $[`blocks.${block.type}`], { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular wrap-break-word text-text-secondary">
           {description}
         </div>
         {showDifyTeamAuthor && (
           <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t('author', { ns: 'tools' })}
+            {t($ => $['author'], { ns: 'tools' })}
             {' '}
-            {t('difyTeam', { ns: 'workflow' })}
+            {t($ => $['difyTeam'], { ns: 'workflow' })}
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -12,10 +13,15 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 
+export type RetrievalTranslate = (
+  selector: SelectorParam<'datasetSettings'>,
+  options: { ns: 'datasetSettings' },
+) => string
+
 type CommonSectionProps = {
   rowClass: string
   labelClass: string
-  t: (key: string, options?: any) => string
+  t: RetrievalTranslate
 }
 
 type ExternalRetrievalSectionProps = CommonSectionProps & {
@@ -40,7 +46,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
     <div className={rowClass}><Divider /></div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
       </div>
       <RetrievalSettings
         topK={topK}
@@ -53,7 +59,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
     <div className={rowClass}><Divider /></div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeAPI', { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}</div>
       </div>
       <div className="w-full max-w-[480px]">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
@@ -68,7 +74,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
     </div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeID', { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}</div>
       </div>
       <div className="w-full max-w-[480px]">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
@@ -101,10 +107,10 @@ const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
   <div className={rowClass}>
     <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
       <div>
-        <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
         <div className="text-xs leading-[18px] font-normal text-text-tertiary">
-          <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
-          {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
+          <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}</a>
+          {t($ => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
         </div>
       </div>
     </div>

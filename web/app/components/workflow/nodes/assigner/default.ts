@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { AssignerNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -19,7 +20,7 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
     version: '2',
     items: [],
   },
-  checkValid(payload: AssignerNodeType, t: any) {
+  checkValid(payload: AssignerNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const {
       items: operationItems,

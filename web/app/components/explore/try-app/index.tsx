@@ -91,7 +91,7 @@ const TryApp: FC<Props> = ({
               <Button
                 size="large"
                 variant="tertiary"
-                aria-label={t($ => $['common.operation.close'])}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
                 className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
                 onClick={onClose}
               >

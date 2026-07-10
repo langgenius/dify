@@ -63,7 +63,7 @@ const Trigger: FC<TriggerProps> = ({
           </div>
         </div>
         <div className="mr-1 flex-1 truncate text-[13px] font-normal text-text-secondary">
-          {t($ => $['workflow:errorMsg.configureModel'])}
+          {t($ => $['errorMsg.configureModel'], { ns: 'workflow' })}
         </div>
         <span className={cn('i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary', isInWorkflow && 'absolute top-[9px] right-2 h-3.5 w-3.5')} />
       </div>

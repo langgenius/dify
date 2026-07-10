@@ -1,3 +1,4 @@
+import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
 import type { ChatVarType } from '../type'
 import type { ConversationVariable } from '@/app/components/workflow/types'
@@ -30,6 +31,21 @@ export type ToastPayload = {
 }
 
 export const MAX_DESCRIPTION_LENGTH = 255
+
+export type ChatVariableTranslator = <Namespace extends 'workflow' | 'appDebug'>(
+  selector: SelectorParam<Namespace>,
+  options: { ns: Namespace } & Record<string, unknown>,
+) => string
+
+type VariableNameErrorKey = Exclude<ReturnType<typeof checkKeys>['errorMessageKey'], ''>
+
+const variableNameErrorSelectors: Record<VariableNameErrorKey, SelectorParam<'appDebug'>> = {
+  canNoBeEmpty: $ => $['varKeyError.canNoBeEmpty'],
+  keyAlreadyExists: $ => $['varKeyError.keyAlreadyExists'],
+  notStartWithNumber: $ => $['varKeyError.notStartWithNumber'],
+  notValid: $ => $['varKeyError.notValid'],
+  tooLong: $ => $['varKeyError.tooLong'],
+}
 
 export const typeList = [
   ChatVarTypeEnum.String,
@@ -117,13 +133,16 @@ export const validateVariableName = ({
 }: {
   name: string
   notify: (props: ToastPayload) => void
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: ChatVariableTranslator
 }) => {
   const { isValid, errorMessageKey } = checkKeys([name], false)
   if (!isValid) {
     notify({
       type: 'error',
-      message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
+      message: t(variableNameErrorSelectors[errorMessageKey], {
+        ns: 'appDebug',
+        key: t($ => $['env.modal.name'], { ns: 'workflow' }),
+      }),
     })
     return false
   }
@@ -168,7 +187,12 @@ export const parseEditorContent = ({
     .filter((item?: boolean) => item !== undefined)
 }
 
-export const getEditorToggleLabelKey = (type: ChatVarType, editInJSON: boolean) => {
+export type EditorToggleLabelKey
+  = | 'chatVariable.modal.editInForm'
+    | 'chatVariable.modal.editInJSON'
+    | 'chatVariable.modal.oneByOne'
+
+export const getEditorToggleLabelKey = (type: ChatVarType, editInJSON: boolean): EditorToggleLabelKey => {
   if (type === ChatVarTypeEnum.Object)
     return editInJSON ? 'chatVariable.modal.editInForm' : 'chatVariable.modal.editInJSON'
 

@@ -1,3 +1,4 @@
+import type { Namespace, SelectorParam } from 'i18next'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { IOtherOptions } from '@/service/base'
@@ -21,11 +22,13 @@ const {
   textGenerationResPropsSpy: vi.fn(),
 }))
 
-vi.mock('i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    t: withSelectorKey((key: string) => key),
-  })
+vi.mock('i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('i18next')>()
+
+  return {
+    ...actual,
+    t: <Ns extends Namespace>(selector: SelectorParam<Ns>) => actual.keyFromSelector(selector),
+  }
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

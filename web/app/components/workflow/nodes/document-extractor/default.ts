@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { DocExtractorNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -18,7 +19,7 @@ const nodeDefault: NodeDefault<DocExtractorNodeType> = {
     variable_selector: [],
     is_array_file: false,
   },
-  checkValid(payload: DocExtractorNodeType, t: any) {
+  checkValid(payload: DocExtractorNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { variable_selector: variable } = payload
 

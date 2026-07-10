@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -25,7 +26,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
       reranking_enable: false,
     },
   },
-  checkValid(payload: KnowledgeRetrievalNodeType, t: any) {
+  checkValid(payload: KnowledgeRetrievalNodeType, t: TFunction<['workflow', 'common']>) {
     let errorMessages = ''
 
     if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))

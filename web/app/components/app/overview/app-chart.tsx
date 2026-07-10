@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components, react/component-hook-factories */
 'use client'
 import type { Dayjs } from 'dayjs'
+import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
 import ReactECharts from 'echarts-for-react'
@@ -148,16 +149,41 @@ type UseChartData = (id: string, query?: PeriodParams['query']) => {
   isLoading: boolean
 }
 
+const CHART_TRANSLATION_SELECTOR_MAP = {
+  'analysis.activeUsers.explanation': $ => $['analysis.activeUsers.explanation'],
+  'analysis.activeUsers.title': $ => $['analysis.activeUsers.title'],
+  'analysis.avgResponseTime.explanation': $ => $['analysis.avgResponseTime.explanation'],
+  'analysis.avgResponseTime.title': $ => $['analysis.avgResponseTime.title'],
+  'analysis.avgSessionInteractions.explanation': $ => $['analysis.avgSessionInteractions.explanation'],
+  'analysis.avgSessionInteractions.title': $ => $['analysis.avgSessionInteractions.title'],
+  'analysis.avgUserInteractions.explanation': $ => $['analysis.avgUserInteractions.explanation'],
+  'analysis.avgUserInteractions.title': $ => $['analysis.avgUserInteractions.title'],
+  'analysis.ms': $ => $['analysis.ms'],
+  'analysis.tokenPS': $ => $['analysis.tokenPS'],
+  'analysis.tokenUsage.explanation': $ => $['analysis.tokenUsage.explanation'],
+  'analysis.tokenUsage.title': $ => $['analysis.tokenUsage.title'],
+  'analysis.totalConversations.explanation': $ => $['analysis.totalConversations.explanation'],
+  'analysis.totalConversations.title': $ => $['analysis.totalConversations.title'],
+  'analysis.totalMessages.explanation': $ => $['analysis.totalMessages.explanation'],
+  'analysis.totalMessages.title': $ => $['analysis.totalMessages.title'],
+  'analysis.tps.explanation': $ => $['analysis.tps.explanation'],
+  'analysis.tps.title': $ => $['analysis.tps.title'],
+  'analysis.userSatisfactionRate.explanation': $ => $['analysis.userSatisfactionRate.explanation'],
+  'analysis.userSatisfactionRate.title': $ => $['analysis.userSatisfactionRate.title'],
+} satisfies Record<string, SelectorParam<'appOverview'>>
+
+type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
+
 type BizChartConfig = {
   chartType: keyof typeof CHART_TYPE_CONFIG
-  titleKey: string
-  explanationKey: string
+  titleKey: ChartTranslationKey
+  explanationKey: ChartTranslationKey
   useChartData: UseChartData
   valueKey?: string
   emptyValueKey?: string
   yMaxWhenEmpty: number
   isAvg?: boolean
-  unitKey?: string
+  unitKey?: ChartTranslationKey
   className?: string
 }
 
@@ -182,6 +208,11 @@ const createBizChartComponent = ({
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey
+    const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
+    const explanationSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+    const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
+      ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
+      : undefined
     const fallbackData = {
       data: getDefaultChartData({
         ...(period.query ?? defaultPeriod),
@@ -192,15 +223,15 @@ const createBizChartComponent = ({
     return (
       <Chart
         basicInfo={{
-          title: t($ => $[titleKey], titleKey, { ns: 'appOverview' }),
-          explanation: t($ => $[explanationKey], explanationKey, { ns: 'appOverview' }),
+          title: t(titleSelector, { ns: 'appOverview', defaultValue: titleKey }),
+          explanation: t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey }),
           timePeriod: period.name,
         }}
         chartData={noDataFlag ? fallbackData : response}
         chartType={chartType}
         valueKey={valueKey}
         isAvg={isAvg}
-        unit={unitKey ? t($ => $[unitKey], unitKey, { ns: 'appOverview' }) : undefined}
+        unit={unitKey && unitSelector ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey }) : undefined}
         className={className}
         {...(noDataFlag && { yMax: yMaxWhenEmpty })}
       />

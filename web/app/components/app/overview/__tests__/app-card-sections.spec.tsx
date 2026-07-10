@@ -3,6 +3,7 @@ import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { AppCardAccessControlSection, AppCardDialogs, AppCardOperations, AppCardUrlSection, createAppCardOperations, WorkflowLaunchDialog } from '../app-card-sections'
 
@@ -43,7 +44,7 @@ vi.mock('../../app-access-control', () => {
 })
 
 describe('app-card-sections', () => {
-  const t = (key: string) => key
+  const t = withSelectorKey((key: string) => key)
 
   it('should build operations with the expected disabled state', () => {
     const onLaunch = vi.fn()

@@ -1,4 +1,4 @@
-import type { ToastPayload } from './variable-modal.helpers'
+import type { ChatVariableTranslator, ToastPayload } from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -35,6 +35,7 @@ const ChatVariableModal = ({
   onSave,
 }: ModalPropsType) => {
   const { t } = useTranslation()
+  const translateChatVariable: ChatVariableTranslator = (selector, options) => t(selector, options)
   const workflowStore = useWorkflowStore()
   const notify = React.useCallback(({ children, message, type = 'info' }: ToastPayload) => {
     toast[type](message, children ? { description: children } : undefined)
@@ -64,12 +65,12 @@ const ChatVariableModal = ({
     notify,
     onClose,
     onSave,
-    t,
+    t: translateChatVariable,
   })
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     replaceSpaceWithUnderscoreInVarNameInput(e.target)
-    if (e.target.value && !validateVariableName({ name: e.target.value, notify, t }))
+    if (e.target.value && !validateVariableName({ name: e.target.value, notify, t: translateChatVariable }))
       return
     handleVarNameChange(e)
   }
@@ -92,7 +93,7 @@ const ChatVariableModal = ({
       <div className="max-h-[480px] overflow-y-auto px-4 py-2">
         <NameSection
           name={name}
-          onBlur={nextName => validateVariableName({ name: nextName, notify, t })}
+          onBlur={nextName => validateVariableName({ name: nextName, notify, t: translateChatVariable })}
           onChange={handleNameChange}
           placeholder={t($ => $['chatVariable.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
           title={t($ => $['chatVariable.modal.name'], { ns: 'workflow' })}
@@ -117,7 +118,7 @@ const ChatVariableModal = ({
           onObjectChange={setObjectValue}
           onValueChange={setValue}
           placeholder={placeholder}
-          t={t}
+          t={translateChatVariable}
           toggleLabelKey={
             type === ChatVarType.Object
             || type === ChatVarType.ArrayString

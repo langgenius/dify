@@ -5,10 +5,11 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { withSelectorKey } from '@/test/i18n-mock'
 import nodeDefault from '../default'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string, _options?: Record<string, unknown>) => key)
 
 const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => [{
   provider: 'openai',

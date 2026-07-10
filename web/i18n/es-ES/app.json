@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "Número máximo de solicitudes activas concurrentes por aplicación (0 para ilimitado)",
   "mermaid.classic": "Clásico",
   "mermaid.handDrawn": "Dibujado a mano",
+  "mermaid.waitForCompletion": "Esperando a que se complete el código del diagrama...",
   "newApp.Cancel": "Cancelar",
   "newApp.Confirm": "Confirmar",
   "newApp.Create": "Crear",

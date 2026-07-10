@@ -154,7 +154,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     if (embeddingModelStatus !== 'active') {
       const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[embeddingModelStatus as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
       if (statusI18nKey)
-        return t($ => $[statusI18nKey as 'modelProvider.selector.incompatible'], { ns: 'common' })
+        return t($ => $[statusI18nKey], { ns: 'common' })
     }
 
     return currentEmbeddingModel?.label[language] || currentEmbeddingModel?.label.en_US || data.embedding_model || '-'

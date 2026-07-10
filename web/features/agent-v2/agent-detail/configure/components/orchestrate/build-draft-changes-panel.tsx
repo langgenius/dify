@@ -84,6 +84,7 @@ function AgentBuildDraftChangeItemRow({
   item: AgentBuildDraftChangeItem
 }) {
   const { t } = useTranslation('agentV2')
+  const descriptionKey = item.descriptionKey
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -108,9 +109,9 @@ function AgentBuildDraftChangeItemRow({
           </p>
         </div>
       </div>
-      {item.descriptionKey && (
+      {descriptionKey && (
         <p className="ms-4 system-xs-regular text-text-tertiary">
-          {t($ => $[item.descriptionKey])}
+          {t($ => $[descriptionKey])}
         </p>
       )}
     </div>

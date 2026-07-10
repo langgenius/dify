@@ -209,7 +209,7 @@ const UpdateDSLModal = ({
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
 
           <div className="mb-3 flex items-center justify-between">
-            <div className="title-2xl-semi-bold text-text-primary">{t($ => $['importApp'], { ns: 'app' })}</div>
+            <div className="title-2xl-semi-bold text-text-primary">{t($ => $.importApp, { ns: 'app' })}</div>
             <button
               type="button"
               className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

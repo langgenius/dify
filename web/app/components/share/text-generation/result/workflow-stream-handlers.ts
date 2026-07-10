@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
@@ -9,8 +10,6 @@ import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workf
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type CreateWorkflowStreamHandlersParams = {
   getCompletionRes: () => string
   getWorkflowProcessData: () => WorkflowProcess | undefined
@@ -26,7 +25,7 @@ type CreateWorkflowStreamHandlersParams = {
   setMessageId: Dispatch<SetStateAction<string | null>>
   setRespondingFalse: () => void
   setWorkflowProcessData: (data: WorkflowProcess | undefined) => void
-  t: Translate
+  t: TextGenerationTranslate
   taskId?: number
 }
 
@@ -341,7 +340,7 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowFinished: ({ data }) => {
       if (isTimedOut()) {
-        notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+        notify({ type: 'warning', message: t($ => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }) })
         return
       }
 

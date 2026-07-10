@@ -6,7 +6,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SortDropdown from '../index'
 
-const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
+const mockTranslation = vi.hoisted(() => vi.fn((key: string, options?: { ns?: string }) => {
   const fullKey = options?.ns ? `${options.ns}.${key}` : key
   const translations: Record<string, string> = {
     'plugin.marketplace.sortBy': 'Sort by',
@@ -16,13 +16,13 @@ const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
     'plugin.marketplace.sortOption.firstReleased': 'First Released',
   }
   return translations[fullKey] || key
-})
+}))
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return ({
     useTranslation: () => ({
-      t: withSelectorKey((...args: Parameters<typeof mockTranslation>) => mockTranslation(...args)),
+      t: withSelectorKey(mockTranslation),
     }),
   })
 })

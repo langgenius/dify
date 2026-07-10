@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
@@ -23,7 +24,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     tool_configurations: {},
     tool_node_version: '2',
   },
-  checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
+  checkValid(payload: ToolNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed)

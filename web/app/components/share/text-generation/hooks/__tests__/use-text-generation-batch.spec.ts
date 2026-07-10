@@ -1,6 +1,7 @@
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import { act, renderHook } from '@testing-library/react'
 import { BATCH_CONCURRENCY } from '@/config'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { TaskStatus } from '../../types'
 import { useTextGenerationBatch } from '../use-text-generation-batch'
 
@@ -20,7 +21,7 @@ const createPromptConfig = (): PromptConfig => ({
   ],
 })
 
-const createTranslator = () => vi.fn((key: string) => key)
+const createTranslator = () => withSelectorKey(vi.fn((key: string) => key))
 
 const renderBatchHook = (promptConfig: PromptConfig = createPromptConfig()) => {
   const notify = vi.fn()

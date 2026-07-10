@@ -1,10 +1,11 @@
 import type { LLMNodeType } from '../types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { EditionType, PromptRole } from '../../../types'
 import nodeDefault from '../default'
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key, 'workflow')
 
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   ...nodeDefault.defaultValue,

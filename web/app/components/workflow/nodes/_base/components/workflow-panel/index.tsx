@@ -616,7 +616,7 @@ const BasePanel: FC<BasePanelProps> = ({
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <button
                 type="button"
-                aria-label={t($ => $['common.operation.close'])}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >

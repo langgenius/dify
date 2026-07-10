@@ -10,7 +10,7 @@ type MemberItemProps = {
   isSelected: boolean
   isMe?: boolean
   onClick?: () => void
-  i18nNamespace?: string
+  i18nNamespace?: 'datasetSettings'
 }
 
 const MemberItem = ({

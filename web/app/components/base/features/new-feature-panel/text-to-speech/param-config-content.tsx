@@ -1,5 +1,6 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   Select,
   SelectContent,
@@ -40,7 +41,8 @@ const VoiceParamConfig = ({
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
   const formatLanguageName = (item: SelectOption) => {
-    return t($ => $[`voice.language.${replace(item.value, '-', '')}`], item.name, { ns: 'common' as const })
+    const key = `voice.language.${replace(item.value, '-', '')}` as I18nKeysWithPrefix<'common', 'voice.language.'>
+    return t($ => $[key], { ns: 'common', defaultValue: item.name })
   }
 
   let languageItem = languages.find(item => item.value === text2speech?.language)
@@ -80,7 +82,7 @@ const VoiceParamConfig = ({
         <button
           type="button"
           className="rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-          aria-label={t($ => $['appDebug:voice.voiceSettings.close'])}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
@@ -161,7 +163,7 @@ const VoiceParamConfig = ({
             <div
               className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1"
               role="group"
-              aria-label={t($ => $['play'], { ns: 'appApi', defaultValue: 'Play' })}
+              aria-label={t($ => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
               <AudioBtn
                 value={languageItem?.example}

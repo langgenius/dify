@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { IterationNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -25,7 +26,7 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
     error_handle_mode: ErrorHandleMode.Terminated,
     flatten_output: true,
   },
-  checkValid(payload: IterationNodeType, t: any) {
+  checkValid(payload: IterationNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
 
     if (

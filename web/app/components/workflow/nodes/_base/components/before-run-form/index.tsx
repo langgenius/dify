@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Props as FormProps } from './form'
+import type { BeforeRunFormTranslator } from './helpers'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { NodeRunningStatus } from '@/app/components/workflow/types'
@@ -62,6 +63,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   handleAfterHumanInputStepRun,
 }) => {
   const { t } = useTranslation()
+  const translateFormError: BeforeRunFormTranslator = (selector, options) => t(selector, options)
 
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
@@ -69,7 +71,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const isFileLoaded = isFilesLoaded(forms)
 
   const handleRunOrGenerateForm = () => {
-    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, t)
+    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, translateFormError)
     if (errMsg) {
       toast.error(errMsg)
       return

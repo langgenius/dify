@@ -107,7 +107,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
       </div>
       {/* Error handling for the Loop node is currently not considered. */}
       {/* <div className='px-4 py-2'>
-        <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
+        <Field title={t($ => $[`${i18nPrefix}.errorResponseMethod`], { ns: 'workflow' })} >
           <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false}>
           </Select>
         </Field>

@@ -3,7 +3,7 @@ import type {
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { TFunction } from 'i18next'
+import type { SelectorParam } from 'i18next'
 import { releaseDeploymentAction } from '../../../shared/domain/release-action'
 import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
 
@@ -23,6 +23,11 @@ export type DeployMenuSection = {
   group: DeployMenuGroup
   rows: DeployMenuRow[]
 }
+
+type DeploymentTranslator = (
+  selector: SelectorParam<'deployments'>,
+  options?: Record<string, unknown>,
+) => string
 
 const GROUP_ORDER: DeployMenuGroup[] = ['deploy', 'rollback', 'unavailable']
 
@@ -59,7 +64,7 @@ function buildDeployMenuRow({
   releaseRows: Release[]
   releaseId: string
   targetRelease: Release
-  t: TFunction<'deployments'>
+  t: DeploymentTranslator
 }): DeployMenuRow {
   const envId = env.id
   const envName = env.displayName
@@ -131,7 +136,7 @@ export function buildDeployMenuSections({
   releaseRows: Release[]
   releaseId: string
   targetRelease: Release
-  t: TFunction<'deployments'>
+  t: DeploymentTranslator
 }) {
   const deploymentRows = environmentDeployments.filter(row => !isUndeployedDeploymentRow(row))
   const menuRows = environments.map(env => buildDeployMenuRow({

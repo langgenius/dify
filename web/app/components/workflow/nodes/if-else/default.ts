@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { IfElseNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -36,7 +37,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
       },
     ],
   },
-  checkValid(payload: IfElseNodeType, t: any) {
+  checkValid(payload: IfElseNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { cases } = payload
     if (!cases || cases.length === 0)

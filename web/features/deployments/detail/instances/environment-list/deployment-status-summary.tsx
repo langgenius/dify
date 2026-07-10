@@ -71,7 +71,9 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $[hasRunningRelease ? 'deployTab.status.runningOutOfSync' : `status.${status}`])}
+        label={hasRunningRelease
+          ? t($ => $['deployTab.status.runningOutOfSync'])
+          : t($ => $['status.RUNTIME_INSTANCE_STATUS_DRIFTED'])}
         variant="status-dot"
       />
     )

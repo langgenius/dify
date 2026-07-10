@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import FormContent from '../form-content'
 import { withSelectorKey } from '@/test/i18n-mock'
+import FormContent from '../form-content'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseWorkflowVariableType = vi.hoisted(() => vi.fn())

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, PromptItem } from '../../types'
 import type { LLMNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
@@ -60,7 +61,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     '#context#': [RETRIEVAL_OUTPUT_STRUCT],
     '#files#': [],
   },
-  checkValid(payload: LLMNodeType, t: any, moreDataForCheckValid?: { flowType?: FlowType }) {
+  checkValid(payload: LLMNodeType, t: TFunction<'workflow'>, moreDataForCheckValid?: { flowType?: FlowType }) {
     let errorMessages = ''
     const isSnippetFlow = moreDataForCheckValid?.flowType === FlowType.snippet
     const modelIssue = getLLMModelIssue({ modelProvider: payload.model.provider })

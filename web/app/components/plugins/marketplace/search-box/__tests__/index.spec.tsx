@@ -16,7 +16,7 @@ vi.mock('#i18n', async () => {
   return ({
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
-        // Build full key with namespace prefix if provided
+      // Build full key with namespace prefix if provided
         const fullKey = options?.ns ? `${options.ns}.${key}` : key
         const translations: Record<string, string> = {
           'pluginTags.allTags': 'All Tags',

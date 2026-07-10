@@ -138,7 +138,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
     releaseRows,
     releaseId,
     targetRelease: release,
-    t,
+    t: (selector, options) => t(selector, options),
   })
 
   return (

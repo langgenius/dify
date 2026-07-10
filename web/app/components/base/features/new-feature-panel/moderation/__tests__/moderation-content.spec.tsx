@@ -1,6 +1,7 @@
 import type { ModerationContentConfig } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as i18n from 'react-i18next'
+import { withSelectorKey } from '@/test/i18n-mock'
 import ModerationContent from '../moderation-content'
 
 const defaultConfig: ModerationContentConfig = {
@@ -128,7 +129,7 @@ describe('ModerationContent', () => {
 
   it('should fallback to empty placeholder when translation is empty', () => {
     const useTranslationSpy = vi.spyOn(i18n, 'useTranslation').mockReturnValue({
-      t: (key: string) => key === 'feature.moderation.modal.content.placeholder' ? '' : key,
+      t: withSelectorKey((key: string) => key === 'feature.moderation.modal.content.placeholder' ? '' : key),
       i18n: { language: 'en-US' },
     } as unknown as ReturnType<typeof i18n.useTranslation>)
 

@@ -1,4 +1,5 @@
 'use client'
+import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { GenerateWorkflowBody, GenerateWorkflowResponse as StreamResult, WorkflowGenPlan } from '@/service/debug'
@@ -54,6 +55,52 @@ const MAX_INSTRUCTION_LENGTH = 10_000
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
 // can localise the message and point at the offending node.
 type GenError = { code: string, detail: string, node_id?: string }
+
+type WorkflowGeneratorErrorCode
+  = | 'DANGLING_EDGE'
+    | 'DUPLICATE_NODE_ID'
+    | 'EMPTY_INSTRUCTION'
+    | 'EMPTY_PLAN'
+    | 'GRAPH_CYCLE'
+    | 'INSTRUCTION_TOO_LONG'
+    | 'INVALID_CONTAINER'
+    | 'INVALID_JSON'
+    | 'INVALID_SCHEMA'
+    | 'MISSING_START'
+    | 'MISSING_TERMINAL'
+    | 'MODEL_ERROR'
+    | 'UNKNOWN_NODE_REFERENCE'
+    | 'UNKNOWN_TOOL'
+    | 'UNRESOLVED_REFERENCE'
+
+const workflowGeneratorErrorSelectors: Record<WorkflowGeneratorErrorCode, SelectorParam<'workflow'>> = {
+  DANGLING_EDGE: $ => $['workflowGenerator.errors.DANGLING_EDGE'],
+  DUPLICATE_NODE_ID: $ => $['workflowGenerator.errors.DUPLICATE_NODE_ID'],
+  EMPTY_INSTRUCTION: $ => $['workflowGenerator.errors.EMPTY_INSTRUCTION'],
+  EMPTY_PLAN: $ => $['workflowGenerator.errors.EMPTY_PLAN'],
+  GRAPH_CYCLE: $ => $['workflowGenerator.errors.GRAPH_CYCLE'],
+  INSTRUCTION_TOO_LONG: $ => $['workflowGenerator.errors.INSTRUCTION_TOO_LONG'],
+  INVALID_CONTAINER: $ => $['workflowGenerator.errors.INVALID_CONTAINER'],
+  INVALID_JSON: $ => $['workflowGenerator.errors.INVALID_JSON'],
+  INVALID_SCHEMA: $ => $['workflowGenerator.errors.INVALID_SCHEMA'],
+  MISSING_START: $ => $['workflowGenerator.errors.MISSING_START'],
+  MISSING_TERMINAL: $ => $['workflowGenerator.errors.MISSING_TERMINAL'],
+  MODEL_ERROR: $ => $['workflowGenerator.errors.MODEL_ERROR'],
+  UNKNOWN_NODE_REFERENCE: $ => $['workflowGenerator.errors.UNKNOWN_NODE_REFERENCE'],
+  UNKNOWN_TOOL: $ => $['workflowGenerator.errors.UNKNOWN_TOOL'],
+  UNRESOLVED_REFERENCE: $ => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
+}
+
+function isWorkflowGeneratorErrorCode(code: string): code is WorkflowGeneratorErrorCode {
+  return Object.hasOwn(workflowGeneratorErrorSelectors, code)
+}
+
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
+  if (isWorkflowGeneratorErrorCode(error.code))
+    return t(workflowGeneratorErrorSelectors[error.code])
+
+  return error.detail || t($ => $['workflowGenerator.generateFailed'])
+}
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -460,7 +507,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   // Derived view of the last structured error for the actionable error panel.
   const firstGenError = genError?.[0]
   const genErrorMessage = firstGenError
-    ? (t($ => $[`workflowGenerator.errors.${firstGenError.code}`], { defaultValue: '' }) || firstGenError.detail || t($ => $['workflowGenerator.generateFailed']))
+    ? getWorkflowGeneratorErrorMessage(firstGenError, t)
     : ''
   const genErrorHasUnknownTool = !!genError?.some(e => e.code === 'UNKNOWN_TOOL')
 

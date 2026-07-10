@@ -15,7 +15,7 @@ vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return ({
     useTranslation: () => ({
-      t: withSelectorKey((...args: Parameters<typeof mockTranslate>) => mockTranslate(...args)),
+      t: withSelectorKey(mockTranslate),
     }),
   })
 })

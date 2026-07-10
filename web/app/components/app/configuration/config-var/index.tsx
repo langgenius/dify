@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -77,13 +76,13 @@ const getDuplicateError = (list: PromptVariable[]) => {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.varName',
-    }
+    } as const
   }
   if (hasDuplicateStr(list.map(item => item.name as string))) {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.labelName',
-    }
+    } as const
   }
   return null
 }
@@ -116,7 +115,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     const duplicateError = getDuplicateError(newPromptVariables)
     if (duplicateError) {
-      toast.error(t($ => $[duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>], { ns: 'appDebug', key: t($ => $[duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>], { ns: 'appDebug' }) }) as string)
+      toast.error(t($ => $[duplicateError.errorMsgKey], { ns: 'appDebug', key: t($ => $[duplicateError.typeName], { ns: 'appDebug' }) }))
       return false
     }
 

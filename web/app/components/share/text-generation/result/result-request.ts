@@ -1,4 +1,5 @@
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
@@ -15,8 +16,6 @@ export type ResultInputValue
     | FileEntity[]
     | undefined
 
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type ValidationResult = {
   canSend: boolean
   notification?: {
@@ -30,7 +29,7 @@ type ValidateResultRequestParams = {
   inputs: Record<string, ResultInputValue>
   isCallBatchAPI: boolean
   promptConfig: PromptConfig | null
-  t: Translate
+  t: TextGenerationTranslate
 }
 
 type BuildResultRequestDataParams = {
@@ -77,7 +76,7 @@ export const validateResultRequest = ({
         canSend: false,
         notification: {
           type: 'info',
-          message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }),
+          message: t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }),
         },
       }
     }
@@ -98,7 +97,7 @@ export const validateResultRequest = ({
       canSend: false,
       notification: {
         type: 'error',
-        message: t('errorMessage.valueOfVarRequired', {
+        message: t($ => $['errorMessage.valueOfVarRequired'], {
           ns: 'appDebug',
           key: missingRequiredVariable,
         }),
@@ -111,7 +110,7 @@ export const validateResultRequest = ({
       canSend: false,
       notification: {
         type: 'info',
-        message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }),
+        message: t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }),
       },
     }
   }

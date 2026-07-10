@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { AnswerNodeType } from './types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -14,7 +15,7 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
     variables: [],
     answer: '',
   },
-  checkValid(payload: AnswerNodeType, t: any) {
+  checkValid(payload: AnswerNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { answer } = payload
     if (!answer)

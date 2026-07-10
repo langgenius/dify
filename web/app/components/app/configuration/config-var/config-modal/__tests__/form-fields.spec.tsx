@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
@@ -125,7 +126,7 @@ vi.mock('../../config-string', () => ({
   ),
 }))
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key)
 
 const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
 
@@ -164,7 +165,7 @@ const createBaseProps = () => {
       required: false,
       hide: false,
     } as any,
-    t,
+    t: withSelectorKey(t),
     payloadChangeHandlers,
   }
 }

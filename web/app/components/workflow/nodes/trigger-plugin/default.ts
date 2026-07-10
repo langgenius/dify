@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { Field, StructuredOutput } from '../llm/types'
 import type { PluginTriggerNodeType } from './types'
@@ -234,7 +235,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     // event_type: '',
     config: {},
   },
-  checkValid(payload: PluginTriggerNodeType, t: any, moreDataForCheckValid: {
+  checkValid(payload: PluginTriggerNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: {
     triggerInputsSchema?: Array<{
       variable: string
       label: string

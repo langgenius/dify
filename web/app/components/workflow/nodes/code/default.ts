@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { CodeNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -20,7 +21,7 @@ const nodeDefault: NodeDefault<CodeNodeType> = {
     variables: [],
     outputs: {},
   },
-  checkValid(payload: CodeNodeType, t: any) {
+  checkValid(payload: CodeNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { code, variables } = payload
     if (!errorMessages && variables.filter(v => !v.variable).length > 0)

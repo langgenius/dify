@@ -103,7 +103,7 @@ function WorkspaceCardTrigger({
   open: boolean
   name: string
   status: ReactNode
-  credits: string
+  credits: number
   showCloudBilling: boolean
   showPlanAction: boolean
   planActionLabel: string
@@ -112,6 +112,7 @@ function WorkspaceCardTrigger({
 }) {
   const { t } = useTranslation()
   const creditsUnit = t($ => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
+  const formattedCredits = formatCredits(credits)
   const showStatus = status !== undefined && status !== null
 
   return (
@@ -142,7 +143,7 @@ function WorkspaceCardTrigger({
             aria-label={t($ => $['mainNav.workspace.credits'], { ns: 'common', count: credits })}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <WorkspaceCreditsLabel credits={credits} unit={creditsUnit} />
+            <WorkspaceCreditsLabel credits={formattedCredits} unit={creditsUnit} />
           </Link>
           {showPlanAction && (
             <button
@@ -247,7 +248,6 @@ export function WorkspaceCard() {
     )
   }
 
-  const formattedCredits = formatCredits(currentWorkspace.credits)
   const workspacePlan = currentWorkspaceInList.plan
   const isFreePlan = workspacePlan === Plan.sandbox
   const showPlanAction = showCloudBilling
@@ -276,7 +276,7 @@ export function WorkspaceCard() {
           open={open}
           name={currentWorkspace.name}
           status={renderWorkspaceStatus()}
-          credits={formattedCredits}
+          credits={currentWorkspace.credits}
           showCloudBilling={showCloudBilling}
           showPlanAction={showPlanAction}
           planActionLabel={planActionLabel}

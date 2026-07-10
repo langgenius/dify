@@ -1,9 +1,12 @@
 import type { Namespace, Resources } from '../i18n-config/resources'
+import { defaultNS } from '../i18n-config/resources'
 import 'i18next'
 
 declare module 'i18next' {
   // eslint-disable-next-line ts/consistent-type-definitions
   interface CustomTypeOptions {
+    defaultNS: typeof defaultNS
+    enableSelector: 'optimize'
     resources: Resources
     keySeparator: false
   }

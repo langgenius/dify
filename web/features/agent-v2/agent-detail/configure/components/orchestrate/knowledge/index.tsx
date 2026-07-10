@@ -1,5 +1,6 @@
 'use client'
 
+import type { TFunction } from 'i18next'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -27,6 +28,14 @@ function KnowledgeRetrievalIcon() {
   )
 }
 
+function getKnowledgeRetrievalName(
+  item: AgentKnowledgeRetrievalItem,
+  t: TFunction<'agentV2'>,
+) {
+  const nameKey = item.nameKey
+  return item.name ?? (nameKey ? t($ => $[nameKey]) : item.id)
+}
+
 function AgentKnowledgeRetrievalRow({
   onDelete,
   onEdit,
@@ -37,7 +46,7 @@ function AgentKnowledgeRetrievalRow({
   item: AgentKnowledgeRetrievalItem
 }) {
   const { t } = useTranslation('agentV2')
-  const itemName = item.name ?? (item.nameKey ? t($ => $[item.nameKey]) : item.id)
+  const itemName = getKnowledgeRetrievalName(item, t)
 
   return (
     <ConfigureSectionConfigurableItem
@@ -125,7 +134,7 @@ export function AgentKnowledgeRetrieval() {
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
         item={editingRetrieval ?? undefined}
-        initialName={editingRetrieval ? (editingRetrieval.name ?? (editingRetrieval.nameKey ? t($ => $[editingRetrieval.nameKey]) : editingRetrieval.id)) : addDialogName}
+        initialName={editingRetrieval ? getKnowledgeRetrievalName(editingRetrieval, t) : addDialogName}
         onItemCreate={createRetrieval}
         onItemChange={updateRetrieval}
         open={isDialogOpen}

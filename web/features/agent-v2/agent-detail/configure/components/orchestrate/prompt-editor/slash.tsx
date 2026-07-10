@@ -1,5 +1,6 @@
 'use client'
 
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
 import type { Tool } from '@/app/components/tools/types'
@@ -496,7 +497,7 @@ function getProviderLabel(provider: ToolWithProvider, language: string) {
 
 function getProviderTypeLabel(
   provider: ToolWithProvider,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction<'agentV2'>,
 ) {
   if (provider.type === CollectionType.workflow)
     return t($ => $['agentDetail.configure.tools.toolTabs.workflow'])
@@ -599,7 +600,7 @@ function AgentPromptToolFooter({
         className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-[agent-prompt-menu-active]:bg-state-base-hover"
       >
         <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
-        <span className="system-sm-regular text-text-secondary">{t($ => $['findMoreInMarketplace'], { ns: 'plugin' })}</span>
+        <span className="system-sm-regular text-text-secondary">{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
       </a>
       {onAddCliTool && (
         <button
@@ -696,9 +697,10 @@ function AgentPromptKnowledgeRows({
 
 function getKnowledgeRetrievalName(
   retrieval: AgentKnowledgeRetrievalItem,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: TFunction<'agentV2'>,
 ) {
-  return retrieval.name ?? (retrieval.nameKey ? t($ => $[retrieval.nameKey]) : retrieval.id)
+  const nameKey = retrieval.nameKey
+  return retrieval.name ?? (nameKey ? t($ => $[nameKey]) : retrieval.id)
 }
 
 function AgentPromptSubmenuRow({

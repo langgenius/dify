@@ -171,7 +171,7 @@ const ValueInput = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={handleFocusChange}
-        placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
+        placeholder={!readOnly ? t($ => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })! : ''}
         placeholderClassName="leading-[21px]!"
       />
     )

@@ -1,4 +1,5 @@
 'use client'
+import type { SelectorParam } from 'i18next'
 import type { Dispatch, SetStateAction } from 'react'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
@@ -13,6 +14,11 @@ type FormValuesResult = {
   isCheckValidated: boolean
 }
 
+export type PluginTriggerTranslate = (
+  selector: SelectorParam<'pluginTrigger'>,
+  options: { ns: 'pluginTrigger' },
+) => string
+
 type InitializeBuilderParams = {
   createBuilder: (params: {
     provider: string
@@ -22,14 +28,14 @@ type InitializeBuilderParams = {
   provider?: string
   subscriptionBuilder?: TriggerSubscriptionBuilder
   setSubscriptionBuilder: Dispatch<SetStateAction<TriggerSubscriptionBuilder | undefined>>
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: PluginTriggerTranslate
 }
 
 type SyncEndpointParams = {
   endpoint?: string
   isConfigurationStep: boolean
   subscriptionFormRef: React.RefObject<FormRefObject | null>
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: PluginTriggerTranslate
 }
 
 type BuildPayloadParams = {
@@ -110,17 +116,17 @@ export const getConfirmButtonText = ({
   isVerifyStep: boolean
   isVerifyingCredentials: boolean
   isBuilding: boolean
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: PluginTriggerTranslate
 }) => {
   if (isVerifyStep) {
     return isVerifyingCredentials
-      ? t('modal.common.verifying', { ns: 'pluginTrigger' })
-      : t('modal.common.verify', { ns: 'pluginTrigger' })
+      ? t($ => $['modal.common.verifying'], { ns: 'pluginTrigger' })
+      : t($ => $['modal.common.verify'], { ns: 'pluginTrigger' })
   }
 
   return isBuilding
-    ? t('modal.common.creating', { ns: 'pluginTrigger' })
-    : t('modal.common.create', { ns: 'pluginTrigger' })
+    ? t($ => $['modal.common.creating'], { ns: 'pluginTrigger' })
+    : t($ => $['modal.common.create'], { ns: 'pluginTrigger' })
 }
 
 export const useInitializeSubscriptionBuilder = ({
@@ -145,7 +151,7 @@ export const useInitializeSubscriptionBuilder = ({
       }
       catch (error) {
         console.error('createBuilder error:', error)
-        toast.error(t('modal.errors.createFailed', { ns: 'pluginTrigger' }))
+        toast.error(t($ => $['modal.errors.createFailed'], { ns: 'pluginTrigger' }))
       }
     }
 
@@ -169,7 +175,7 @@ export const useSyncSubscriptionEndpoint = ({
       form.setFieldValue('callback_url', endpoint)
 
     const warnings = isPrivateOrLocalAddress(endpoint)
-      ? [t('modal.form.callbackUrl.privateAddressWarning', { ns: 'pluginTrigger' })]
+      ? [t($ => $['modal.form.callbackUrl.privateAddressWarning'], { ns: 'pluginTrigger' })]
       : []
 
     subscriptionFormRef.current.setFields([{

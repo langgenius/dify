@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { LoopNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
@@ -28,7 +29,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
     _children: [],
     logical_operator: LogicalOperator.and,
   },
-  checkValid(payload: LoopNodeType, t: any) {
+  checkValid(payload: LoopNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
 
     payload.loop_variables?.forEach((variable) => {

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { WebhookTriggerNodeType } from './types'
 import { BlockEnum } from '../../types'
@@ -26,7 +27,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     response_body: '',
     variables: [createWebhookRawVariable()],
   },
-  checkValid(payload: WebhookTriggerNodeType, t: any) {
+  checkValid(payload: WebhookTriggerNodeType, t: TFunction<'workflow'>) {
     // Require webhook_url to be configured
     if (!payload.webhook_url || payload.webhook_url.trim() === '') {
       return {

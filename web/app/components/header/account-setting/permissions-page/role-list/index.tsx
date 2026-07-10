@@ -8,7 +8,7 @@ import Loading from '@/app/components/base/loading'
 import Row from './row'
 
 export type RoleListGroup = {
-  id: string
+  id: 'builtin' | 'custom'
   category: RoleCategory
   title: string
   items: Role[]

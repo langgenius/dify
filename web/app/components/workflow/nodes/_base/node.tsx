@@ -2,6 +2,7 @@ import type {
   FC,
   ReactElement,
 } from 'react'
+import type { WorkflowTranslator } from './node-sections'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
@@ -71,6 +72,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -174,7 +176,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         <button
           type="button"
           disabled
-          aria-label={t($ => $['installPlugin'], { ns: 'plugin' })}
+          aria-label={t($ => $.installPlugin, { ns: 'plugin' })}
           className="pointer-events-auto absolute inset-0 z-30 rounded-2xl border-0 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]"
         />
       )}
@@ -302,7 +304,7 @@ const BaseNode: FC<BaseNodeProps> = ({
               hasVarValue={hasVarValue}
               isLoading={isLoading}
               loopIndex={LoopIndex}
-              t={t}
+              t={translateWorkflow}
             />
           </div>
         </div>

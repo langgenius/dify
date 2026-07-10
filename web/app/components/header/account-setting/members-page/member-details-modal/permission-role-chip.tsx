@@ -1,5 +1,6 @@
 'use client'
 
+import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -29,11 +30,13 @@ const PermissionRoleChip = ({
   const { t } = useTranslation()
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
+  // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
+  const translatePermissionName = (key: string) => t(key as SelectorKey, {
+    ns: 'permissionKeys',
+    defaultValue: key,
+  })
   const permissionLabels = permissions
-    .map(key => t($ => $[key], {
-      ns: 'permissionKeys',
-      defaultValue: key,
-    }))
+    .map(translatePermissionName)
     .join(', ')
   const hasPermissionLabels = permissionLabels.length > 0
 
@@ -83,7 +86,7 @@ const PermissionRoleChip = ({
         {hasPermissionLabels
           ? (
               <Trans
-                i18nKey={$ => $["members.memberDetails.rolePermissionSummary"]}
+                i18nKey={$ => $['members.memberDetails.rolePermissionSummary']}
                 ns="common"
                 values={{
                   role: label,

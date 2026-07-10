@@ -1,3 +1,4 @@
+import type { SelectorKey } from 'i18next'
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,12 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
   const permissionCatalog = resourceType === 'app' ? appPermissionCatalog : datasetPermissionCatalog
 
   const groups = useMemo(() => {
+    // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
+    const translatePermissionName = (key: string, defaultValue: string) => t(key as SelectorKey, {
+      ns: 'permissionKeys',
+      defaultValue,
+    })
+
     return (permissionCatalog?.groups || []).map(group => ({
       ...group,
       group_name: t($ => $[`group.${resourceType}_acl`], {
@@ -19,10 +26,7 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
       }),
       permissions: group.permissions.map(permission => ({
         ...permission,
-        name: t($ => $[permission.key], {
-          ns: 'permissionKeys',
-          defaultValue: permission.name,
-        }),
+        name: translatePermissionName(permission.key, permission.name),
       })),
     }))
   }, [permissionCatalog?.groups, resourceType, t])

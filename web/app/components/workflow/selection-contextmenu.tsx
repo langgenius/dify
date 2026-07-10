@@ -1,4 +1,5 @@
 import type { Node } from './types'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   ContextMenuContent,
   ContextMenuGroup,
@@ -47,11 +48,11 @@ type MenuItem = {
   alignType: AlignTypeValue
   icon: string
   iconClassName?: string
-  translationKey: string
+  translationKey: I18nKeysWithPrefix<'workflow', 'operator.'>
 }
 
 type MenuSection = {
-  titleKey: string
+  titleKey: I18nKeysWithPrefix<'workflow', 'operator.'>
   items: MenuItem[]
 }
 

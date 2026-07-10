@@ -1,4 +1,5 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
@@ -23,7 +24,7 @@ type TriggerByDisplayProps = {
   triggerMetadata?: TriggerMetadata
 }
 
-const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: any, metadata?: TriggerMetadata) => {
+const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: TFunction, metadata?: TriggerMetadata) => {
   if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
     return metadata.event_name
 

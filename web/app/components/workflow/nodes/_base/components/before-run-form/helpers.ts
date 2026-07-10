@@ -1,8 +1,14 @@
+import type { SelectorParam } from 'i18next'
 import type { Props as FormProps } from './form'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+
+export type BeforeRunFormTranslator = <Namespace extends 'workflow' | 'appDebug'>(
+  selector: SelectorParam<Namespace>,
+  options: { ns: Namespace } & Record<string, unknown>,
+) => string
 
 export function formatValue(value: unknown, type: InputVarType) {
   if (type === InputVarType.checkbox)
@@ -44,7 +50,7 @@ export const isFilesLoaded = (forms: FormProps[]) => {
 export const getFormErrorMessage = (
   forms: FormProps[],
   existVarValuesInForms: Record<string, unknown>[],
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: BeforeRunFormTranslator,
 ) => {
   let errMsg = ''
 
@@ -68,7 +74,7 @@ export const getFormErrorMessage = (
         )
 
       if (!errMsg && missingRequired) {
-        errMsg = t('errorMsg.fieldRequired', { ns: 'workflow', field: typeof input.label === 'object' ? input.label.variable : input.label })
+        errMsg = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: typeof input.label === 'object' ? input.label.variable : input.label })
         return
       }
 
@@ -79,7 +85,7 @@ export const getFormErrorMessage = (
             && !(value as { transferMethod?: TransferMethod, uploadedId?: string }).uploadedId
 
         if (fileIsUploading)
-          errMsg = t('errorMessage.waitForFileUpload', { ns: 'appDebug' })
+          errMsg = t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' })
       }
     })
   })

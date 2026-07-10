@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -18,7 +19,7 @@ const nodeDefault: NodeDefault<TemplateTransformNodeType> = {
     template: '',
     variables: [],
   },
-  checkValid(payload: TemplateTransformNodeType, t: any) {
+  checkValid(payload: TemplateTransformNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { template, variables } = payload
 

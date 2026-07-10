@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "Số yêu cầu hoạt động đồng thời tối đa cho mỗi ứng dụng (0 để không giới hạn)",
   "mermaid.classic": "Cổ điển",
   "mermaid.handDrawn": "Vẽ tay",
+  "mermaid.waitForCompletion": "Đang chờ mã sơ đồ hoàn tất...",
   "newApp.Cancel": "Hủy",
   "newApp.Confirm": "Xác nhận",
   "newApp.Create": "Tạo",

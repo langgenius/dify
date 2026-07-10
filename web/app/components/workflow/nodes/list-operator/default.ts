@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { ListFilterNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -35,7 +36,7 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       size: 10,
     },
   },
-  checkValid(payload: ListFilterNodeType, t: any) {
+  checkValid(payload: ListFilterNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     const { variable, var_type, filter_by, item_var_type } = payload
 
