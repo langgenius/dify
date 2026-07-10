@@ -7,6 +7,7 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
+from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 
 logger = logging.getLogger(__name__)
@@ -60,8 +61,15 @@ def handle_webhook(webhook_id: str):
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
         return jsonify(response_data), status_code
 
-    except ValueError as e:
-        raise NotFound(str(e))
+    except QuotaExceededError:
+        return jsonify(
+            {
+                "error": "Too Many Requests",
+                "message": "Trigger event quota exceeded. Please upgrade your plan.",
+            }
+        ), 429
+    except ValueError as error:
+        raise NotFound(str(error))
     except RequestEntityTooLarge:
         raise
     except Exception as e:
