@@ -51,7 +51,6 @@ const AdvancedSetting: FC<Props> = ({
             <Infotip
               aria-label={t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
               className="ml-0.5 size-3.5"
-              iconClassName="h-3.5 w-3.5"
               popupClassName="w-[120px]"
             >
               {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}

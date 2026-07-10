@@ -142,8 +142,7 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
             </label>
             <Infotip
               aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
-              className="p-px"
-              iconClassName="size-3.5 text-text-tertiary"
+              className="p-px text-text-tertiary"
               popupClassName="max-w-[240px]"
             >
               {t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
