@@ -63,33 +63,42 @@ describe('Billing', () => {
     refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
+  it('keeps the plan card and billing row in one content column', () => {
+    const { container } = render(<Billing />)
+
+    expect(container.firstElementChild)!.toHaveClass('flex', 'flex-col', 'gap-3', 'pt-4')
+    expect(screen.getByTestId('plan-component'))!.toHaveAttribute('data-loc', 'billing-page')
+    expect(screen.getByText('billing.viewBillingTitle')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /billing\.viewBillingAction/ }))!.not.toHaveClass('mt-3')
+  })
+
   it('hides the billing action when subscription management permission is granted without manager role', () => {
     isManager = false
 
     render(<Billing />)
 
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /billing\.viewBillingAction/ })).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 
   it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
     workspacePermissionKeys = []
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /billing\.viewBillingAction/ })).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
 
     vi.clearAllMocks()
     workspacePermissionKeys = ['billing.subscription.manage']
     enableBilling = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /billing\.viewBillingAction/ })).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 
   it('opens the billing window with the immediate url when the button is clicked', async () => {
     render(<Billing />)
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingAction/ })
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
@@ -105,7 +114,7 @@ describe('Billing', () => {
     refetchMock.mockResolvedValue({ data: newUrl })
     render(<Billing />)
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingAction/ })
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
@@ -121,7 +130,7 @@ describe('Billing', () => {
     refetchMock.mockResolvedValue({ data: null })
     render(<Billing />)
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingAction/ })
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
@@ -136,7 +145,7 @@ describe('Billing', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<Billing />)
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingAction/ })
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
@@ -154,7 +163,7 @@ describe('Billing', () => {
     fetching = true
     render(<Billing />)
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
+    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingAction/ })
     expect(actionButton)!.toBeDisabled()
   })
 })

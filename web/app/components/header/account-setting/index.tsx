@@ -254,7 +254,7 @@ export default function AccountSetting({
                 )}
               </div>
             </div>
-            <div className="px-4 pt-6 sm:px-8">
+            <div className={cn('px-4 sm:px-8', activeMenu === ACCOUNT_SETTING_TAB.BILLING ? 'pt-0' : 'pt-6')}>
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <ModelProviderPage
                   searchText={searchValue}

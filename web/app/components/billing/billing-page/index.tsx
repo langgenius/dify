@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
@@ -33,24 +34,26 @@ const Billing: FC = () => {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-3 pt-4">
       <PlanComp loc="billing-page" />
       {enableBilling && canManageBillingSubscription && (
-        <button
-          type="button"
-          className="mt-3 flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3"
-          onClick={handleOpenBilling}
-          disabled={isFetching}
-        >
+        <div className="flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3">
           <div className="flex flex-col gap-0.5 text-left">
             <div className="system-md-semibold text-text-primary">{t('viewBillingTitle', { ns: 'billing' })}</div>
             <div className="system-sm-regular text-text-secondary">{t('viewBillingDescription', { ns: 'billing' })}</div>
           </div>
-          <span className="inline-flex h-8 w-24 items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-saas-dify-blue-accessible shadow-[0_1px_2px_rgba(9,9,11,0.05)] backdrop-blur-[5px]">
+          <Button
+            type="button"
+            variant="secondary-accent"
+            size="medium"
+            className="gap-0.5 px-3"
+            onClick={handleOpenBilling}
+            disabled={isFetching}
+          >
             <span className="system-sm-medium leading-none">{t('viewBillingAction', { ns: 'billing' })}</span>
             <span className="i-ri-arrow-right-up-line size-4" />
-          </span>
-        </button>
+          </Button>
+        </div>
       )}
     </div>
   )
