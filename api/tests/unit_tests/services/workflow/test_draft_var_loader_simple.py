@@ -1,32 +1,73 @@
 """Simplified unit tests for DraftVarLoader focusing on core functionality."""
 
 import json
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
+from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ObjectSegment, StringSegment
 from graphon.variables.types import SegmentType
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader
+
+
+def _persist_offloaded_variable(
+    sqlite_session: Session,
+    *,
+    node_id: str,
+    name: str,
+) -> WorkflowDraftVariable:
+    upload_file = UploadFile(
+        tenant_id="test-tenant-id",
+        storage_type=StorageType.LOCAL,
+        key=f"storage/key/{name}.txt",
+        name=f"{name}.txt",
+        size=10,
+        extension=".txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="test-user-id",
+        created_at=datetime(2025, 1, 1),
+        used=True,
+    )
+    variable_file = WorkflowDraftVariableFile(
+        tenant_id="test-tenant-id",
+        app_id="test-app-id",
+        user_id="test-user-id",
+        upload_file_id=upload_file.id,
+        size=10,
+        length=None,
+        value_type=SegmentType.STRING,
+    )
+    draft_variable = WorkflowDraftVariable.new_node_variable(
+        app_id="test-app-id",
+        user_id="test-user-id",
+        node_id=node_id,
+        name=name,
+        value=StringSegment(value="truncated"),
+        node_execution_id=f"execution-{node_id}",
+        file_id=variable_file.id,
+    )
+    sqlite_session.add_all([upload_file, variable_file, draft_variable])
+    return draft_variable
 
 
 class TestDraftVarLoaderSimple:
     """Simplified unit tests for DraftVarLoader core methods."""
 
     @pytest.fixture
-    def mock_engine(self) -> Engine:
-        return Mock(spec=Engine)
-
-    @pytest.fixture
-    def draft_var_loader(self, mock_engine):
+    def draft_var_loader(self, sqlite_engine: Engine):
         """Create DraftVarLoader instance for testing."""
         return DraftVarLoader(
-            engine=mock_engine,
+            engine=sqlite_engine,
             app_id="test-app-id",
             tenant_id="test-tenant-id",
             user_id="test-user-id",
@@ -205,131 +246,107 @@ class TestDraftVarLoaderSimple:
         assert variable.value == rebuilt_file
         rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
-    def test_load_variables_with_offloaded_variables_unit(self, draft_var_loader):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(WorkflowDraftVariable, WorkflowDraftVariableFile, UploadFile)],
+        indirect=True,
+    )
+    def test_load_variables_with_offloaded_variables_unit(
+        self,
+        draft_var_loader: DraftVarLoader,
+        sqlite_session: Session,
+    ):
         """Test load_variables method with mix of regular and offloaded variables."""
         selectors = [["node1", "regular_var"], ["node2", "offloaded_var"]]
-
-        # Mock regular variable
-        regular_draft_var = Mock(spec=WorkflowDraftVariable)
-        regular_draft_var.is_truncated.return_value = False
-        regular_draft_var.node_id = "node1"
-        regular_draft_var.name = "regular_var"
-        regular_draft_var.get_value.return_value = StringSegment(value="regular_value")
-        regular_draft_var.get_selector.return_value = ["node1", "regular_var"]
-        regular_draft_var.id = "regular-var-id"
+        regular_draft_var = WorkflowDraftVariable.new_node_variable(
+            app_id="test-app-id",
+            user_id="test-user-id",
+            node_id="node1",
+            name="regular_var",
+            value=StringSegment(value="regular_value"),
+            node_execution_id="execution-node1",
+        )
         regular_draft_var.description = "regular description"
+        offloaded_draft_var = _persist_offloaded_variable(
+            sqlite_session,
+            node_id="node2",
+            name="offloaded_var",
+        )
+        distractor = WorkflowDraftVariable.new_node_variable(
+            app_id="test-app-id",
+            user_id="another-user",
+            node_id="node1",
+            name="regular_var",
+            value=StringSegment(value="wrong user"),
+            node_execution_id="execution-distractor",
+        )
+        sqlite_session.add_all([regular_draft_var, distractor])
+        sqlite_session.commit()
 
-        # Mock offloaded variable
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/offloaded.txt"
+        offloaded_variable = Mock()
+        offloaded_variable.id = offloaded_draft_var.id
+        offloaded_variable.selector = ["node2", "offloaded_var"]
 
-        variable_file = Mock(spec=WorkflowDraftVariableFile)
-        variable_file.value_type = SegmentType.STRING
-        variable_file.upload_file = upload_file
+        with (
+            patch("services.workflow_draft_variable_service.StorageKeyLoader"),
+            patch.object(
+                draft_var_loader,
+                "_load_offloaded_variable",
+                return_value=(("node2", "offloaded_var"), offloaded_variable),
+            ) as load_offloaded,
+            patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as executor_cls,
+        ):
+            executor = executor_cls.return_value.__enter__.return_value
+            executor.map.side_effect = lambda function, values: [function(value) for value in values]
 
-        offloaded_draft_var = Mock(spec=WorkflowDraftVariable)
-        offloaded_draft_var.is_truncated.return_value = True
-        offloaded_draft_var.node_id = "node2"
-        offloaded_draft_var.name = "offloaded_var"
-        offloaded_draft_var.get_selector.return_value = ["node2", "offloaded_var"]
-        offloaded_draft_var.variable_file = variable_file
-        offloaded_draft_var.id = "offloaded-var-id"
-        offloaded_draft_var.description = "offloaded description"
+            result = draft_var_loader.load_variables(selectors)
 
-        draft_vars = [regular_draft_var, offloaded_draft_var]
+        assert {variable.id for variable in result} == {regular_draft_var.id, offloaded_draft_var.id}
+        load_offloaded.assert_called_once()
+        loaded_offloaded = load_offloaded.call_args.args[0]
+        assert isinstance(loaded_offloaded, WorkflowDraftVariable)
+        assert loaded_offloaded.id == offloaded_draft_var.id
+        assert loaded_offloaded.variable_file.upload_file.key == "storage/key/offloaded_var.txt"
 
-        with patch("services.workflow_draft_variable_service.Session") as mock_session_cls:
-            mock_session = Mock()
-            mock_session_cls.return_value.__enter__.return_value = mock_session
-
-            mock_service = Mock()
-            mock_service.get_draft_variables_by_selectors.return_value = draft_vars
-
-            with patch(
-                "services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service
-            ):
-                with patch("services.workflow_draft_variable_service.StorageKeyLoader"):
-                    with patch("factories.variable_factory.segment_to_variable") as mock_segment_to_variable:
-                        # Mock regular variable creation
-                        regular_variable = Mock()
-                        regular_variable.selector = ["node1", "regular_var"]
-
-                        # Mock offloaded variable creation
-                        offloaded_variable = Mock()
-                        offloaded_variable.selector = ["node2", "offloaded_var"]
-
-                        mock_segment_to_variable.return_value = regular_variable
-
-                        with patch("services.workflow_draft_variable_service.storage") as mock_storage:
-                            mock_storage.load.return_value = b"offloaded_content"
-
-                            with patch.object(draft_var_loader, "_load_offloaded_variable") as mock_load_offloaded:
-                                mock_load_offloaded.return_value = (("node2", "offloaded_var"), offloaded_variable)
-
-                                with patch("concurrent.futures.ThreadPoolExecutor") as mock_executor_cls:
-                                    mock_executor = Mock()
-                                    mock_executor_cls.return_value.__enter__.return_value = mock_executor
-                                    mock_executor.map.return_value = [(("node2", "offloaded_var"), offloaded_variable)]
-
-                                    # Execute the method
-                                    result = draft_var_loader.load_variables(selectors)
-
-                                    # Verify results
-                                    assert len(result) == 2
-
-                                    # Verify service method was called
-                                    mock_service.get_draft_variables_by_selectors.assert_called_once_with(
-                                        draft_var_loader._app_id,
-                                        selectors,
-                                        user_id=draft_var_loader._user_id,
-                                    )
-
-                                    # Verify offloaded variable loading was called
-                                    mock_load_offloaded.assert_called_once_with(offloaded_draft_var)
-
-    def test_load_variables_all_offloaded_variables_unit(self, draft_var_loader):
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(WorkflowDraftVariable, WorkflowDraftVariableFile, UploadFile)],
+        indirect=True,
+    )
+    def test_load_variables_all_offloaded_variables_unit(
+        self,
+        draft_var_loader: DraftVarLoader,
+        sqlite_session: Session,
+    ):
         """Test load_variables method with only offloaded variables."""
         selectors = [["node1", "offloaded_var1"], ["node2", "offloaded_var2"]]
+        offloaded_var1 = _persist_offloaded_variable(
+            sqlite_session,
+            node_id="node1",
+            name="offloaded_var1",
+        )
+        offloaded_var2 = _persist_offloaded_variable(
+            sqlite_session,
+            node_id="node2",
+            name="offloaded_var2",
+        )
+        sqlite_session.commit()
 
-        # Mock first offloaded variable
-        offloaded_var1 = Mock(spec=WorkflowDraftVariable)
-        offloaded_var1.is_truncated.return_value = True
-        offloaded_var1.node_id = "node1"
-        offloaded_var1.name = "offloaded_var1"
+        with (
+            patch("services.workflow_draft_variable_service.StorageKeyLoader"),
+            patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as executor_cls,
+        ):
+            executor = executor_cls.return_value.__enter__.return_value
+            executor.map.return_value = [
+                (("node1", "offloaded_var1"), Mock()),
+                (("node2", "offloaded_var2"), Mock()),
+            ]
 
-        # Mock second offloaded variable
-        offloaded_var2 = Mock(spec=WorkflowDraftVariable)
-        offloaded_var2.is_truncated.return_value = True
-        offloaded_var2.node_id = "node2"
-        offloaded_var2.name = "offloaded_var2"
+            result = draft_var_loader.load_variables(selectors)
 
-        draft_vars = [offloaded_var1, offloaded_var2]
-
-        with patch("services.workflow_draft_variable_service.Session") as mock_session_cls:
-            mock_session = Mock()
-            mock_session_cls.return_value.__enter__.return_value = mock_session
-
-            mock_service = Mock()
-            mock_service.get_draft_variables_by_selectors.return_value = draft_vars
-
-            with patch(
-                "services.workflow_draft_variable_service.WorkflowDraftVariableService", return_value=mock_service
-            ):
-                with patch("services.workflow_draft_variable_service.StorageKeyLoader"):
-                    with patch("services.workflow_draft_variable_service.ThreadPoolExecutor") as mock_executor_cls:
-                        mock_executor = Mock()
-                        mock_executor_cls.return_value.__enter__.return_value = mock_executor
-                        mock_executor.map.return_value = [
-                            (("node1", "offloaded_var1"), Mock()),
-                            (("node2", "offloaded_var2"), Mock()),
-                        ]
-
-                        # Execute the method
-                        result = draft_var_loader.load_variables(selectors)
-
-                        # Verify results - since we have only offloaded variables, should have 2 results
-                        assert len(result) == 2
-
-                        # Verify ThreadPoolExecutor was used
-                        mock_executor_cls.assert_called_once_with(max_workers=10)
-                        mock_executor.map.assert_called_once()
+        assert len(result) == 2
+        executor_cls.assert_called_once_with(max_workers=10)
+        executor.map.assert_called_once()
+        loaded_draft_vars = executor.map.call_args.args[1]
+        assert {variable.id for variable in loaded_draft_vars} == {offloaded_var1.id, offloaded_var2.id}
+        assert all(variable.variable_file.upload_file is not None for variable in loaded_draft_vars)
