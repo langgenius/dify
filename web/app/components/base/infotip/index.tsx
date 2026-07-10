@@ -19,7 +19,7 @@ type InfotipIconVariant = keyof typeof iconClassNames
 type InfotipIconSize = keyof typeof iconSizeClassNames
 
 /**
- * Infotip — an info glyph that reveals a long-form explanation on hover / focus / tap.
+ * Infotip — an info glyph that reveals a long-form explanation on hover / keyboard activation / tap.
  *
  * Implements the pattern Base UI calls an "infotip":
  * https://base-ui.com/react/components/tooltip#infotips
@@ -45,7 +45,7 @@ type InfotipIconSize = keyof typeof iconSizeClassNames
 type InfotipProps = {
   /** Popup content. Rich nodes are allowed. */
   'children': ReactNode
-  /** Concise accessible name for the trigger. */
+  /** Concise accessible name for the Infotip topic, applied to the trigger and popup. */
   'aria-label': string
   /** Extra classes on the trigger for contextual layout and color. */
   'className'?: string
@@ -87,6 +87,7 @@ export function Infotip({
       <PopoverContent
         placement="top"
         popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        popupProps={{ 'aria-label': ariaLabel }}
       >
         {children}
       </PopoverContent>
