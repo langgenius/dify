@@ -38,34 +38,34 @@ export type StepByStepTourPermissionVariant
     | 'no_integration_permission'
     | 'no_knowledge_permission'
 
-export type StepByStepTourTriggerReason
+type StepByStepTourTriggerReason
   = | 'first_workspace'
     | 'manual_open'
     | 'reopen_after_skip'
 
-export type StepByStepTourCardState = 'expanded' | 'minimized'
+type StepByStepTourCardState = 'expanded' | 'minimized'
 
-export type StepByStepTourTourState = StepByStepTourCardState | 'completion_prompt'
+type StepByStepTourTourState = StepByStepTourCardState | 'completion_prompt'
 
-export type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
+type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
 
-export type StepByStepTourTaskCompletionSource
+type StepByStepTourTaskCompletionSource
   = | 'external_action'
     | 'manual'
     | 'permission_fallback'
     | 'walkthrough_finished'
 
-export type StepByStepTourPermissionRestriction
+type StepByStepTourPermissionRestriction
   = | 'no_create_permission'
     | 'no_integration_permission'
     | 'no_knowledge_permission'
 
-export type StepByStepTourPermissionFallbackBehavior
+type StepByStepTourPermissionFallbackBehavior
   = | 'mark_complete'
     | 'show_limited_access_guide'
     | 'show_no_create_guide'
 
-export type StepByStepTourRole
+type StepByStepTourRole
   = | 'admin'
     | 'dataset_operator'
     | 'editor'
@@ -90,56 +90,56 @@ export type StepByStepTourScopedWorkspaceProperties = StepByStepTourWorkspacePro
   workspace_scope: StepByStepTourWorkspaceScope
 }
 
-export type StepByStepTourTaskProperties = {
+type StepByStepTourTaskProperties = {
   task_id: StepByStepTourTaskId
 }
 
-export type StepByStepTourGuideProperties = StepByStepTourTaskProperties & {
+type StepByStepTourGuideProperties = StepByStepTourTaskProperties & {
   guide_group: StepByStepTourGuideGroup | null
   guide_plan_index: number
   guide_plan_total: number
   guide_target: string
 }
 
-export type StepByStepTourShownProperties = StepByStepTourScopedWorkspaceProperties & {
+type StepByStepTourShownProperties = StepByStepTourScopedWorkspaceProperties & {
   completed_task_count: number
   initial_state: StepByStepTourCardState
   task_total: number
   trigger_reason: StepByStepTourTriggerReason
 }
 
-export type StepByStepTourTaskCtaClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
+type StepByStepTourTaskCtaClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   guide_group: StepByStepTourGuideGroup | null
   permission_variant: StepByStepTourPermissionVariant
   task_index: number
   task_status: Extract<StepByStepTourTaskStatus, 'current' | 'pending'>
 }
 
-export type StepByStepTourStepShownProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
+type StepByStepTourStepShownProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
   interaction_policy: StepByStepTourGuideInteractionPolicy
 }
 
-export type StepByStepTourStepCtaClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
+type StepByStepTourStepCtaClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
   cta_type: 'complete_guide' | 'skip_walkthrough'
 }
 
-export type StepByStepTourStepCompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
+type StepByStepTourStepCompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
   next_guide_target: string | null
 }
 
-export type StepByStepTourTaskCompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
+type StepByStepTourTaskCompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   completed_task_count: number
   completion_source: StepByStepTourTaskCompletionSource
   permission_variant: StepByStepTourPermissionVariant
   task_total: number
 }
 
-export type StepByStepTourCompletedProperties = StepByStepTourScopedWorkspaceProperties & {
+type StepByStepTourCompletedProperties = StepByStepTourScopedWorkspaceProperties & {
   completed_task_ids: readonly StepByStepTourTaskId[]
   task_total: number
 }
 
-export type StepByStepTourSkippedProperties = StepByStepTourWorkspaceProperties & {
+type StepByStepTourSkippedProperties = StepByStepTourWorkspaceProperties & {
   active_task_id: StepByStepTourTaskId | null
   at_state: StepByStepTourTourState
   completed_task_count: number
@@ -147,23 +147,23 @@ export type StepByStepTourSkippedProperties = StepByStepTourWorkspaceProperties 
   source: 'completion_prompt' | 'floating_checklist'
 }
 
-export type StepByStepTourWalkthroughSkippedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
+type StepByStepTourWalkthroughSkippedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
   skip_scope: 'walkthrough'
 }
 
-export type StepByStepTourVisibilityToggledProperties = StepByStepTourWorkspaceProperties & {
+type StepByStepTourVisibilityToggledProperties = StepByStepTourWorkspaceProperties & {
   source: 'help_menu'
   to_state: 'off' | 'on'
   was_skipped: boolean
 }
 
-export type StepByStepTourTaskUncompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
+type StepByStepTourTaskUncompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   completed_task_count_after: number
   completed_task_count_before: number
   source: 'checklist_status_control'
 }
 
-export type StepByStepTourPermissionFallbackViewedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
+type StepByStepTourPermissionFallbackViewedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   fallback_behavior: StepByStepTourPermissionFallbackBehavior
   guide_group: Extract<StepByStepTourGuideGroup, 'homeNoCreate' | 'integrationLimitedAccess' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'> | null
   restriction: StepByStepTourPermissionRestriction

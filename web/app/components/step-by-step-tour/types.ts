@@ -1,8 +1,6 @@
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 
-export const STEP_BY_STEP_TOUR_TASK_IDS = ['home', 'studio', 'knowledge', 'integration'] as const
-
-export type StepByStepTourTaskId = typeof STEP_BY_STEP_TOUR_TASK_IDS[number]
+export type StepByStepTourTaskId = 'home' | 'studio' | 'knowledge' | 'integration'
 
 export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 
@@ -42,7 +40,7 @@ export type StepByStepTourUiState = {
   minimized: boolean
 }
 
-export type StepByStepTourPermissionFallback
+type StepByStepTourPermissionFallback
   = | 'show-parent-empty-state'
     | 'show-disabled-reason'
 

@@ -55,7 +55,7 @@ export type StepByStepTourGuideKind = 'action' | 'walkthrough'
 
 export type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
 
-export type StepByStepTourGuidePortalOrder = 'afterOverlays'
+type StepByStepTourGuidePortalOrder = 'afterOverlays'
 
 export type StepByStepTourGuide = {
   taskId: StepByStepTourTaskId
@@ -93,7 +93,7 @@ export function getStepByStepTourGuideInteractionPolicy(
   return 'blocked'
 }
 
-export const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'>, StepByStepTourGuide[]> = {
+const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'>, StepByStepTourGuide[]> = {
   studioEmpty: [
     {
       taskId: 'studio',
@@ -179,7 +179,7 @@ export const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuide
   ],
 }
 
-export const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'knowledgeEmpty' | 'knowledgeWithDatasets'>, StepByStepTourGuide[]> = {
+const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'knowledgeEmpty' | 'knowledgeWithDatasets'>, StepByStepTourGuide[]> = {
   knowledgeEmpty: [
     {
       taskId: 'knowledge',
@@ -233,7 +233,7 @@ export const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGu
   ],
 }
 
-export const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, StepByStepTourGuide[]>> = {
+const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, StepByStepTourGuide[]>> = {
   home: [
     {
       taskId: 'home',
@@ -423,6 +423,6 @@ export function getStepByStepTourTargetSelector(target: string) {
   return `[data-step-by-step-tour-target="${target}"]`
 }
 
-export function getStepByStepTourHighlightPartSelector(target: string) {
+function getStepByStepTourHighlightPartSelector(target: string) {
   return `[data-step-by-step-tour-highlight-part="${target}"]`
 }

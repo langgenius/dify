@@ -79,8 +79,8 @@ const Datasets = ({
                 stepByStepTourActionMenuHighlightPart={index === 0 && stepByStepTourActionMenuOpen ? stepByStepTourActionMenuHighlightPart : undefined}
                 stepByStepTourActionMenuOpen={index === 0 ? stepByStepTourActionMenuOpen : undefined}
                 stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
-              />),
-            )}
+              />
+            ))}
         {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
