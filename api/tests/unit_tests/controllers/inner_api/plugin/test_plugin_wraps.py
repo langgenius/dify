@@ -2,19 +2,75 @@
 Unit tests for inner_api plugin decorators
 """
 
+from collections.abc import Iterator
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import Engine, event, select
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.inner_api.plugin import wraps as wraps_module
 from controllers.inner_api.plugin.wraps import (
     TenantUserPayload,
     get_user,
     get_user_tenant,
     plugin_data,
 )
+from models.account import Tenant
+from models.base import TypeBase
+from models.enums import EndUserType
+from models.model import DefaultEndUserSessionID, EndUser
+
+
+@pytest.fixture
+def sqlite_plugin_engine(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[Engine]:
+    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (Tenant, EndUser)]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    monkeypatch.setattr(
+        wraps_module,
+        "db",
+        SimpleNamespace(engine=sqlite_engine, session=session_registry),
+    )
+    try:
+        yield sqlite_engine
+    finally:
+        session_registry.remove()
+
+
+def _persist_tenant(sqlite_engine: Engine, *, tenant_id: str = "tenant123") -> Tenant:
+    tenant = Tenant(name=f"Tenant {tenant_id}")
+    tenant.id = tenant_id
+    with Session(sqlite_engine) as session, session.begin():
+        session.add(tenant)
+    return tenant
+
+
+def _persist_end_user(
+    sqlite_engine: Engine,
+    *,
+    tenant_id: str = "tenant123",
+    user_id: str,
+    session_id: str,
+    is_anonymous: bool = False,
+) -> EndUser:
+    user = EndUser(
+        id=user_id,
+        tenant_id=tenant_id,
+        type=EndUserType.SERVICE_API,
+        is_anonymous=is_anonymous,
+        session_id=session_id,
+    )
+    with Session(sqlite_engine) as session, session.begin():
+        session.add(user)
+    return user
 
 
 class TestTenantUserPayload:
@@ -41,185 +97,143 @@ class TestTenantUserPayload:
 class TestGetUser:
     """Test get_user function"""
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_return_existing_user_by_id(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
-    ):
+    def test_should_return_existing_user_by_id(self, sqlite_plugin_engine: Engine, app: Flask):
         """Test returning existing user when found by ID"""
-        # Arrange
-        mock_user = MagicMock()
-        mock_user.id = "user123"
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = mock_user
-        mock_query = MagicMock()
-        mock_select.return_value.where.return_value.limit.return_value = mock_query
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="user123",
+            session_id="existing-session",
+        )
 
-        # Act
         with app.app_context():
             result = get_user("tenant123", "user123")
 
-        # Assert
-        assert result == mock_user
-        mock_session.scalar.assert_called_once()
+        assert result.id == "user123"
+        assert result.tenant_id == "tenant123"
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_not_resolve_non_anonymous_users_across_tenants(
         self,
-        mock_db,
-        mock_sessionmaker,
-        mock_enduser_class,
-        mock_select,
+        sqlite_plugin_engine: Engine,
         app: Flask,
     ):
         """Test that explicit user IDs remain scoped to the current tenant."""
-        # Arrange
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = None
-        mock_new_user = MagicMock()
-        mock_new_user.tenant_id = "tenant-current"
-        mock_enduser_class.return_value = mock_new_user
+        _persist_end_user(
+            sqlite_plugin_engine,
+            tenant_id="tenant-foreign",
+            user_id="foreign-user-id",
+            session_id="foreign-session",
+        )
 
-        # Act
         with app.app_context():
             result = get_user("tenant-current", "foreign-user-id")
 
-        # Assert
-        assert result == mock_new_user
-        mock_session.get.assert_not_called()
-        # Non-anonymous miss now tries id, then session_id fallback (see
-        # #36736); both miss in this tenant → fall through to create.
-        assert mock_session.scalar.call_count == 2
-        mock_session.add.assert_called_once_with(mock_new_user)
+        assert result.id != "foreign-user-id"
+        assert result.tenant_id == "tenant-current"
+        assert result.session_id == "foreign-user-id"
+        with Session(sqlite_plugin_engine) as session:
+            current_tenant_users = session.scalars(select(EndUser).where(EndUser.tenant_id == "tenant-current")).all()
+        assert [user.id for user in current_tenant_users] == [result.id]
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_return_existing_user_by_session_id_fallback_for_non_anonymous(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
     ):
         """Non-anonymous user_id misses on EndUser.id but hits on
         EndUser.session_id — this is the plugin-daemon Reverse Invocation
         case where the daemon sends a stable session-derived UUID that
         was written into session_id on the first call. See #36736.
         """
-        # Arrange
-        mock_user = MagicMock()
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        # First scalar (id lookup) returns None, second (session_id fallback) hits.
-        mock_session.scalar.side_effect = [None, mock_user]
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="persisted-user-id",
+            session_id="daemon-session-uuid",
+        )
 
-        # Act
         with app.app_context():
             result = get_user("tenant123", "daemon-session-uuid")
 
-        # Assert
-        assert result == mock_user
-        assert mock_session.scalar.call_count == 2
-        mock_session.add.assert_not_called()
+        assert result.id == "persisted-user-id"
+        with Session(sqlite_plugin_engine) as session:
+            users = session.scalars(select(EndUser)).all()
+        assert [user.id for user in users] == ["persisted-user-id"]
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_return_existing_anonymous_user_by_session_id(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
     ):
         """Test returning existing anonymous user by session_id"""
-        # Arrange
-        mock_user = MagicMock()
-        mock_user.session_id = "anonymous_session"
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = mock_user
-        mock_query = MagicMock()
-        mock_select.return_value.where.return_value.limit.return_value = mock_query
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="anonymous-user-id",
+            session_id="anonymous_session",
+            is_anonymous=True,
+        )
 
-        # Act
         with app.app_context():
             result = get_user("tenant123", "anonymous_session")
 
-        # Assert
-        assert result == mock_user
+        assert result.id == "anonymous-user-id"
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_create_new_user_when_not_found(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
     ):
         """Test creating new user when not found in database"""
-        # Arrange
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        mock_session.scalar.return_value = None
-        mock_new_user = MagicMock()
-        mock_enduser_class.return_value = mock_new_user
-        mock_query = MagicMock()
-        mock_select.return_value.where.return_value.limit.return_value = mock_query
-
-        # Act
         with app.app_context():
             result = get_user("tenant123", "user123")
 
-        # Assert
-        assert result == mock_new_user
-        mock_session.add.assert_called_once()
-        mock_session.refresh.assert_called_once()
+        assert result.tenant_id == "tenant123"
+        assert result.session_id == "user123"
+        with Session(sqlite_plugin_engine) as session:
+            persisted_user = session.get(EndUser, result.id)
+        assert persisted_user is not None
+        assert persisted_user.session_id == "user123"
 
-    @patch("controllers.inner_api.plugin.wraps.select")
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
     def test_should_use_default_session_id_when_user_id_none(
-        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
     ):
         """Test using default session ID when user_id is None"""
-        # Arrange
-        mock_user = MagicMock()
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        # When user_id is None, is_anonymous=True, so session.scalar() is used
-        mock_session.scalar.return_value = mock_user
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="default-user-id",
+            session_id=DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+            is_anonymous=True,
+        )
 
-        # Act
         with app.app_context():
             result = get_user("tenant123", None)
 
-        # Assert
-        assert result == mock_user
+        assert result.id == "default-user-id"
+        assert result.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-    @patch("controllers.inner_api.plugin.wraps.EndUser")
-    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
-    @patch("controllers.inner_api.plugin.wraps.db")
-    def test_should_raise_error_on_database_exception(self, mock_db, mock_sessionmaker, mock_enduser_class, app: Flask):
+    def test_should_raise_error_on_database_exception(self, sqlite_plugin_engine: Engine, app: Flask):
         """Test raising ValueError when database operation fails"""
-        # Arrange
-        mock_session = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
-        mock_session.scalar.side_effect = Exception("Database error")
 
-        # Act & Assert
-        with app.app_context():
-            with pytest.raises(ValueError, match="user not found"):
+        def _raise_database_error(*_args, **_kwargs):
+            raise RuntimeError("Database error")
+
+        event.listen(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
+        try:
+            with app.app_context(), pytest.raises(ValueError, match="user not found"):
                 get_user("tenant123", "user123")
+        finally:
+            event.remove(sqlite_plugin_engine, "before_cursor_execute", _raise_database_error)
 
 
 class TestGetUserTenant:
     """Test get_user_tenant decorator"""
 
-    @patch("controllers.inner_api.plugin.wraps.Tenant")
-    def test_should_inject_tenant_and_user_models(self, mock_tenant_class, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_should_inject_tenant_and_user_models(
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test that decorator injects tenant_model and user_model into kwargs"""
 
         # Arrange
@@ -227,24 +241,20 @@ class TestGetUserTenant:
         def protected_view(tenant_model, user_model, **kwargs):
             return {"tenant": tenant_model, "user": user_model}
 
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant123"
-        mock_user = MagicMock()
-        mock_user.id = "user456"
+        _persist_tenant(sqlite_plugin_engine)
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="user456",
+            session_id="user-session",
+        )
 
-        # Act
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": "user456"}):
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
-            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
-                with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
-                        mock_get.return_value = mock_tenant
-                        mock_get_user.return_value = mock_user
-                        result = protected_view()
+            with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                result = protected_view()
 
-        # Assert
-        assert result["tenant"] == mock_tenant
-        assert result["user"] == mock_user
+        assert result["tenant"].id == "tenant123"
+        assert result["user"].id == "user456"
 
     def test_should_raise_error_when_tenant_id_missing(self, app: Flask):
         """Test that Pydantic ValidationError is raised when tenant_id is missing from payload"""
@@ -259,7 +269,7 @@ class TestGetUserTenant:
             with pytest.raises(ValidationError):
                 protected_view()
 
-    def test_should_raise_error_when_tenant_not_found(self, app: Flask):
+    def test_should_raise_error_when_tenant_not_found(self, sqlite_plugin_engine: Engine, app: Flask):
         """Test that ValueError is raised when tenant is not found"""
 
         # Arrange
@@ -267,16 +277,15 @@ class TestGetUserTenant:
         def protected_view(tenant_model, user_model, **kwargs):
             return "success"
 
-        # Act & Assert
         with app.test_request_context(json={"tenant_id": "nonexistent", "user_id": "user456"}):
-            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
-                mock_get.return_value = None
-                with pytest.raises(ValueError, match="tenant not found"):
-                    protected_view()
+            with pytest.raises(ValueError, match="tenant not found"):
+                protected_view()
 
-    @patch("controllers.inner_api.plugin.wraps.Tenant")
     def test_should_use_default_session_id_when_user_id_empty(
-        self, mock_tenant_class, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test that default session ID is used when user_id is empty string"""
 
@@ -285,26 +294,22 @@ class TestGetUserTenant:
         def protected_view(tenant_model, user_model, **kwargs):
             return {"tenant": tenant_model, "user": user_model}
 
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant123"
-        mock_user = MagicMock()
+        _persist_tenant(sqlite_plugin_engine)
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="default-user-id",
+            session_id=DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+            is_anonymous=True,
+        )
 
-        # Act - use empty string for user_id to trigger default logic
         with app.test_request_context(json={"tenant_id": "tenant123", "user_id": ""}):
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
-            with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
-                with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
-                        mock_get.return_value = mock_tenant
-                        mock_get_user.return_value = mock_user
-                        result = protected_view()
+            with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                result = protected_view()
 
-        # Assert
-        assert result["tenant"] == mock_tenant
-        assert result["user"] == mock_user
-        from models.model import DefaultEndUserSessionID
-
-        mock_get_user.assert_called_once_with("tenant123", DefaultEndUserSessionID.DEFAULT_SESSION_ID)
+        assert result["tenant"].id == "tenant123"
+        assert result["user"].id == "default-user-id"
+        assert result["user"].session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
 
 class PluginTestPayload:
