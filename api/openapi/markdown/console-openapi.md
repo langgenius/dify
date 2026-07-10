@@ -18801,6 +18801,13 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
 
+#### ReplaceUserAccessPolicies
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_ids | [ string ] |  | No |
+| account_ids | [ string ] |  | No |
+
 #### ReplaceUserAccessPoliciesResponse
 
 | Name | Type | Description | Required |
