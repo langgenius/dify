@@ -1,8 +1,47 @@
 import sys
+from collections.abc import Iterator
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+import core.llm_generator.llm_generator as generator_module
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
+from models.dataset import Dataset
+
+
+class _DatabaseBinding:
+    """Expose the real SQLite session used by suggestion-context queries."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+
+@pytest.fixture
+def dataset_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Create only the legacy Dataset table and bind its query session."""
+
+    Dataset.__table__.create(sqlite_engine)
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        monkeypatch.setattr(generator_module, "db", _DatabaseBinding(session))
+        yield session
+
+
+def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime) -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name=name,
+        created_by="account-id",
+        created_at=created_at,
+    )
 
 
 class TestParseStringList:
@@ -79,9 +118,21 @@ class TestGenerateWorkflowInstructionSuggestions:
 
 
 class TestBuildSuggestionContext:
-    @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_success(self, mock_scalars, monkeypatch):
-        mock_scalars.return_value.all.return_value = ["kb1", "kb2"]
+    def test_both_success(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+        now = datetime.now()
+        dataset_session.add_all(
+            (
+                _dataset(dataset_id="kb-1", tenant_id="tenant", name="kb1", created_at=now),
+                _dataset(
+                    dataset_id="kb-2",
+                    tenant_id="tenant",
+                    name="kb2",
+                    created_at=now - timedelta(seconds=1),
+                ),
+                _dataset(dataset_id="other-kb", tenant_id="other", name="private", created_at=now),
+            )
+        )
+        dataset_session.commit()
 
         # ``_build_suggestion_context`` imports the tool catalogue lazily, so we
         # stub the module in ``sys.modules``. Use ``monkeypatch.setitem`` so the
@@ -99,9 +150,11 @@ class TestBuildSuggestionContext:
         assert "Knowledge bases:\n- kb1\n- kb2" in result
         assert "Installed tools:\ntool1\ntool2" in result
 
-    @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_fail(self, mock_scalars, monkeypatch):
-        mock_scalars.side_effect = Exception("DB error")
+    def test_both_fail(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+        def fail_query(_orm_execute_state: object) -> None:
+            raise SQLAlchemyError("DB error")
+
+        event.listen(dataset_session, "do_orm_execute", fail_query)
 
         # See ``test_both_success``: restore the original module via monkeypatch
         # rather than ``del``-ing it, so we don't evict it for sibling tests.
@@ -109,7 +162,10 @@ class TestBuildSuggestionContext:
         mock_tool_catalogue.build_tool_catalogue.side_effect = Exception("Tool error")
         monkeypatch.setitem(sys.modules, "core.workflow.generator.tool_catalogue", mock_tool_catalogue)
 
-        assert LLMGenerator._build_suggestion_context("tenant") == ""
+        try:
+            assert LLMGenerator._build_suggestion_context("tenant") == ""
+        finally:
+            event.remove(dataset_session, "do_orm_execute", fail_query)
 
 
 class TestClassifyWorkflowMode:
