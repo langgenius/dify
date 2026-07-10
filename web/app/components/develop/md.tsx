@@ -14,6 +14,7 @@ type IHeaderingProps = {
   method: 'PUT' | 'DELETE' | 'GET' | 'POST' | 'PATCH'
   title: string
   name: string
+  titleAction?: React.ReactNode
 }
 
 export const Heading = function H2({
@@ -21,6 +22,7 @@ export const Heading = function H2({
   method,
   title,
   name,
+  titleAction,
 }: IHeaderingProps) {
   let style = ''
   switch (method) {
@@ -48,8 +50,9 @@ export const Heading = function H2({
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
-      <h2 className="mt-2 scroll-mt-32">
+      <h2 className={cn('mt-2 scroll-mt-32', titleAction && 'flex items-center gap-x-2')}>
         <a href={name} className="group text-inherit no-underline hover:text-inherit">{title}</a>
+        {titleAction}
       </h2>
     </>
 

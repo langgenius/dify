@@ -28,6 +28,15 @@ describe('md.tsx components', () => {
         expect(link).toHaveAttribute('href', '#get-messages')
       })
 
+      it('should render a title action immediately after the title', () => {
+        render(<Heading {...defaultProps} titleAction={<button type="button">Upgrade</button>} />)
+
+        const heading = screen.getByRole('heading', { level: 2 })
+        expect(heading).toHaveClass('flex', 'items-center', 'gap-x-2')
+        expect(heading.children[0]).toBe(screen.getByRole('link', { name: 'Get Messages' }))
+        expect(heading.children[1]).toBe(screen.getByRole('button', { name: 'Upgrade' }))
+      })
+
       it('should render an anchor span with correct id', () => {
         const { container } = render(<Heading {...defaultProps} />)
         const anchor = container.querySelector('#get-messages')
