@@ -75,7 +75,6 @@ const InfoTooltip = ({ children }: { children: string }) => {
     <Infotip
       aria-label={children}
       className="ml-1 size-3.5"
-      iconClassName="h-3.5 w-3.5"
       popupClassName="w-[180px]"
     >
       {children}

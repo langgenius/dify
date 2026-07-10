@@ -132,7 +132,6 @@ const VariableModal = ({
               <Infotip
                 aria-label={t('env.modal.secretTip', { ns: 'workflow' })}
                 className="ml-0.5 size-3.5"
-                iconClassName="h-3.5 w-3.5"
                 popupClassName="w-[240px]"
               >
                 {t('env.modal.secretTip', { ns: 'workflow' })}

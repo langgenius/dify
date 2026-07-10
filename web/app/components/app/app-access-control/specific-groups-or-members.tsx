@@ -149,7 +149,8 @@ export function WebAppSSONotEnabledTip() {
   return (
     <Infotip
       aria-label={tip}
-      iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+      className="text-text-warning-secondary hover:text-text-warning-secondary"
+      iconSize="large"
     >
       {tip}
     </Infotip>
