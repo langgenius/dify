@@ -1,8 +1,8 @@
 import type { CommonNodeType, Node } from './types'
-import { load as yamlLoad } from 'js-yaml'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
+import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
 type ParsedDSL = {
@@ -58,7 +58,7 @@ export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
 
 export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
   try {
-    const data = yamlLoad(content) as ParsedDSL
+    const data = loadYaml(content) as ParsedDSL | undefined
     const nodes = data?.workflow?.graph?.nodes ?? []
     const invalidNodes = getInvalidNodeTypes(mode)
     return !nodes.some((node: Node<CommonNodeType>) => invalidNodes.includes(node?.data?.type))

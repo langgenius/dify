@@ -120,7 +120,6 @@ catalog:
   '@tsslint/compat-eslint': 3.1.4
   '@tsslint/config': 3.1.4
   '@types/js-cookie': 3.0.6
-  '@types/js-yaml': 4.0.9
   '@types/lockfile': 1.0.4
   '@types/negotiator': 0.6.4
   '@types/node': 25.9.5
@@ -188,7 +187,7 @@ catalog:
   jotai-tanstack-query: 0.11.0
   js-audio-recorder: 1.0.7
   js-cookie: 3.0.8
-  js-yaml: 4.3.0
+  js-yaml: 5.2.1
   jsonschema: 1.5.0
   katex: 0.17.0
   knip: 6.25.0

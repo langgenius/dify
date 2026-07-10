@@ -195,7 +195,6 @@
     "@tsslint/compat-eslint": "catalog:",
     "@tsslint/config": "catalog:",
     "@types/js-cookie": "catalog:",
-    "@types/js-yaml": "catalog:",
     "@types/negotiator": "catalog:",
     "@types/node": "catalog:",
     "@types/qs": "catalog:",
