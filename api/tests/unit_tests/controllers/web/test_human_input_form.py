@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
@@ -16,13 +18,16 @@ import controllers.web.site as site_module
 from controllers.web.error import WebFormRateLimitExceededError
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
+from models import Tenant
+from models.base import TypeBase
+from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
+from models.model import App, AppMode, IconType, Site
 from services.feature_service import FeatureModel
 from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 HumanInputFormUploadTokenApi = human_input_module.HumanInputFormUploadTokenApi
-TenantStatus = human_input_module.TenantStatus
 
 
 @pytest.fixture
@@ -34,36 +39,66 @@ def app() -> Flask:
     return app
 
 
-class _FakeSession:
-    """Simple stand-in for db.session that returns pre-seeded objects."""
-
-    def __init__(self, mapping: dict[str, Any]):
-        self._mapping = mapping
-
-    def get(self, model, ident):
-        return self._mapping.get(model.__name__)
-
-    def scalar(self, stmt):
-        # Extract the model name from the select statement's column_descriptions
-        try:
-            name = stmt.column_descriptions[0]["entity"].__name__
-        except (AttributeError, IndexError, KeyError):
-            return None
-        return self._mapping.get(name)
+@pytest.fixture
+def database_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
+    models = (Tenant, App, Site)
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database = SimpleNamespace(engine=sqlite_engine, session=database_session)
+    monkeypatch.setattr(human_input_module, "db", database)
+    monkeypatch.setattr("models.model.db", database)
+    try:
+        yield database_session()
+    finally:
+        database_session.remove()
 
 
-class _FakeDB:
-    """Minimal db stub exposing engine and session."""
+def _persist_app_site(session: Session, *, include_site: bool = True) -> tuple[Tenant, App, Site | None]:
+    tenant = Tenant(name="Tenant", plan="basic")
+    tenant.custom_config_dict = {"remove_webapp_brand": True, "replace_webapp_logo": None}
+    app_model = App(
+        id=str(uuid4()),
+        tenant_id=tenant.id,
+        name="Human Input App",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#fff",
+        enable_site=True,
+        enable_api=False,
+    )
+    site = None
+    models: list[object] = [tenant, app_model]
+    if include_site:
+        site = Site(
+            app_id=app_model.id,
+            title="My Site",
+            default_language="en",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            description="desc",
+            input_placeholder="Ask the app",
+            chat_color_theme="light",
+            chat_color_theme_inverted=False,
+            custom_disclaimer="",
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
+        )
+        models.append(site)
+    session.add_all(models)
+    session.commit()
+    return tenant, app_model, site
 
-    def __init__(self, session: _FakeSession):
-        self.session = session
-        self.engine = object()
 
-
-def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session):
     """GET returns form definition merged with site payload."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
+    _, app_model, _ = _persist_app_site(database_session)
 
     class _FakeDefinition:
         def model_dump(self, mode: str | None = None):
@@ -77,9 +112,9 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id = "workflow-1"
-            self.app_id = "app-1"
-            self.tenant_id = "tenant-1"
+            self.workflow_run_id = None
+            self.app_id = app_model.id
+            self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
             self.recipient_type = RecipientType.BACKSTAGE
 
@@ -92,42 +127,12 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
 
-    tenant = SimpleNamespace(
-        id="tenant-1",
-        status=TenantStatus.NORMAL,
-        plan="basic",
-        custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": False},
-    )
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-    workflow_run = SimpleNamespace(app_id="app-1")
-    site_model = SimpleNamespace(
-        title="My Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        input_placeholder="Ask the app",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright=None,
-        privacy_policy=None,
-        custom_disclaimer="",
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
-    )
-
     # Patch service to return fake form.
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
     resolved_input = ParagraphInputConfig(output_variable_name="name")
     service_mock.resolve_form_inputs.return_value = [resolved_input]
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-
-    # Patch db session.
-    db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
-    monkeypatch.setattr(human_input_module, "db", db_stub)
 
     monkeypatch.setattr(
         site_module.FeatureService,
@@ -153,7 +158,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
-        "app_id": "app-1",
+        "app_id": app_model.id,
         "end_user_id": None,
         "enable_site": True,
         "site": {
@@ -187,10 +192,11 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session):
     """GET returns variable-backed select options resolved from runtime state."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
+    _, app_model, _ = _persist_app_site(database_session)
     configured_inputs = [
         {
             "type": "select",
@@ -225,9 +231,9 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id = "workflow-1"
-            self.app_id = "app-1"
-            self.tenant_id = "tenant-1"
+            self.workflow_run_id = None
+            self.app_id = app_model.id
+            self.tenant_id = app_model.tenant_id
             self.recipient_type = RecipientType.STANDALONE_WEB_APP
             self.expiration_time = expiration
 
@@ -239,37 +245,11 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
 
-    tenant = SimpleNamespace(
-        id="tenant-1",
-        status=TenantStatus.NORMAL,
-        plan="basic",
-        custom_config_dict={},
-    )
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-    site_model = SimpleNamespace(
-        title="My Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        input_placeholder="Ask the app",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright=None,
-        privacy_policy=None,
-        custom_disclaimer="",
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
-    )
-
     form = _FakeForm(expiration_time)
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
     service_mock.resolve_form_inputs.return_value = runtime_inputs
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({"App": app_model, "Site": site_model})))
 
     def mock_get_features(tenant_id: str, exclude_vector_space: bool = False):
         return FeatureModel(can_replace_logo=True)
@@ -284,7 +264,9 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
 
-def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_create_upload_token_returns_token_and_form_expiration(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine
+):
     """POST returns a HITL upload token for an active form token."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
@@ -312,7 +294,7 @@ def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pyte
         "HumanInputFileUploadService",
         _service_factory,
     )
-    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
@@ -329,14 +311,16 @@ def test_create_upload_token_returns_token_and_form_expiration(monkeypatch: pyte
     }
     repo_factory.assert_called_once()
     assert captured["workflow_run_repository"] is workflow_run_repository
+    assert captured["session_factory"].kw["bind"] is sqlite_engine
     service_mock.issue_upload_token.assert_called_once_with("token-1")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session):
     """GET returns form payload for backstage token."""
 
     expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
+    _, app_model, _ = _persist_app_site(database_session)
 
     class _FakeDefinition:
         def model_dump(self, mode: str | None = None):
@@ -350,9 +334,9 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id = "workflow-1"
-            self.app_id = "app-1"
-            self.tenant_id = "tenant-1"
+            self.workflow_run_id = None
+            self.app_id = app_model.id
+            self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
 
         def get_definition(self):
@@ -363,39 +347,10 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
-    tenant = SimpleNamespace(
-        id="tenant-1",
-        status=TenantStatus.NORMAL,
-        plan="basic",
-        custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": False},
-    )
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-    workflow_run = SimpleNamespace(app_id="app-1")
-    site_model = SimpleNamespace(
-        title="My Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        input_placeholder="Ask the app",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright=None,
-        privacy_policy=None,
-        custom_disclaimer="",
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
-    )
-
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
     service_mock.resolve_form_inputs.return_value = []
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-
-    db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
-    monkeypatch.setattr(human_input_module, "db", db_stub)
 
     monkeypatch.setattr(
         site_module.FeatureService,
@@ -421,7 +376,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     assert body["user_actions"] == []
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
-        "app_id": "app-1",
+        "app_id": app_model.id,
         "end_user_id": None,
         "enable_site": True,
         "site": {
@@ -455,10 +410,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_get_form_raises_forbidden_when_site_missing(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
+):
     """GET raises Forbidden if site cannot be resolved."""
 
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
+    _, app_model, _ = _persist_app_site(database_session, include_site=False)
 
     class _FakeDefinition:
         def model_dump(self, mode: str | None = None):
@@ -472,9 +430,9 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id = "workflow-1"
-            self.app_id = "app-1"
-            self.tenant_id = "tenant-1"
+            self.workflow_run_id = None
+            self.app_id = app_model.id
+            self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
 
         def get_definition(self):
@@ -485,16 +443,9 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
-    tenant = SimpleNamespace(status=TenantStatus.NORMAL)
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
-    workflow_run = SimpleNamespace(app_id="app-1")
-
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-
-    db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": None}))
-    monkeypatch.setattr(human_input_module, "db", db_stub)
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         with pytest.raises(Forbidden):
@@ -503,7 +454,7 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
     """POST forwards backstage submissions to the service."""
 
     class _FakeForm:
@@ -517,7 +468,7 @@ def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, ap
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
+    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     with app.test_request_context(
         "/api/form/human_input/token-1",
@@ -550,7 +501,6 @@ def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = None
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
 
     with app.test_request_context(
         "/api/form/human_input/token-1",
@@ -576,7 +526,6 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = None
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         with pytest.raises(WebFormRateLimitExceededError):
@@ -587,7 +536,7 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock.get_form_by_token.assert_not_called()
 
 
-def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask):
+def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
     class _FakeForm:
         pass
 
@@ -600,7 +549,7 @@ def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock.get_form_by_token.return_value = form
     service_mock.ensure_form_active.side_effect = FormExpiredError("form-id")
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
-    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
+    monkeypatch.setattr(human_input_module, "db", SimpleNamespace(engine=sqlite_engine))
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         with pytest.raises(FormExpiredError):
