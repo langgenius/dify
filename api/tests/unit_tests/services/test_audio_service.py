@@ -32,8 +32,8 @@ Tests available voice retrieval:
 
 ## Testing Approach
 
-- **Mocking Strategy**: All external dependencies (ModelManager, db, FileStorage) are mocked
-  for fast, isolated unit tests
+- **Isolation Strategy**: External dependencies (ModelManager and FileStorage) are mocked,
+  while database paths use isolated in-memory SQLite sessions
 - **Factory Pattern**: AudioServiceTestDataFactory provides consistent test data
 - **Fixtures**: Mock objects are configured per test method
 - **Assertions**: Each test verifies return values, side effects, and error conditions
@@ -53,13 +53,15 @@ Tests available voice retrieval:
 - text_to_speech: Enables TTS functionality
 """
 
+from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from models.enums import MessageStatus
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow
 from services.app_ref_service import MessageRef
@@ -71,6 +73,34 @@ from services.errors.audio import (
     ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+APP_ID = "11111111-1111-1111-1111-111111111111"
+TENANT_ID = "22222222-2222-2222-2222-222222222222"
+MESSAGE_ID = "33333333-3333-3333-3333-333333333333"
+CONVERSATION_ID = "44444444-4444-4444-4444-444444444444"
+END_USER_ID = "55555555-5555-5555-5555-555555555555"
+ACCOUNT_ID = "66666666-6666-6666-6666-666666666666"
+OTHER_ID = "77777777-7777-7777-7777-777777777777"
+
+
+def _message(*, answer: str = "Message answer") -> Message:
+    message = Message(
+        id=MESSAGE_ID,
+        app_id=APP_ID,
+        conversation_id=CONVERSATION_ID,
+        query="Question",
+        message={"role": "user", "content": "Question"},
+        answer=answer,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        status=MessageStatus.NORMAL,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=END_USER_ID,
+        from_account_id=ACCOUNT_ID,
+    )
+    message._inputs = {}
+    return message
 
 
 class AudioServiceTestDataFactory:
@@ -179,33 +209,6 @@ class AudioServiceTestDataFactory:
         for key, value in kwargs.items():
             setattr(file, key, value)
         return file
-
-    @staticmethod
-    def create_message_mock(
-        message_id: str = "msg-123",
-        answer: str = "Test answer",
-        status: MessageStatus = MessageStatus.NORMAL,
-        **kwargs,
-    ) -> Mock:
-        """
-        Create a mock Message object.
-
-        Args:
-            message_id: Unique identifier for the message
-            answer: Message answer text
-            status: Message status
-            **kwargs: Additional attributes to set on the mock
-
-        Returns:
-            Mock Message object with specified attributes
-        """
-        message = create_autospec(Message, instance=True)
-        message.id = message_id
-        message.answer = answer
-        message.status = status
-        for key, value in kwargs.items():
-            setattr(message, key, value)
-        return message
 
 
 @pytest.fixture
@@ -375,11 +378,17 @@ class TestAudioServiceASR:
             AudioService.transcript_asr(app_model=app, file=file)
 
 
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_with_text_success(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_with_text_success(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test successful TTS with text input."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -399,7 +408,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Hello world",
             voice="en-US-Neural",
             end_user="user-123",
@@ -414,7 +423,12 @@ class TestAudioServiceTTS:
         )
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_with_default_voice(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_with_default_voice(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test TTS uses default voice when none specified."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -434,7 +448,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Test",
         )
 
@@ -446,7 +460,10 @@ class TestAudioServiceTTS:
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_gets_first_available_voice_when_none_configured(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS gets first available voice when none is configured."""
         # Arrange
@@ -468,7 +485,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=MagicMock(),
+            session=sqlite_session,
             text="Test",
         )
 
@@ -480,7 +497,11 @@ class TestAudioServiceTTS:
     @patch("services.audio_service.WorkflowService", autospec=True)
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
-        self, mock_model_manager_class, mock_workflow_service_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        mock_workflow_service_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS in WORKFLOW mode with draft workflow."""
         # Arrange
@@ -500,38 +521,37 @@ class TestAudioServiceTTS:
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"draft audio"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
-        session = MagicMock()
-
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
-            session=session,
+            session=sqlite_session,
             text="Draft test",
             is_draft=True,
         )
 
         # Assert
         assert result == b"draft audio"
-        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=session)
+        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=sqlite_session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_message_id_uses_provided_session(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test TTS message lookup uses the injected session."""
         # Arrange
-        app = factory.create_app_mock(mode=AppMode.CHAT)
-        message_id = "00000000-0000-0000-0000-000000000001"
+        app = factory.create_app_mock(app_id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
         message_ref = MessageRef(
-            tenant_id=app.tenant_id,
-            app_id=app.id,
-            message_id=message_id,
-            end_user_id="end-user-1",
-            account_id="account-1",
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            message_id=MESSAGE_ID,
+            end_user_id=END_USER_ID,
+            account_id=ACCOUNT_ID,
         )
-        message = factory.create_message_mock(message_id=message_id, answer="Message answer")
-        session = MagicMock()
-        session.scalar.return_value = message
+        sqlite_session.add(_message())
+        sqlite_session.commit()
 
         mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
@@ -539,45 +559,72 @@ class TestAudioServiceTTS:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
+        for wrong_ref in (
+            MessageRef(
+                tenant_id=TENANT_ID,
+                app_id=OTHER_ID,
+                message_id=MESSAGE_ID,
+                end_user_id=END_USER_ID,
+                account_id=ACCOUNT_ID,
+            ),
+            MessageRef(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                message_id=MESSAGE_ID,
+                end_user_id=OTHER_ID,
+                account_id=ACCOUNT_ID,
+            ),
+            MessageRef(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                message_id=MESSAGE_ID,
+                end_user_id=END_USER_ID,
+                account_id=OTHER_ID,
+            ),
+        ):
+            assert (
+                AudioService.transcript_tts(
+                    app_model=app,
+                    session=sqlite_session,
+                    message_ref=wrong_ref,
+                    voice="message-voice",
+                )
+                is None
+            )
+
         result = AudioService.transcript_tts(
             app_model=app,
-            session=session,
+            session=sqlite_session,
             message_ref=message_ref,
             voice="message-voice",
         )
 
         # Assert
         assert result == b"message audio"
-        session.scalar.assert_called_once()
-        session.get.assert_not_called()
-        stmt = session.scalar.call_args.args[0]
-        compiled = stmt.compile()
-        statement = str(compiled)
-        assert "messages.id" in statement
-        assert "messages.app_id" in statement
-        assert "messages.from_end_user_id" in statement
-        assert "messages.from_account_id" in statement
-        assert message_id in compiled.params.values()
-        assert app.id in compiled.params.values()
-        assert "end-user-1" in compiled.params.values()
-        assert "account-1" in compiled.params.values()
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Message answer",
             voice="message-voice",
         )
 
-    def test_transcript_tts_raises_error_when_text_missing(self, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_raises_error_when_text_missing(
+        self,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+    ):
         """Test that TTS raises error when text is missing."""
         # Arrange
         app = factory.create_app_mock()
 
         # Act & Assert
         with pytest.raises(ValueError, match="Text is required"):
-            AudioService.transcript_tts(app_model=app, session=MagicMock(), text=None)
+            AudioService.transcript_tts(app_model=app, session=sqlite_session, text=None)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(
-        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
     ):
         """Test that TTS raises error when no voices are available."""
         # Arrange
@@ -597,7 +644,7 @@ class TestAudioServiceTTS:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Sorry, no voice available"):
-            AudioService.transcript_tts(app_model=app, session=MagicMock(), text="Test")
+            AudioService.transcript_tts(app_model=app, session=sqlite_session, text="Test")
 
 
 class TestAudioServiceTTSVoices:
