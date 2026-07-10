@@ -31,13 +31,21 @@ class WorkflowCommentService:
     def _filter_valid_mentioned_user_ids(
         mentioned_user_ids: Sequence[str], *, session: Session, tenant_id: str
     ) -> list[str]:
-        """Return deduplicated UUID user IDs that belong to the tenant, preserving input order."""
+        """Return deduplicated UUID user IDs that belong to the tenant, preserving input order.
+
+        Non-string and malformed UUID values are ignored so stale or untrusted mention
+        payloads cannot abort an otherwise valid comment mutation.
+        """
         unique_user_ids: list[str] = []
         seen: set[str] = set()
         for user_id in mentioned_user_ids:
             if not isinstance(user_id, str):
                 continue
-            if not uuid_value(user_id):
+            try:
+                normalized_user_id = uuid_value(user_id)
+            except ValueError:
+                continue
+            if not normalized_user_id:
                 continue
             if user_id in seen:
                 continue
@@ -351,7 +359,7 @@ class WorkflowCommentService:
 
     @staticmethod
     def delete_comment(tenant_id: str, app_id: str, comment_id: str, user_id: str) -> None:
-        """Delete a workflow comment."""
+        """Delete a workflow comment and its eagerly loaded replies and mentions."""
         with Session(db.engine, expire_on_commit=False) as session:
             comment = WorkflowCommentService.get_comment(tenant_id, app_id, comment_id, session)
 
@@ -359,20 +367,8 @@ class WorkflowCommentService:
             if comment.created_by != user_id:
                 raise Forbidden("Only the comment creator can delete it")
 
-            # Delete associated mentions (both comment and reply mentions)
-            mentions = session.scalars(
-                select(WorkflowCommentMention).where(WorkflowCommentMention.comment_id == comment_id)
-            ).all()
-            for mention in mentions:
-                session.delete(mention)
-
-            # Delete associated replies
-            replies = session.scalars(
-                select(WorkflowCommentReply).where(WorkflowCommentReply.comment_id == comment_id)
-            ).all()
-            for reply in replies:
-                session.delete(reply)
-
+            # get_comment eagerly loads both relationships; their delete-orphan cascades
+            # remove all direct and reply-level mentions without duplicate DELETEs.
             session.delete(comment)
             session.commit()
 
