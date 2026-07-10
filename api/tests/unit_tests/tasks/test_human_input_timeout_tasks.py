@@ -2,74 +2,22 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
+import core.db.session_factory as session_factory_module
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from models.human_input import HumanInputForm
 from tasks import human_input_timeout_tasks as task_module
 
 
-class _FakeScalarResult:
-    def __init__(self, items: list[Any]):
-        self._items = items
-
-    def all(self) -> list[Any]:
-        return self._items
-
-
-class _FakeSession:
-    def __init__(self, items: list[Any], capture: dict[str, Any]):
-        self._items = items
-        self._capture = capture
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def scalars(self, stmt):
-        self._capture["stmt"] = stmt
-        return _FakeScalarResult(self._items)
-
-
-class _FakeSessionFactory:
-    def __init__(self, items: list[Any], capture: dict[str, Any]):
-        self._items = items
-        self._capture = capture
-        self._capture["session_factory"] = self
-
-    def __call__(self):
-        session = _FakeSession(self._items, self._capture)
-        self._capture["session"] = session
-        return session
-
-
-class _FakeFormRepo:
-    def __init__(self, form_map: dict[str, Any] | None = None):
-        self.calls: list[dict[str, Any]] = []
-        self._form_map = form_map or {}
-
-    def mark_timeout(self, *, form_id: str, timeout_status: HumanInputFormStatus, reason: str | None = None):
-        self.calls.append(
-            {
-                "form_id": form_id,
-                "timeout_status": timeout_status,
-                "reason": reason,
-            }
-        )
-        form = self._form_map.get(form_id)
-        return SimpleNamespace(
-            form_id=form_id,
-            workflow_run_id=getattr(form, "workflow_run_id", None),
-            conversation_id=getattr(form, "conversation_id", None),
-            node_id=getattr(form, "node_id", None),
-        )
-
-
 class _FakeService:
-    def __init__(self, _session_factory, form_repository=None):
+    def __init__(self):
         self.enqueued: list[str] = []
         self.agent_app_resumed: list[tuple[str, str]] = []
 
@@ -90,22 +38,49 @@ def _build_form(
     workflow_run_id: str | None,
     node_id: str,
     conversation_id: str | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
+) -> HumanInputForm:
+    form_definition = FormDefinition(
+        form_content="",
+        rendered_content="",
+        expiration_time=expiration_time,
+    )
+    return HumanInputForm(
         id=form_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
         form_kind=form_kind,
         created_at=created_at,
         expiration_time=expiration_time,
         workflow_run_id=workflow_run_id,
         conversation_id=conversation_id,
         node_id=node_id,
+        form_definition=form_definition.model_dump_json(),
+        rendered_content="",
         status=HumanInputFormStatus.WAITING,
     )
 
 
+@pytest.fixture
+def sqlite_task_database(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(session_factory_module, "_session_maker", repository_session_maker)
+    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+
 def test_is_global_timeout_uses_created_at():
     now = datetime(2025, 1, 1, 12, 0, 0)
-    form = SimpleNamespace(created_at=now - timedelta(seconds=61), workflow_run_id="run-1")
+    form = _build_form(
+        form_id="form-1",
+        form_kind=HumanInputFormKind.RUNTIME,
+        created_at=now - timedelta(seconds=61),
+        expiration_time=now + timedelta(hours=1),
+        workflow_run_id="run-1",
+        node_id="node-1",
+    )
 
     assert task_module._is_global_timeout(form, 60, now=now) is True
 
@@ -119,11 +94,16 @@ def test_is_global_timeout_uses_created_at():
     assert task_module._is_global_timeout(form, 0, now=now) is False
 
 
-def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_check_and_handle_human_input_timeouts_marks_and_routes(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_task_database: None,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
 
     forms = [
         _build_form(
@@ -151,74 +131,89 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(monkeypatch: pyt
             node_id="node-delivery",
         ),
     ]
+    sqlite_session.add_all(forms)
+    sqlite_session.commit()
 
-    capture: dict[str, Any] = {}
-    monkeypatch.setattr(task_module, "sessionmaker", lambda *args, **kwargs: _FakeSessionFactory(forms, capture))
+    repo = HumanInputFormSubmissionRepository()
+    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
+    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    service = _FakeService()
+    service_factory = MagicMock(return_value=service)
+    global_timeout_handler = MagicMock()
 
-    form_map = {form.id: form for form in forms}
-    repo = _FakeFormRepo(form_map=form_map)
-
-    def _repo_factory():
-        return repo
-
-    service = _FakeService(None)
-
-    def _service_factory(_session_factory, form_repository=None):
-        return service
-
-    global_calls: list[dict[str, Any]] = []
-
-    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", _repo_factory)
-    monkeypatch.setattr(task_module, "HumanInputService", _service_factory)
-    monkeypatch.setattr(task_module, "_handle_global_timeout", lambda **kwargs: global_calls.append(kwargs))
+    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
+    monkeypatch.setattr(task_module, "HumanInputService", service_factory)
+    monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
 
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
-    assert {(call["form_id"], call["timeout_status"], call["reason"]) for call in repo.calls} == {
+    assert {
+        (call.kwargs["form_id"], call.kwargs["timeout_status"], call.kwargs["reason"])
+        for call in mark_timeout_spy.call_args_list
+    } == {
         ("form-global", HumanInputFormStatus.EXPIRED, "global_timeout"),
         ("form-node", HumanInputFormStatus.TIMEOUT, "node_timeout"),
         ("form-delivery", HumanInputFormStatus.TIMEOUT, "delivery_test_timeout"),
     }
     assert service.enqueued == ["run-node"]
-    assert global_calls == [
-        {
-            "form_id": "form-global",
-            "workflow_run_id": "run-global",
-            "node_id": "node-global",
-            "session_factory": capture.get("session_factory"),
-        }
-    ]
+    global_timeout_handler.assert_called_once()
+    global_timeout_call = global_timeout_handler.call_args.kwargs
+    assert global_timeout_call["form_id"] == "form-global"
+    assert global_timeout_call["workflow_run_id"] == "run-global"
+    assert global_timeout_call["node_id"] == "node-global"
+    task_session_maker = global_timeout_call["session_factory"]
+    assert isinstance(task_session_maker, sessionmaker)
+    assert task_session_maker.kw["bind"] is sqlite_engine
+    service_factory.assert_called_once_with(task_session_maker, form_repository=repo)
 
-    stmt = capture.get("stmt")
-    assert stmt is not None
-    stmt_text = str(stmt)
-    assert "created_at <=" in stmt_text
-    assert "expiration_time <=" in stmt_text
-    assert "ORDER BY human_input_forms.id" in stmt_text
+    sqlite_session.expire_all()
+    assert sqlite_session.get(HumanInputForm, "form-global").status == HumanInputFormStatus.EXPIRED
+    assert sqlite_session.get(HumanInputForm, "form-node").status == HumanInputFormStatus.TIMEOUT
+    assert sqlite_session.get(HumanInputForm, "form-delivery").status == HumanInputFormStatus.TIMEOUT
 
 
-def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_task_database: None,
+    sqlite_session: Session,
+):
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
 
-    capture: dict[str, Any] = {}
-    monkeypatch.setattr(task_module, "sessionmaker", lambda *args, **kwargs: _FakeSessionFactory([], capture))
-    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", _FakeFormRepo)
-    monkeypatch.setattr(task_module, "HumanInputService", _FakeService)
-    monkeypatch.setattr(task_module, "_handle_global_timeout", lambda **_kwargs: None)
+    old_unexpired_form = _build_form(
+        form_id="form-old",
+        form_kind=HumanInputFormKind.RUNTIME,
+        created_at=now - timedelta(hours=2),
+        expiration_time=now + timedelta(hours=1),
+        workflow_run_id="run-old",
+        node_id="node-old",
+    )
+    sqlite_session.add(old_unexpired_form)
+    sqlite_session.commit()
+
+    repo = HumanInputFormSubmissionRepository()
+    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
+    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
+    monkeypatch.setattr(task_module, "HumanInputService", MagicMock(return_value=_FakeService()))
+    global_timeout_handler = MagicMock()
+    monkeypatch.setattr(task_module, "_handle_global_timeout", global_timeout_handler)
 
     task_module.check_and_handle_human_input_timeouts(limit=1)
 
-    stmt = capture.get("stmt")
-    assert stmt is not None
-    stmt_text = str(stmt)
-    assert "created_at <=" not in stmt_text
+    mark_timeout_spy.assert_not_called()
+    global_timeout_handler.assert_not_called()
+    sqlite_session.refresh(old_unexpired_form)
+    assert old_unexpired_form.status == HumanInputFormStatus.WAITING
 
 
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to_agent_app_resume(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_task_database: None,
+    sqlite_session: Session,
 ):
     # ENG-635 (review): a conversation-owned Agent v2 chat ask_human form has no
     # workflow_run_id. On timeout it must enqueue the Agent App resume (so the
@@ -227,24 +222,23 @@ def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to
     now = datetime(2025, 1, 1, 12, 0, 0)
     monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
     monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=object()))
 
-    forms = [
-        _build_form(
-            form_id="form-chat",
-            form_kind=HumanInputFormKind.RUNTIME,
-            created_at=now - timedelta(minutes=5),
-            expiration_time=now - timedelta(seconds=1),
-            workflow_run_id=None,
-            conversation_id="conv-1",
-            node_id="agent",
-        ),
-    ]
-    capture: dict[str, Any] = {}
-    monkeypatch.setattr(task_module, "sessionmaker", lambda *args, **kwargs: _FakeSessionFactory(forms, capture))
+    form = _build_form(
+        form_id="form-chat",
+        form_kind=HumanInputFormKind.RUNTIME,
+        created_at=now - timedelta(minutes=5),
+        expiration_time=now - timedelta(seconds=1),
+        workflow_run_id=None,
+        conversation_id="conv-1",
+        node_id="agent",
+    )
+    sqlite_session.add(form)
+    sqlite_session.commit()
 
-    repo = _FakeFormRepo(form_map={form.id: form for form in forms})
-    service = _FakeService(None)
+    repo = HumanInputFormSubmissionRepository()
+    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
+    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    service = _FakeService()
     monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
     monkeypatch.setattr(task_module, "HumanInputService", lambda *_args, **_kwargs: service)
     monkeypatch.setattr(task_module, "_handle_global_timeout", lambda **_kwargs: None)
@@ -252,8 +246,10 @@ def test_check_and_handle_human_input_timeouts_routes_conversation_owned_form_to
     task_module.check_and_handle_human_input_timeouts(limit=100)
 
     # Node timeout (conversation forms are never "global"), routed to Agent App resume.
-    assert repo.calls == [
-        {"form_id": "form-chat", "timeout_status": HumanInputFormStatus.TIMEOUT, "reason": "node_timeout"}
-    ]
+    mark_timeout_spy.assert_called_once_with(
+        form_id="form-chat", timeout_status=HumanInputFormStatus.TIMEOUT, reason="node_timeout"
+    )
     assert service.agent_app_resumed == [("conv-1", "form-chat")]
     assert service.enqueued == []
+    sqlite_session.refresh(form)
+    assert form.status == HumanInputFormStatus.TIMEOUT
