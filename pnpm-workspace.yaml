@@ -188,7 +188,7 @@ catalog:
   jotai-tanstack-query: 0.11.0
   js-audio-recorder: 1.0.7
   js-cookie: 3.0.8
-  js-yaml: 5.2.1
+  js-yaml: 4.3.0
   jsonschema: 1.5.0
   katex: 0.17.0
   knip: 6.25.0
