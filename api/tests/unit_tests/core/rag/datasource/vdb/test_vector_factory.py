@@ -232,7 +232,9 @@ def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeyp
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = SimpleNamespace(
-        index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH}, tenant_id="tenant-1"
+        id="dataset-1",
+        index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH},
+        tenant_id="tenant-1",
     )
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
@@ -271,7 +273,7 @@ def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch:
     )
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(index_struct_dict=None, tenant_id="tenant-1")
+    vector._dataset = SimpleNamespace(id="dataset-1", index_struct_dict=None, tenant_id="tenant-1")
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
 
