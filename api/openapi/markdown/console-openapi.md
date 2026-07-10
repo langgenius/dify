@@ -4164,7 +4164,7 @@ Get conversation variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/conversation-variables
@@ -4203,7 +4203,7 @@ Get environment variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [WorkflowDraftEnvironmentVariableListResponse](#workflowdraftenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/environment-variables
@@ -4587,7 +4587,7 @@ Get variables for a specific node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
 **Run draft workflow**
@@ -4695,7 +4695,7 @@ Get system variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
 **Poll for trigger events and execute full workflow when event arrives**
@@ -4775,7 +4775,7 @@ Get draft workflow variables
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Delete a workflow variable
@@ -4808,7 +4808,7 @@ Get a specific workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -4831,7 +4831,7 @@ Update a workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
@@ -4848,7 +4848,7 @@ Reset a workflow variable to its default value
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -8167,7 +8167,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [RagPipelineEnvironmentVariableListResponse](#ragpipelineenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -8275,7 +8275,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -8341,7 +8341,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 #### Parameters
@@ -8354,7 +8354,7 @@ Initiate OAuth login process
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Variables deleted successfully |
+| 204 | Workflow variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 **Get draft workflow**
@@ -8363,13 +8363,15 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 | pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8397,7 +8399,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8417,7 +8419,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
 #### Parameters
@@ -8431,8 +8433,8 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 204 | Variable reset to empty state |  |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 204 | Variable reset (no content) |  |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
 **Get published pipeline**
@@ -8884,7 +8886,7 @@ Conversation variables are not used in snippet workflows; returns an empty list 
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/environment-variables
 Get environment variables from snippet draft workflow graph
@@ -8899,7 +8901,7 @@ Get environment variables from snippet draft workflow graph
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [WorkflowDraftEnvironmentVariableListResponse](#workflowdraftenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
@@ -9034,7 +9036,7 @@ Get variables for a specific node (snippet draft workflow)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/run
 **Run draft workflow for snippet**
@@ -9074,7 +9076,7 @@ System variables are not used in snippet workflows; returns an empty list for AP
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables
 Delete all draft workflow variables for the current user (snippet scope)
@@ -9106,7 +9108,7 @@ List draft workflow variables without values (paginated, snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Delete a draft workflow variable (snippet scope)
@@ -9139,7 +9141,7 @@ Get a specific draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -9162,7 +9164,7 @@ Update a draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
@@ -9179,7 +9181,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -17521,6 +17523,27 @@ declaration of an endpoint group
 | value |  |  | No |
 | value_type | string |  | No |
 
+#### EnvironmentVariableItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| editable | boolean |  | Yes |
+| edited | boolean |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| selector | [ string ] |  | Yes |
+| type | string |  | Yes |
+| value |  |  | Yes |
+| value_type | string |  | Yes |
+| visible | boolean |  | Yes |
+
+#### EnvironmentVariableListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [EnvironmentVariableItemResponse](#environmentvariableitemresponse) ] |  | Yes |
+
 #### EnvironmentVariableUpdatePayload
 
 | Name | Type | Description | Required |
@@ -20582,27 +20605,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | yaml_content | string |  | Yes |
 
-#### RagPipelineEnvironmentVariableListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [RagPipelineEnvironmentVariableResponse](#ragpipelineenvironmentvariableresponse) ] |  | Yes |
-
-#### RagPipelineEnvironmentVariableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| editable | boolean |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
-
 #### RagPipelineImportCheckDependenciesResponse
 
 | Name | Type | Description | Required |
@@ -23047,35 +23049,46 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkflowDailyTokenCostStatisticItem](#workflowdailytokencoststatisticitem) ] |  | Yes |
 
-#### WorkflowDraftEnvironmentVariableListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftEnvironmentVariableResponse](#workflowdraftenvironmentvariableresponse) ] |  | Yes |
-
-#### WorkflowDraftEnvironmentVariableResponse
+#### WorkflowDraftEnvVariable
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| editable | boolean |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
+| edited | boolean |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
-#### WorkflowDraftVariableFullContentResponse
+#### WorkflowDraftEnvVariableList
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| download_url | string |  | Yes |
-| length | integer |  | Yes |
-| size_bytes | integer |  | Yes |
-| value_type | string |  | Yes |
+| items | [ [WorkflowDraftEnvVariable](#workflowdraftenvvariable) ] |  | No |
+
+#### WorkflowDraftVariable
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| full_content | object |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
+
+#### WorkflowDraftVariableList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [WorkflowDraftVariable](#workflowdraftvariable) ] |  | No |
 
 #### WorkflowDraftVariableListQuery
 
@@ -23084,41 +23097,19 @@ How a workflow node is bound to an Agent.
 | limit | integer, <br>**Default:** 20 | Items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
-#### WorkflowDraftVariableListResponse
+#### WorkflowDraftVariableListWithoutValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariableResponse](#workflowdraftvariableresponse) ] |  | Yes |
-
-#### WorkflowDraftVariableListWithoutValueResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariableWithoutValueResponse](#workflowdraftvariablewithoutvalueresponse) ] |  | Yes |
-| total | integer |  | Yes |
+| items | [ [WorkflowDraftVariableWithoutValue](#workflowdraftvariablewithoutvalue) ] |  | No |
+| total | integer |  | No |
 
 #### WorkflowDraftVariablePatchPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string | Variable name | No |
+| name | string |  | No |
 | value |  |  | No |
-
-#### WorkflowDraftVariableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| edited | boolean |  | Yes |
-| full_content | [WorkflowDraftVariableFullContentResponse](#workflowdraftvariablefullcontentresponse) |  | Yes |
-| id | string |  | Yes |
-| is_truncated | boolean |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
 
 #### WorkflowDraftVariableUpdatePayload
 
@@ -23127,19 +23118,19 @@ How a workflow node is bound to an Agent.
 | name | string | Variable name | No |
 | value |  | Variable value | No |
 
-#### WorkflowDraftVariableWithoutValueResponse
+#### WorkflowDraftVariableWithoutValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| is_truncated | boolean |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
+| description | string |  | No |
+| edited | boolean |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
 #### WorkflowEnvironmentVariableResponse
 
