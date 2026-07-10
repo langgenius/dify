@@ -2,8 +2,8 @@ import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
-import useConfig from '../use-config'
 import { withSelectorKey } from '@/test/i18n-mock'
+import useConfig from '../use-config'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())

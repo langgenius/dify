@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import TimeoutInput from '../timeout'
 import { withSelectorKey } from '@/test/i18n-mock'
+import TimeoutInput from '../timeout'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 

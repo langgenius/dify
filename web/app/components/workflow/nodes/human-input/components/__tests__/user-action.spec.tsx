@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import UserActionItem from '../user-action'
-import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockNotify = vi.hoisted(() => vi.fn())

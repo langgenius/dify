@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import Recipient from '../index'
 import { withSelectorKey } from '@/test/i18n-mock'
+import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseAppContext = vi.hoisted(() => vi.fn())

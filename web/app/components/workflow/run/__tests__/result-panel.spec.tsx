@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
-import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockCodeEditor = vi.hoisted(() => vi.fn())

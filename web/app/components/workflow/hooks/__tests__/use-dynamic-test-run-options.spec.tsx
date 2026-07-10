@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum } from '../../types'
 import { useDynamicTestRunOptions } from '../use-dynamic-test-run-options'
-import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseNodes = vi.hoisted(() => vi.fn())

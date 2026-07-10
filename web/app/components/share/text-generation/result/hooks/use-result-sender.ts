@@ -1,6 +1,6 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { ResultInputValue } from '../result-request'
 import type { ResultRunStateController } from './use-result-run-state'
-import type { TextGenerationTranslate } from '../../types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'

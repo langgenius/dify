@@ -1,5 +1,5 @@
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TextGenerationTranslate } from '../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'

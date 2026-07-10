@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import ButtonStyleDropdown from '../button-style-dropdown'
-import { withSelectorKey } from '@/test/i18n-mock'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockButton = vi.hoisted(() => vi.fn())
