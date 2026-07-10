@@ -49,6 +49,7 @@ from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
@@ -127,6 +128,9 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
 
         if reason is None and exc.status_code == 429:
             reason = "InvokeRateLimitError"
+
+    if isinstance(exc, DifyKnowledgeBaseClientError):
+        reason = exc.error_code or "DifyKnowledgeBaseClientError"
 
     return message, reason
 
