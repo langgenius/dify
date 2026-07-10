@@ -68,7 +68,10 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
         errorData = data as ResponseError
       }
       catch {}
-      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
+      const shouldNotifyError = response.status !== 401
+        && errorData
+        && !otherOptions.silent
+        && !otherOptions.expectedErrorStatuses?.includes(response.status)
 
       const errorMessage = errorData?.message || errorData?.error
       if (shouldNotifyError && errorMessage)

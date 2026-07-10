@@ -267,6 +267,39 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('should forward expected error statuses to the base request transport', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        expectedErrorStatuses: [404],
+      },
+    })
+
+    await Promise
+      .resolve(queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext))
+      .catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.any(Object),
+      expect.objectContaining({
+        expectedErrorStatuses: [404],
+        fetchCompat: true,
+      }),
+    )
+  })
+
   it('should serialize trial app dataset ids as repeated query params', async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       data: [],
