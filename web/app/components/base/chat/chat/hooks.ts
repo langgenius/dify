@@ -134,6 +134,20 @@ function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: T
   })
 }
 
+function getLastAgentThoughtAnswer(agentThoughts: ThoughtItem[]) {
+  for (let index = agentThoughts.length - 1; index >= 0; index--) {
+    const answer = agentThoughts[index]?.answer?.trim()
+    if (answer)
+      return agentThoughts[index]?.answer || ''
+  }
+
+  return ''
+}
+
+function hasAgentResponseMessagePart(responseItem: ChatItem) {
+  return responseItem.agent_response_parts?.some(part => part.type === 'message' && !!part.content.trim()) ?? false
+}
+
 function getHistoryAgentThoughts(responseItem: HistoryConversationMessage) {
   if (!Array.isArray(responseItem.agent_thoughts))
     return []
@@ -984,19 +998,21 @@ export const useChat = (
               return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
 
             const historyAgentThoughts = getHistoryAgentThoughts(newResponseItem)
-            const hasHistoryAgentThoughtAnswer = historyAgentThoughts.some(thought => thought.answer?.trim())
             const lastHistoryAgentThought = historyAgentThoughts.at(-1)
             const historyAnswer = newResponseItem.answer || ''
-            const isUseAgentThought = (lastHistoryAgentThought?.thought === historyAnswer) || (options.isNewAgent && hasHistoryAgentThoughtAnswer)
+            const historyAgentThoughtAnswer = options.isNewAgent ? getLastAgentThoughtAnswer(historyAgentThoughts) : ''
+            const completedAnswer = historyAnswer || historyAgentThoughtAnswer
+            const isUseAgentThought = !options.isNewAgent && lastHistoryAgentThought?.thought === historyAnswer
+            const shouldKeepStreamingResponseParts = options.isNewAgent && !completedAnswer.trim() && hasAgentResponseMessagePart(responseItem)
             const messageLog = Array.isArray(newResponseItem.message) ? newResponseItem.message : []
             const answerTokens = newResponseItem.answer_tokens ?? 0
             const messageTokens = newResponseItem.message_tokens ?? 0
             const providerResponseLatency = newResponseItem.provider_response_latency ?? 0
             const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
             updateChatTreeNode(responseItem.id, {
-              content: isUseAgentThought ? '' : historyAnswer,
+              content: shouldKeepStreamingResponseParts || isUseAgentThought ? '' : completedAnswer,
               agent_thoughts: historyAgentThoughts,
-              agent_response_parts: undefined,
+              agent_response_parts: shouldKeepStreamingResponseParts ? responseItem.agent_response_parts : undefined,
               citation: newResponseItem.retriever_resources,
               reasoningContent: newResponseItem.metadata?.reasoning,
               reasoningFinished: true,

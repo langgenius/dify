@@ -2010,7 +2010,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.content).toBe('history top-level answer')
       expect(lastResponse!.agent_response_parts).toBeUndefined()
       expect(lastResponse!.workflow_run_id).toBe('history-workflow-run')
       expect(lastResponse!.workflowProcess).toBeUndefined()
@@ -2024,6 +2024,71 @@ describe('useChat', () => {
           id: 'history-thought',
           thought: 'history thought',
           answer: 'history agent answer',
+        }),
+      ])
+    })
+
+    it('should keep new agent streaming response parts when completed history has no answer yet', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [{
+          id: 'm-new-agent-empty-history',
+          answer: '',
+          message: [{ role: 'user', text: 'hi' }],
+          agent_thoughts: [
+            {
+              id: 'history-thought',
+              thought: 'history thought',
+              answer: '',
+              tool: '',
+              tool_input: '',
+              observation: '',
+              position: 1,
+            },
+          ],
+          created_at: Date.now(),
+          inputs: {},
+          query: 'hi',
+        }],
+      })
+
+      const { result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isNewAgent: true },
+      ))
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'new agent empty history' }, {
+          onGetConversationMessages,
+        })
+      })
+
+      await act(async () => {
+        callbacks.onThought({ id: 'stream-thought', thought: 'stream thought' })
+        callbacks.onData(' streamed answer', true, { event: 'agent_message', messageId: 'm-new-agent-empty-history', conversationId: 'c-new-agent-empty-history' })
+        await callbacks.onCompleted()
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.agent_response_parts).toEqual([
+        { type: 'thought', thought: expect.objectContaining({ id: 'stream-thought', thought: 'stream thought' }) },
+        { type: 'message', content: ' streamed answer' },
+      ])
+      expect(lastResponse!.agent_thoughts).toEqual([
+        expect.objectContaining({
+          id: 'history-thought',
+          thought: 'history thought',
         }),
       ])
     })

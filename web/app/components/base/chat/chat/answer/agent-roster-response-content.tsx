@@ -259,9 +259,11 @@ function ToolProcessCard({
 function AgentThoughtsProcessList({
   item,
   responding,
+  suppressAnswer,
 }: {
   item: ChatItem
   responding?: boolean
+  suppressAnswer?: boolean
 }) {
   return (
     <div className="mt-2 flex flex-col gap-1">
@@ -271,6 +273,7 @@ function AgentThoughtsProcessList({
           thought={thought}
           responding={responding}
           defaultOpen={index === 0}
+          suppressAnswer={suppressAnswer}
         />
       ))}
     </div>
@@ -281,17 +284,19 @@ function AgentThoughtProcessItem({
   thought,
   responding,
   defaultOpen,
+  suppressAnswer,
 }: {
   thought: ThoughtItem
   responding?: boolean
   defaultOpen?: boolean
+  suppressAnswer?: boolean
 }) {
   const tools = getToolProcesses(thought, responding)
   const answer = thought.answer?.trim()
 
   return (
     <div className="flex flex-col gap-1">
-      {answer && (
+      {answer && !suppressAnswer && (
         <div className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
           <Markdown content={thought.answer || ''} />
         </div>
@@ -365,9 +370,11 @@ function AgentResponsePartList({
 function AgentThoughtsProcessGroup({
   item,
   responding,
+  suppressAnswer,
 }: {
   item: ChatItem
   responding?: boolean
+  suppressAnswer?: boolean
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
@@ -385,6 +392,7 @@ function AgentThoughtsProcessGroup({
         <AgentThoughtsProcessList
           item={item}
           responding={responding}
+          suppressAnswer={suppressAnswer}
         />
       </div>
     )
@@ -409,10 +417,24 @@ function AgentThoughtsProcessGroup({
         <AgentThoughtsProcessList
           item={item}
           responding={responding}
+          suppressAnswer={suppressAnswer}
         />
       )}
     </div>
   )
+}
+
+function getLastAgentThoughtAnswer(agentThoughts: ChatItem['agent_thoughts']) {
+  if (!agentThoughts?.length)
+    return ''
+
+  for (let index = agentThoughts.length - 1; index >= 0; index--) {
+    const answer = agentThoughts[index]?.answer?.trim()
+    if (answer)
+      return agentThoughts[index]?.answer || ''
+  }
+
+  return ''
 }
 
 export function AgentRosterResponseContent({
@@ -434,6 +456,8 @@ export function AgentRosterResponseContent({
     )
   }
 
+  const visibleContent = content || getLastAgentThoughtAnswer(agent_thoughts)
+
   return (
     <div className="flex w-full flex-col gap-1" data-testid="agent-roster-response-content">
       {!!item.agent_response_parts?.length && (
@@ -448,11 +472,12 @@ export function AgentRosterResponseContent({
             <AgentThoughtsProcessGroup
               item={item}
               responding={responding}
+              suppressAnswer={!!visibleContent}
             />
           )}
-          {content && (
+          {visibleContent && (
             <div className="px-2 py-2 body-md-regular text-text-primary" data-testid="agent-content-markdown">
-              <Markdown content={content} />
+              <Markdown content={visibleContent} />
             </div>
           )}
         </>
