@@ -1,9 +1,11 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.tag.tags as module
@@ -16,13 +18,10 @@ from controllers.console.tag.tags import (
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.base import TypeBase
 from models.enums import TagType
+from models.model import Tag
 from services.tag_service import UpdateTagPayload
-
-
-class SessionMatcher:
-    def __eq__(self, other):
-        return isinstance(other, Session)
 
 
 def unwrap(func):
@@ -39,6 +38,26 @@ def app():
     app = Flask("test_tag")
     app.config["TESTING"] = True
     return app
+
+
+@pytest.fixture(autouse=True)
+def sqlite_db_session(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[scoped_session[Session]]:
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[Tag.__tablename__]])
+    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    monkeypatch.setattr(module.db, "session", session_registry)
+    try:
+        yield session_registry
+    finally:
+        session_registry.remove()
+
+
+def _assert_sqlite_session(session: object, sqlite_engine: Engine) -> None:
+    assert isinstance(session, Session)
+    assert session.get_bind() is sqlite_engine
+    assert session.is_active
 
 
 @pytest.fixture
@@ -66,11 +85,16 @@ def readonly_user():
 
 
 @pytest.fixture
-def tag():
-    tag = MagicMock()
+def tag(sqlite_db_session: scoped_session[Session]):
+    tag = Tag(
+        tenant_id="tenant-1",
+        name="test-tag",
+        type=TagType.KNOWLEDGE,
+        created_by="user-1",
+    )
     tag.id = "tag-1"
-    tag.name = "test-tag"
-    tag.type = TagType.KNOWLEDGE
+    sqlite_db_session.add(tag)
+    sqlite_db_session.commit()
     return tag
 
 
@@ -111,7 +135,7 @@ class TestTagListApi:
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
-    def test_get_snippet_tags(self, app: Flask):
+    def test_get_snippet_tags(self, app: Flask, sqlite_engine: Engine):
         api = TagListApi()
         method = unwrap(api.get)
 
@@ -131,7 +155,9 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None, session=SessionMatcher())
+        get_tags_mock.assert_called_once()
+        assert get_tags_mock.call_args.args == ("snippet", "tenant-1", None)
+        _assert_sqlite_session(get_tags_mock.call_args.kwargs["session"], sqlite_engine)
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 
@@ -200,7 +226,7 @@ class TestTagListApi:
 
 
 class TestTagUpdateDeleteApi:
-    def test_patch_success(self, app: Flask, admin_user, tag, payload_patch):
+    def test_patch_success(self, app: Flask, admin_user, tag, payload_patch, sqlite_engine: Engine):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
@@ -224,7 +250,7 @@ class TestTagUpdateDeleteApi:
         update_payload, tag_id, session = update_tags_mock.call_args.args
         assert update_payload == UpdateTagPayload(name="updated")
         assert tag_id == "tag-1"
-        assert session == SessionMatcher()
+        _assert_sqlite_session(session, sqlite_engine)
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -240,7 +266,7 @@ class TestTagUpdateDeleteApi:
                 with pytest.raises(Forbidden):
                     method(api, readonly_user, "tag-1")
 
-    def test_delete_success(self, app: Flask, admin_user):
+    def test_delete_success(self, app: Flask, admin_user, sqlite_engine: Engine):
         api = TagUpdateDeleteApi()
         method = unwrap(api.delete)
 
@@ -250,12 +276,30 @@ class TestTagUpdateDeleteApi:
         ):
             result, status = method(api, "tag-1")
 
-        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
+        delete_mock.assert_called_once()
+        tag_id, session = delete_mock.call_args.args
+        assert tag_id == "tag-1"
+        _assert_sqlite_session(session, sqlite_engine)
         assert status == 204
 
-    def test_delete_snippet_tag_checks_type_in_current_tenant(self, app: Flask, admin_user):
+    def test_delete_snippet_tag_checks_type_in_current_tenant(
+        self,
+        app: Flask,
+        admin_user,
+        sqlite_db_session: scoped_session[Session],
+        sqlite_engine: Engine,
+    ):
         api = TagUpdateDeleteApi()
         method = unwrap(api.delete)
+        tag = Tag(
+            tenant_id="tenant-1",
+            name="snippet-tag",
+            type=TagType.SNIPPET,
+            created_by="user-1",
+        )
+        tag.id = "tag-1"
+        sqlite_db_session.add(tag)
+        sqlite_db_session.commit()
 
         with (
             app.test_request_context("/"),
@@ -264,13 +308,11 @@ class TestTagUpdateDeleteApi:
                 "controllers.console.tag.tags.current_account_with_tenant",
                 return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
             ),
-            patch.object(module.db.session, "scalar", return_value=TagType.SNIPPET) as scalar_mock,
             patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
         ):
             result, status = method(api, "tag-1")
 
-        scalar_mock.assert_called_once()
         enforce_mock.assert_called_once_with(
             tenant_id="tenant-1",
             account_id="user-1",
@@ -278,7 +320,49 @@ class TestTagUpdateDeleteApi:
             scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
             resource_required=False,
         )
-        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
+        delete_mock.assert_called_once()
+        tag_id, session = delete_mock.call_args.args
+        assert tag_id == "tag-1"
+        _assert_sqlite_session(session, sqlite_engine)
+        assert result == ""
+        assert status == 204
+
+    def test_delete_does_not_apply_snippet_rbac_to_tag_from_another_tenant(
+        self,
+        app: Flask,
+        admin_user,
+        sqlite_db_session: scoped_session[Session],
+        sqlite_engine: Engine,
+    ):
+        api = TagUpdateDeleteApi()
+        method = unwrap(api.delete)
+        tag = Tag(
+            tenant_id="other-tenant",
+            name="other-tenant-snippet-tag",
+            type=TagType.SNIPPET,
+            created_by="other-user",
+        )
+        tag.id = "tag-1"
+        sqlite_db_session.add(tag)
+        sqlite_db_session.commit()
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.tag.tags.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+            ),
+            patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
+            patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
+        ):
+            result, status = method(api, "tag-1")
+
+        enforce_mock.assert_not_called()
+        delete_mock.assert_called_once()
+        tag_id, session = delete_mock.call_args.args
+        assert tag_id == "tag-1"
+        _assert_sqlite_session(session, sqlite_engine)
         assert result == ""
         assert status == 204
 
