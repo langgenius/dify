@@ -4,7 +4,6 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
@@ -173,7 +172,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const [isShowMore, setIsShowMore] = useState(false)
   const [inputPlaceholderFocused, setInputPlaceholderFocused] = useState(false)
   const { default_language } = appInfo.site
   const nextInputInfo = createInputInfo(appInfo)
@@ -250,13 +248,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setInputInfo(nextInputInfo)
       setLanguage(default_language)
       setAppIcon(nextAppIcon)
-      setIsShowMore(false)
       setPreviousSettingsResetKey(settingsResetKey)
     }
   }
 
   const handleClose = () => {
-    setIsShowMore(false)
     onClose()
   }
 
@@ -463,147 +459,134 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 </div>
                 <FieldDescription>{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</FieldDescription>
               </FieldRoot>
-              <CollapsibleRoot open={isShowMore} onOpenChange={setIsShowMore}>
-                <Divider className="my-0 h-px" />
-                <CollapsibleTrigger className="-mx-2 mt-2 min-h-11 px-2 py-1.5 hover:not-data-disabled:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-inset data-panel-open:text-text-secondary">
-                  <div className="min-w-0 grow">
-                    <div className="system-sm-semibold text-text-secondary">{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
-                    <p className="truncate body-xs-regular text-text-tertiary">
-                      {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })}
-                      {' '}
-                      &
-                      {' '}
-                      {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
-                    </p>
-                  </div>
-                  <span aria-hidden="true" className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary transition-transform group-data-panel-open:rotate-90" />
-                </CollapsibleTrigger>
-                <CollapsiblePanel>
-                  <div className="space-y-5 pt-5">
-                    {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
-                      <div className="w-full">
-                        <div className="flex items-center">
-                          <div className="flex grow items-center">
-                            <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
-                            {isCloudSandboxPlan && (
-                              <div className="h-[18px] select-none">
-                                <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
-                                  <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-                                  <div className="system-xs-medium">
-                                    <span className="p-1">
-                                      {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-                                    </span>
-                                  </div>
-                                </PremiumBadgeButton>
+              <Divider className="my-0 h-px" />
+              <div className="space-y-5">
+                {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
+                  <div className="w-full">
+                    <div className="flex items-center">
+                      <div className="flex grow items-center">
+                        <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
+                        {isCloudSandboxPlan && (
+                          <div className="h-[18px] select-none">
+                            <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                              <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                              <div className="system-xs-medium">
+                                <span className="p-1">
+                                  {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                        <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
-                        {isCloudSandboxPlan
-                          ? (
-                              <Tooltip>
-                                <TooltipTrigger render={inputPlaceholderField} />
-                                <TooltipContent className="w-[180px]">
-                                  {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
-                                </TooltipContent>
-                              </Tooltip>
-                            )
-                          : inputPlaceholderField}
-                        {!isCloudSandboxPlan && (
-                          <div className="mt-1 text-right body-xs-regular text-text-tertiary">
-                            {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
+                            </PremiumBadgeButton>
                           </div>
                         )}
                       </div>
-                    )}
-                    {/* copyright */}
-                    <div className="w-full">
-                      <div className="flex items-center">
-                        <div className="flex grow items-center">
-                          <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
-                          {/* upgrade button */}
-                          {isCloudSandboxPlan && (
-                            <div className="h-[18px] select-none">
-                              <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
-                                <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-                                <div className="system-xs-medium">
-                                  <span className="p-1">
-                                    {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-                                  </span>
-                                </div>
-                              </PremiumBadgeButton>
-                            </div>
-                          )}
-                        </div>
-                        {webappCopyrightEnabled
-                          ? (
-                              <Switch
-                                checked={copyrightSwitchValue}
-                                onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                              />
-                            )
-                          : (
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={(
-                                    <div>
-                                      <Switch
-                                        disabled
-                                        checked={copyrightSwitchValue}
-                                        onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                                      />
-                                    </div>
-                                  )}
-                                />
-                                <TooltipContent className="w-[180px]">
-                                  {t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
+                    </div>
+                    <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
+                    {isCloudSandboxPlan
+                      ? (
+                          <Tooltip>
+                            <TooltipTrigger render={inputPlaceholderField} />
+                            <TooltipContent className="w-[180px]">
+                              {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      : inputPlaceholderField}
+                    {!isCloudSandboxPlan && (
+                      <div className="mt-1 text-right body-xs-regular text-text-tertiary">
+                        {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
                       </div>
-                      <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
-                      {copyrightSwitchValue && (
-                        <Input
-                          className="mt-2 h-10"
-                          value={inputInfo.copyright}
-                          onChange={onChange('copyright')}
-                          placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
-                        />
+                    )}
+                  </div>
+                )}
+                {/* copyright */}
+                <div className="w-full">
+                  <div className="flex items-center">
+                    <div className="flex grow items-center">
+                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
+                      {/* upgrade button */}
+                      {isCloudSandboxPlan && (
+                        <div className="h-[18px] select-none">
+                          <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                            <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                            <div className="system-xs-medium">
+                              <span className="p-1">
+                                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                              </span>
+                            </div>
+                          </PremiumBadgeButton>
+                        </div>
                       )}
                     </div>
-                    {/* privacy policy */}
-                    <div className="w-full">
-                      <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
-                      <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
-                        <Trans
-                          i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-                          ns="appOverview"
-                          components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
-                        />
-                      </p>
-                      <Input
-                        className="mt-1"
-                        value={inputInfo.privacyPolicy}
-                        onChange={onChange('privacyPolicy')}
-                        placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
-                      />
-                    </div>
-                    {/* custom disclaimer */}
-                    <div className="w-full">
-                      <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
-                      <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
-                      <Textarea
-                        aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
-                        className="mt-1"
-                        value={inputInfo.customDisclaimer}
-                        onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
-                        placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
-                      />
-                    </div>
+                    {webappCopyrightEnabled
+                      ? (
+                          <Switch
+                            aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                            checked={copyrightSwitchValue}
+                            onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
+                          />
+                        )
+                      : (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <div>
+                                  <Switch
+                                    aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                                    disabled
+                                    checked={copyrightSwitchValue}
+                                    onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
+                                  />
+                                </div>
+                              )}
+                            />
+                            <TooltipContent className="w-[180px]">
+                              {t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                   </div>
-                </CollapsiblePanel>
-              </CollapsibleRoot>
+                  <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
+                  {copyrightSwitchValue && (
+                    <Input
+                      aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                      className="mt-2 h-10"
+                      value={inputInfo.copyright}
+                      onChange={onChange('copyright')}
+                      placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
+                    />
+                  )}
+                </div>
+                {/* privacy policy */}
+                <div className="w-full">
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
+                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                    <Trans
+                      i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
+                      ns="appOverview"
+                      components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
+                    />
+                  </p>
+                  <Input
+                    aria-label={t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}
+                    className="mt-1"
+                    value={inputInfo.privacyPolicy}
+                    onChange={onChange('privacyPolicy')}
+                    placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
+                  />
+                </div>
+                {/* custom disclaimer */}
+                <div className="w-full">
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
+                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
+                  <Textarea
+                    aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
+                    className="mt-1"
+                    value={inputInfo.customDisclaimer}
+                    onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
+                    placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
+                  />
+                </div>
+              </div>
             </ScrollArea>
             {/* footer */}
             <div className="flex shrink-0 justify-end p-6 pt-5">

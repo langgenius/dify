@@ -248,7 +248,7 @@ export function WebAppAccessCard({
         disabled={!settingsAppInfo || updateSiteMutation.isPending}
         onClick={() => setShowSettingsModal(true)}
       >
-        <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+        <span aria-hidden className="i-ri-palette-line size-4" />
         {t('agentDetail.access.webApp.actions.settings')}
       </Button>
       {settingsAppInfo && (

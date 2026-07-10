@@ -117,7 +117,43 @@ describe('app-card-sections', () => {
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
     expect(onLaunchConfig).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('overview.appInfo.launch')).not.toHaveAttribute('title')
     expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
+  })
+
+  it('should expose native titles only for truncated operation labels', () => {
+    const operations = createAppCardOperations({
+      operationKeys: ['launch', 'embedded', 'customize', 'settings', 'develop'],
+      t: t as never,
+      runningStatus: true,
+      triggerModeDisabled: false,
+      onLaunch: vi.fn(),
+      onEmbedded: vi.fn(),
+      onCustomize: vi.fn(),
+      onSettings: vi.fn(),
+      onDevelop: vi.fn(),
+    })
+
+    render(<AppCardOperations t={t as never} operations={operations} />)
+
+    const untruncatedLabels = [
+      'overview.appInfo.launch',
+      'overview.appInfo.embedded.entry',
+      'overview.apiInfo.doc',
+    ]
+    untruncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByText(label)).not.toHaveAttribute('title')
+    })
+
+    const truncatedLabels = [
+      'overview.appInfo.customize.entry',
+      'overview.appInfo.settings.entry',
+    ]
+    truncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('title', label)
+    })
   })
 
   it('should keep customize available for web app cards that are not completion or workflow apps', () => {
@@ -140,7 +176,7 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByText('overview.appInfo.customize.entry')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'overview.appInfo.customize.entry' })).toHaveAttribute('title', 'overview.appInfo.customize.entry')
     expect(AppModeEnum.CHAT).toBe('chat')
   })
 
