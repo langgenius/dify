@@ -19,9 +19,7 @@ def test_get_system_features_reads_enable_learn_app(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-def test_get_system_features_reads_enable_step_by_step_tour(
-    monkeypatch: pytest.MonkeyPatch, enabled: bool
-) -> None:
+def test_get_system_features_reads_enable_step_by_step_tour(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
     monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_STEP_BY_STEP_TOUR", enabled)
 
     result = FeatureService.get_system_features()

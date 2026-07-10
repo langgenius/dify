@@ -7756,6 +7756,30 @@ Initiate OAuth login process
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderTokenResponse](#oauthprovidertokenresponse)<br> |
 
+### [GET] /onboarding/step-by-step-tour/state
+Get account-level Step-by-step Tour state
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+
+### [PATCH] /onboarding/step-by-step-tour/state
+Update account-level Step-by-step Tour state
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [StepByStepTourStatePatchPayload](#stepbysteptourstatepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+
 ### [DELETE] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
 
@@ -21478,6 +21502,24 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
+#### StepByStepTourStatePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "complete_task", "disable_current_workspace", "enable_current_workspace", "skip", "uncomplete_task" | State update action<br>*Enum:* `"complete_task"`, `"disable_current_workspace"`, `"enable_current_workspace"`, `"skip"`, `"uncomplete_task"` | Yes |
+| task_id | string | Task ID for task actions | No |
+
+#### StepByStepTourStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_task_ids | [ string, <br>**Available values:** "home", "integration", "knowledge", "studio" ] |  | No |
+| first_workspace_id | string |  | No |
+| manually_disabled_workspace_ids | [ string ] |  | No |
+| manually_enabled_workspace_ids | [ string ] |  | No |
+| skipped | boolean |  | No |
+| updated_at | string |  | No |
+
 #### Storage
 
 | Name | Type | Description | Required |
@@ -21630,6 +21672,7 @@ Model class for provider system configuration response.
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
