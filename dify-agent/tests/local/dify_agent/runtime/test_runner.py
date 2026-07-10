@@ -1557,9 +1557,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         ),
     )
     layer_providers = tuple(
-        provider
-        for provider in create_default_layer_providers()
-        if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
+        provider for provider in create_default_layer_providers() if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
     ) + (shell_provider,)
 
     request = CreateRunRequest(
