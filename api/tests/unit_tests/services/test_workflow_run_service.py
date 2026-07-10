@@ -134,9 +134,10 @@ class TestWorkflowRunServiceQueries:
 
         message = SimpleNamespace(id="msg-1", conversation_id="conv-1", workflow_run_id="run-1")
         fake_session = _fake_session_returning_messages([message])
-        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=fake_session))
 
-        result = service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={"limit": "2"})
+        result = service.get_paginate_advanced_chat_workflow_runs(
+            app_model=app_model, args={"limit": "2"}, session=fake_session
+        )
 
         assert result is pagination
         assert len(result.data) == 2

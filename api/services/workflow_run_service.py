@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import TypedDict
 
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from extensions.ext_database import db
@@ -52,6 +52,7 @@ class WorkflowRunService:
         app_model: App,
         args: WorkflowRunListArgs,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
+        session: Session | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
@@ -80,7 +81,9 @@ class WorkflowRunService:
         run_ids = [workflow_run.id for workflow_run in workflow_runs]
         messages_by_run_id: dict[str, Message] = {}
         if run_ids:
-            messages = db.session.scalars(
+            if session is None:
+                session = db.session
+            messages = session.scalars(
                 select(Message).where(
                     Message.app_id == app_model.id,
                     Message.workflow_run_id.in_(run_ids),
