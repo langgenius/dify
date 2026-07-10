@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createReactI18nextMock, withSelectorKey, withSelectorKeyProps } from '../i18n-mock'
+import { createI18nextMock, createReactI18nextMock, withSelectorKey, withSelectorKeyProps } from '../i18n-mock'
 
 describe('createReactI18nextMock', () => {
   describe('Selector Keys', () => {
@@ -57,6 +57,18 @@ describe('createReactI18nextMock', () => {
       expect(result).toBe('app.accessControlDialog.title')
     })
 
+    it('should preserve nested keys selected with property access', () => {
+      // Arrange
+      const { useTranslation } = createReactI18nextMock()
+      const { t } = useTranslation('common')
+
+      // Act
+      const result = t($ => $.operation.close)
+
+      // Assert
+      expect(result).toBe('common.operation.close')
+    })
+
     it('should resolve selectors from secondary namespaces', () => {
       // Arrange
       const { useTranslation } = createReactI18nextMock()
@@ -86,6 +98,21 @@ describe('createReactI18nextMock', () => {
         'data-i18n-key': 'app.accessControlDialog.title',
         'children': 'Access control',
       })
+    })
+  })
+
+  describe('Shared Defaults', () => {
+    it('should provide stable language and getI18n defaults', () => {
+      const i18n = createReactI18nextMock()
+
+      expect(i18n.useTranslation().i18n.language).toBe('en-US')
+      expect(i18n.getI18n().t('operation.close', { ns: 'common' })).toBe('operation.close')
+    })
+
+    it('should create a standalone i18next mock without namespace formatting', () => {
+      const i18n = createI18nextMock()
+
+      expect(i18n.t($ => $.operation.close, { ns: 'common' })).toBe('operation.close')
     })
   })
 })

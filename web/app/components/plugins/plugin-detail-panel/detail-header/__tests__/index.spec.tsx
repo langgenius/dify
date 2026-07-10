@@ -20,12 +20,6 @@ const render = (ui: ReactElement) => {
     systemFeatures: { enable_marketplace: true },
   })
 }
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))

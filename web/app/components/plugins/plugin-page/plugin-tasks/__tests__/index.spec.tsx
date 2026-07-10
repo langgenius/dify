@@ -21,11 +21,6 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
     getIconUrl: (icon: string) => `https://example.com/${icon}`,
   }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 // Helper to create mock plugin
 const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: `plugin-${Math.random().toString(36).substr(2, 9)}`,

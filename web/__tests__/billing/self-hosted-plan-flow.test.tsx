@@ -46,10 +46,6 @@ vi.mock('jotai', async (importOriginal) => {
   return createAppContextStateJotaiMock(importOriginal)
 })
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
   useTheme: () => ({ theme: 'light' }),

@@ -101,10 +101,6 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {

@@ -32,16 +32,6 @@ const renderWithQueryClient = (ui: React.ReactElement) =>
       },
     },
   })
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
-    }),
-  })
-})
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,

@@ -15,16 +15,6 @@ vi.mock('@/config', async (importOriginal) => {
     IS_CLOUD_EDITION: true,
   }
 })
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
-    }),
-  })
-})
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))

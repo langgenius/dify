@@ -21,11 +21,6 @@ vi.mock('reactflow', () => ({
     }),
   }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInputFormData => ({
   form_id: 'form-1',
   node_id: 'human-node-1',

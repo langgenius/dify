@@ -51,10 +51,6 @@ vi.mock('jotai', async (importOriginal) => {
   return createAppContextStateJotaiMock(importOriginal)
 })
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
-
 // ─── Service mocks ───────────────────────────────────────────────────────────
 vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),

@@ -26,11 +26,6 @@ vi.mock('@/service/use-common', () => ({
     data: { allowed_extensions: ['pdf', 'docx', 'txt'] },
   }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))

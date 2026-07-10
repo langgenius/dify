@@ -20,11 +20,6 @@ const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
   mockCarouselListeners.forEach(listener => listener())
 }
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/context/account-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
@@ -65,6 +60,7 @@ vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return ({
     useTranslation: () => ({
+      i18n: { language: 'en-US' },
       t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
         if (key === 'banner.greeting')
           return `Welcome back, ${opts?.name} 👋`

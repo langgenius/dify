@@ -9,16 +9,6 @@ const mockFetchManifestFromMarketPlace = vi.fn()
 const { mockRouterReplace } = vi.hoisted(() => ({
   mockRouterReplace: vi.fn(),
 }))
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
-    }),
-  })
-})
-
 vi.mock('@/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils')>()
   return {
@@ -36,10 +26,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockRouterReplace,
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/context/account-state', async (importOriginal) => {

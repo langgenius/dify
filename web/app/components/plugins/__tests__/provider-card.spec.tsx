@@ -5,10 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProviderCard from '../provider-card'
 import { PluginCategoryEnum } from '../types'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: Record<string, string>) => value['en-US'] || value.en_US,
 }))

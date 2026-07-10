@@ -53,11 +53,6 @@ vi.mock('../../state', () => ({
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 const mockTags = [
   { name: 'search', label: 'Search' },
   { name: 'image', label: 'Image' },

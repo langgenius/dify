@@ -73,10 +73,6 @@ vi.mock('@/context/modal-context', () => ({
     }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
-
 // ─── Service mocks ───────────────────────────────────────────────────────────
 vi.mock('@/service/use-education', () => ({
   useEducationVerify: () => ({

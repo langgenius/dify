@@ -1,5 +1,5 @@
 import type { SelectorParam } from 'i18next'
-import { createInstance, keyFromSelector } from 'i18next'
+import { createInstance } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import { getInitOptions } from '../settings'
 
@@ -23,12 +23,10 @@ describe('i18n selector configuration', () => {
       const memberKey: SelectorParam<'app'> = $ => $['accessControlDialog.members']
 
       // Act
-      const selectorKey = keyFromSelector(memberKey)
       const singular = instance.t(memberKey, { count: 1 })
       const plural = instance.t(memberKey, { count: 2 })
 
       // Assert
-      expect(selectorKey).toBe('accessControlDialog.members')
       expect(singular).toBe('1 member')
       expect(plural).toBe('2 members')
     })
