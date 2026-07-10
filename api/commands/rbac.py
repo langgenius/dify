@@ -192,9 +192,7 @@ def migrate_member_roles_to_rbac(
                 account_id=owner_account_id,
                 member_account_ids=[account_id for account_id, _ in batch],
             )
-            current_roles_by_account_id = {
-                item.account_id: {str(role.id) for role in item.roles} for item in current_roles
-            }
+            current_roles_by_account_id = {item.account_id: {role.id for role in item.roles} for item in current_roles}
 
         replace_jobs: list[tuple[str, str]] = []
         for member_account_id, legacy_role in batch:
@@ -441,7 +439,9 @@ def migrate_dataset_permissions_to_rbac(
                                         "account_id": operator_account_id,
                                         "dataset_id": current_dataset_id,
                                         "target_account_id": member_account_id,
-                                        "payload": replace_user_access_policies_payload.model_dump(mode="json"),
+                                        "payload": replace_user_access_policies_payload.model_dump(
+                                            mode="json", exclude_unset=True
+                                        ),
                                     },
                                 },
                             }
