@@ -136,7 +136,7 @@ const AgentTools: FC = () => {
 
   const handleAuthorizationItemClick = useCallback((credentialId: string) => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id)
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id && item.tool_name === currentTool?.tool_name)
       if (tool)
         (tool as AgentTool).credential_id = credentialId
     })
