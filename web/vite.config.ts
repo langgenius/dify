@@ -1,17 +1,8 @@
 import { fileURLToPath } from 'node:url'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-import vinext from 'vinext'
-import Inspect from 'vite-plugin-inspect'
-import { defineConfig } from 'vite-plus'
-import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector.ts'
-import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
-import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
-import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
+import { defineConfig, lazyPlugins } from 'vite-plus'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
-const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -19,42 +10,66 @@ export default defineConfig(({ mode }) => {
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
-    plugins: isTest
-      ? [
+    plugins: lazyPlugins(async () => {
+      const { default: react } = await import('@vitejs/plugin-react')
+
+      if (isTest) {
+        const { nextStaticImageTestPlugin } = await import('./plugins/vite/next-static-image-test.ts')
+
+        return [
           nextStaticImageTestPlugin({ projectRoot }),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
             name: 'mdx-stub',
             enforce: 'pre',
-            transform(_, id) {
+            transform(_: string, id: string) {
               if (id.endsWith('.mdx'))
                 return { code: 'export default () => null', map: null }
             },
           },
         ]
-      : isStorybook
-        ? [
-            react(),
-          ]
-        : [
-            Inspect(),
-            createCodeInspectorPlugin({
-              injectTarget: rootClientInjectTarget,
-            }),
-            createForceInspectorClientInjectionPlugin({
-              injectTarget: rootClientInjectTarget,
-              projectRoot,
-            }),
-            tailwindcss(),
-            react(),
-            vinext({ react: false }),
-            customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
-            // reactGrabOpenFilePlugin({
-            //   injectTarget: rootClientInjectTarget,
-            //   projectRoot,
-            // }),
-          ],
+      }
+
+      if (isStorybook)
+        return [react()]
+
+      const [
+        { default: tailwindcss },
+        { default: vinext },
+        { default: Inspect },
+        { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin },
+        { customI18nHmrPlugin },
+        { getRootClientInjectTarget },
+      ] = await Promise.all([
+        import('@tailwindcss/vite'),
+        import('vinext'),
+        import('vite-plugin-inspect'),
+        import('./plugins/vite/code-inspector.ts'),
+        import('./plugins/vite/custom-i18n-hmr.ts'),
+        import('./plugins/vite/inject-target.ts'),
+      ])
+      const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
+
+      return [
+        Inspect(),
+        createCodeInspectorPlugin({
+          injectTarget: rootClientInjectTarget,
+        }),
+        createForceInspectorClientInjectionPlugin({
+          injectTarget: rootClientInjectTarget,
+          projectRoot,
+        }),
+        tailwindcss(),
+        react(),
+        vinext({ react: false }),
+        customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
+        // reactGrabOpenFilePlugin({
+        //   injectTarget: rootClientInjectTarget,
+        //   projectRoot,
+        // }),
+      ]
+    }),
     resolve: {
       tsconfigPaths: true,
       alias: [
