@@ -2,7 +2,7 @@
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -150,11 +150,11 @@ const UsageInfo: FC<Props> = ({
         </div>
       )
     : (
-        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
+        <Meter value={effectivePercent} max={100} aria-label={name}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
-        </MeterRoot>
+        </Meter>
       )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {

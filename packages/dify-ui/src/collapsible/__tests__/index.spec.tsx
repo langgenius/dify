@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '../index'
 
@@ -10,10 +10,10 @@ const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElem
 describe('Collapsible wrappers', () => {
   it('renders the Base UI anatomy with an accessible trigger', async () => {
     const screen = await render(
-      <CollapsibleRoot defaultOpen data-testid="collapsible-root">
+      <Collapsible defaultOpen data-testid="collapsible-root">
         <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
         <CollapsiblePanel>Panel content</CollapsiblePanel>
-      </CollapsibleRoot>,
+      </Collapsible>,
     )
 
     await expect.element(screen.getByTestId('collapsible-root')).toBeInTheDocument()
@@ -23,10 +23,10 @@ describe('Collapsible wrappers', () => {
 
   it('toggles open state through the trigger without caller-owned state', async () => {
     const screen = await render(
-      <CollapsibleRoot>
+      <Collapsible>
         <CollapsibleTrigger>Toggle section</CollapsibleTrigger>
         <CollapsiblePanel>Hidden content</CollapsiblePanel>
-      </CollapsibleRoot>,
+      </Collapsible>,
     )
     const trigger = screen.getByRole('button', { name: 'Toggle section' })
 
@@ -40,10 +40,10 @@ describe('Collapsible wrappers', () => {
 
   it('forwards className to every compound part', async () => {
     const screen = await render(
-      <CollapsibleRoot defaultOpen className="custom-root">
+      <Collapsible defaultOpen className="custom-root">
         <CollapsibleTrigger className="custom-trigger">Custom</CollapsibleTrigger>
         <CollapsiblePanel className="custom-panel">Custom panel</CollapsiblePanel>
-      </CollapsibleRoot>,
+      </Collapsible>,
     )
 
     await expect.element(screen.getByRole('button', { name: 'Custom' })).toHaveClass('custom-trigger')
@@ -53,10 +53,10 @@ describe('Collapsible wrappers', () => {
 
   it('passes Base UI panel props through to the panel', async () => {
     const screen = await render(
-      <CollapsibleRoot defaultOpen>
+      <Collapsible defaultOpen>
         <CollapsibleTrigger>Styled trigger</CollapsibleTrigger>
         <CollapsiblePanel keepMounted>Styled panel</CollapsiblePanel>
-      </CollapsibleRoot>,
+      </Collapsible>,
     )
 
     await expect.element(screen.getByRole('button', { name: 'Styled trigger' })).toHaveAttribute('data-panel-open', '')

@@ -3,7 +3,7 @@ import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,11 +72,11 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             {total}
           </div>
         </div>
-        <MeterRoot value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>
+        <Meter value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
-        </MeterRoot>
+        </Meter>
       </div>
     </div>
   )

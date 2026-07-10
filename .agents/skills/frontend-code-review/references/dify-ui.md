@@ -28,8 +28,11 @@ Flag:
 - Missing `package.json#exports` entry for a new primitive.
 - Internal package imports using workspace subpaths instead of relative paths.
 - Exported props using internal-only types that consumers cannot import from the component subpath.
+- Canonical primitive boundaries or their associated public types using a redundant `Root` suffix when no higher-level convenience component exists in the same subpath.
 
 Consumers use subpath exports such as `@langgenius/dify-ui/button`.
+
+Canonical boundaries use the primitive name and matching public types (`Select` / `SelectProps`). Keep `Root` only to distinguish a low-level anatomy root from a higher-level convenience component (`CheckboxRoot` / `Checkbox`); implementation aliases should still show their Base UI source (`BaseSelect.Root.Props`).
 
 ## Props And State
 

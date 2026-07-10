@@ -1,6 +1,6 @@
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,7 @@ export function AgentAdvancedSettings() {
   const { t } = useTranslation()
 
   return (
-    <CollapsibleRoot className="border-b border-divider-subtle py-2">
+    <Collapsible className="border-b border-divider-subtle py-2">
       <CollapsibleTrigger className="group h-8 min-h-0 justify-start gap-0 rounded-none px-4 py-0 hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
         <span className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
           {t($ => $['nodes.agent.advancedSetting'], { ns: 'workflow' })}
@@ -22,6 +22,6 @@ export function AgentAdvancedSettings() {
       <CollapsiblePanel>
         <div className="px-4" />
       </CollapsiblePanel>
-    </CollapsibleRoot>
+    </Collapsible>
   )
 }

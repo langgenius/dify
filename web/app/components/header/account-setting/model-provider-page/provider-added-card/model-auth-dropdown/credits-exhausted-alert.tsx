@@ -1,4 +1,4 @@
-import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Meter, MeterIndicator, MeterLabel, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { IS_CLOUD_EDITION } from '@/config'
@@ -55,7 +55,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: cred
           />
         </div>
       </div>
-      <MeterRoot value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
+      <Meter value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <MeterLabel className="system-xs-medium text-text-tertiary">
             {t($ => $['modelProvider.card.usageLabel'], { ns: 'common' })}
@@ -73,7 +73,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: cred
         <MeterTrack className="bg-components-progress-error-bg">
           <MeterIndicator tone="error" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   )
 }

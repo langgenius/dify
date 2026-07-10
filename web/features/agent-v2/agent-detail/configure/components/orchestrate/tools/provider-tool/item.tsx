@@ -5,8 +5,8 @@ import type { AgentProviderTool, AgentToolAction } from '@/features/agent-v2/age
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 import {
@@ -248,7 +248,7 @@ export const AgentProviderToolItem = memo(({
   const displayName = tool.displayName ?? tool.name
 
   return (
-    <CollapsibleRoot
+    <Collapsible
       open={isExpanded}
       onOpenChange={onOpenChange}
       className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
@@ -311,6 +311,6 @@ export const AgentProviderToolItem = memo(({
           </div>
         )}
       </CollapsiblePanel>
-    </CollapsibleRoot>
+    </Collapsible>
   )
 })

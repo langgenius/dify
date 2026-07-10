@@ -15,8 +15,8 @@ import { Meter as BaseMeter } from '@base-ui/react/meter'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-export const MeterRoot = BaseMeter.Root
-export type MeterRootProps = BaseMeter.Root.Props
+export const Meter = BaseMeter.Root
+export type MeterProps = BaseMeter.Root.Props
 
 const meterTrackClassName
   = 'relative block h-1 w-full overflow-hidden rounded-md bg-components-progress-bar-bg'

@@ -1,7 +1,7 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
-import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -139,7 +139,7 @@ export function OutputEditCard({
           </Field>
         </div>
         {allowDefaultValue && (
-          <CollapsibleRoot>
+          <Collapsible>
             <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
               <span
                 aria-hidden="true"
@@ -168,7 +168,7 @@ export function OutputEditCard({
                 </Field>
               </div>
             </CollapsiblePanel>
-          </CollapsibleRoot>
+          </Collapsible>
         )}
         <div className="flex h-12 items-center justify-end gap-x-2 px-3">
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
