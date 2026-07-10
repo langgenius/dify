@@ -101,6 +101,7 @@ class WebhookService:
                 - Mapping[str, Any]: The node configuration data
 
         Raises:
+            QuotaExceededError: If the app trigger is rate limited
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
         with Session(db.engine) as session:
@@ -141,8 +142,10 @@ class WebhookService:
                 # Only check enabled status if not in debug mode
 
                 if app_trigger.status == AppTriggerStatus.RATE_LIMITED:
-                    raise ValueError(
-                        f"Webhook trigger is rate limited for webhook {webhook_id}, please upgrade your plan."
+                    raise QuotaExceededError(
+                        feature=QuotaType.TRIGGER.value,
+                        tenant_id=webhook_trigger.tenant_id,
+                        required=1,
                     )
 
                 if app_trigger.status != AppTriggerStatus.ENABLED:
@@ -799,6 +802,7 @@ class WebhookService:
             workflow: The workflow to execute
 
         Raises:
+            QuotaExceededError: If the tenant has exhausted its trigger quota
             ValueError: If tenant owner is not found
             Exception: If workflow execution fails
         """
