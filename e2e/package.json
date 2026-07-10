@@ -14,7 +14,7 @@
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/seed.ts",
-    "test:unit": "vitest run ./tests/service-api-sse.test.ts",
+    "test:unit": "vitest run",
     "type-check": "tsc"
   },
   "devDependencies": {
