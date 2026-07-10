@@ -385,8 +385,8 @@ catalogs:
       specifier: 1.11.13
       version: 1.11.13
     i18next:
-      specifier: 26.3.5
-      version: 26.3.5
+      specifier: 26.3.6
+      version: 26.3.6
     i18next-resources-to-backend:
       specifier: 1.2.1
       version: 1.2.1
@@ -499,8 +499,8 @@ catalogs:
       specifier: 6.2.2
       version: 6.2.2
     react-i18next:
-      specifier: 16.6.6
-      version: 16.6.6
+      specifier: 17.0.9
+      version: 17.0.9
     react-multi-email:
       specifier: 1.0.25
       version: 1.0.25
@@ -1250,7 +1250,7 @@ importers:
         version: 1.11.13
       i18next:
         specifier: 'catalog:'
-        version: 26.3.5(@typescript/typescript6@6.0.2)
+        version: 26.3.6(@typescript/typescript6@6.0.2)
       i18next-resources-to-backend:
         specifier: 'catalog:'
         version: 1.2.1
@@ -1343,7 +1343,7 @@ importers:
         version: 6.2.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-i18next:
         specifier: 'catalog:'
-        version: 16.6.6(@typescript/typescript6@6.0.2)(i18next@26.3.5(@typescript/typescript6@6.0.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 17.0.9(@typescript/typescript6@6.0.2)(i18next@26.3.6(@typescript/typescript6@6.0.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-multi-email:
         specifier: 'catalog:'
         version: 1.0.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7160,10 +7160,10 @@ packages:
   i18next-resources-to-backend@1.2.1:
     resolution: {integrity: sha512-okHbVA+HZ7n1/76MsfhPqDou0fptl2dAlhRDu2ideXloRRduzHsqDOznJBef+R3DFZnbvWoBW+KxJ7fnFjd6Yw==}
 
-  i18next@26.3.5:
-    resolution: {integrity: sha512-cd5lgkvjYQAPDfP3bbrAIE1wJmjTIlsrsjDqlvsHn4wFAerP5O0NfAe8RiDcXRfukN5ETe7Tlmfp6DkyuqDn6Q==}
+  i18next@26.3.6:
+    resolution: {integrity: sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA==}
     peerDependencies:
-      typescript: ^5 || ^6
+      typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -8671,14 +8671,14 @@ packages:
   react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
 
-  react-i18next@16.6.6:
-    resolution: {integrity: sha512-ZgL2HUoW34UKUkOV7uSQFE1CDnRPD+tCR3ywSuWH7u2iapnz86U8Bi3Vrs620qNDzCf1F47NxglCEkchCTDOHw==}
+  react-i18next@17.0.9:
+    resolution: {integrity: sha512-buLzOSqHtXxjf+qgSrLWNTXVZ1jSwO6kUv3uJqSP1roGBPgNnbhFm7OmdVwWcgf2gIbUyP0J333uPyx+Btsi3w==}
     peerDependencies:
-      i18next: '>= 25.10.9'
+      i18next: '>= 26.2.0'
       react: '>= 16.8.0'
       react-dom: '*'
       react-native: '*'
-      typescript: ^5 || ^6
+      typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
       react-dom:
         optional: true
@@ -16010,7 +16010,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.7
 
-  i18next@26.3.5(@typescript/typescript6@6.0.2):
+  i18next@26.3.6(@typescript/typescript6@6.0.2):
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
 
@@ -17857,11 +17857,11 @@ snapshots:
 
   react-fast-compare@3.2.2: {}
 
-  react-i18next@16.6.6(@typescript/typescript6@6.0.2)(i18next@26.3.5(@typescript/typescript6@6.0.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  react-i18next@17.0.9(@typescript/typescript6@6.0.2)(i18next@26.3.6(@typescript/typescript6@6.0.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@babel/runtime': 7.29.7
       html-parse-stringify: 3.0.1
-      i18next: 26.3.5(@typescript/typescript6@6.0.2)
+      i18next: 26.3.6(@typescript/typescript6@6.0.2)
       react: 19.2.7
       use-sync-external-store: 1.6.0(react@19.2.7)
     optionalDependencies:
@@ -19761,7 +19761,7 @@ time:
   html-entities@2.6.0: '2025-03-30T15:40:10.885Z'
   html-to-image@1.11.13: '2025-02-14T01:43:48.709Z'
   i18next-resources-to-backend@1.2.1: '2024-04-10T19:22:23.117Z'
-  i18next@26.3.5: '2026-07-08T14:11:10.695Z'
+  i18next@26.3.6: '2026-07-09T13:42:14.596Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.11: '2026-07-03T16:34:53.574Z'
   jotai-effect@2.3.1: '2026-05-13T18:51:15.911Z'
@@ -19797,7 +19797,7 @@ time:
   qs@6.15.3: '2026-06-24T20:03:49.752Z'
   react-dom@19.2.7: '2026-06-01T18:01:02.438Z'
   react-easy-crop@6.2.2: '2026-07-08T08:37:49.604Z'
-  react-i18next@16.6.6: '2026-03-24T15:35:20.832Z'
+  react-i18next@17.0.9: '2026-07-09T13:42:03.224Z'
   react-multi-email@1.0.25: '2024-07-18T04:31:06.176Z'
   react-papaparse@4.4.0: '2023-10-13T10:27:07.978Z'
   react-pdf-highlighter@8.0.0-rc.0: '2024-09-14T16:57:58.673Z'

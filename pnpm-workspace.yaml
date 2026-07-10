@@ -177,7 +177,7 @@ catalog:
   hono: 4.12.28
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.3.5
+  i18next: 26.3.6
   i18next-resources-to-backend: 1.2.1
   iconify-import-svg: 0.2.0
   immer: 11.1.11
@@ -215,7 +215,7 @@ catalog:
   react: 19.2.7
   react-dom: 19.2.7
   react-easy-crop: 6.2.2
-  react-i18next: 16.6.6
+  react-i18next: 17.0.9
   react-multi-email: 1.0.25
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
