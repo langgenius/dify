@@ -38,7 +38,9 @@ describe('AgentRosterResponseContent', () => {
     render(<AgentRosterResponseContent item={item} />)
 
     expect(screen.getByRole('button', { name: /workFinished/i })).toBeInTheDocument()
-    expect(screen.queryByText('history answer')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('history answer')
+    })
 
     fireEvent.click(screen.getByRole('button', { name: /workFinished/i }))
 
@@ -47,6 +49,7 @@ describe('AgentRosterResponseContent', () => {
     })
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('agent-content-markdown')).toHaveLength(1)
   })
 
   it('should render new agent response parts in event order when thoughts and messages interleave', async () => {
