@@ -63,7 +63,7 @@ describe('createReactI18nextMock', () => {
       const { t } = useTranslation('common')
 
       // Act
-      const result = t($ => $.operation.close)
+      const result = t($ => $['operation.close'])
 
       // Assert
       expect(result).toBe('common.operation.close')
@@ -75,7 +75,7 @@ describe('createReactI18nextMock', () => {
       const { t } = useTranslation(['app', 'common'] as const)
 
       // Act
-      const result = t($ => $.common['operation.close'])
+      const result = t($ => $.common!['operation.close'])
 
       // Assert
       expect(result).toBe('common.operation.close')
@@ -112,7 +112,7 @@ describe('createReactI18nextMock', () => {
     it('should create a standalone i18next mock without namespace formatting', () => {
       const i18n = createI18nextMock()
 
-      expect(i18n.t($ => $.operation.close, { ns: 'common' })).toBe('operation.close')
+      expect(i18n.t($ => $['operation.close'], { ns: 'common' })).toBe('operation.close')
     })
   })
 })

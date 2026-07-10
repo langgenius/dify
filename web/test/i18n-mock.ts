@@ -57,8 +57,9 @@ function getSelectorPath(selector: TranslationSelector) {
 function resolveSelectorKey(selector: TranslationSelector, namespace?: TranslationNamespace) {
   const path = getSelectorPath(selector)
   const namespaces = typeof namespace === 'string' ? [namespace] : namespace
-  if (path.length > 1 && namespaces?.includes(path[0]))
-    return `${path[0]}:${path.slice(1).join('.')}`
+  const firstSegment = path[0]
+  if (firstSegment && path.length > 1 && namespaces?.includes(firstSegment))
+    return `${firstSegment}:${path.slice(1).join('.')}`
   return path.join('.')
 }
 
