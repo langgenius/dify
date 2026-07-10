@@ -92,12 +92,12 @@ export type SnippetDraftConfigResponse = {
   parallel_depth_limit: number
 }
 
-export type WorkflowDraftVariableListResponse = {
-  items: Array<WorkflowDraftVariableResponse>
+export type WorkflowDraftVariableList = {
+  items?: Array<WorkflowDraftVariable>
 }
 
-export type WorkflowDraftEnvironmentVariableListResponse = {
-  items: Array<WorkflowDraftEnvironmentVariableResponse>
+export type EnvironmentVariableListResponse = {
+  items: Array<EnvironmentVariableItemResponse>
 }
 
 export type SnippetIterationNodeRunPayload = {
@@ -158,28 +158,39 @@ export type SnippetDraftRunPayload = {
   }
 }
 
-export type WorkflowDraftVariableListWithoutValueResponse = {
-  items: Array<WorkflowDraftVariableWithoutValueResponse>
-  total: number | null
+export type WorkflowDraftVariableListWithoutValue = {
+  items?: Array<WorkflowDraftVariableWithoutValue>
+  total?: number
 }
 
-export type WorkflowDraftVariableResponse = {
-  description: string
-  edited: boolean
-  full_content: WorkflowDraftVariableFullContentResponse | null
-  id: string
-  is_truncated: boolean
-  name: string
-  selector: Array<string>
-  type: string
-  value: unknown
-  value_type: string
-  visible: boolean
+export type WorkflowDraftVariable = {
+  description?: string
+  edited?: boolean
+  full_content?: {
+    [key: string]: unknown
+  }
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+  value_type?: string
+  visible?: boolean
 }
 
 export type WorkflowDraftVariableUpdatePayload = {
   name?: string | null
-  value?: unknown
+  value?: unknown | null
 }
 
 export type PublishWorkflowPayload = {
@@ -257,7 +268,7 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
-export type WorkflowDraftEnvironmentVariableResponse = {
+export type EnvironmentVariableItemResponse = {
   description?: string | null
   editable: boolean
   edited: boolean
@@ -270,23 +281,16 @@ export type WorkflowDraftEnvironmentVariableResponse = {
   visible: boolean
 }
 
-export type WorkflowDraftVariableWithoutValueResponse = {
-  description: string
-  edited: boolean
-  id: string
-  is_truncated: boolean
-  name: string
-  selector: Array<string>
-  type: string
-  value_type: string
-  visible: boolean
-}
-
-export type WorkflowDraftVariableFullContentResponse = {
-  download_url: string
-  length: number | null
-  size_bytes: number | null
-  value_type: string
+export type WorkflowDraftVariableWithoutValue = {
+  description?: string
+  edited?: boolean
+  id?: string
+  is_truncated?: boolean
+  name?: string
+  selector?: Array<string>
+  type?: string
+  value_type?: string
+  visible?: boolean
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsData = {
@@ -470,7 +474,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponses = {
-  200: WorkflowDraftVariableListResponse
+  200: WorkflowDraftVariableList
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse
@@ -490,7 +494,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponses = {
-  200: WorkflowDraftEnvironmentVariableListResponse
+  200: EnvironmentVariableListResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse
@@ -608,7 +612,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: WorkflowDraftVariableListResponse
+  200: WorkflowDraftVariableList
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -644,7 +648,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses = {
-  200: WorkflowDraftVariableListResponse
+  200: WorkflowDraftVariableList
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse
@@ -679,7 +683,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
-  200: WorkflowDraftVariableListWithoutValueResponse
+  200: WorkflowDraftVariableListWithoutValue
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponse
@@ -721,7 +725,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariableResponse
+  200: WorkflowDraftVariable
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
@@ -742,7 +746,7 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = 
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariableResponse
+  200: WorkflowDraftVariable
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
@@ -763,7 +767,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: WorkflowDraftVariableResponse
+  200: WorkflowDraftVariable
   204: void
 }
 
