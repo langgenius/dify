@@ -1557,9 +1557,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         ),
     )
     layer_providers = tuple(
-        provider
-        for provider in create_default_layer_providers(shellctl_entrypoint="http://unused")
-        if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
+        provider for provider in create_default_layer_providers() if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
     ) + (shell_provider,)
 
     request = CreateRunRequest(
@@ -2772,7 +2770,9 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                     run_id="run-invalid-shell-offset",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
-                    layer_providers=create_default_layer_providers(shellctl_entrypoint="http://shellctl"),
+                    layer_providers=create_default_layer_providers(
+                        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token=""),
+                    ),
                 ).run()
 
     asyncio.run(scenario())

@@ -29,13 +29,16 @@ When a run includes `dify.shell`, the Dify Agent server must construct its layer
 providers with a non-empty shellctl entrypoint:
 
 ```python
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 layer_providers = create_default_layer_providers(
     plugin_daemon_url="http://localhost:5002",
     plugin_daemon_api_key="replace-with-plugin-daemon-key",
-    shellctl_entrypoint="http://127.0.0.1:5004",
-    shellctl_auth_token="replace-with-shellctl-token",  # optional; defaults to no token
+    shell_provider=ShellctlProvider(
+        entrypoint="http://127.0.0.1:5004",
+        token="replace-with-shellctl-token",  # optional; defaults to empty string
+    ),
 )
 ```
 

@@ -60,6 +60,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
+from dify_agent.adapters.shell.protocols import SandboxExpiredError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -109,6 +110,9 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
     """Return the public failed-run error text and structured reason."""
     message = str(exc) or type(exc).__name__
     reason: str | None = None
+
+    if isinstance(exc, SandboxExpiredError):
+        return message, "sandbox_expired"
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
