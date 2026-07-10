@@ -10,19 +10,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let mockTheme = 'light'
 
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
 }))

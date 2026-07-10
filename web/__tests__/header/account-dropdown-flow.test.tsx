@@ -5,6 +5,10 @@ import { Plan } from '@/app/components/billing/type'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 const {
   mockAppContextState,
   mockPush,
@@ -90,10 +94,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/service/use-common', async importOriginal => ({

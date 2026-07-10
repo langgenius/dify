@@ -4,21 +4,15 @@ import { APP_PAGE_LIMIT } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import Logs from '../index'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 const mockReplace = vi.fn()
 const mockUseChatConversations = vi.fn()
 const mockUseCompletionConversations = vi.fn()
 
 let mockSearchParams = new URLSearchParams()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('ahooks', async () => {
   return {
     useDebounce: <T,>(value: T) => value,
@@ -34,10 +28,6 @@ vi.mock('@/next/navigation', () => ({
     get: (key: string) => mockSearchParams.get(key),
     toString: () => mockSearchParams.toString(),
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/service/use-log', () => ({
@@ -109,9 +99,9 @@ describe('Logs', () => {
     expect(mockUseChatConversations).toHaveBeenCalledWith(expect.objectContaining({
       appId: 'app-1',
     }))
-    expect(screen.getByRole('heading', { name: 'title' })).toBeInTheDocument()
-    expect(screen.getByText('description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'operation.learnMore' })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
+    expect(screen.getByRole('heading', { name: /(?:^|\.)title(?=$|:)/ })).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)description(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('loading-logs')).toBeInTheDocument()
   })
 

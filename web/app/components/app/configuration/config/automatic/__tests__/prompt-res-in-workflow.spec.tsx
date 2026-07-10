@@ -4,16 +4,6 @@ import PromptResInWorkflow from '../prompt-res-in-workflow'
 
 const mockUseAvailableVarList = vi.fn()
 const mockPromptRes = vi.fn()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
   default: (...args: unknown[]) => mockUseAvailableVarList(...args),
 }))
@@ -66,7 +56,7 @@ describe('PromptResInWorkflow', () => {
             type: BlockEnum.KnowledgeRetrieval,
           }),
           'sys': expect.objectContaining({
-            title: 'blocks.start',
+            title: 'workflow.blocks.start',
             type: BlockEnum.Start,
           }),
         }),

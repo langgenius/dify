@@ -43,9 +43,6 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock i18n context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')

@@ -17,9 +17,6 @@ import UpdatePlugin from '../index'
 import PluginVersionPicker from '../plugin-version-picker'
 
 // Mock useGetLanguage context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
 
 // Mock app context for useGetIcon
 

@@ -34,13 +34,6 @@ vi.mock('@/utils/format', () => ({
     return parts[parts.length - 1] || ''
   },
 }))
-
-// Mock react-i18next
-// Mock locale context
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 // Mock i18n config
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],

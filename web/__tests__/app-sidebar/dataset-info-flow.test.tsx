@@ -16,16 +16,6 @@ const mockDeleteDataset = vi.fn()
 const mockDownloadBlob = vi.fn()
 
 let mockDataset: DataSet
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
-    }),
-  })
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,

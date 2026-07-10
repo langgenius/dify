@@ -4,16 +4,6 @@ import ExternalDataToolModal from '../external-data-tool-modal'
 const mockToastError = vi.fn()
 
 let mockLocale = 'en-US'
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -102,15 +92,15 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.name.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
       target: { value: 'Search' },
     })
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.variableName.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
       target: { value: 'search_api' },
     })
-    fireEvent.click(screen.getByText('operation.save'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
-    expect(mockToastError).toHaveBeenCalledWith('errorMessage.valueOfVarRequired')
+    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)errorMessage\.valueOfVarRequired(?=$|:)/))
     expect(mockOnSave).not.toHaveBeenCalled()
   })
 
@@ -126,10 +116,10 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.name.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
       target: { value: 'Search' },
     })
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.variableName.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
       target: { value: 'search_api' },
     })
     fireEvent.click(screen.getByText('pick-extension'))
@@ -142,7 +132,7 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(emojiButton!)
     fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-    fireEvent.click(screen.getByText('operation.save'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
       expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(expect.objectContaining({
@@ -170,7 +160,7 @@ describe('ExternalDataToolModal', () => {
       variable: 'search_api',
     }))
 
-    expect(screen.getByRole('link', { name: 'apiBasedExtension.link' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /(?:^|\.)apiBasedExtension\.link(?=$|:)/ })).toHaveAttribute(
       'href',
       'https://docs.example.com/use-dify/workspace/api-extension/api-extension',
     )
@@ -191,14 +181,14 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.name.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
       target: { value: 'Code Search' },
     })
-    fireEvent.change(screen.getByPlaceholderText('feature.tools.modal.variableName.placeholder'), {
+    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
       target: { value: 'code_search' },
     })
     fireEvent.click(screen.getByText('fill-form'))
-    fireEvent.click(screen.getByText('operation.save'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
@@ -212,7 +202,7 @@ describe('ExternalDataToolModal', () => {
       }))
     })
 
-    fireEvent.click(screen.getByText('operation.cancel'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
     expect(mockOnCancel).toHaveBeenCalled()
   })
 })

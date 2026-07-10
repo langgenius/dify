@@ -7,16 +7,6 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { AppCardAccessControlSection, AppCardDialogs, AppCardOperations, AppCardUrlSection, createAppCardOperations, WorkflowLaunchDialog } from '../app-card-sections'
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-    Trans: withSelectorKeyProps(({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>),
-  })
-})
-
 vi.mock('../settings', () => ({
   default: () => <div data-testid="settings-modal" />,
 }))
@@ -83,9 +73,9 @@ describe('app-card-sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('publishApp.notSet'))
+    fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
 
-    expect(screen.getByText('accessControlDialog.accessItems.specific')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.specific(?=$|:)/)).toBeInTheDocument()
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
@@ -121,7 +111,7 @@ describe('app-card-sections', () => {
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
     expect(onLaunchConfig).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('overview.appInfo.launch')).not.toHaveAttribute('title')
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/)).not.toHaveAttribute('title')
     expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
   })
 
@@ -180,7 +170,7 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'overview.appInfo.customize.entry' })).toHaveAttribute('title', 'overview.appInfo.customize.entry')
+    expect(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.customize\.entry(?=$|:)/ })).toHaveAttribute('title', 'overview.appInfo.customize.entry')
     expect(AppModeEnum.CHAT).toBe('chat')
   })
 
@@ -254,7 +244,7 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).toBeInTheDocument()
     fireEvent.submit(screen.getByRole('button', { name: /overview\.appInfo\.launch/i }).closest('form')!)
     expect(onSubmit).toHaveBeenCalled()
   })

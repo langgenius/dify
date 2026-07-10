@@ -4,13 +4,13 @@ import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodeMetaData, useNodesMetaData } from '../use-nodes-meta-data'
 
-const buildInToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-const customToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-const workflowToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
+
+const buildInToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
+const customToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
+const workflowToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: buildInToolsState }),

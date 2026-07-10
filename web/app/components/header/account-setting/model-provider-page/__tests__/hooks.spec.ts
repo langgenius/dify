@@ -37,6 +37,10 @@ import {
   useUpdateModelProviders,
 } from '../hooks'
 
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
+}))
+
 // Mock dependencies
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
@@ -56,10 +60,6 @@ vi.mock('@/service/use-common', () => ({
     modelProviders: ['model-providers'],
     defaultModel: (type: string) => ['default-model', type],
   },
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
 }))
 
 vi.mock('@/context/provider-context', () => ({

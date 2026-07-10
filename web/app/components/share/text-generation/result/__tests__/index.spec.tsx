@@ -1,4 +1,3 @@
-import type { Namespace, SelectorParam } from 'i18next'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { IOtherOptions } from '@/service/base'
@@ -24,10 +23,11 @@ const {
 
 vi.mock('i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('i18next')>()
+  const { createI18nextMock } = await import('@/test/i18n-mock')
 
   return {
     ...actual,
-    t: <Ns extends Namespace>(selector: SelectorParam<Ns>) => actual.keyFromSelector(selector),
+    ...createI18nextMock(),
   }
 })
 

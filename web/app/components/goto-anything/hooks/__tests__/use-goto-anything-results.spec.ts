@@ -22,11 +22,6 @@ vi.mock('@tanstack/react-query', () => ({
     return mockQueryResult
   },
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 const mockMatchAction = vi.fn()
 const mockSearchAnything = vi.fn()
 const mockGetRecentItems = vi.fn(() => [] as Array<Record<string, unknown>>)

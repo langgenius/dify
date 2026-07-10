@@ -9,10 +9,6 @@ import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
 import FeaturedTriggers from '../featured-triggers'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
