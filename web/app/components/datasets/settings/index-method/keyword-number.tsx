@@ -1,4 +1,4 @@
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -33,7 +33,7 @@ const KeyWordNumber = ({
   }, [onKeywordNumberChange])
 
   return (
-    <FieldsetRoot className="flex items-center gap-x-1">
+    <Fieldset className="flex items-center gap-x-1">
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
         <div className="truncate system-xs-medium text-text-secondary">
@@ -69,7 +69,7 @@ const KeyWordNumber = ({
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 

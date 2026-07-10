@@ -1,5 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
@@ -59,7 +59,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         void handleGetEMailVerificationCode()
       }}
     >
-      <FieldRoot name="email" disabled={isInvite} className="mb-2">
+      <Field name="email" disabled={isInvite} className="mb-2">
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t($ => $.email, { ns: 'login' })}</FieldLabel>
         <FieldControl
           type="email"
@@ -73,7 +73,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         <div className="mt-3">
           <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t($ => $['signup.verifyMail'], { ns: 'login' })}</Button>
         </div>
-      </FieldRoot>
+      </Field>
     </Form>
   )
 }

@@ -31,9 +31,9 @@ import {
 } from '.'
 import { cn } from '../cn'
 import {
+  Field,
   FieldDescription,
   FieldLabel,
-  FieldRoot,
 } from '../field'
 
 type Option = {
@@ -411,7 +411,7 @@ const AsyncDirectoryDemo = () => {
     : 'Try a different owner search.'
 
   return (
-    <FieldRoot name="owner" className={fieldWidth}>
+    <Field name="owner" className={fieldWidth}>
       <FieldLabel>Owner</FieldLabel>
       <Combobox
         items={items}
@@ -472,7 +472,7 @@ const AsyncDirectoryDemo = () => {
           <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -523,7 +523,7 @@ const AsyncReviewerDemo = () => {
     : 'Try a different reviewer search.'
 
   return (
-    <FieldRoot name="asyncReviewers" className={fieldWidth}>
+    <Field name="asyncReviewers" className={fieldWidth}>
       <FieldLabel>Async reviewers</FieldLabel>
       <Combobox
         items={items}
@@ -609,7 +609,7 @@ const AsyncReviewerDemo = () => {
         </ComboboxContent>
       </Combobox>
       <FieldDescription>Selected reviewers stay available while async matches change.</FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -632,7 +632,7 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   render: () => (
-    <FieldRoot name="dataSource" className={fieldWidth}>
+    <Field name="dataSource" className={fieldWidth}>
       <FieldLabel>Connect source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
@@ -645,13 +645,13 @@ export const Default: Story = {
           <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
-    </FieldRoot>
+    </Field>
   ),
 }
 
 export const FormField: Story = {
   render: () => (
-    <FieldRoot name="sourceConnector" className={fieldWidth}>
+    <Field name="sourceConnector" className={fieldWidth}>
       <FieldLabel>Connect source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
@@ -665,7 +665,7 @@ export const FormField: Story = {
         </ComboboxContent>
       </Combobox>
       <FieldDescription>Type to filter, then choose a remembered data source.</FieldDescription>
-    </FieldRoot>
+    </Field>
   ),
 }
 
@@ -698,7 +698,7 @@ export const Sizes: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
       {(['small', 'medium', 'large'] as const).map(size => (
-        <FieldRoot key={size} name={`provider-${size}`}>
+        <Field key={size} name={`provider-${size}`}>
           <FieldLabel>{`${size[0]!.toUpperCase()}${size.slice(1)}`}</FieldLabel>
           <Combobox items={sizeOptions} defaultValue={defaultProvider}>
             <ComboboxInputGroup size={size} className="px-2">
@@ -711,7 +711,7 @@ export const Sizes: Story = {
               <ComboboxList>{renderOptionItem}</ComboboxList>
             </ComboboxContent>
           </Combobox>
-        </FieldRoot>
+        </Field>
       ))}
     </div>
   ),
@@ -738,7 +738,7 @@ const MultipleChipsDemo = () => {
   const [value, setValue] = React.useState<Option[]>(defaultReviewers)
 
   return (
-    <FieldRoot name="reviewers" className={fieldWidth}>
+    <Field name="reviewers" className={fieldWidth}>
       <FieldLabel>Reviewers</FieldLabel>
       <Combobox items={reviewerOptions} multiple value={value} onValueChange={setValue}>
         <ComboboxInputGroup className="h-auto min-h-8 items-start py-1">
@@ -763,7 +763,7 @@ const MultipleChipsDemo = () => {
         </ComboboxContent>
       </Combobox>
       <FieldDescription>Selected reviewers wrap inside the input instead of scrolling horizontally.</FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -786,7 +786,7 @@ export const VirtualizedLongList: Story = {
 
 export const EmptyAndStatus: Story = {
   render: () => (
-    <FieldRoot name="connector" className={fieldWidth}>
+    <Field name="connector" className={fieldWidth}>
       <FieldLabel>Connector</FieldLabel>
       <Combobox items={emptyOptions} defaultInputValue="salesforce">
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
@@ -801,14 +801,14 @@ export const EmptyAndStatus: Story = {
           <ComboboxList>{renderSimpleOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
-    </FieldRoot>
+    </Field>
   ),
 }
 
 export const DisabledAndReadOnly: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
-      <FieldRoot name="disabledProvider" disabled>
+      <Field name="disabledProvider" disabled>
         <Combobox items={providerOptions} defaultValue={disabledProvider} disabled>
           <ComboboxLabel>Disabled provider</ComboboxLabel>
           <ComboboxTrigger aria-label="Disabled model provider">
@@ -819,8 +819,8 @@ export const DisabledAndReadOnly: Story = {
             <ComboboxList>{renderOptionItem}</ComboboxList>
           </ComboboxContent>
         </Combobox>
-      </FieldRoot>
-      <FieldRoot name="readOnlySource">
+      </Field>
+      <Field name="readOnlySource">
         <FieldLabel>Read-only source</FieldLabel>
         <Combobox items={dataSourceOptions} defaultValue={readOnlyDataSource} readOnly>
           <ComboboxInputGroup className="h-8 min-h-8 px-2">
@@ -832,7 +832,7 @@ export const DisabledAndReadOnly: Story = {
             <ComboboxList>{renderOptionItem}</ComboboxList>
           </ComboboxContent>
         </Combobox>
-      </FieldRoot>
+      </Field>
     </div>
   ),
 }

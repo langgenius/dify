@@ -1,5 +1,5 @@
-import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -64,7 +64,7 @@ export function TopKAndScoreThreshold({
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <FieldRoot name="top_k" className="gap-0">
+      <Field name="top_k" className="gap-0">
         <div className="mb-0.5 flex h-6 items-center">
           <FieldLabel className="py-0 system-xs-medium text-text-secondary">
             {topKLabel}
@@ -92,13 +92,13 @@ export function TopKAndScoreThreshold({
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
+      </Field>
       {scoreThresholdHidden
         ? null
         : (
-            <FieldsetRoot className="min-w-0">
+            <Fieldset className="min-w-0">
               <FieldsetLegend className="sr-only">{scoreThresholdLabel}</FieldsetLegend>
-              <FieldRoot name="score_threshold_enabled" className="mb-0.5 gap-0">
+              <Field name="score_threshold_enabled" className="mb-0.5 gap-0">
                 <div className="flex h-6 items-center">
                   <FieldLabel className="flex w-full min-w-0 grow items-center py-0 system-sm-medium text-text-secondary">
                     <Switch
@@ -118,8 +118,8 @@ export function TopKAndScoreThreshold({
                     {scoreThresholdTip}
                   </Infotip>
                 </div>
-              </FieldRoot>
-              <FieldRoot name="score_threshold" className="gap-0">
+              </Field>
+              <Field name="score_threshold" className="gap-0">
                 <FieldLabel className="sr-only">{scoreThresholdLabel}</FieldLabel>
                 <NumberField
                   disabled={readonly || !scoreThresholdEnabled}
@@ -137,8 +137,8 @@ export function TopKAndScoreThreshold({
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>
-              </FieldRoot>
-            </FieldsetRoot>
+              </Field>
+            </Fieldset>
           )}
     </div>
   )

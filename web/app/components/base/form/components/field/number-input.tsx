@@ -1,4 +1,4 @@
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
+import type { NumberFieldInputProps, NumberFieldProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
 import type { ReactNode } from 'react'
 import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,7 @@ type NumberInputFieldProps = {
   inputClassName?: string
   unit?: ReactNode
   size?: NumberFieldSize
-} & Omit<NumberFieldRootProps, 'children' | 'className' | 'id' | 'value' | 'defaultValue' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onBlur' | 'className' | 'onChange'>
+} & Omit<NumberFieldProps, 'children' | 'className' | 'id' | 'value' | 'defaultValue' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onBlur' | 'className' | 'onChange'>
 
 const NumberInputField = ({
   label,

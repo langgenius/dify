@@ -1,4 +1,4 @@
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
 import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -115,7 +115,7 @@ function ModelSelector({
     handleSelect(provider.provider, model)
   }, [handleSelect, modelList])
 
-  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setInputValue(inputValue)
   }, [])

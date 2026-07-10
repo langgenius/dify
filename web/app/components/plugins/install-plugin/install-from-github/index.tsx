@@ -5,7 +5,7 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -204,7 +204,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
                     onFormSubmit={handleUrlSubmit}
                     className="flex flex-col items-start gap-4 self-stretch"
                   >
-                    <FieldRoot name="repoUrl" className="gap-4 self-stretch">
+                    <Field name="repoUrl" className="gap-4 self-stretch">
                       <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
                         <span className="system-sm-semibold">{t($ => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}</span>
                       </FieldLabel>
@@ -217,7 +217,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, in
                         className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
                         placeholder="Please enter GitHub repo URL"
                       />
-                    </FieldRoot>
+                    </Field>
                     <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
                       <Button
                         variant="secondary"

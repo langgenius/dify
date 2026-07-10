@@ -1,5 +1,5 @@
 import type { AgentIconSelection } from './agent-form'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -50,7 +50,7 @@ export function AgentFormFields({
           />
         </button>
         <div className="flex min-w-0 flex-1 gap-3 pb-1">
-          <FieldRoot
+          <Field
             name="name"
             className="relative min-w-0 flex-1"
             validate={(value) => {
@@ -77,8 +77,8 @@ export function AgentFormFields({
               <FieldError match="valueMissing">{t($ => $['roster.createForm.nameRequired'])}</FieldError>
               <FieldError match="customError" />
             </div>
-          </FieldRoot>
-          <FieldRoot
+          </Field>
+          <Field
             name="role"
             className="relative min-w-0 flex-1"
           >
@@ -95,10 +95,10 @@ export function AgentFormFields({
               placeholder={t($ => $['roster.createForm.rolePlaceholder'])}
               value={role}
             />
-          </FieldRoot>
+          </Field>
         </div>
       </div>
-      <FieldRoot name="description">
+      <Field name="description">
         <FieldLabel>
           {t($ => $['roster.createForm.descriptionLabel'])}
           <span className="ml-1 system-xs-regular text-text-tertiary">
@@ -112,7 +112,7 @@ export function AgentFormFields({
           placeholder={t($ => $['roster.createForm.descriptionPlaceholder'])}
           value={description}
         />
-      </FieldRoot>
+      </Field>
     </div>
   )
 }

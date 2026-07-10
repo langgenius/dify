@@ -1,5 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
@@ -116,7 +116,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         void handleEmailPasswordLogin()
       }}
     >
-      <FieldRoot name="email" disabled={isInvite} className="mb-3">
+      <Field name="email" disabled={isInvite} className="mb-3">
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
           {t($ => $.email, { ns: 'login' })}
         </FieldLabel>
@@ -129,9 +129,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           spellCheck={false}
           placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
         />
-      </FieldRoot>
+      </Field>
 
-      <FieldRoot name="password" className="mb-3">
+      <Field name="password" className="mb-3">
         <div className="my-2 flex items-center justify-between">
           <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t($ => $.password, { ns: 'login' })}</FieldLabel>
           <Link
@@ -168,7 +168,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             </Button>
           </div>
         </div>
-      </FieldRoot>
+      </Field>
 
       <div className="mb-2">
         <Button

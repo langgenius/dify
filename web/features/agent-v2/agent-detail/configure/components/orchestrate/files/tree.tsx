@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  FileTree,
   FileTreeFile,
   FileTreeFolder,
   FileTreeFolderPanel,
@@ -11,7 +12,6 @@ import {
   FileTreeIcon,
   FileTreeLabel,
   FileTreeList,
-  FileTreeRoot,
 } from '@langgenius/dify-ui/file-tree'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { Fragment } from 'react'
@@ -187,7 +187,7 @@ export function AgentFileTree({
           scrollbar: 'hidden',
         }}
       >
-        <FileTreeRoot
+        <FileTree
           id={id}
           aria-label={treeLabel}
           className={cn('w-full max-w-full min-w-0 p-0', rootClassName)}
@@ -207,7 +207,7 @@ export function AgentFileTree({
               renderFolderPanel={renderFolderPanel}
             />
           </FileTreeList>
-        </FileTreeRoot>
+        </FileTree>
       </ScrollArea>
     </div>
   )

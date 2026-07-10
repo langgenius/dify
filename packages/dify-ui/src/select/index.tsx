@@ -16,13 +16,13 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export type SelectRootProps<
+export type SelectProps<
   Value,
   Multiple extends boolean | undefined = false,
 > = BaseSelect.Root.Props<Value, Multiple>
 
 export function Select<Value, Multiple extends boolean | undefined = false>(
-  props: SelectRootProps<Value, Multiple>,
+  props: SelectProps<Value, Multiple>,
 ): React.JSX.Element {
   return <BaseSelect.Root {...props} />
 }

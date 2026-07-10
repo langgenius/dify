@@ -1,5 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -83,7 +83,7 @@ export function AgentSelectorContent({
 
     return option.name
   }
-  const handleInputValueChange = (nextSearchText: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = (nextSearchText: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setSearchText(nextSearchText)
   }

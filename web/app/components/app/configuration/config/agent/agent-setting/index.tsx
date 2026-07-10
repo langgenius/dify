@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
@@ -101,7 +101,7 @@ const AgentSetting: FC<Props> = ({
             name={maximumIterationsLabel}
             description={t($ => $['agent.setting.maximumIterations.description'], { ns: 'appDebug' })}
           >
-            <FieldsetRoot className="flex items-center">
+            <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
               <Slider
                 className="mr-3 w-[156px]"
@@ -138,7 +138,7 @@ const AgentSetting: FC<Props> = ({
                   })
                 }}
               />
-            </FieldsetRoot>
+            </Fieldset>
           </ItemPanel>
 
           {!isFunctionCall && (

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -103,7 +103,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
         inputs.is_parallel && (
           <div className="px-4 pb-2">
             <Field title={maxParallelismLabel} isSubTitle tooltip={<div className="w-[230px]">{t($ => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflow' })}</div>}>
-              <FieldsetRoot className="row flex">
+              <Fieldset className="row flex">
                 <FieldsetLegend className="sr-only">{maxParallelismLabel}</FieldsetLegend>
                 <Input aria-label={maxParallelismLabel} type="number" wrapperClassName="w-18 mr-4" max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
                 <Slider
@@ -114,7 +114,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                   className="mt-4 flex-1 shrink-0"
                   aria-label={maxParallelismLabel}
                 />
-              </FieldsetRoot>
+              </Fieldset>
 
             </Field>
           </div>

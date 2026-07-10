@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
@@ -160,7 +160,7 @@ const MemoryConfig: FC<Props> = ({
                 />
                 <div className="system-xs-medium-uppercase text-text-tertiary">{windowSizeLabel}</div>
               </div>
-              <FieldsetRoot className="flex h-8 items-center space-x-2">
+              <Fieldset className="flex h-8 items-center space-x-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
                   className="w-[144px]"
@@ -185,7 +185,7 @@ const MemoryConfig: FC<Props> = ({
                   onBlur={handleBlur}
                   disabled={readonly || !payload.window?.enabled}
                 />
-              </FieldsetRoot>
+              </Fieldset>
             </div>
             {canSetRoleName && (
               <div className="mt-4">
