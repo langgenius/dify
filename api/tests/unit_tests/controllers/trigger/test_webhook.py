@@ -103,6 +103,25 @@ class TestHandleWebhook:
             "message": "Trigger event quota exceeded. Please upgrade your plan.",
         }
 
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    @patch.object(
+        module.WebhookService,
+        "trigger_workflow_execution",
+        side_effect=QuotaExceededError(feature="workflow", tenant_id="tenant-1", required=1),
+    )
+    def test_workflow_quota_exceeded(self, mock_trigger, mock_extract, mock_get):
+        mock_get.return_value = (DummyWebhookTrigger(), "workflow", "node_config")
+        mock_extract.return_value = {"input": "x"}
+
+        response, status = module.handle_webhook("wh-1")
+
+        assert status == 429
+        assert response == {
+            "error": "Too Many Requests",
+            "message": "Workflow execution quota exceeded. Please upgrade your plan.",
+        }
+
     @patch.object(
         module.WebhookService,
         "get_webhook_trigger_and_workflow",
