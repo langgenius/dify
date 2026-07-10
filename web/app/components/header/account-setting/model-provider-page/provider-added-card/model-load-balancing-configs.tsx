@@ -156,7 +156,7 @@ const ModelLoadBalancingConfigs = ({
               <Infotip
                 aria-label={t($ => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}
                 className="size-3"
-                iconClassName="h-full w-full"
+                iconSize="small"
                 popupClassName="max-w-[300px]"
               >
                 {t($ => $['modelProvider.loadBalancingInfo'], { ns: 'common' })}

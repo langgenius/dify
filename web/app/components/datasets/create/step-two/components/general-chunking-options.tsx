@@ -196,7 +196,6 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                   <Infotip
                     aria-label={t($ => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     className="size-3.5"
-                    iconClassName="h-full w-full"
                   >
                     {t($ => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                   </Infotip>

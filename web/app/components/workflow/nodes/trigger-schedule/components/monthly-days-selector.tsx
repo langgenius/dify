@@ -60,7 +60,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                       <Infotip
                         aria-label={t($ => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
                         className="mr-1 size-3"
-                        iconClassName="h-3 w-3"
+                        iconSize="small"
                       >
                         {t($ => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
                       </Infotip>

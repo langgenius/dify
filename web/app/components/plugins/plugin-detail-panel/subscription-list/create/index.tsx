@@ -128,7 +128,6 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           <Infotip
             aria-label={t($ => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
             className="size-3.5"
-            iconClassName="h-full w-full"
           >
             {t($ => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
           </Infotip>

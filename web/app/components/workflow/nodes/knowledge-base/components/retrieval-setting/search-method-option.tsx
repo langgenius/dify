@@ -303,7 +303,6 @@ export function SearchMethodOption({
                         <Infotip
                           aria-label={rerankModelTip}
                           className="ml-0.5 size-3.5 shrink-0"
-                          iconClassName="h-3.5 w-3.5"
                         >
                           {rerankModelTip}
                         </Infotip>

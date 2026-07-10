@@ -72,7 +72,6 @@ export function TopKAndScoreThreshold({
           <Infotip
             aria-label={topKTip}
             className="ml-0.5 size-3.5"
-            iconClassName="h-3.5 w-3.5"
           >
             {topKTip}
           </Infotip>
@@ -115,7 +114,6 @@ export function TopKAndScoreThreshold({
                   <Infotip
                     aria-label={scoreThresholdTip}
                     className="ml-0.5 size-3.5"
-                    iconClassName="h-3.5 w-3.5"
                   >
                     {scoreThresholdTip}
                   </Infotip>

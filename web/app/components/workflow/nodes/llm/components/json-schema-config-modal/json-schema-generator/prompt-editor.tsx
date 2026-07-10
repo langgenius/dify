@@ -83,7 +83,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
           <Infotip
             aria-label={t($ => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
             className="size-3.5"
-            iconClassName="h-full w-full"
           >
             {t($ => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
           </Infotip>

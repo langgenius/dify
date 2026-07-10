@@ -2010,7 +2010,7 @@ describe('useChat', () => {
       })
 
       const lastResponse = result.current.chatList[1]
-      expect(lastResponse!.content).toBe('')
+      expect(lastResponse!.content).toBe('history top-level answer')
       expect(lastResponse!.agent_response_parts).toBeUndefined()
       expect(lastResponse!.workflow_run_id).toBe('history-workflow-run')
       expect(lastResponse!.workflowProcess).toBeUndefined()
