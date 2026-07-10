@@ -64,7 +64,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     switch (fileType) {
       case SupportUploadFileTypes.image: {
         if (fileSize > imgSizeLimit) {
-          toast.error(t('fileUploader.uploadFromComputerLimit', {
+          toast.error(t($ => $['fileUploader.uploadFromComputerLimit'], {
             ns: 'common',
             type: SupportUploadFileTypes.image,
             size: formatFileSize(imgSizeLimit),
@@ -76,7 +76,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       case SupportUploadFileTypes.custom:
       case SupportUploadFileTypes.document: {
         if (fileSize > docSizeLimit) {
-          toast.error(t('fileUploader.uploadFromComputerLimit', {
+          toast.error(t($ => $['fileUploader.uploadFromComputerLimit'], {
             ns: 'common',
             type: SupportUploadFileTypes.document,
             size: formatFileSize(docSizeLimit),
@@ -87,7 +87,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       }
       case SupportUploadFileTypes.audio: {
         if (fileSize > audioSizeLimit) {
-          toast.error(t('fileUploader.uploadFromComputerLimit', {
+          toast.error(t($ => $['fileUploader.uploadFromComputerLimit'], {
             ns: 'common',
             type: SupportUploadFileTypes.audio,
             size: formatFileSize(audioSizeLimit),
@@ -98,7 +98,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       }
       case SupportUploadFileTypes.video: {
         if (fileSize > videoSizeLimit) {
-          toast.error(t('fileUploader.uploadFromComputerLimit', {
+          toast.error(t($ => $['fileUploader.uploadFromComputerLimit'], {
             ns: 'common',
             type: SupportUploadFileTypes.video,
             size: formatFileSize(videoSizeLimit),
@@ -172,7 +172,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: unknown) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+          const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
           toast.error(errorMessage)
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -233,7 +233,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         url: res.url,
       }
       if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-        toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${newFile.type}`)
+        toast.error(`${t($ => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' })} ${newFile.type}`)
         handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
@@ -241,7 +241,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       else
         handleUpdateFile(newFile)
     }).catch(() => {
-      toast.error(t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }))
+      toast.error(t($ => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
       handleRemoveFile(uploadingFile.id)
     })
   }, [checkSizeLimit, handleAddFile, handleUpdateFile, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, isHumanInputFormPage, formToken, params.token])
@@ -260,11 +260,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const handleLocalFileUpload = useCallback((file: File) => {
     // Check file upload enabled
     if (!noNeedToCheckEnable && !fileConfig.enabled) {
-      toast.error(t('fileUploader.uploadDisabled', { ns: 'common' }))
+      toast.error(t($ => $['fileUploader.uploadDisabled'], { ns: 'common' }))
       return
     }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}`)
+      toast.error(`${t($ => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' })} ${file.type}`)
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types
@@ -299,7 +299,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: unknown) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+            const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
             toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
@@ -320,7 +320,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     reader.addEventListener(
       'error',
       () => {
-        toast.error(t('fileUploader.uploadFromComputerReadError', { ns: 'common' }))
+        toast.error(t($ => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
       },
       false,
     )

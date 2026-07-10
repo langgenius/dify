@@ -120,13 +120,13 @@ describe('Trigger', () => {
     it('should render empty state when no provider or model is selected', () => {
       render(<Trigger isInWorkflow />)
 
-      expect(screen.getByText('workflow:errorMsg.configureModel')).toBeInTheDocument()
+      expect(screen.getByText('workflow.errorMsg.configureModel')).toBeInTheDocument()
     })
 
     it('should render non-workflow empty state with warning border', () => {
       const { container } = render(<Trigger />)
 
-      expect(screen.getByText('workflow:errorMsg.configureModel')).toBeInTheDocument()
+      expect(screen.getByText('workflow.errorMsg.configureModel')).toBeInTheDocument()
       expect(container.firstChild).toHaveClass('border-text-warning')
     })
   })

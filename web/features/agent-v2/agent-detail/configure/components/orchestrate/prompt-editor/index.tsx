@@ -457,17 +457,17 @@ export function AgentPromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t('agentDetail.configure.prompt.tip')
+  const promptTip = t($ => $['agentDetail.configure.prompt.tip'])
   const promptPlaceholder = (
     <AgentPromptPlaceholder
-      text={t('agentDetail.configure.prompt.placeholder')}
-      insertLabel={t('agentDetail.configure.prompt.insert.label').toLocaleLowerCase()}
+      text={t($ => $['agentDetail.configure.prompt.placeholder'])}
+      insertLabel={t($ => $['agentDetail.configure.prompt.insert.label']).toLocaleLowerCase()}
     />
   )
   const { copied, copy } = useClipboard({
     timeout: 2000,
     onCopyError: () => {
-      toast.error(t('agentDetail.configure.prompt.copyFailed'))
+      toast.error(t($ => $['agentDetail.configure.prompt.copyFailed']))
     },
   })
   const [slashMenuView, setSlashMenuView] = useState<SlashMenuView>('main')
@@ -813,7 +813,7 @@ export function AgentPromptEditor() {
   }, [getConfiguredToolIcon, tools])
 
   const getRosterReferenceWarning = useCallback((token: RosterReferenceToken) => {
-    const warning = t('agentDetail.configure.prompt.referenceMissing', { name: token.label })
+    const warning = t($ => $['agentDetail.configure.prompt.referenceMissing'], { name: token.label })
 
     if (token.kind === 'skill')
       return configuredReferenceIds.skills.has(token.id) ? undefined : warning
@@ -978,22 +978,22 @@ export function AgentPromptEditor() {
   const slashMenuCategories: SlashMenuCategory[] = [
     {
       key: 'skills',
-      label: t('agentDetail.configure.skills.label'),
+      label: t($ => $['agentDetail.configure.skills.label']),
       icon: 'i-ri-box-3-line',
     },
     {
       key: 'files',
-      label: t('agentDetail.configure.files.label'),
+      label: t($ => $['agentDetail.configure.files.label']),
       icon: 'i-ri-file-line',
     },
     {
       key: 'tools',
-      label: t('agentDetail.configure.tools.label'),
+      label: t($ => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
     {
       key: 'knowledge',
-      label: t('agentDetail.configure.knowledgeRetrieval.label'),
+      label: t($ => $['agentDetail.configure.knowledgeRetrieval.label']),
       icon: 'i-ri-book-open-line',
     },
   ]
@@ -1013,7 +1013,7 @@ export function AgentPromptEditor() {
           ref={slashMenuElementRef}
           data-agent-prompt-slash-menu
           role="dialog"
-          aria-label={t('agentDetail.configure.prompt.insert.label')}
+          aria-label={t($ => $['agentDetail.configure.prompt.insert.label'])}
           tabIndex={-1}
           className="absolute z-30"
           onPointerDownCapture={handleSlashMenuPointerDownCapture}
@@ -1051,7 +1051,7 @@ export function AgentPromptEditor() {
             id="agent-configure-prompt-label"
             className="truncate system-sm-semibold-uppercase text-text-secondary"
           >
-            {t('agentDetail.configure.prompt.label')}
+            {t($ => $['agentDetail.configure.prompt.label'])}
           </h3>
           <Infotip aria-label={promptTip} popupClassName="max-w-64">
             <AgentConfigureTipContent type="prompt" />
@@ -1062,7 +1062,7 @@ export function AgentPromptEditor() {
             render={(
               <button
                 type="button"
-                aria-label={copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
+                aria-label={copied ? t($ => $['agentDetail.configure.prompt.copied']) : t($ => $['agentDetail.configure.prompt.copy'])}
                 className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleCopyPrompt}
               >
@@ -1071,7 +1071,7 @@ export function AgentPromptEditor() {
             )}
           />
           <TooltipContent>
-            {copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
+            {copied ? t($ => $['agentDetail.configure.prompt.copied']) : t($ => $['agentDetail.configure.prompt.copy'])}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -1134,7 +1134,7 @@ export function AgentPromptEditor() {
                   onClick={handleInsertSlash}
                 >
                   <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
-                  {t('agentDetail.configure.prompt.insert.label')}
+                  {t($ => $['agentDetail.configure.prompt.insert.label'])}
                 </button>
               </div>
               <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">

@@ -73,28 +73,28 @@ function SnippetDSLConfirmDialog({
       <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('dslVersionMismatchTitle', { ns: 'snippet' })}
+            {t($ => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
           <AlertDialogDescription render={<div />} className="flex grow flex-col system-md-regular text-text-secondary">
-            <div>{t('dslVersionMismatchDescription', { ns: 'snippet' })}</div>
-            <div>{t('dslVersionMismatchQuestion', { ns: 'snippet' })}</div>
+            <div>{t($ => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
+            <div>{t($ => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />
             <div>
-              {t('importedDSLVersion', { ns: 'snippet' })}
+              {t($ => $.importedDSLVersion, { ns: 'snippet' })}
               <span className="system-md-medium">{versions.importedVersion}</span>
             </div>
             <div>
-              {t('currentDSLVersion', { ns: 'snippet' })}
+              {t($ => $.currentDSLVersion, { ns: 'snippet' })}
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton variant="secondary">
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>
@@ -140,7 +140,7 @@ function ImportSnippetDSLDialog({
     const snippetId = getImportedSnippetId(response)
 
     onClose()
-    toast.success(t('importSuccess', { ns: 'snippet' }))
+    toast.success(t($ => $.importSuccess, { ns: 'snippet' }))
 
     if (snippetId)
       push(`/snippets/${snippetId}/orchestrate`)
@@ -202,11 +202,11 @@ function ImportSnippetDSLDialog({
   const tabs = useMemo(() => [
     {
       key: ImportSnippetDSLDialogTab.FromFile,
-      label: t('importFromDSLFile', { ns: 'snippet' }),
+      label: t($ => $.importFromDSLFile, { ns: 'snippet' }),
     },
     {
       key: ImportSnippetDSLDialogTab.FromUrl,
-      label: t('importFromDSLUrl', { ns: 'snippet' }),
+      label: t($ => $.importFromDSLUrl, { ns: 'snippet' }),
     },
   ], [t])
 
@@ -221,10 +221,10 @@ function ImportSnippetDSLDialog({
       <Dialog open={isOpen} onOpenChange={open => !open && !showConfirmModal && onClose()}>
         <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t('importDialogTitle', { ns: 'snippet' })}
+            {t($ => $.importDialogTitle, { ns: 'snippet' })}
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover"
               onClick={onClose}
             >
@@ -261,7 +261,7 @@ function ImportSnippetDSLDialog({
               <div>
                 <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
                 <Input
-                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'snippet' }) || ''}
+                  placeholder={t($ => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
                   value={dslUrl}
                   onChange={event => setDslUrl(event.target.value)}
                 />
@@ -270,7 +270,7 @@ function ImportSnippetDSLDialog({
           </div>
           <div className="flex justify-end px-6 py-5">
             <Button className="mr-2" disabled={isSubmitting} onClick={onClose}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               disabled={importDisabled}
@@ -278,7 +278,7 @@ function ImportSnippetDSLDialog({
               variant="primary"
               onClick={handleImport}
             >
-              {t('operation.create', { ns: 'common' })}
+              {t($ => $['operation.create'], { ns: 'common' })}
             </Button>
           </div>
         </DialogContent>

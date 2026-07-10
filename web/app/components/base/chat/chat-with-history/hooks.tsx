@@ -307,7 +307,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
-        name: t('chat.newChatDefaultName', { ns: 'share' }),
+        name: t($ => $['chat.newChatDefaultName'], { ns: 'share' }),
         inputs: {},
         introduction: '',
       })
@@ -367,11 +367,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       })
     }
     if (hasEmptyInput) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
+      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
     if (fileIsUploading) {
-      toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
       return
     }
     return true
@@ -408,12 +408,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [invalidateShareConversations])
   const handlePinConversation = useCallback(async (conversationId: string) => {
     await pinConversation(appSourceType, appId, conversationId)
-    toast.success(t('api.success', { ns: 'common' }))
+    toast.success(t($ => $['api.success'], { ns: 'common' }))
     handleUpdateConversationList()
   }, [appSourceType, appId, t, handleUpdateConversationList])
   const handleUnpinConversation = useCallback(async (conversationId: string) => {
     await unpinConversation(appSourceType, appId, conversationId)
-    toast.success(t('api.success', { ns: 'common' }))
+    toast.success(t($ => $['api.success'], { ns: 'common' }))
     handleUpdateConversationList()
   }, [appSourceType, appId, t, handleUpdateConversationList])
   const [conversationDeleting, setConversationDeleting] = useState(false)
@@ -423,7 +423,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     try {
       setConversationDeleting(true)
       await delConversation(appSourceType, appId, conversationId)
-      toast.success(t('api.success', { ns: 'common' }))
+      toast.success(t($ => $['api.success'], { ns: 'common' }))
       onSuccess()
     }
     finally {
@@ -438,13 +438,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (conversationRenaming)
       return
     if (!newName.trim()) {
-      toast.error(t('chat.conversationNameCanNotEmpty', { ns: 'common' }))
+      toast.error(t($ => $['chat.conversationNameCanNotEmpty'], { ns: 'common' }))
       return
     }
     setConversationRenaming(true)
     try {
       await renameConversation(appSourceType, appId, conversationId, newName)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setOriginConversationList(produce((draft) => {
         const index = originConversationList.findIndex(item => item.id === conversationId)
         const item = draft[index]!
@@ -467,7 +467,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [handleConversationIdInfoChange, invalidateShareConversations])
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
-    toast.success(t('api.success', { ns: 'common' }))
+    toast.success(t($ => $['api.success'], { ns: 'common' }))
   }, [appSourceType, appId, t])
   return {
     isInstalledApp,

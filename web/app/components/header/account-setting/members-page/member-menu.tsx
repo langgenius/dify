@@ -57,8 +57,8 @@ const MemberMenu = ({
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
-    ? t('members.assignRoles', { ns: 'common', defaultValue: 'Assign Roles' })
-    : t('members.editRole', { ns: 'common', defaultValue: 'Edit Role' })
+    ? t($ => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
+    : t($ => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -77,7 +77,7 @@ const MemberMenu = ({
       roleIds,
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       },
     })
   }, [allowMultipleRoles, member.id, t, updateRolesOfMember])
@@ -92,7 +92,7 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     }
     catch {
@@ -118,7 +118,7 @@ const MemberMenu = ({
             <ActionButton
               size="l"
               className="data-popup-open:bg-state-base-hover"
-              aria-label={t('members.memberActions', { ns: 'common', defaultValue: 'Member actions' })}
+              aria-label={t($ => $['members.memberActions'], { ns: 'common', defaultValue: 'Member actions' })}
             />
           )}
         >
@@ -142,7 +142,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleTransferOwnership}
             >
-              {t('members.transferOwnership', { ns: 'common' })}
+              {t($ => $['members.transferOwnership'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
           {(canAssignRoles || showTransferOwnership) && canRemove && (
@@ -154,7 +154,7 @@ const MemberMenu = ({
               className="system-sm-medium"
               onClick={handleOpenRemoveConfirm}
             >
-              {t('members.removeFromTeam', { ns: 'common' })}
+              {t($ => $['members.removeFromTeam'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -163,19 +163,19 @@ const MemberMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('members.removeFromTeamConfirmTitle', { ns: 'common', memberName })}
+              {t($ => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('members.removeFromTeamConfirmDescription', { ns: 'common' })}
+              {t($ => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={removing}
               onClick={handleRemove}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

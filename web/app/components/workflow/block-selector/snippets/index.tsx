@@ -126,7 +126,7 @@ const Snippets = ({
           <input
             autoFocus
             value={searchText}
-            placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
+            placeholder={t($ => $['tabs.searchSnippets'], { ns: 'workflow' })}
             className={cn(
               'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
               searchText && 'mr-2',
@@ -136,7 +136,7 @@ const Snippets = ({
           {!!searchText && (
             <button
               type="button"
-              aria-label={t('operation.clear', { ns: 'common' })}
+              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
               className="group shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
               onClick={() => onSearchTextChange?.('')}
             >

@@ -33,7 +33,7 @@ const ParentChunkCardSkelton = () => {
       </SkeletonContainer>
       <div className="mt-0.5 flex items-center px-3">
         <button type="button" className="pt-0.5 system-xs-semibold-uppercase text-components-button-secondary-accent-text-disabled" disabled>
-          {t('operation.viewMore', { ns: 'common' })}
+          {t($ => $['operation.viewMore'], { ns: 'common' })}
         </button>
       </div>
     </div>

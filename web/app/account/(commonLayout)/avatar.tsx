@@ -77,7 +77,7 @@ export default function AppSelector() {
             onClick={handleLogout}
           >
             <span aria-hidden="true" className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary" />
-            <span className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</span>
+            <span className="text-[14px] font-normal text-text-secondary">{t($ => $['userProfile.logout'], { ns: 'common' })}</span>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

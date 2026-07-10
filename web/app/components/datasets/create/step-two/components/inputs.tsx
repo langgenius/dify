@@ -37,9 +37,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
-        <Infotip aria-label={tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
-          {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+        <span className="mr-0.5 system-sm-semibold">{t($ => $['stepTwo.separator'], { ns: 'datasetCreation' })}</span>
+        <Infotip aria-label={tooltip || t($ => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {tooltip || t($ => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
         </Infotip>
       </div>
     )}
@@ -47,7 +47,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
       <Input
         type="text"
         className="h-9"
-        placeholder={t('stepTwo.separatorPlaceholder', { ns: 'datasetCreation' })!}
+        placeholder={t($ => $['stepTwo.separatorPlaceholder'], { ns: 'datasetCreation' })!}
         value={isComposing.current ? compositionValue : value}
         onChange={(e) => {
           if (isComposing.current)
@@ -131,7 +131,7 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
   const { t } = useTranslation()
-  const label = t('stepTwo.maxLength', { ns: 'datasetCreation' })
+  const label = t($ => $['stepTwo.maxLength'], { ns: 'datasetCreation' })
   return (
     <FormField label={(
       <div className="mb-1 system-sm-semibold">
@@ -153,13 +153,13 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
 
 export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const { t } = useTranslation()
-  const label = t('stepTwo.overlap', { ns: 'datasetCreation' })
+  const label = t($ => $['stepTwo.overlap'], { ns: 'datasetCreation' })
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="system-sm-semibold">{label}</span>
-        <Infotip aria-label={t('stepTwo.overlapTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
-          {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
+        <Infotip aria-label={t($ => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {t($ => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
         </Infotip>
       </div>
     )}

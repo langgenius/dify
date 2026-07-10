@@ -102,7 +102,7 @@ const FileUploadSetting: FC<Props> = ({
     <div>
       {!inFeaturePanel && (
         <Field
-          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
+          title={t($ => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
         >
           <div className="space-y-1">
             {
@@ -126,12 +126,12 @@ const FileUploadSetting: FC<Props> = ({
         </Field>
       )}
       <Field
-        title={t('variableConfig.uploadFileTypes', { ns: 'appDebug' })}
+        title={t($ => $['variableConfig.uploadFileTypes'], { ns: 'appDebug' })}
         className="mt-4"
       >
         <div className="grid grid-cols-3 gap-2">
           <OptionCard
-            title={t('variableConfig.localUpload', { ns: 'appDebug' })}
+            title={t($ => $['variableConfig.localUpload'], { ns: 'appDebug' })}
             selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
             onSelect={handleUploadMethodChange(TransferMethod.local_file)}
           />
@@ -141,7 +141,7 @@ const FileUploadSetting: FC<Props> = ({
             onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
           />
           <OptionCard
-            title={t('variableConfig.both', { ns: 'appDebug' })}
+            title={t($ => $['variableConfig.both'], { ns: 'appDebug' })}
             selected={allowed_file_upload_methods.includes(TransferMethod.local_file) && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
             onSelect={handleUploadMethodChange(TransferMethod.all)}
           />
@@ -150,11 +150,11 @@ const FileUploadSetting: FC<Props> = ({
       {isMultiple && (
         <Field
           className="mt-4"
-          title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
+          title={t($ => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}
         >
           <div>
             <div className="mb-1.5 body-xs-regular text-text-tertiary">
-              {t('variableConfig.maxNumberTip', {
+              {t($ => $['variableConfig.maxNumberTip'], {
                 ns: 'appDebug',
                 imgLimit: formatFileSize(imgSizeLimit),
                 docLimit: formatFileSize(docSizeLimit),
@@ -164,7 +164,7 @@ const FileUploadSetting: FC<Props> = ({
             </div>
 
             <InputNumberWithSlider
-              label={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
+              label={t($ => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}
               value={max_length}
               defaultValue={1}
               min={1}
@@ -176,7 +176,7 @@ const FileUploadSetting: FC<Props> = ({
       )}
       {inFeaturePanel && !hideSupportFileType && (
         <Field
-          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
+          title={t($ => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
           className="mt-4"
         >
           <div className="space-y-1">

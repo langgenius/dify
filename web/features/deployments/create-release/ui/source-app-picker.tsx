@@ -71,7 +71,7 @@ function SourceAppTrigger({ app }: {
               : 'system-sm-regular text-components-input-text-placeholder',
           )}
         >
-          {app?.name ?? t('createModal.appPickerPlaceholder')}
+          {app?.name ?? t($ => $['createModal.appPickerPlaceholder'])}
         </span>
       </TitleTooltip>
       <span
@@ -196,7 +196,7 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
       disabled={disabled}
     >
       <ComboboxTrigger
-        aria-label={t('versions.sourceAppOption')}
+        aria-label={t($ => $['versions.sourceAppOption'])}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
@@ -212,8 +212,8 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
               <span className="i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
               <ComboboxInput
-                aria-label={t('createModal.appSearchPlaceholder')}
-                placeholder={t('createModal.appSearchPlaceholder')}
+                aria-label={t($ => $['createModal.appSearchPlaceholder'])}
+                placeholder={t($ => $['createModal.appSearchPlaceholder'])}
                 className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
             </ComboboxInputGroup>
@@ -227,12 +227,12 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
             </ComboboxList>
             {!(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && (
               <ComboboxEmpty>
-                {t('createModal.appSearchEmpty')}
+                {t($ => $['createModal.appSearchEmpty'])}
               </ComboboxEmpty>
             )}
             {sourceAppsIsFetchingNextPage && apps.length > 0 && (
               <div className="px-3 py-2 text-center system-xs-regular text-text-tertiary">
-                {t('createModal.loadingApps')}
+                {t($ => $['createModal.loadingApps'])}
               </div>
             )}
             {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}

@@ -69,7 +69,7 @@ describe('Tips', () => {
       />,
     )
 
-    expect(screen.getByText('common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.queryByText('workflow.common.humanInputEmailTip')).not.toBeInTheDocument()
   })
 

@@ -215,7 +215,7 @@ const ConfigPrompt: FC<Props> = ({
               </div>
               <AddButton
                 className="mt-2"
-                text={t(`${i18nPrefix}.addMessage`, { ns: 'workflow' })}
+                text={t($ => $[`${i18nPrefix}.addMessage`], { ns: 'workflow' })}
                 onClick={handleAddPrompt}
               />
             </div>
@@ -224,7 +224,7 @@ const ConfigPrompt: FC<Props> = ({
             <div>
               <Editor
                 instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
-                title={<span className="capitalize">{t(`${i18nPrefix}.prompt`, { ns: 'workflow' })}</span>}
+                title={<span className="capitalize">{t($ => $[`${i18nPrefix}.prompt`], { ns: 'workflow' })}</span>}
                 value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
                 onChange={handleCompletionPromptChange}
                 readOnly={readOnly}

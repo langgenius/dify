@@ -33,7 +33,7 @@ const RangeSelector: FC<Props> = ({
   const items = useMemo<TimePeriodOption[]>(() => {
     return ranges.map(range => ({
       ...range,
-      name: t(`filter.period.${range.name}`, { ns: 'appLog' }),
+      name: t($ => $[`filter.period.${range.name}`], { ns: 'appLog' }),
     }))
   }, [ranges, t])
   const [value, setValue] = useState(0)
@@ -74,7 +74,7 @@ const RangeSelector: FC<Props> = ({
         className="h-auto w-fit max-w-none border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
       >
         <div className="flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
-          <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : selectedItem?.name}</div>
+          <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t($ => $['filter.period.custom'], { ns: 'appLog' }) : selectedItem?.name}</div>
           <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
         </div>
       </SelectTrigger>

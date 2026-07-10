@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import { AccessMode } from '@/models/access-control'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import {
@@ -47,7 +48,7 @@ describe('app-publisher utils', () => {
   })
 
   describe('getDisabledFunctionTooltip', () => {
-    const t = ((key: string) => key) as unknown as TFunction
+    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction
 
     it('should prioritize the unpublished hint', () => {
       expect(getDisabledFunctionTooltip({

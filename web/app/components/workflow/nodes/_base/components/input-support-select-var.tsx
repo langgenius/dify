@@ -101,7 +101,7 @@ const Editor: FC<Props> = ({
               }
               if (node.data.type === BlockEnum.Start) {
                 acc.sys = {
-                  title: t('blocks.start', { ns: 'workflow' }),
+                  title: t($ => $['blocks.start'], { ns: 'workflow' }),
                   type: BlockEnum.Start,
                 }
               }
@@ -128,7 +128,7 @@ const Editor: FC<Props> = ({
                 )}
               />
               <TooltipContent>
-                {`${t('common.insertVarTip', { ns: 'workflow' })}`}
+                {`${t($ => $['common.insertVarTip'], { ns: 'workflow' })}`}
               </TooltipContent>
             </Tooltip>
           </div>

@@ -40,21 +40,21 @@ const Menu = ({
         {showEdit && (
           <MenuItem
             Icon={RiEditLine}
-            name={t('operation.edit', { ns: 'common' })}
+            name={t($ => $['operation.edit'], { ns: 'common' })}
             handleClick={openRenameModal}
           />
         )}
         {showExportPipeline && runtimeMode === 'rag_pipeline' && (
           <MenuItem
             Icon={RiFileDownloadLine}
-            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            name={t($ => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
           />
         )}
         {showAccessConfig && (
           <MenuItem
             Icon={RiLock2Line}
-            name={t('settings.resourceAccess', { ns: 'common' })}
+            name={t($ => $['settings.resourceAccess'], { ns: 'common' })}
             handleClick={openAccessConfig}
           />
         )}
@@ -65,7 +65,7 @@ const Menu = ({
           <div className="flex flex-col p-1">
             <MenuItem
               Icon={RiDeleteBinLine}
-              name={t('operation.delete', { ns: 'common' })}
+              name={t($ => $['operation.delete'], { ns: 'common' })}
               handleClick={detectIsUsedByApp}
             />
           </div>

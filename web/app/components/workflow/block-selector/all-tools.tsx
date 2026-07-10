@@ -207,14 +207,14 @@ const AllTools = ({
   }, [onSelect])
   const toolsListTitle = useMemo(() => {
     if (activeTab === ToolTypeEnum.BuiltIn)
-      return t('allToolPlugins', { ns: 'tools' })
+      return t($ => $.allToolPlugins, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.Custom)
-      return t('allSwaggerAPIAsTool', { ns: 'tools' })
+      return t($ => $.allSwaggerAPIAsTool, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.Workflow)
-      return t('allWorkflowAsTool', { ns: 'tools' })
+      return t($ => $.allWorkflowAsTool, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.MCP)
-      return t('allMCP', { ns: 'tools' })
-    return t('allTools', { ns: 'tools' })
+      return t($ => $.allMCP, { ns: 'tools' })
+    return t($ => $.allTools, { ns: 'tools' })
   }, [activeTab, t])
 
   return (
@@ -308,7 +308,7 @@ const AllTools = ({
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
               <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
-                {t('tabs.noPluginsFound', { ns: 'workflow' })}
+                {t($ => $['tabs.noPluginsFound'], { ns: 'workflow' })}
               </div>
               <Link
                 href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
@@ -319,7 +319,7 @@ const AllTools = ({
                   variant="secondary-accent"
                   className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
+                  {t($ => $['tabs.requestToCommunity'], { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -331,7 +331,7 @@ const AllTools = ({
             href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
-            <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+            <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}

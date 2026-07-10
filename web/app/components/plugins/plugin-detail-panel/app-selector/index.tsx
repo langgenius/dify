@@ -126,7 +126,7 @@ export function AppSelector({
       onOpenChange={setIsShow}
     >
       <PopoverTrigger
-        aria-label={t('appSelector.label', { ns: 'app' })}
+        aria-label={t($ => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}
         render={<button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />}
       >
@@ -142,7 +142,7 @@ export function AppSelector({
       >
         <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
+            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['appSelector.label'], { ns: 'app' })}</div>
             <AppPicker
               placement="bottom"
               offset={offset}

@@ -19,47 +19,47 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
       case PipelineInputVarType.textInput:
       case PipelineInputVarType.paragraph:
         fieldNames = [
-          t('variableConfig.defaultValue', { ns: 'appDebug' }),
-          t('variableConfig.placeholder', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.placeholder'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       case PipelineInputVarType.number:
         fieldNames = [
-          t('variableConfig.defaultValue', { ns: 'appDebug' }),
-          t('variableConfig.unit', { ns: 'appDebug' }),
-          t('variableConfig.placeholder', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.unit'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.placeholder'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       case PipelineInputVarType.select:
         fieldNames = [
-          t('variableConfig.defaultValue', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       case PipelineInputVarType.singleFile:
         fieldNames = [
-          t('variableConfig.uploadMethod', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.uploadMethod'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       case PipelineInputVarType.multiFiles:
         fieldNames = [
-          t('variableConfig.uploadMethod', { ns: 'appDebug' }),
-          t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.uploadMethod'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       case PipelineInputVarType.checkbox:
         fieldNames = [
-          t('variableConfig.startChecked', { ns: 'appDebug' }),
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.startChecked'], { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
         break
       default:
         fieldNames = [
-          t('variableConfig.tooltips', { ns: 'appDebug' }),
+          t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
         ]
     }
     return fieldNames.map(name => name.toLowerCase()).join(', ')
@@ -103,7 +103,7 @@ export const useConfigurations = (props: {
   const initialConfigurations = useMemo((): InputFieldConfiguration[] => {
     return [{
       type: InputFieldType.inputTypeSelect,
-      label: t('variableConfig.fieldType', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.fieldType'], { ns: 'appDebug' }),
       variable: 'type',
       required: true,
       showConditions: [],
@@ -113,9 +113,9 @@ export const useConfigurations = (props: {
       supportFile,
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.varName', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.varName'], { ns: 'appDebug' }),
       variable: 'variable',
-      placeholder: t('variableConfig.inputPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' }),
       required: true,
       listeners: {
         onBlur: ({ value }) => handleVariableNameBlur(value),
@@ -123,9 +123,9 @@ export const useConfigurations = (props: {
       showConditions: [],
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.displayName', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.displayName'], { ns: 'appDebug' }),
       variable: 'label',
-      placeholder: t('variableConfig.inputPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' }),
       required: false,
       listeners: {
         onBlur: ({ value }) => handleDisplayNameBlur(value),
@@ -133,9 +133,9 @@ export const useConfigurations = (props: {
       showConditions: [],
     }, {
       type: InputFieldType.numberInput,
-      label: t('variableConfig.maxLength', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.maxLength'], { ns: 'appDebug' }),
       variable: 'maxLength',
-      placeholder: t('variableConfig.inputPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' }),
       required: true,
       showConditions: [{
         variable: 'type',
@@ -145,7 +145,7 @@ export const useConfigurations = (props: {
       max: TEXT_MAX_LENGTH,
     }, {
       type: InputFieldType.options,
-      label: t('variableConfig.options', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.options'], { ns: 'appDebug' }),
       variable: 'options',
       required: true,
       showConditions: [{
@@ -154,7 +154,7 @@ export const useConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.fileTypes,
-      label: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' }),
       variable: 'allowedTypesAndExtensions',
       required: true,
       showConditions: [{
@@ -163,7 +163,7 @@ export const useConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.fileTypes,
-      label: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' }),
       variable: 'allowedTypesAndExtensions',
       required: true,
       showConditions: [{
@@ -172,7 +172,7 @@ export const useConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.checkbox,
-      label: t('variableConfig.required', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.required'], { ns: 'appDebug' }),
       variable: 'required',
       required: true,
       showConditions: [],
@@ -202,7 +202,7 @@ export const useHiddenConfigurations = (props: {
       const defaultOptions = [
         {
           value: '',
-          label: t('variableConfig.noDefaultSelected', { ns: 'appDebug' }),
+          label: t($ => $['variableConfig.noDefaultSelected'], { ns: 'appDebug' }),
         },
       ]
       const otherOptions = options.map((option: string) => ({
@@ -217,9 +217,9 @@ export const useHiddenConfigurations = (props: {
   const hiddenConfigurations = useMemo((): InputFieldConfiguration[] => {
     return [{
       type: InputFieldType.textInput,
-      label: t('variableConfig.defaultValue', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
       variable: 'default',
-      placeholder: t('variableConfig.defaultValuePlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.defaultValuePlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -228,9 +228,9 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.defaultValue', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
       variable: 'default',
-      placeholder: t('variableConfig.defaultValuePlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.defaultValuePlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -239,9 +239,9 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.numberInput,
-      label: t('variableConfig.defaultValue', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.defaultValue'], { ns: 'appDebug' }),
       variable: 'default',
-      placeholder: t('variableConfig.defaultValuePlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.defaultValuePlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -250,7 +250,7 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.select,
-      label: t('variableConfig.startSelectedOption', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.startSelectedOption'], { ns: 'appDebug' }),
       variable: 'default',
       required: false,
       showConditions: [{
@@ -264,7 +264,7 @@ export const useHiddenConfigurations = (props: {
       },
     }, {
       type: InputFieldType.checkbox,
-      label: t('variableConfig.startChecked', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.startChecked'], { ns: 'appDebug' }),
       variable: 'default',
       required: false,
       showConditions: [{
@@ -273,9 +273,9 @@ export const useHiddenConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.placeholder', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.placeholder'], { ns: 'appDebug' }),
       variable: 'placeholder',
-      placeholder: t('variableConfig.placeholderPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.placeholderPlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -284,9 +284,9 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.placeholder', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.placeholder'], { ns: 'appDebug' }),
       variable: 'placeholder',
-      placeholder: t('variableConfig.placeholderPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.placeholderPlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -295,9 +295,9 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.unit', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.unit'], { ns: 'appDebug' }),
       variable: 'unit',
-      placeholder: t('variableConfig.unitPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.unitPlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -306,9 +306,9 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.placeholder', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.placeholder'], { ns: 'appDebug' }),
       variable: 'placeholder',
-      placeholder: t('variableConfig.placeholderPlaceholder', { ns: 'appDebug' }),
+      placeholder: t($ => $['variableConfig.placeholderPlaceholder'], { ns: 'appDebug' }),
       required: false,
       showConditions: [{
         variable: 'type',
@@ -317,7 +317,7 @@ export const useHiddenConfigurations = (props: {
       showOptional: true,
     }, {
       type: InputFieldType.uploadMethod,
-      label: t('variableConfig.uploadFileTypes', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.uploadFileTypes'], { ns: 'appDebug' }),
       variable: 'allowedFileUploadMethods',
       required: false,
       showConditions: [{
@@ -326,7 +326,7 @@ export const useHiddenConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.uploadMethod,
-      label: t('variableConfig.uploadFileTypes', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.uploadFileTypes'], { ns: 'appDebug' }),
       variable: 'allowedFileUploadMethods',
       required: false,
       showConditions: [{
@@ -335,14 +335,14 @@ export const useHiddenConfigurations = (props: {
       }],
     }, {
       type: InputFieldType.numberSlider,
-      label: t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' }),
       variable: 'maxLength',
       required: false,
       showConditions: [{
         variable: 'type',
         value: PipelineInputVarType.multiFiles,
       }],
-      description: t('variableConfig.maxNumberTip', {
+      description: t($ => $['variableConfig.maxNumberTip'], {
         ns: 'appDebug',
         imgLimit: formatFileSize(imgSizeLimit),
         docLimit: formatFileSize(docSizeLimit),
@@ -351,7 +351,7 @@ export const useHiddenConfigurations = (props: {
       }),
     }, {
       type: InputFieldType.textInput,
-      label: t('variableConfig.tooltips', { ns: 'appDebug' }),
+      label: t($ => $['variableConfig.tooltips'], { ns: 'appDebug' }),
       variable: 'tooltips',
       required: false,
       showConditions: [],

@@ -64,13 +64,13 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
         isGenerating ? (
           <div className="flex h-[600px] flex-col items-center justify-center gap-y-3">
             <Loading type="area" />
-            <div className="system-xs-regular text-text-tertiary">{t('nodes.llm.jsonSchema.generating', { ns: 'workflow' })}</div>
+            <div className="system-xs-regular text-text-tertiary">{t($ => $['nodes.llm.jsonSchema.generating'], { ns: 'workflow' })}</div>
           </div>
         ) : (
           <>
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
               onClick={onClose}
             >
@@ -79,10 +79,10 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             {/* Title */}
             <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
               <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
-                {t('nodes.llm.jsonSchema.generatedResult', { ns: 'workflow' })}
+                {t($ => $['nodes.llm.jsonSchema.generatedResult'], { ns: 'workflow' })}
               </div>
               <div className="flex px-1 system-xs-regular text-text-tertiary">
-                {t('nodes.llm.jsonSchema.resultTip', { ns: 'workflow' })}
+                {t($ => $['nodes.llm.jsonSchema.resultTip'], { ns: 'workflow' })}
               </div>
             </div>
             {/* Content */}
@@ -101,7 +101,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             <div className="flex items-center justify-between p-4 pt-2">
               <Button variant="secondary" className="flex items-center gap-x-0.5" onClick={onBack}>
                 <RiArrowLeftLine className="size-4" />
-                <span>{t('nodes.llm.jsonSchema.back', { ns: 'workflow' })}</span>
+                <span>{t($ => $['nodes.llm.jsonSchema.back'], { ns: 'workflow' })}</span>
               </Button>
               <div className="flex items-center gap-x-2">
                 <Button
@@ -110,10 +110,10 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
                   onClick={onRegenerate}
                 >
                   <RiSparklingLine className="size-4" />
-                  <span>{t('nodes.llm.jsonSchema.regenerate', { ns: 'workflow' })}</span>
+                  <span>{t($ => $['nodes.llm.jsonSchema.regenerate'], { ns: 'workflow' })}</span>
                 </Button>
                 <Button variant="primary" onClick={handleApply}>
-                  {t('nodes.llm.jsonSchema.apply', { ns: 'workflow' })}
+                  {t($ => $['nodes.llm.jsonSchema.apply'], { ns: 'workflow' })}
                 </Button>
               </div>
             </div>

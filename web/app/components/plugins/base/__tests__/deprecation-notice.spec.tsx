@@ -50,7 +50,7 @@ describe('DeprecationNotice', () => {
         alternativePluginURL="/plugins/better-plugin"
       />,
     )
-    expect(screen.getByText('detailPanel.deprecation.fullMessage')).toBeInTheDocument()
+    expect(screen.getByText('plugin.detailPanel.deprecation.fullMessage')).toBeInTheDocument()
   })
 
   it('renders only reason without alternative plugin', () => {

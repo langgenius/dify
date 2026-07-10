@@ -30,11 +30,14 @@ let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<any>('ahooks')

@@ -124,18 +124,18 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 size-4" text={t($ => $['marketplace.verifiedTip'], { ns: 'plugin' })} />}
               {!isDifyVersionCompatible && (
                 <Popover>
                   <PopoverTrigger
                     openOnHover
-                    aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    aria-label={t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
                     className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
                   <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-                    {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    {t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
                   </PopoverContent>
                 </Popover>
               )}
@@ -184,9 +184,9 @@ const PluginItem: FC<Props> = ({
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
-                  title={t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
+                  title={t($ => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 >
-                  {t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
+                  {t($ => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 </span>
               </div>
             </>
@@ -198,7 +198,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $.from, { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="size-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
@@ -212,7 +212,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
                   <div className="system-2xs-medium-uppercase text-text-tertiary">
-                    {t('from', { ns: 'plugin' })}
+                    {t($ => $.from, { ns: 'plugin' })}
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
@@ -244,7 +244,7 @@ const PluginItem: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">
-              {t('deprecated', { ns: 'plugin' })}
+              {t($ => $.deprecated, { ns: 'plugin' })}
             </span>
           </div>
         )}

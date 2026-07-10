@@ -41,10 +41,10 @@ const BatchModalContent: FC<BatchModalContentProps> = ({
 
   return (
     <DialogContent className="w-[520px]! overflow-hidden! rounded-xl! border-0! px-8 py-6">
-      <DialogTitle className="relative pb-1 text-xl leading-[30px] font-medium text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</DialogTitle>
+      <DialogTitle className="relative pb-1 text-xl leading-[30px] font-medium text-text-primary">{t($ => $['list.batchModal.title'], { ns: 'datasetDocuments' })}</DialogTitle>
       <DialogCloseButton
         className="top-4 right-4"
-        aria-label={t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
+        aria-label={t($ => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
       />
       <CSVUploader
         file={currentCSV}
@@ -55,10 +55,10 @@ const BatchModalContent: FC<BatchModalContentProps> = ({
       />
       <div className="mt-[28px] flex justify-end pt-6">
         <Button className="mr-2" onClick={onCancel}>
-          {t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
+          {t($ => $['list.batchModal.cancel'], { ns: 'datasetDocuments' })}
         </Button>
         <Button variant="primary" onClick={handleSend} disabled={!currentCSV || !currentCSV.file || !currentCSV.file.id}>
-          {t('list.batchModal.run', { ns: 'datasetDocuments' })}
+          {t($ => $['list.batchModal.run'], { ns: 'datasetDocuments' })}
         </Button>
       </div>
     </DialogContent>

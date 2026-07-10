@@ -46,7 +46,7 @@ export function InstanceCard({ summary }: {
         latestRelease.displayName,
         Number.isNaN(latestReleaseTimeMs) ? undefined : formatTimeFromNow(latestReleaseTimeMs),
       ].filter(Boolean).join(' · ')
-    : t('card.notDeployed')
+    : t($ => $['card.notDeployed'])
   const showDeployAction = hasRelease && activeDeploymentRows.length === 0
   const showFooterCreateReleaseAction = !hasRelease
 
@@ -77,12 +77,12 @@ export function InstanceCard({ summary }: {
               )
             : (
                 <p className="mt-2 truncate system-xs-regular text-text-quaternary">
-                  {t('card.noDescription')}
+                  {t($ => $['card.noDescription'])}
                 </p>
               )}
         </Link>
 
-        <div role="group" aria-label={t('card.tooltip.deploymentStatus')} className="min-h-8 px-4 pt-4 pb-3">
+        <div role="group" aria-label={t($ => $['card.tooltip.deploymentStatus'])} className="min-h-8 px-4 pt-4 pb-3">
           <DeploymentStatusContent
             rows={activeDeploymentRows}
             emptyAction={showDeployAction
@@ -93,7 +93,7 @@ export function InstanceCard({ summary }: {
                     className="max-w-full"
                     onClick={() => openDeployDrawer({ appInstanceId })}
                   >
-                    <span className="truncate">{t('card.menu.deploy')}</span>
+                    <span className="truncate">{t($ => $['card.menu.deploy'])}</span>
                   </Button>
                 )
               : undefined}
@@ -107,7 +107,7 @@ export function InstanceCard({ summary }: {
                   <CreateReleaseControl
                     appInstanceId={appInstanceId}
                     variant="secondary-accent"
-                    label={t('card.createFirstRelease')}
+                    label={t($ => $['card.createFirstRelease'])}
                     className="max-w-full"
                   />
                 </div>

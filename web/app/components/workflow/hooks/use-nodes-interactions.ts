@@ -792,8 +792,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('nodes.iteration.deleteTitle', { ns: 'workflow' }),
-                desc: t('nodes.iteration.deleteDesc', { ns: 'workflow' }) || '',
+                title: t($ => $['nodes.iteration.deleteTitle'], { ns: 'workflow' }),
+                desc: t($ => $['nodes.iteration.deleteDesc'], { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   iterationChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -832,8 +832,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('nodes.loop.deleteTitle', { ns: 'workflow' }),
-                desc: t('nodes.loop.deleteDesc', { ns: 'workflow' }) || '',
+                title: t($ => $['nodes.loop.deleteTitle'], { ns: 'workflow' }),
+                desc: t($ => $['nodes.loop.deleteDesc'], { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   loopChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -1983,7 +1983,7 @@ export const useNodesInteractions = () => {
       shouldRunCompatibilityCheck
       && (filteredNodeCount > 0 || filteredEdgeCount > 0)
     ) {
-      toast.warning(t('common.clipboardVersionCompatibilityWarning', {
+      toast.warning(t($ => $['common.clipboardVersionCompatibilityWarning'], {
         ns: 'workflow',
       }))
     }

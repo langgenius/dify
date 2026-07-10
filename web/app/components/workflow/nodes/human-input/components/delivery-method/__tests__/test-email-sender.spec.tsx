@@ -376,7 +376,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     expect(screen.getByText('external@example.com')).toBeInTheDocument()
-    expect(screen.getByText('nodes.humanInput.deliveryMethod.emailSender.tip')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.tip')).toBeInTheDocument()
   })
 
   it('should show a validation toast when generated JSON input is invalid', async () => {
@@ -463,7 +463,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' }))
 
-    await waitFor(() => expect(screen.getByText('nodes.humanInput.deliveryMethod.emailSender.debugDone')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugDone')).toBeInTheDocument())
   })
 
   it('should show specific-recipient success copy after sending', async () => {

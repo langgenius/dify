@@ -28,7 +28,7 @@ const Node: FC<NodeProps<StartNodeType>> = ({
             </div>
 
             <div className="ml-1 flex items-center space-x-1">
-              {variable.required && <span className="system-2xs-regular-uppercase text-text-tertiary">{t(`${i18nPrefix}.required`, { ns: 'workflow' })}</span>}
+              {variable.required && <span className="system-2xs-regular-uppercase text-text-tertiary">{t($ => $[`${i18nPrefix}.required`], { ns: 'workflow' })}</span>}
               <InputVarTypeIcon type={variable.type} className="size-3 text-text-tertiary" />
             </div>
           </div>

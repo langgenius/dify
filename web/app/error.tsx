@@ -23,11 +23,11 @@ export default function AppError({ error, reset, unstable_retry }: Props) {
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background-body">
       <div className="system-sm-regular text-text-tertiary">
-        {t('errorBoundary.message')}
+        {t($ => $['errorBoundary.message'])}
       </div>
       {retry && (
         <Button size="small" variant="secondary" onClick={() => retry()}>
-          {t('errorBoundary.tryAgain')}
+          {t($ => $['errorBoundary.tryAgain'])}
         </Button>
       )}
     </div>

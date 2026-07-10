@@ -25,18 +25,18 @@ const MetadataFilterSelector = ({
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
-      value: t('nodes.knowledgeRetrieval.metadata.options.disabled.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.disabled.subTitle', { ns: 'workflow' }),
+      value: t($ => $['nodes.knowledgeRetrieval.metadata.options.disabled.title'], { ns: 'workflow' }),
+      desc: t($ => $['nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'], { ns: 'workflow' }),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
-      value: t('nodes.knowledgeRetrieval.metadata.options.automatic.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.automatic.subTitle', { ns: 'workflow' }),
+      value: t($ => $['nodes.knowledgeRetrieval.metadata.options.automatic.title'], { ns: 'workflow' }),
+      desc: t($ => $['nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'], { ns: 'workflow' }),
     },
     {
       key: MetadataFilteringModeEnum.manual,
-      value: t('nodes.knowledgeRetrieval.metadata.options.manual.title', { ns: 'workflow' }),
-      desc: t('nodes.knowledgeRetrieval.metadata.options.manual.subTitle', { ns: 'workflow' }),
+      value: t($ => $['nodes.knowledgeRetrieval.metadata.options.manual.title'], { ns: 'workflow' }),
+      desc: t($ => $['nodes.knowledgeRetrieval.metadata.options.manual.subTitle'], { ns: 'workflow' }),
     },
   ]
 

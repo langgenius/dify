@@ -56,7 +56,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
 
-  useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
+  useDocumentTitle(appDetail?.name || t($ => $['menus.appDetail'], { ns: 'common' }))
 
   useEffect(() => {
     let ignore = false

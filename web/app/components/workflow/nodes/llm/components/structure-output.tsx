@@ -45,7 +45,7 @@ export function StructureOutput({
           onClick={showConfigModal}
         >
           <i className="mr-1 i-ri-edit-line size-3.5" aria-hidden="true" />
-          <div className="system-xs-medium text-components-button-secondary-text">{t('structOutput.configure', { ns: 'app' })}</div>
+          <div className="system-xs-medium text-components-button-secondary-text">{t($ => $['structOutput.configure'], { ns: 'app' })}</div>
         </Button>
       </div>
       {(value?.schema && value.schema.properties && Object.keys(value.schema.properties).length > 0)
@@ -60,7 +60,7 @@ export function StructureOutput({
               className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary"
               onClick={showConfigModal}
             >
-              {t('structOutput.notConfiguredTip', { ns: 'app' })}
+              {t($ => $['structOutput.notConfiguredTip'], { ns: 'app' })}
             </button>
           )}
 

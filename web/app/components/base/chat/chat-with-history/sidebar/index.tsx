@@ -82,8 +82,8 @@ const Sidebar = ({ isPanel }: Props) => {
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
-  const pinnedTitle = t('chat.pinnedTitle', { ns: 'share' }) || ''
-  const deleteConversationContent = t('chat.deleteConversation.content', { ns: 'share' }) || ''
+  const pinnedTitle = t($ => $['chat.pinnedTitle'], { ns: 'share' }) || ''
+  const deleteConversationContent = t($ => $['chat.deleteConversation.content'], { ns: 'share' }) || ''
 
   return (
     <div className={cn(
@@ -119,7 +119,7 @@ const Sidebar = ({ isPanel }: Props) => {
       <div className="shrink-0 px-3 py-4">
         <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
           <span aria-hidden className="mr-1 i-ri-edit-box-line size-4" />
-          {t('chat.newChat', { ns: 'share' })}
+          {t($ => $['chat.newChat'], { ns: 'share' })}
         </Button>
       </div>
       <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
@@ -138,7 +138,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
         {!!conversationList.length && (
           <List
-            title={(pinnedConversationList.length && t('chat.unpinnedTitle', { ns: 'share' })) || ''}
+            title={(pinnedConversationList.length && t($ => $['chat.unpinnedTitle'], { ns: 'share' })) || ''}
             list={conversationList}
             onChangeConversation={handleChangeConversation}
             onOperate={handleOperate}
@@ -159,7 +159,7 @@ const Sidebar = ({ isPanel }: Props) => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['chat.poweredBy'], { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -174,16 +174,16 @@ const Sidebar = ({ isPanel }: Props) => {
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('chat.deleteConversation.title', { ns: 'share' })}
+                {t($ => $['chat.deleteConversation.title'], { ns: 'share' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {deleteConversationContent}
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
-                {t('operation.confirm', { ns: 'common' })}
+                {t($ => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </AlertDialogContent>

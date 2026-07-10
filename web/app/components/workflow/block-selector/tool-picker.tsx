@@ -138,7 +138,7 @@ export function ToolPickerContent({
       return
 
     await createCustomCollection(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
@@ -162,7 +162,7 @@ export function ToolPickerContent({
           onSearchChange={setSearchText}
           tags={tags}
           onTagsChange={setTags}
-          placeholder={t('searchTools', { ns: 'plugin' })!}
+          placeholder={t($ => $.searchTools, { ns: 'plugin' })!}
           supportAddCustomTool={supportAddCustomTool && canManageTools}
           onAddedCustomTool={handleAddedCustomTool}
           onShowAddCustomCollectionModal={showEditCustomCollectionModal}

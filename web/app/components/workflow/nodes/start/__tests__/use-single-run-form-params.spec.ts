@@ -1,6 +1,7 @@
 import type { StartNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -33,7 +34,7 @@ describe('start/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 

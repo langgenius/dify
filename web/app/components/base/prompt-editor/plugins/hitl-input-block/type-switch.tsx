@@ -24,7 +24,7 @@ const TypeSwitch: FC<Props> = ({
       onClick={() => onIsVariableChange?.(!isVariable)}
     >
       <Variable02 className="size-3.5" aria-hidden="true" />
-      <div className="system-xs-medium">{t(`nodes.humanInput.insertInputField.${isVariable ? 'useConstantInstead' : 'useVarInstead'}`, { ns: 'workflow' })}</div>
+      <div className="system-xs-medium">{t($ => $[`nodes.humanInput.insertInputField.${isVariable ? 'useConstantInstead' : 'useVarInstead'}`], { ns: 'workflow' })}</div>
     </button>
   )
 }

@@ -54,7 +54,7 @@ const AddCredentialInLoadBalancing = ({
       )}
       >
         <span className="mr-2 i-ri-add-line size-4" />
-        {t('modelProvider.auth.addCredential', { ns: 'common' })}
+        {t($ => $['modelProvider.auth.addCredential'], { ns: 'common' })}
       </div>
     )
 
@@ -77,7 +77,7 @@ const AddCredentialInLoadBalancing = ({
       triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential && canCreateCredential}
       items={[
         {
-          title: isCustomModel ? '' : t('modelProvider.auth.apiKeys', { ns: 'common' }),
+          title: isCustomModel ? '' : t($ => $['modelProvider.auth.apiKeys'], { ns: 'common' }),
           model: isCustomModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
@@ -93,7 +93,7 @@ const AddCredentialInLoadBalancing = ({
       onItemClick={onSelectCredential}
       hideAddAction={!canCreateCredential}
       placement="bottom-start"
-      popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}
+      popupTitle={isCustomModel ? t($ => $['modelProvider.auth.modelCredentials'], { ns: 'common' }) : ''}
     />
   )
 }

@@ -5,15 +5,18 @@ import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
-      return key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { count?: number }) => {
+        if (options?.count !== undefined)
+          return `${key} (${options.count})`
+        return key
+      }),
+    }),
+  })
+})
 
 vi.mock('@/service/use-log', () => ({
   useAnnotationsCount: () => ({

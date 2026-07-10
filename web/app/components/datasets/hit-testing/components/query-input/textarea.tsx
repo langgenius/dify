@@ -26,7 +26,7 @@ const Textarea = ({
         className="h-full w-full resize-none border-none bg-transparent system-md-regular text-text-secondary caret-[#295EFF] placeholder:text-components-input-text-placeholder focus-visible:outline-hidden"
         value={text}
         onChange={handleTextChange}
-        placeholder={t('input.placeholder', { ns: 'datasetHitTesting' }) as string}
+        placeholder={t($ => $['input.placeholder'], { ns: 'datasetHitTesting' }) as string}
       />
       <div className="absolute top-0 right-0 flex items-center">
         <Corner className={cn(
@@ -47,7 +47,7 @@ const Textarea = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('input.countWarning', { ns: 'datasetHitTesting' })}
+                  {t($ => $['input.countWarning'], { ns: 'datasetHitTesting' })}
                 </TooltipContent>
               </Tooltip>
             )

@@ -129,7 +129,7 @@ const HeaderInMobile = () => {
           <div className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
               <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-              <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+              <div className="grow system-xl-semibold text-text-secondary">{t($ => $['chat.chatSettingsTitle'], { ns: 'share' })}</div>
             </div>
             <div className="p-4">
               <InputsFormContent />
@@ -141,16 +141,16 @@ const HeaderInMobile = () => {
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('chat.deleteConversation.title', { ns: 'share' })}
+              {t($ => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+              {t($ => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

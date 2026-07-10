@@ -34,24 +34,24 @@ const APIKeyInfoPanel: FC = () => {
         {isCloud && <em-emoji id="😀" />}
         {isCloud
           ? (
-              <div>{t('apiKeyInfo.cloud.trial.title', { ns: 'appOverview', providerName: 'OpenAI' })}</div>
+              <div>{t($ => $['apiKeyInfo.cloud.trial.title'], { ns: 'appOverview', providerName: 'OpenAI' })}</div>
             )
           : (
               <div>
-                <div>{t('apiKeyInfo.selfHost.title.row1', { ns: 'appOverview' })}</div>
-                <div>{t('apiKeyInfo.selfHost.title.row2', { ns: 'appOverview' })}</div>
+                <div>{t($ => $['apiKeyInfo.selfHost.title.row1'], { ns: 'appOverview' })}</div>
+                <div>{t($ => $['apiKeyInfo.selfHost.title.row2'], { ns: 'appOverview' })}</div>
               </div>
             )}
       </div>
       {isCloud && (
-        <div className="mt-1 text-sm font-normal text-text-tertiary">{t(`apiKeyInfo.cloud.${'trial'}.description`, { ns: 'appOverview' })}</div>
+        <div className="mt-1 text-sm font-normal text-text-tertiary">{t($ => $[`apiKeyInfo.cloud.${'trial'}.description`], { ns: 'appOverview' })}</div>
       )}
       <Button
         variant="primary"
         className="mt-2 space-x-2"
         onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
       >
-        <div className="text-sm font-medium">{t('apiKeyInfo.setAPIBtn', { ns: 'appOverview' })}</div>
+        <div className="text-sm font-medium">{t($ => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}</div>
         <LinkExternal02 className="size-4" />
       </Button>
       {!isCloud && (
@@ -61,7 +61,7 @@ const APIKeyInfoPanel: FC = () => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <div>{t('apiKeyInfo.tryCloud', { ns: 'appOverview' })}</div>
+          <div>{t($ => $['apiKeyInfo.tryCloud'], { ns: 'appOverview' })}</div>
           <LinkExternal02 className="size-3" />
         </a>
       )}

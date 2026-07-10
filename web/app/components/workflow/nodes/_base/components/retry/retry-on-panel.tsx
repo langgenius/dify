@@ -18,8 +18,8 @@ const RetryOnPanel = ({
   const { t } = useTranslation()
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
-  const maxRetriesLabel = t('nodes.common.retry.maxRetries', { ns: 'workflow' })
-  const retryIntervalLabel = t('nodes.common.retry.retryInterval', { ns: 'workflow' })
+  const maxRetriesLabel = t($ => $['nodes.common.retry.maxRetries'], { ns: 'workflow' })
+  const retryIntervalLabel = t($ => $['nodes.common.retry.retryInterval'], { ns: 'workflow' })
 
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
@@ -58,7 +58,7 @@ const RetryOnPanel = ({
       <div className="pt-2">
         <div className="flex h-10 items-center justify-between px-4 py-2">
           <div className="flex items-center">
-            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">{t('nodes.common.retry.retryOnFailure', { ns: 'workflow' })}</div>
+            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">{t($ => $['nodes.common.retry.retryOnFailure'], { ns: 'workflow' })}</div>
           </div>
           <Switch
             checked={retry_config?.retry_enabled ?? false}
@@ -88,7 +88,7 @@ const RetryOnPanel = ({
                     handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)}
                   min={1}
                   max={10}
-                  unit={t('nodes.common.retry.times', { ns: 'workflow' }) || ''}
+                  unit={t($ => $['nodes.common.retry.times'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
               </FieldsetRoot>
@@ -112,7 +112,7 @@ const RetryOnPanel = ({
                     handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)}
                   min={100}
                   max={5000}
-                  unit={t('nodes.common.retry.ms', { ns: 'workflow' }) || ''}
+                  unit={t($ => $['nodes.common.retry.ms'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
               </FieldsetRoot>

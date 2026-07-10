@@ -28,7 +28,7 @@ export const ChecklistNodeGroup = memo(({
     for (let i = 0; i < item.errorMessages.length; i++)
       items.push({ key: `error-${i}`, message: item.errorMessages[i]! })
     if (item.unConnected)
-      items.push({ key: 'unconnected', message: t('common.needConnectTip', { ns: 'workflow' }) })
+      items.push({ key: 'unconnected', message: t($ => $['common.needConnectTip'], { ns: 'workflow' }) })
     return items
   }, [item.errorMessages, item.unConnected, t])
 
@@ -55,7 +55,7 @@ export const ChecklistNodeGroup = memo(({
               {goToEnabled && (
                 <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
                   <span className="text-xs/4 font-medium whitespace-nowrap text-text-accent">
-                    {t('panel.goToFix', { ns: 'workflow' })}
+                    {t($ => $['panel.goToFix'], { ns: 'workflow' })}
                   </span>
                   <span className="i-ri-arrow-right-line size-3.5 text-text-accent" aria-hidden="true" />
                 </div>

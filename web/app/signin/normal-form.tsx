@@ -111,8 +111,8 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseLost, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseLostTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -127,8 +127,8 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseExpired, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseExpiredTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -143,8 +143,8 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseInactive, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseInactiveTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -158,22 +158,22 @@ function NormalForm() {
           ? (
               <div className="mx-auto w-full">
                 <h2 className="title-4xl-semi-bold text-text-primary">
-                  {t('join', { ns: 'login' })}
+                  {t($ => $.join, { ns: 'login' })}
                   {workspaceName}
                 </h2>
                 {!systemFeatures.branding.enabled && (
                   <p className="mt-2 body-md-regular text-text-tertiary">
-                    {t('joinTipStart', { ns: 'login' })}
+                    {t($ => $.joinTipStart, { ns: 'login' })}
                     {workspaceName}
-                    {t('joinTipEnd', { ns: 'login' })}
+                    {t($ => $.joinTipEnd, { ns: 'login' })}
                   </p>
                 )}
               </div>
             )
           : (
               <div className="mx-auto w-full">
-                <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-                <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
+                <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t($ => $.pageTitleForE, { ns: 'login' }) : t($ => $.pageTitle, { ns: 'login' })}</h2>
+                <p className="mt-2 body-md-regular text-text-tertiary">{t($ => $.welcome, { ns: 'login' })}</p>
               </div>
             )}
         <div className="relative">
@@ -190,7 +190,7 @@ function NormalForm() {
             <div className="relative mt-6">
               <div className="flex items-center">
                 <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
-                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
+                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">{t($ => $.or, { ns: 'login' })}</span>
                 <div className="h-px flex-1 bg-linear-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
               </div>
             </div>
@@ -207,7 +207,7 @@ function NormalForm() {
                         className="w-full cursor-pointer py-1 text-center"
                         onClick={() => { setSelectedAuthType('password') }}
                       >
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $.usePassword, { ns: 'login' })}</span>
                       </button>
                     )}
                   </>
@@ -221,7 +221,7 @@ function NormalForm() {
                         className="w-full cursor-pointer py-1 text-center"
                         onClick={() => { setSelectedAuthType('code') }}
                       >
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $.useVerificationCode, { ns: 'login' })}</span>
                       </button>
                     )}
                   </>
@@ -233,12 +233,12 @@ function NormalForm() {
 
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
-              <span>{t('signup.noAccount', { ns: 'login' })}</span>
+              <span>{t($ => $['signup.noAccount'], { ns: 'login' })}</span>
               <Link
                 className="text-text-accent"
                 href="/signup"
               >
-                {t('signup.signUp', { ns: 'login' })}
+                {t($ => $['signup.signUp'], { ns: 'login' })}
               </Link>
             </div>
           )}
@@ -248,8 +248,8 @@ function NormalForm() {
                 <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
-                <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="system-sm-medium text-text-primary">{t($ => $.noLoginMethod, { ns: 'login' })}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.noLoginMethodTip, { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -261,7 +261,7 @@ function NormalForm() {
           {!systemFeatures.branding.enabled && (
             <>
               <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-                {t('tosDesc', { ns: 'login' })}
+                {t($ => $.tosDesc, { ns: 'login' })}
               &nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
@@ -269,7 +269,7 @@ function NormalForm() {
                   rel="noopener noreferrer"
                   href="https://dify.ai/terms"
                 >
-                  {t('tos', { ns: 'login' })}
+                  {t($ => $.tos, { ns: 'login' })}
                 </Link>
               &nbsp;&&nbsp;
                 <Link
@@ -278,18 +278,18 @@ function NormalForm() {
                   rel="noopener noreferrer"
                   href="https://dify.ai/privacy"
                 >
-                  {t('pp', { ns: 'login' })}
+                  {t($ => $.pp, { ns: 'login' })}
                 </Link>
               </div>
               {IS_CE_EDITION && (
                 <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
-                  {t('goToInit', { ns: 'login' })}
+                  {t($ => $.goToInit, { ns: 'login' })}
               &nbsp;
                   <Link
                     className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"
                   >
-                    {t('setAdminAccount', { ns: 'login' })}
+                    {t($ => $.setAdminAccount, { ns: 'login' })}
                   </Link>
                 </div>
               )}

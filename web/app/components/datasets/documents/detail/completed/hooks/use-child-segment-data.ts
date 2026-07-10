@@ -88,7 +88,7 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
   const onDeleteChildChunk = useCallback(async (segmentIdParam: string, childChunkId: string) => {
     await deleteChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         if (parentMode === 'paragraph') {
           // Update parent segment's child_chunks in cache
           updateSegmentInCache(segmentIdParam, seg => ({
@@ -101,21 +101,21 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
         }
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     })
   }, [datasetId, documentId, parentMode, deleteChildSegment, updateSegmentInCache, resetChildList, t])
   const handleUpdateChildChunk = useCallback(async (segmentIdParam: string, childChunkId: string, content: string) => {
     const params: SegmentUpdater = { content: '' }
     if (!content.trim()) {
-      toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
+      toast.error(t($ => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
       return
     }
     params.content = content
     eventEmitter?.emit('update-child-segment')
     await updateChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params }, {
       onSuccess: (res) => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         onCloseChildSegmentDetail()
         if (parentMode === 'paragraph') {
           // Update parent segment's child_chunks in cache

@@ -56,7 +56,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
-          label={t('account.appearanceLabel', { ns: 'common' })}
+          label={t($ => $['account.appearanceLabel'], { ns: 'common' })}
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
@@ -66,13 +66,13 @@ function AppearanceSubmenu() {
       >
         <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={value => setTheme(value as Theme)}>
           <DropdownMenuRadioItem value="light" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
-            <MainNavRadioItemContent iconClassName="i-ri-sun-line" label={t('account.appearanceLight', { ns: 'common' })} />
+            <MainNavRadioItemContent iconClassName="i-ri-sun-line" label={t($ => $['account.appearanceLight'], { ns: 'common' })} />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
-            <MainNavRadioItemContent iconClassName="i-ri-moon-line" label={t('account.appearanceDark', { ns: 'common' })} />
+            <MainNavRadioItemContent iconClassName="i-ri-moon-line" label={t($ => $['account.appearanceDark'], { ns: 'common' })} />
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
-            <MainNavRadioItemContent iconClassName="i-ri-computer-line" label={t('account.appearanceSystem', { ns: 'common' })} />
+            <MainNavRadioItemContent iconClassName="i-ri-computer-line" label={t($ => $['account.appearanceSystem'], { ns: 'common' })} />
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuSubContent>
@@ -118,7 +118,7 @@ export function MainNavMenuContent({
         >
           <MenuItemContent
             iconClassName="i-ri-account-circle-line"
-            label={t('account.account', { ns: 'common' })}
+            label={t($ => $['account.account'], { ns: 'common' })}
             trailing={<ExternalLinkIndicator />}
           />
         </DropdownMenuLinkItem>
@@ -128,7 +128,7 @@ export function MainNavMenuContent({
         >
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"
-            label={t('settings.preferences', { ns: 'common' })}
+            label={t($ => $['settings.preferences'], { ns: 'common' })}
           />
         </DropdownMenuItem>
         <AppearanceSubmenu />
@@ -143,7 +143,7 @@ export function MainNavMenuContent({
         >
           <MenuItemContent
             iconClassName="i-ri-shut-down-line"
-            label={t('userProfile.logout', { ns: 'common' })}
+            label={t($ => $['userProfile.logout'], { ns: 'common' })}
           />
         </DropdownMenuItem>
       </DropdownMenuGroup>

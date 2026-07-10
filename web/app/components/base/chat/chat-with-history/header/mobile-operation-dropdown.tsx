@@ -34,7 +34,7 @@ const MobileOperationDropdown = ({
       <DropdownMenuTrigger
         render={(
           <ActionButton
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t($ => $['operation.more'], { ns: 'common' })}
             size="l"
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
@@ -51,14 +51,14 @@ const MobileOperationDropdown = ({
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}
         >
-          <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>
+          <span className="grow">{t($ => $['chat.resetChat'], { ns: 'share' })}</span>
         </DropdownMenuItem>
         {!hideViewChatSettings && (
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => handleMenuAction(handleViewChatSettings)}
           >
-            <span className="grow">{t('chat.viewChatSettings', { ns: 'share' })}</span>
+            <span className="grow">{t($ => $['chat.viewChatSettings'], { ns: 'share' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

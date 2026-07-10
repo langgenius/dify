@@ -125,7 +125,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             {
               isEmpty && (
                 <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
-                  {t('modelProvider.selectModel', { ns: 'common' })}
+                  {t($ => $['modelProvider.selectModel'], { ns: 'common' })}
                 </div>
               )
             }
@@ -136,13 +136,13 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
                   <TooltipTrigger
                     render={(
                       <span
-                        aria-label={t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                        aria-label={t($ => $[statusTooltipKey || statusLabelKey], { ns: 'common' })}
                         className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
                       />
                     )}
                   />
                   <TooltipContent>
-                    {t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                    {t($ => $[statusTooltipKey || statusLabelKey], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )

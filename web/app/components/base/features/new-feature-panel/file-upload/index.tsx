@@ -55,7 +55,7 @@ const FileUpload = ({
           <FolderUpload className="size-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.fileUpload.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.fileUpload.title'], { ns: 'appDebug' })}
       value={file?.enabled}
       onChange={state => handleChange(FeatureEnum.file, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -64,19 +64,19 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.fileUpload.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t($ => $['feature.fileUpload.description'], { ns: 'appDebug' })}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.fileUpload.supportedTypes', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['feature.fileUpload.supportedTypes'], { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.fileUpload.numberLimit', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['feature.fileUpload.numberLimit'], { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>
               </div>
@@ -92,7 +92,7 @@ const FileUpload = ({
               >
                 <Button className="w-full" disabled={disabled}>
                   <RiEqualizer2Line className="mr-1 size-4" />
-                  {t('operation.settings', { ns: 'common' })}
+                  {t($ => $['operation.settings'], { ns: 'common' })}
                 </Button>
               </SettingModal>
             )}

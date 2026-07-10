@@ -36,7 +36,7 @@ const FileFromLinkOrLocal = ({
   const [showError, setShowError] = useState(false)
   const { handleLoadFileFromLink } = useFile(fileConfig)
   const disabled = !!fileConfig.number_limits && files.length >= fileConfig.number_limits
-  const fileLinkPlaceholder = t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' })
+  const fileLinkPlaceholder = t($ => $['fileUploader.pasteFileLinkInputPlaceholder'], { ns: 'common' })
   /* v8 ignore next -- fallback for a missing i18n key is not reliably testable under the current global translation mocks in the test DOM runtime. @preserve */
   const fileLinkPlaceholderText = fileLinkPlaceholder || ''
 
@@ -90,13 +90,13 @@ const FileFromLinkOrLocal = ({
                     disabled={!url || disabled}
                     onClick={handleSaveUrl}
                   >
-                    {t('operation.ok', { ns: 'common' })}
+                    {t($ => $['operation.ok'], { ns: 'common' })}
                   </Button>
                 </div>
                 {
                   showError && (
                     <div className="mt-0.5 body-xs-regular text-text-destructive">
-                      {t('fileUploader.pasteFileLinkInvalid', { ns: 'common' })}
+                      {t($ => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' })}
                     </div>
                   )
                 }
@@ -120,7 +120,7 @@ const FileFromLinkOrLocal = ({
                 disabled={disabled}
               >
                 <RiUploadCloud2Line className="mr-1 size-4" />
-                {t('fileUploader.uploadFromComputer', { ns: 'common' })}
+                {t($ => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
                 <FileInput fileConfig={fileConfig} />
               </Button>
             )

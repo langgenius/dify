@@ -54,14 +54,14 @@ const Empty: FC<IEmptyProps> = ({
           <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
         </div>
         <div className="mt-3 system-md-regular text-text-tertiary">
-          {t('segment.empty', { ns: 'datasetDocuments' })}
+          {t($ => $['segment.empty'], { ns: 'datasetDocuments' })}
         </div>
         <button
           type="button"
           className="mt-1 system-sm-medium text-text-accent"
           onClick={onClearFilter}
         >
-          {t('segment.clearFilter', { ns: 'datasetDocuments' })}
+          {t($ => $['segment.clearFilter'], { ns: 'datasetDocuments' })}
         </button>
       </div>
       <div className="absolute top-0 left-0 -z-20 flex size-full flex-col gap-y-3 overflow-hidden">

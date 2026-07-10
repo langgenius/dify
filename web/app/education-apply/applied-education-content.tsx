@@ -53,7 +53,7 @@ const AppliedEducationContent = ({
           </div>
           <div>
             <div className="text-text-secondary">
-              {t('applied.step1.description', { ns: 'education' })}
+              {t($ => $['applied.step1.description'], { ns: 'education' })}
             </div>
           </div>
         </div>
@@ -65,7 +65,7 @@ const AppliedEducationContent = ({
           </div>
           <div>
             <div className="system-xl-medium text-text-secondary">
-              {t('applied.step2.description', { ns: 'education' })}
+              {t($ => $['applied.step2.description'], { ns: 'education' })}
             </div>
           </div>
         </div>

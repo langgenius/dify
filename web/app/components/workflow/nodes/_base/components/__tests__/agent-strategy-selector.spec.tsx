@@ -188,11 +188,14 @@ vi.mock('@/next/link', () => ({
   }) => <a href={href} className={className}>{children}</a>,
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')

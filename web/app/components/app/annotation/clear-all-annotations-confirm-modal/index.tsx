@@ -24,7 +24,7 @@ const ClearAllAnnotationsConfirmModal: FC<Props> = ({
   onConfirm,
 }) => {
   const { t } = useTranslation()
-  const title = t('table.header.clearAllConfirm', { ns: 'appAnnotation' })
+  const title = t($ => $['table.header.clearAllConfirm'], { ns: 'appAnnotation' })
 
   return (
     <AlertDialog open={isShow} onOpenChange={open => !open && onHide()}>
@@ -36,10 +36,10 @@ const ClearAllAnnotationsConfirmModal: FC<Props> = ({
         </div>
         <AlertDialogActions>
           <AlertDialogCancelButton>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

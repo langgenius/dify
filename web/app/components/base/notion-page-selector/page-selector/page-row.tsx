@@ -98,7 +98,7 @@ const NotionPageRow = ({
           onClick={() => onPreview(pageId)}
           data-testid={`notion-page-preview-${pageId}`}
         >
-          {t('dataSource.notion.selector.preview', { ns: 'common' })}
+          {t($ => $['dataSource.notion.selector.preview'], { ns: 'common' })}
         </div>
       )}
       {searchValue && (

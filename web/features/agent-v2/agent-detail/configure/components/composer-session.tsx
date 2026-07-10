@@ -71,7 +71,7 @@ export function AgentConfigureComposerScope({
 
   if (buildDraft.isPending) {
     return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
+      <AgentConfigurePageLoading label={t($ => $['agentDetail.sections.configure'])} />
     )
   }
 
@@ -411,7 +411,7 @@ function AgentConfigurePageComposerContent({
               onSaveDraftBeforeRun={rightPanelChatMode === 'build'
                 ? async () => {
                   if (!currentModel?.provider || !currentModel.model) {
-                    toast.error(tCommon('modelProvider.selectModel'))
+                    toast.error(tCommon($ => $['modelProvider.selectModel']))
                     throw new Error('Agent model is required.')
                   }
 

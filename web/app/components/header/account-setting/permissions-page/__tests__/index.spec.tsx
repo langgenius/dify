@@ -161,7 +161,7 @@ describe('PermissionsPage', () => {
     mocks.workspacePermissionKeys = []
     vi.mocked(useRoleGroups).mockReturnValue({
       roleGroups: [{
-        id: 'global_custom',
+        id: 'custom',
         category: 'global_custom',
         title: 'Custom roles',
         items: [role],

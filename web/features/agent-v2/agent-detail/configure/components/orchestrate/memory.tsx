@@ -56,7 +56,7 @@ function MemoryConfigValue({
                 )}
                 translate={value ? 'no' : undefined}
               >
-                {value || t('agentDetail.memorySettings.notConfigured')}
+                {value || t($ => $['agentDetail.memorySettings.notConfigured'])}
               </div>
             )}
       </div>
@@ -78,10 +78,10 @@ export function MemorySettings({
         </div>
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
-            {t('agentDetail.memorySettings.title')}
+            {t($ => $['agentDetail.memorySettings.title'])}
           </h2>
           <p className="mt-1 system-sm-regular text-text-tertiary">
-            {t('agentDetail.memorySettings.description')}
+            {t($ => $['agentDetail.memorySettings.description'])}
           </p>
         </div>
       </div>
@@ -92,7 +92,7 @@ export function MemorySettings({
             key={field.key}
             icon={field.icon}
             isPending={isPending}
-            label={t(field.labelKey)}
+            label={t($ => $[field.labelKey])}
             value={memory?.[field.key]}
           />
         ))}
@@ -101,13 +101,13 @@ export function MemorySettings({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-divider-subtle pt-4">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 system-xs-regular text-text-tertiary">
-            <span>{t('agentDetail.memorySettings.export.title')}</span>
+            <span>{t($ => $['agentDetail.memorySettings.export.title'])}</span>
             <span className="inline-flex items-center gap-1 rounded-[5px] bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {t('agentDetail.memorySettings.export.soon')}
+              {t($ => $['agentDetail.memorySettings.export.soon'])}
             </span>
           </div>
           <p className="mt-0.5 system-2xs-regular text-text-tertiary">
-            {t('agentDetail.memorySettings.export.description')}
+            {t($ => $['agentDetail.memorySettings.export.description'])}
           </p>
         </div>
         <Button
@@ -117,7 +117,7 @@ export function MemorySettings({
           className="gap-1.5"
         >
           <span aria-hidden className="i-ri-download-line size-3.5" />
-          {t('agentDetail.memorySettings.export.download')}
+          {t($ => $['agentDetail.memorySettings.export.download'])}
         </Button>
       </div>
     </div>

@@ -5,11 +5,14 @@ import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { AccessModeDisplay, PublisherAccessSection, PublisherActionsSection, PublisherSummarySection } from '../sections'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({ onSelect }: { onSelect: (item: Record<string, unknown>) => void }) => (

@@ -52,7 +52,7 @@ const Empty = ({
           <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
         </div>
         <div className="text-center system-md-regular text-text-tertiary">
-          {text || t('marketplace.noPluginFound', { ns: 'plugin' })}
+          {text || t($ => $['marketplace.noPluginFound'], { ns: 'plugin' })}
         </div>
       </div>
     </div>

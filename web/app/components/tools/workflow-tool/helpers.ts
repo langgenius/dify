@@ -41,10 +41,10 @@ export const getReservedWorkflowOutputParameters = (t: TFunction) => {
   return RESERVED_WORKFLOW_OUTPUTS.map(output => ({
     ...output,
     description: output.name === 'text'
-      ? t('nodes.tool.outputVars.text', { ns: 'workflow' })
+      ? t($ => $['nodes.tool.outputVars.text'], { ns: 'workflow' })
       : output.name === 'files'
-        ? t('nodes.tool.outputVars.files.title', { ns: 'workflow' })
-        : t('nodes.tool.outputVars.json', { ns: 'workflow' }),
+        ? t($ => $['nodes.tool.outputVars.files.title'], { ns: 'workflow' })
+        : t($ => $['nodes.tool.outputVars.json'], { ns: 'workflow' }),
   }))
 }
 

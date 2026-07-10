@@ -207,7 +207,7 @@ const Editor: FC<Props> = ({
                     <Popover>
                       <PopoverTrigger
                         openOnHover
-                        aria-label={t('common.enableJinja', { ns: 'workflow' })}
+                        aria-label={t($ => $['common.enableJinja'], { ns: 'workflow' })}
                         render={(
                           <button
                             type="button"
@@ -219,8 +219,8 @@ const Editor: FC<Props> = ({
                       />
                       <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
                         <div>
-                          <div>{t('common.enableJinja', { ns: 'workflow' })}</div>
-                          <a className="text-text-accent hover:underline" target="_blank" rel="noopener noreferrer" href="https://jinja.palletsprojects.com/en/2.10.x/">{t('common.learnMore', { ns: 'workflow' })}</a>
+                          <div>{t($ => $['common.enableJinja'], { ns: 'workflow' })}</div>
+                          <a className="text-text-accent hover:underline" target="_blank" rel="noopener noreferrer" href="https://jinja.palletsprojects.com/en/2.10.x/">{t($ => $['common.learnMore'], { ns: 'workflow' })}</a>
                         </div>
                       </PopoverContent>
                     </Popover>
@@ -243,7 +243,7 @@ const Editor: FC<Props> = ({
                       )}
                     />
                     <TooltipContent>
-                      {t('common.insertVarTip', { ns: 'workflow' })}
+                      {t($ => $['common.insertVarTip'], { ns: 'workflow' })}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -317,7 +317,7 @@ const Editor: FC<Props> = ({
                           }
                           if (node.data.type === BlockEnum.Start) {
                             acc.sys = {
-                              title: t('blocks.start', { ns: 'workflow' }),
+                              title: t($ => $['blocks.start'], { ns: 'workflow' }),
                               type: BlockEnum.Start,
                             }
                           }

@@ -26,13 +26,13 @@ const LeftHeader = ({
         {title}
       </div>
       <div className="system-md-semibold text-text-primary">
-        {t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' })}
+        {t($ => $['addDocuments.steps.processDocuments'], { ns: 'datasetPipeline' })}
       </div>
       <Button
         variant="secondary-accent"
         className="absolute top-3.5 -left-11 size-9 rounded-full p-0"
         onClick={navigateBack}
-        aria-label={t('operation.back', { ns: 'common' })}
+        aria-label={t($ => $['operation.back'], { ns: 'common' })}
       >
         <RiArrowLeftLine className="size-5" />
       </Button>

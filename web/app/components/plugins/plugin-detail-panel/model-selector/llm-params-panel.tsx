@@ -76,7 +76,7 @@ const LLMParamsPanel = ({
   return (
     <>
       <div className="mb-2 flex items-center justify-between">
-        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
+        <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>{t($ => $['modelProvider.parameters'], { ns: 'common' })}</div>
         {
           PROVIDER_WITH_PRESET_TONE.includes(provider) && (
             <PresetsParameter

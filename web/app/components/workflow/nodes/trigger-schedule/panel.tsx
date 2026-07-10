@@ -36,7 +36,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pt-2 pb-3">
         <Field
-          title={t(`${i18nPrefix}.title`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
           operations={(
             <ModeToggle
               mode={inputs.mode}
@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="mb-2 block text-xs font-medium text-gray-500">
-                      {t('nodes.triggerSchedule.frequencyLabel', { ns: 'workflow' })}
+                      {t($ => $['nodes.triggerSchedule.frequencyLabel'], { ns: 'workflow' })}
                     </label>
                     <FrequencySelector
                       frequency={inputs.frequency || 'daily'}
@@ -69,7 +69,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                       : (
                           <>
                             <label className="mb-2 block text-xs font-medium text-gray-500">
-                              {t('nodes.triggerSchedule.time', { ns: 'workflow' })}
+                              {t($ => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
                             </label>
                             <TimePicker
                               notClearable={true}
@@ -85,7 +85,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                               onClear={() => {
                                 handleTimeChange('12:00 AM')
                               }}
-                              placeholder={t('nodes.triggerSchedule.selectTime', { ns: 'workflow' })}
+                              placeholder={t($ => $['nodes.triggerSchedule.selectTime'], { ns: 'workflow' })}
                               showTimezone={true}
                             />
                           </>
@@ -122,7 +122,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
               <div className="space-y-2">
                 <div>
                   <label className="mb-2 block text-xs font-medium text-gray-500">
-                    {t('nodes.triggerSchedule.cronExpression', { ns: 'workflow' })}
+                    {t($ => $['nodes.triggerSchedule.cronExpression'], { ns: 'workflow' })}
                   </label>
                   <Input
                     value={inputs.cron_expression || ''}

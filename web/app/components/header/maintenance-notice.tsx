@@ -56,7 +56,7 @@ function MaintenanceNoticeContent() {
       }
       <button
         type="button"
-        aria-label={t('operation.close', { ns: 'common' })}
+        aria-label={t($ => $['operation.close'], { ns: 'common' })}
         className="size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-gray-500"
         onClick={handleCloseNotice}
       >

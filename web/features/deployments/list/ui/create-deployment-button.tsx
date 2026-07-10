@@ -17,7 +17,7 @@ export function CreateDeploymentButton({ className }: {
       )}
     >
       <span className="i-ri-add-line size-4 shrink-0" aria-hidden="true" />
-      <span>{t('list.createDeployment')}</span>
+      <span>{t($ => $['list.createDeployment'])}</span>
     </CreateDeploymentGuideLink>
   )
 }

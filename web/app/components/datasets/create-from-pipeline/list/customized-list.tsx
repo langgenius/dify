@@ -12,7 +12,7 @@ const CustomizedList = () => {
 
   return (
     <>
-      <div className="pt-2 system-sm-semibold-uppercase text-text-tertiary">{t('templates.customized', { ns: 'datasetPipeline' })}</div>
+      <div className="pt-2 system-sm-semibold-uppercase text-text-tertiary">{t($ => $['templates.customized'], { ns: 'datasetPipeline' })}</div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-3 py-2">
         {list.map((pipeline, index) => (
           <TemplateCard

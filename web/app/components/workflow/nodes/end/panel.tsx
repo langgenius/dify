@@ -28,14 +28,14 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
       <div className="space-y-4 px-4 pb-4">
 
         <Field
-          title={t(`${i18nPrefix}.output.variable`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.output.variable`], { ns: 'workflow' })}
           required
           operations={
             !readOnly
               ? (
                   <button
                     type="button"
-                    aria-label={`${t('operation.add', { ns: 'common' })} ${t(`${i18nPrefix}.output.variable`, { ns: 'workflow' })}`}
+                    aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $[`${i18nPrefix}.output.variable`], { ns: 'workflow' })}`}
                     className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={handleAddVariable}
                   >

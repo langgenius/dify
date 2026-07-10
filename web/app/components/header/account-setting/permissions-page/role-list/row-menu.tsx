@@ -76,7 +76,7 @@ const RowMenu = ({
       copy_member: copyMember,
     }, {
       onSuccess: () => {
-        toast.success(t('role.duplicated', { ns: 'permission' }))
+        toast.success(t($ => $['role.duplicated'], { ns: 'permission' }))
         setShowCopyMembersConfirm(false)
       },
     })
@@ -98,7 +98,7 @@ const RowMenu = ({
 
     deleteRole(role.id, {
       onSuccess: () => {
-        toast.success(t('role.deleted', { ns: 'permission' }))
+        toast.success(t($ => $['role.deleted'], { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
@@ -111,14 +111,14 @@ const RowMenu = ({
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger render={<ActionButton size="m" className={cn('shrink-0', open && 'bg-state-base-hover')} aria-label={t('operation.moreActions', { ns: 'common' })} />}>
+        <DropdownMenuTrigger render={<ActionButton size="m" className={cn('shrink-0', open && 'bg-state-base-hover')} aria-label={t($ => $['operation.moreActions'], { ns: 'common' })} />}>
           <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
           {
             hasViewAction && (
               <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
-                {t('operation.view', { ns: 'common' })}
+                {t($ => $['operation.view'], { ns: 'common' })}
               </DropdownMenuItem>
             )
           }
@@ -129,7 +129,7 @@ const RowMenu = ({
                 className="system-sm-semibold text-text-secondary"
                 onClick={handleEdit}
               >
-                {t('operation.edit', { ns: 'common' })}
+                {t($ => $['operation.edit'], { ns: 'common' })}
               </DropdownMenuItem>
             )
           }
@@ -138,7 +138,7 @@ const RowMenu = ({
             className="system-sm-semibold text-text-secondary"
             onClick={openCopyMembersConfirm}
           >
-            {t('common.duplicateAction', { ns: 'permission' })}
+            {t($ => $['common.duplicateAction'], { ns: 'permission' })}
           </DropdownMenuItem>
           {
             hasDeleteAction && (
@@ -150,7 +150,7 @@ const RowMenu = ({
                   className="system-sm-semibold"
                   onClick={openDeleteConfirm}
                 >
-                  {t('operation.delete', { ns: 'common' })}
+                  {t($ => $['operation.delete'], { ns: 'common' })}
                 </DropdownMenuItem>
               </>
             )
@@ -161,19 +161,19 @@ const RowMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('role.deleteTitle', { ns: 'permission', name: role.name })}
+              {t($ => $['role.deleteTitle'], { ns: 'permission', name: role.name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('role.deleteDescription', { ns: 'permission' })}
+              {t($ => $['role.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={isDeletingRole}
               onClick={handleDelete}
             >
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

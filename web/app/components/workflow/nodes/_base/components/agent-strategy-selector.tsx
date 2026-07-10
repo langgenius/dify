@@ -56,7 +56,7 @@ const NotFoundWarn = (props: {
           </p>
           <p>
             <Link href="/plugins" className="tracking-tight text-text-accent">
-              {t('nodes.agent.linkToPlugin', { ns: 'workflow' })}
+              {t($ => $['nodes.agent.linkToPlugin'], { ns: 'workflow' })}
             </Link>
           </p>
         </div>
@@ -179,7 +179,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             <p
               className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
             >
-              {value?.agent_strategy_label || t('nodes.agent.strategy.selectTip', { ns: 'workflow' })}
+              {value?.agent_strategy_label || t($ => $['nodes.agent.strategy.selectTip'], { ns: 'workflow' })}
             </p>
             <div className="ml-auto flex items-center gap-1">
               {showInstallButton && value && (
@@ -192,15 +192,15 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               {showPluginNotInstalledWarn
                 ? (
                     <NotFoundWarn
-                      title={t('nodes.agent.pluginNotInstalled', { ns: 'workflow' })}
-                      description={t('nodes.agent.pluginNotInstalledDesc', { ns: 'workflow' })}
+                      title={t($ => $['nodes.agent.pluginNotInstalled'], { ns: 'workflow' })}
+                      description={t($ => $['nodes.agent.pluginNotInstalledDesc'], { ns: 'workflow' })}
                     />
                   )
                 : showUnsupportedStrategy
                   ? (
                       <NotFoundWarn
-                        title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
-                        description={t('nodes.agent.strategyNotFoundDesc', { ns: 'workflow' })}
+                        title={t($ => $['nodes.agent.unsupportedStrategy'], { ns: 'workflow' })}
+                        description={t($ => $['nodes.agent.strategyNotFoundDesc'], { ns: 'workflow' })}
                       />
                     )
                   : <span className="i-ri-arrow-down-s-line size-4 text-text-tertiary" aria-hidden="true" />}
@@ -210,10 +210,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                   tooltip={(
                     <div className="w-45 space-y-1 text-xs">
                       <h3 className="font-semibold text-text-primary">
-                        {t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
+                        {t($ => $['nodes.agent.unsupportedStrategy'], { ns: 'workflow' })}
                       </h3>
                       <p className="text-text-tertiary">
-                        {t('nodes.agent.strategyNotFoundDescAndSwitchVersion', { ns: 'workflow' })}
+                        {t($ => $['nodes.agent.strategyNotFoundDescAndSwitchVersion'], { ns: 'workflow' })}
                       </p>
                     </div>
                   )}
@@ -233,7 +233,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       >
         <div className="w-97 overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">
-            <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onValueChange={setQuery} className="w-full" />
+            <SearchInput placeholder={t($ => $['nodes.agent.strategy.searchPlaceholder'], { ns: 'workflow' })} value={query} onValueChange={setQuery} className="w-full" />
             <ViewTypeSelect viewType={viewType} onChange={setViewType} />
           </header>
           <div className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141" ref={wrapElemRef}>

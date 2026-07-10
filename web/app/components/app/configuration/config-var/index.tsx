@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -77,13 +76,13 @@ const getDuplicateError = (list: PromptVariable[]) => {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.varName',
-    }
+    } as const
   }
   if (hasDuplicateStr(list.map(item => item.name as string))) {
     return {
       errorMsgKey: 'varKeyError.keyAlreadyExists',
       typeName: 'variableConfig.labelName',
-    }
+    } as const
   }
   return null
 }
@@ -116,7 +115,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     const duplicateError = getDuplicateError(newPromptVariables)
     if (duplicateError) {
-      toast.error(t(duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug', key: t(duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug' }) }) as string)
+      toast.error(t($ => $[duplicateError.errorMsgKey], { ns: 'appDebug', key: t($ => $[duplicateError.typeName], { ns: 'appDebug' }) }))
       return false
     }
 
@@ -166,7 +165,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i]!.key === newExternalDataTool.variable && i !== index) {
-            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
+            toast.error(t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }
@@ -255,10 +254,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={(
         <div className="flex items-center">
-          <div className="mr-1">{t('variableTitle', { ns: 'appDebug' })}</div>
+          <div className="mr-1">{t($ => $.variableTitle, { ns: 'appDebug' })}</div>
           {!readonly && (
-            <Infotip aria-label={t('variableTip', { ns: 'appDebug' })} popupClassName="w-[180px]">
-              {t('variableTip', { ns: 'appDebug' })}
+            <Infotip aria-label={t($ => $.variableTip, { ns: 'appDebug' })} popupClassName="w-[180px]">
+              {t($ => $.variableTip, { ns: 'appDebug' })}
             </Infotip>
           )}
         </div>
@@ -268,7 +267,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
+          <div className="pt-2 pb-1 text-xs text-text-tertiary">{t($ => $.notSetVar, { ns: 'appDebug' })}</div>
         </div>
       )}
       {hasVar && (
@@ -321,21 +320,21 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
+              {t($ => $['feature.dataSet.queryVariable.deleteContextVarTitle'], { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
+              {t($ => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               onClick={() => {
                 didRemoveVar(removeIndex as number)
                 hideDeleteContextVarModal()
               }}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

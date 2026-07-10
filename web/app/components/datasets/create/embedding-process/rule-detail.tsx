@@ -36,14 +36,14 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
   const { t } = useTranslation()
 
   const segmentationRuleLabels = {
-    mode: t('embedding.mode', { ns: 'datasetDocuments' }),
-    segmentLength: t('embedding.segmentLength', { ns: 'datasetDocuments' }),
-    textCleaning: t('embedding.textCleaning', { ns: 'datasetDocuments' }),
+    mode: t($ => $['embedding.mode'], { ns: 'datasetDocuments' }),
+    segmentLength: t($ => $['embedding.segmentLength'], { ns: 'datasetDocuments' }),
+    textCleaning: t($ => $['embedding.textCleaning'], { ns: 'datasetDocuments' }),
   }
 
   const getRuleName = useCallback((key: string): string | undefined => {
     const translationKey = PRE_PROCESSING_RULE_KEYS[key as keyof typeof PRE_PROCESSING_RULE_KEYS]
-    return translationKey ? t(translationKey, { ns: 'datasetCreation' }) : undefined
+    return translationKey ? t($ => $[translationKey], { ns: 'datasetCreation' }) : undefined
   }, [t])
 
   const getModeValue = useCallback((): string => {
@@ -51,13 +51,13 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
       return '-'
 
     if (sourceData.mode === ProcessMode.general)
-      return t('embedding.custom', { ns: 'datasetDocuments' })
+      return t($ => $['embedding.custom'], { ns: 'datasetDocuments' })
 
     const parentModeLabel = sourceData.rules?.parent_mode === 'paragraph'
-      ? t('parentMode.paragraph', { ns: 'dataset' })
-      : t('parentMode.fullDoc', { ns: 'dataset' })
+      ? t($ => $['parentMode.paragraph'], { ns: 'dataset' })
+      : t($ => $['parentMode.fullDoc'], { ns: 'dataset' })
 
-    return `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${parentModeLabel}`
+    return `${t($ => $['embedding.hierarchical'], { ns: 'datasetDocuments' })} · ${parentModeLabel}`
   }, [sourceData, t])
 
   const getSegmentLengthValue = useCallback((): string | number => {
@@ -75,7 +75,7 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
       ? sourceData.rules.subchunk_segmentation.max_tokens
       : '-'
 
-    return `${t('embedding.parentMaxTokens', { ns: 'datasetDocuments' })} ${maxTokens}; ${t('embedding.childMaxTokens', { ns: 'datasetDocuments' })} ${childMaxTokens}`
+    return `${t($ => $['embedding.parentMaxTokens'], { ns: 'datasetDocuments' })} ${maxTokens}; ${t($ => $['embedding.childMaxTokens'], { ns: 'datasetDocuments' })} ${childMaxTokens}`
   }, [sourceData, t])
 
   const getTextCleaningValue = useCallback((): string => {
@@ -100,10 +100,10 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
 
   const isEconomical = indexingType === IndexingType.ECONOMICAL
   const indexMethodIconSrc = isEconomical ? indexMethodIcon.economical : indexMethodIcon.high_quality
-  const indexModeLabel = t(`stepTwo.${isEconomical ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' })
+  const indexModeLabel = t($ => $[`stepTwo.${isEconomical ? 'economical' : 'qualified'}`], { ns: 'datasetCreation' })
 
   const effectiveRetrievalMethod = isEconomical ? 'keyword_search' : (retrievalMethod ?? 'semantic_search')
-  const retrievalLabel = t(`retrieval.${effectiveRetrievalMethod}.title`, { ns: 'dataset' })
+  const retrievalLabel = t($ => $[`retrieval.${effectiveRetrievalMethod}.title`], { ns: 'dataset' })
   const retrievalIconSrc = RETRIEVAL_ICON_MAP[retrievalMethod as keyof typeof RETRIEVAL_ICON_MAP] ?? retrievalIcon.vector
 
   return (
@@ -116,12 +116,12 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
         />
       ))}
       <FieldInfo
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
+        label={t($ => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
         displayedValue={indexModeLabel}
         valueIcon={<img className="size-4" src={indexMethodIconSrc} alt="" />}
       />
       <FieldInfo
-        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+        label={t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
         displayedValue={retrievalLabel}
         valueIcon={<img className="size-4" src={retrievalIconSrc} alt="" />}
       />

@@ -171,14 +171,14 @@ const VoiceInput = ({
           {
             startRecord && (
               <div className="text-sm text-gray-500">
-                {t('voiceInput.speaking', { ns: 'common' })}
+                {t($ => $['voiceInput.speaking'], { ns: 'common' })}
               </div>
             )
           }
           {
             startConvert && (
               <div className={cn(s.convert, 'text-sm')} data-testid="voice-input-converting-text">
-                {t('voiceInput.converting', { ns: 'common' })}
+                {t($ => $['voiceInput.converting'], { ns: 'common' })}
               </div>
             )
           }

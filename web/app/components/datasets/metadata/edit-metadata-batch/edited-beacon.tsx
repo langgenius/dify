@@ -27,7 +27,7 @@ const EditedBeacon: FC<Props> = ({
                 render={(
                   <button
                     type="button"
-                    aria-label={t('operation.reset', { ns: 'common' })}
+                    aria-label={t($ => $['operation.reset'], { ns: 'common' })}
                     className="flex size-4 items-center justify-center rounded-full border-none bg-text-accent-secondary p-0"
                     onClick={onReset}
                   >
@@ -36,7 +36,7 @@ const EditedBeacon: FC<Props> = ({
                 )}
               />
               <TooltipContent>
-                {t('operation.reset', { ns: 'common' })}
+                {t($ => $['operation.reset'], { ns: 'common' })}
               </TooltipContent>
             </Tooltip>
           )

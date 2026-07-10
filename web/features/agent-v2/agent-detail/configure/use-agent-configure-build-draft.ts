@@ -368,10 +368,10 @@ export function useAgentConfigureBuildDraftActions({
         queryKey: consoleQuery.agent.get.key(),
       })
       await exitBuildDraftMode(true)
-      toast.success(tCommon('api.actionSuccess'))
+      toast.success(tCommon($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(tCommon('api.actionFailed'))
+      toast.error(tCommon($ => $['api.actionFailed']))
     }
   }
 
@@ -383,10 +383,10 @@ export function useAgentConfigureBuildDraftActions({
         },
       })
       await exitBuildDraftMode(false)
-      toast.success(tCommon('api.actionSuccess'))
+      toast.success(tCommon($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(tCommon('api.actionFailed'))
+      toast.error(tCommon($ => $['api.actionFailed']))
     }
   }
 

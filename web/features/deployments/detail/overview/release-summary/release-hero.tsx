@@ -41,8 +41,8 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
       <DeploymentEmptyState
         variant="section"
         icon="i-ri-stack-line"
-        title={t('overview.hero.empty')}
-        description={t('overview.hero.emptyDescription')}
+        title={t($ => $['overview.hero.empty'])}
+        description={t($ => $['overview.hero.emptyDescription'])}
         action={appInstanceId ? <CreateReleaseControl appInstanceId={appInstanceId} size="medium" /> : undefined}
         className="min-h-44"
       />
@@ -66,7 +66,7 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
               {latestRelease.displayName}
             </h4>
             {commit !== '—' && (
-              <TitleTooltip content={t('versions.commitTooltip', { commit })}>
+              <TitleTooltip content={t($ => $['versions.commitTooltip'], { commit })}>
                 <span className="shrink-0 rounded bg-background-section-burn px-1.5 py-0.5 font-mono system-xs-regular text-text-tertiary">
                   {commit}
                 </span>
@@ -74,12 +74,12 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
             )}
           </div>
           <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 system-xs-regular text-text-tertiary">
-            <ReleaseMetaItem label={t('versions.col.sourceApp')} showSeparator={false}>
+            <ReleaseMetaItem label={t($ => $['versions.col.sourceApp'])} showSeparator={false}>
               <LatestReleaseSource release={latestRelease} />
             </ReleaseMetaItem>
             {author && (
               <ReleaseMetaItem>
-                {t('overview.hero.byName', { name: author })}
+                {t($ => $['overview.hero.byName'], { name: author })}
               </ReleaseMetaItem>
             )}
             {ago && (
@@ -92,7 +92,7 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
               </ReleaseMetaItem>
             )}
             <ReleaseMetaItem>
-              {t('overview.latestRelease.releaseCount', { count: releaseCount })}
+              {t($ => $['overview.latestRelease.releaseCount'], { count: releaseCount })}
             </ReleaseMetaItem>
           </p>
         </div>
@@ -124,7 +124,7 @@ function LatestReleaseSource({ release }: {
   if (!sourceAppId) {
     return (
       <span>
-        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t('versions.manualDslOption') : '—'}
+        {release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD ? t($ => $['versions.manualDslOption']) : '—'}
       </span>
     )
   }

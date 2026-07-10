@@ -24,7 +24,7 @@ function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
 
   return (
     <Switch
-      aria-label={t('access.api.developerTitle')}
+      aria-label={t($ => $['access.api.developerTitle'])}
       checked={checked}
       disabled={disabled || !appInstanceId}
       loading={toggleDeveloperAPI.isPending}
@@ -59,7 +59,7 @@ export function DeveloperApiHeaderSwitch() {
   return (
     <div className="flex items-center gap-2">
       <span className="system-xs-medium text-text-tertiary">
-        {apiEnabled ? t('overview.enabled') : t('overview.disabled')}
+        {apiEnabled ? t($ => $['overview.enabled']) : t($ => $['overview.disabled'])}
       </span>
       <DeveloperApiSwitch
         checked={apiEnabled}

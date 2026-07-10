@@ -77,7 +77,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onSuccess()
       if (onClose)
         onClose()
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
+      toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
       if (inAppDetail)
         setAppDetail()
       if (removeOriginal)
@@ -94,7 +94,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       )
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
@@ -119,7 +119,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           <button
             type="button"
             className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -127,14 +127,14 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
             <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
-          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
+          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t($ => $.switch, { ns: 'app' })}</div>
           <div className="my-1 text-sm/5 text-text-tertiary">
-            <span>{t('switchTipStart', { ns: 'app' })}</span>
-            <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
-            <span>{t('switchTipEnd', { ns: 'app' })}</span>
+            <span>{t($ => $.switchTipStart, { ns: 'app' })}</span>
+            <span className="font-medium text-text-secondary">{t($ => $.switchTip, { ns: 'app' })}</span>
+            <span>{t($ => $.switchTipEnd, { ns: 'app' })}</span>
           </div>
           <div className="pb-4">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
+            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t($ => $.switchLabel, { ns: 'app' })}</div>
             <div className="flex items-center justify-between space-x-2">
               <AppIcon
                 size="large"
@@ -148,7 +148,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                placeholder={t($ => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                 className="h-10 grow"
               />
             </div>
@@ -171,13 +171,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
               <label className="flex cursor-pointer items-center">
                 <Checkbox className="shrink-0" checked={removeOriginal} onCheckedChange={setRemoveOriginal} />
                 <span className="ml-2 text-left text-sm/5 text-text-secondary">
-                  {t('removeOriginal', { ns: 'app' })}
+                  {t($ => $.removeOriginal, { ns: 'app' })}
                 </span>
               </label>
             </div>
             <div className="flex items-center">
-              <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-              <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+              <Button className="mr-2" onClick={onClose}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
+              <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t($ => $.switchStart, { ns: 'app' })}</Button>
             </div>
           </div>
         </DialogContent>
@@ -189,18 +189,18 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('deleteAppConfirmTitle', { ns: 'app' })}
+              {t($ => $.deleteAppConfirmTitle, { ns: 'app' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('deleteAppConfirmContent', { ns: 'app' })}
+              {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

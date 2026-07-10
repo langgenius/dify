@@ -103,9 +103,9 @@ const OpeningSettingModal = ({
   const [autoFocusQuestionID, setAutoFocusQuestionID] = useState<number | null>(null)
   const openerPlaceholder = (
     <span className="block wrap-break-word whitespace-pre-wrap">
-      {t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
+      {t($ => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t('openingStatement.placeholderLine2', { ns: 'appDebug' })}
+      {t($ => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
     </span>
   )
 
@@ -115,14 +115,14 @@ const OpeningSettingModal = ({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
             <div className="text-sm font-medium text-text-primary">
-              {t('openingStatement.openingQuestion', { ns: 'appDebug' })}
+              {t($ => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
             <Infotip
-              aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+              aria-label={t($ => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
               className="size-3.5"
               popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
             >
-              {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+              {t($ => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
             </Infotip>
           </div>
           <div className="text-xs leading-[18px] font-medium text-text-tertiary">
@@ -159,7 +159,7 @@ const OpeningSettingModal = ({
                 <input
                   type="input"
                   value={question || ''}
-                  placeholder={t('openingStatement.openingQuestionPlaceholder', { ns: 'appDebug' }) as string}
+                  placeholder={t($ => $['openingStatement.openingQuestionPlaceholder'], { ns: 'appDebug' }) as string}
                   onChange={(e) => {
                     const value = e.target.value
                     setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {
@@ -204,7 +204,7 @@ const OpeningSettingModal = ({
             className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
           >
             <span className="i-ri-add-line size-4" />
-            <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
+            <div className="system-sm-medium text-[13px]">{t($ => $['variableConfig.addOption'], { ns: 'appDebug' })}</div>
           </div>
         )}
       </div>
@@ -215,10 +215,10 @@ const OpeningSettingModal = ({
     <Dialog open onOpenChange={open => !open && onCancel()} disablePointerDismissal>
       <DialogContent className="mt-14 w-[640px] max-w-none rounded-2xl bg-components-panel-bg-blur p-6">
         <div className="mb-6 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t($ => $['feature.conversationOpener.title'], { ns: 'appDebug' })}</div>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onCancel}
           >
@@ -231,7 +231,7 @@ const OpeningSettingModal = ({
             className="py-2"
           >
             <div className="mb-3 text-sm font-medium text-text-primary">
-              {t('openingStatement.editorTitle', { ns: 'appDebug' })}
+              {t($ => $['openingStatement.editorTitle'], { ns: 'appDebug' })}
             </div>
             <div className="relative min-h-[80px] rounded-lg bg-components-input-bg-normal px-3 py-2">
               <PromptEditor
@@ -269,14 +269,14 @@ const OpeningSettingModal = ({
             onClick={onCancel}
             className="mr-2"
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
             onClick={() => handleSave()}
             disabled={isSaveDisabled}
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
         {isShowConfirmAddVar && (

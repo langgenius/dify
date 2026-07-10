@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { ResultInputValue } from '../result-request'
 import type { ResultRunStateController } from './use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
@@ -14,8 +15,6 @@ import { buildResultRequestData, validateResultRequest } from '../result-request
 import { createWorkflowStreamHandlers } from '../workflow-stream-handlers'
 
 type Notify = (payload: { type: 'error' | 'info' | 'warning', message: string }) => void
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type UseResultSenderOptions = {
   appId?: string
   appSourceType: AppSourceType
@@ -32,7 +31,7 @@ type UseResultSenderOptions = {
   onShowRes: () => void
   promptConfig: PromptConfig | null
   runState: ResultRunStateController
-  t: Translate
+  t: TextGenerationTranslate
   taskId?: number
   visionConfig: VisionSettings
 }
@@ -66,7 +65,7 @@ export const useResultSender = ({
 
   const handleSend = useCallback(async () => {
     if (runState.isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }) })
       return false
     }
 
@@ -154,7 +153,7 @@ export const useResultSender = ({
       },
       onCompleted: () => {
         if (isTimeout) {
-          notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+          notify({ type: 'warning', message: t($ => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }) })
           return
         }
 
@@ -170,7 +169,7 @@ export const useResultSender = ({
       },
       onError: () => {
         if (isTimeout) {
-          notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+          notify({ type: 'warning', message: t($ => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }) })
           return
         }
 

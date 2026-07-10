@@ -19,12 +19,12 @@ const ContextVar: FC<Props> = (props) => {
         <div className="p-1">
           <BracketsX className="size-4 text-text-accent" />
         </div>
-        <div className="mr-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 text-sm font-medium text-text-secondary">{t($ => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}</div>
         <Infotip
-          aria-label={t('feature.dataSet.queryVariable.tip', { ns: 'appDebug' })}
+          aria-label={t($ => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('feature.dataSet.queryVariable.tip', { ns: 'appDebug' })}
+          {t($ => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
         </Infotip>
       </div>
 

@@ -55,8 +55,8 @@ const UpgradeBtn: FC<Props> = ({
     }
   }
 
-  const defaultBadgeLabel = t(isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage', { ns: 'billing' })
-  const label = labelKey ? t(labelKey, { ns: 'billing' }) : defaultBadgeLabel
+  const defaultBadgeLabel = t($ => $[isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage'], { ns: 'billing' })
+  const label = labelKey ? t($ => $[labelKey], { ns: 'billing' }) : defaultBadgeLabel
 
   if (isPlain) {
     return (
@@ -65,7 +65,7 @@ const UpgradeBtn: FC<Props> = ({
         style={style}
         onClick={onClick}
       >
-        {labelKey ? label : t('upgradeBtn.plain', { ns: 'billing' })}
+        {labelKey ? label : t($ => $['upgradeBtn.plain'], { ns: 'billing' })}
       </Button>
     )
   }

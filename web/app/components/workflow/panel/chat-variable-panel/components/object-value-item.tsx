@@ -37,7 +37,7 @@ const ObjectValueItem: FC<Props> = ({
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!/^\w+$/.test(e.target.value)) {
-        toast.error(t('chatVariable.modal.objectKeyPatternError', { ns: 'workflow' }))
+        toast.error(t($ => $['chatVariable.modal.objectKeyPatternError'], { ns: 'workflow' }))
         return
       }
 
@@ -98,7 +98,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="w-[120px] border-r border-gray-200">
         <input
           className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.objectKey'], { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
         />
@@ -117,7 +117,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="relative w-[230px]">
         <input
           className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.objectValue'], { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
           onFocus={() => handleFocusChange()}

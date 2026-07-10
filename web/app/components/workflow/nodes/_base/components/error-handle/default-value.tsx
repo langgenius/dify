@@ -31,7 +31,7 @@ const DefaultValue = ({
   return (
     <div className="px-4 pt-2">
       <div className="mb-2 body-xs-regular text-text-tertiary">
-        {t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' })}
+        {t($ => $['nodes.common.errorHandle.defaultValue.desc'], { ns: 'workflow' })}
         &nbsp;
       </div>
       <div className="space-y-1">

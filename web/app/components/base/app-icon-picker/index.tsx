@@ -89,8 +89,8 @@ function AppIconPickerContent({
   const { t } = useTranslation()
 
   const tabs = [
-    { key: 'emoji', label: t('iconPicker.emoji', { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
+    { key: 'emoji', label: t($ => $['iconPicker.emoji'], { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
+    { key: 'image', label: t($ => $['iconPicker.image'], { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
   const showImageUpload = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
@@ -162,7 +162,7 @@ function AppIconPickerContent({
   return (
     <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', s.container, 'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-[362px]! p-0!', className)}>
       <DialogTitle className="sr-only">
-        {t('iconPicker.emoji', { ns: 'app' })}
+        {t($ => $['iconPicker.emoji'], { ns: 'app' })}
       </DialogTitle>
 
       {showImageUpload && (
@@ -201,11 +201,11 @@ function AppIconPickerContent({
       <Divider className="m-0" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onOpenChange(false)}>
-          {t('iconPicker.cancel', { ns: 'app' })}
+          {t($ => $['iconPicker.cancel'], { ns: 'app' })}
         </Button>
 
         <Button variant="primary" className="w-full" disabled={uploading} loading={uploading} onClick={handleSelect}>
-          {t('iconPicker.ok', { ns: 'app' })}
+          {t($ => $['iconPicker.ok'], { ns: 'app' })}
         </Button>
       </div>
     </DialogContent>

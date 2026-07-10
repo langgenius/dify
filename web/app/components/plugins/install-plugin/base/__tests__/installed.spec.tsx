@@ -91,7 +91,7 @@ describe('Installed', () => {
     } as never
     render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.trigger} isFailed={false} onCancel={mockOnCancel} />)
 
-    expect(screen.getByText('installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
+    expect(screen.getByText('plugin.installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('plugin.installModal.viewDetails'))
 

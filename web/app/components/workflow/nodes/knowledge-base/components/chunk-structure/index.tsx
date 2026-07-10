@@ -29,8 +29,8 @@ const ChunkStructure = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('nodes.knowledgeBase.chunkStructure', { ns: 'workflow' }),
-        tooltip: t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' }),
+        title: t($ => $['nodes.knowledgeBase.chunkStructure'], { ns: 'workflow' }),
+        tooltip: t($ => $['nodes.knowledgeBase.chunkStructureTip.message'], { ns: 'workflow' }),
         warningDot,
         operation: chunkStructure && (
           <Selector
@@ -65,7 +65,7 @@ const ChunkStructure = ({
                   variant="secondary-accent"
                 >
                   <span className="mr-1 i-ri-add-line size-4" />
-                  {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
+                  {t($ => $['nodes.knowledgeBase.chooseChunkStructure'], { ns: 'workflow' })}
                 </Button>
               )}
             />

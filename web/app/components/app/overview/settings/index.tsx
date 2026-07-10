@@ -216,7 +216,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
         aria-describedby={inputPlaceholderDescriptionId}
-        placeholder={t(`${prefixSettings}.more.inputPlaceholderPlaceholder`, { ns: 'appOverview' }) as string}
+        placeholder={t($ => $[`${prefixSettings}.more.inputPlaceholderPlaceholder`], { ns: 'appOverview' }) as string}
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
@@ -258,7 +258,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const handleFormSubmit = async () => {
     if (!inputInfo.title) {
-      toast.error(t('newApp.nameNotEmpty', { ns: 'app' }))
+      toast.error(t($ => $['newApp.nameNotEmpty'], { ns: 'app' }))
       return
     }
 
@@ -280,11 +280,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
     if (inputInfo !== null) {
       if (!validateColorHex(inputInfo.chatColorTheme)) {
-        toast.error(t(`${prefixSettings}.invalidHexMessage`, { ns: 'appOverview' }))
+        toast.error(t($ => $[`${prefixSettings}.invalidHexMessage`], { ns: 'appOverview' }))
         return
       }
       if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
-        toast.error(t(`${prefixSettings}.invalidPrivacyPolicy`, { ns: 'appOverview' }))
+        toast.error(t($ => $[`${prefixSettings}.invalidPrivacyPolicy`], { ns: 'appOverview' }))
         return
       }
     }
@@ -342,11 +342,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           {/* header */}
           <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
-              <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</DialogTitle>
+              <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t($ => $[`${prefixSettings}.title`], { ns: 'appOverview' })}</DialogTitle>
               <DialogCloseButton className="relative top-auto right-auto shrink-0" />
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
-              <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
+              <span>{t($ => $[`${prefixSettings}.modalTip`], { ns: 'appOverview' })}</span>
             </div>
           </div>
           <Form className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]" onFormSubmit={handleFormSubmit}>
@@ -361,11 +361,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               {/* name & icon */}
               <div className="flex gap-4">
                 <FieldRoot name="title" className="grow">
-                  <FieldLabel>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</FieldLabel>
+                  <FieldLabel>{t($ => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}</FieldLabel>
                   <FieldControl
                     value={inputInfo.title}
                     onValueChange={value => setInputInfo(item => ({ ...item, title: value }))}
-                    placeholder={t('appNamePlaceholder', { ns: 'app' }) || ''}
+                    placeholder={t($ => $.appNamePlaceholder, { ns: 'app' }) || ''}
                   />
                 </FieldRoot>
                 <AppIcon
@@ -380,41 +380,41 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               {/* description */}
               <FieldRoot name="description">
-                <FieldLabel>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</FieldLabel>
+                <FieldLabel>{t($ => $[`${prefixSettings}.webDesc`], { ns: 'appOverview' })}</FieldLabel>
                 <Textarea
                   value={inputInfo.desc}
                   onValueChange={onDesChange}
-                  placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
+                  placeholder={t($ => $[`${prefixSettings}.webDescPlaceholder`], { ns: 'appOverview' }) as string}
                 />
-                <FieldDescription>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</FieldDescription>
+                <FieldDescription>{t($ => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}</FieldDescription>
               </FieldRoot>
               <Divider className="my-0 h-px" />
               {/* answer icon */}
               {isChat && (
                 <FieldRoot name="use_icon_as_answer_icon" className="w-full">
                   <div className="flex items-center justify-between gap-3">
-                    <FieldLabel>{t('answerIcon.title', { ns: 'app' })}</FieldLabel>
+                    <FieldLabel>{t($ => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
                     <Switch
                       checked={inputInfo.use_icon_as_answer_icon}
                       onCheckedChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
                     />
                   </div>
-                  <FieldDescription>{t('answerIcon.description', { ns: 'app' })}</FieldDescription>
+                  <FieldDescription>{t($ => $['answerIcon.description'], { ns: 'app' })}</FieldDescription>
                 </FieldRoot>
               )}
               {/* language */}
               <div className="flex items-center">
-                <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
+                <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.language`], { ns: 'appOverview' })}</div>
                 <Select
                   value={selectedLanguage?.value ?? null}
                   onValueChange={handleLanguageChange}
                 >
                   <SelectTrigger
-                    aria-label={t(`${prefixSettings}.language`, { ns: 'appOverview' })}
+                    aria-label={t($ => $[`${prefixSettings}.language`], { ns: 'appOverview' })}
                     size="medium"
                     className="w-[200px]"
                   >
-                    {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+                    {selectedLanguage?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                   </SelectTrigger>
                   <SelectContent>
                     {LANGUAGE_OPTIONS.map(item => (
@@ -430,8 +430,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               {isChat && (
                 <div className="flex items-center">
                   <div className="grow">
-                    <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
-                    <div className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
+                    <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}</div>
+                    <div className="pb-0.5 body-xs-regular text-text-tertiary">{t($ => $[`${prefixSettings}.chatColorThemeDesc`], { ns: 'appOverview' })}</div>
                   </div>
                   <FieldRoot name="chat_color_theme" className="w-[200px] shrink-0">
                     <FieldControl
@@ -441,7 +441,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       placeholder="E.g #A020F0"
                     />
                     <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
-                      <span>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</span>
+                      <span>{t($ => $[`${prefixSettings}.chatColorThemeInverted`], { ns: 'appOverview' })}</span>
                       <Switch checked={inputInfo.chatColorThemeInverted} onCheckedChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                     </div>
                   </FieldRoot>
@@ -450,14 +450,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               {/* workflow detail */}
               <FieldRoot name="show_workflow_steps" className="w-full">
                 <div className="flex items-center justify-between gap-3">
-                  <FieldLabel>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</FieldLabel>
+                  <FieldLabel>{t($ => $[`${prefixSettings}.workflow.subTitle`], { ns: 'appOverview' })}</FieldLabel>
                   <Switch
                     disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
                     checked={inputInfo.show_workflow_steps}
                     onCheckedChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
                   />
                 </div>
-                <FieldDescription>{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</FieldDescription>
+                <FieldDescription>{t($ => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}</FieldDescription>
               </FieldRoot>
               <Divider className="my-0 h-px" />
               <div className="space-y-5">
@@ -465,14 +465,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <div className="w-full">
                     <div className="flex items-center">
                       <div className="flex grow items-center">
-                        <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
+                        <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.more.inputPlaceholder`], { ns: 'appOverview' })}</div>
                         {isCloudSandboxPlan && (
                           <div className="h-[18px] select-none">
                             <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                               <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
                               <div className="system-xs-medium">
                                 <span className="p-1">
-                                  {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                                  {t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                                 </span>
                               </div>
                             </PremiumBadgeButton>
@@ -480,13 +480,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         )}
                       </div>
                     </div>
-                    <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
+                    <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t($ => $[`${prefixSettings}.more.inputPlaceholderTip`], { ns: 'appOverview' })}</p>
                     {isCloudSandboxPlan
                       ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
                             <TooltipContent className="w-[180px]">
-                              {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
+                              {t($ => $[`${prefixSettings}.more.inputPlaceholderTooltip`], { ns: 'appOverview' })}
                             </TooltipContent>
                           </Tooltip>
                         )
@@ -502,7 +502,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <div className="w-full">
                   <div className="flex items-center">
                     <div className="flex grow items-center">
-                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
+                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}</div>
                       {/* upgrade button */}
                       {isCloudSandboxPlan && (
                         <div className="h-[18px] select-none">
@@ -510,7 +510,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
                             <div className="system-xs-medium">
                               <span className="p-1">
-                                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                                {t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                               </span>
                             </div>
                           </PremiumBadgeButton>
@@ -520,7 +520,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {webappCopyrightEnabled
                       ? (
                           <Switch
-                            aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                            aria-label={t($ => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                             checked={copyrightSwitchValue}
                             onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                           />
@@ -531,7 +531,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                               render={(
                                 <div>
                                   <Switch
-                                    aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                                    aria-label={t($ => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                                     disabled
                                     checked={copyrightSwitchValue}
                                     onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
@@ -540,58 +540,58 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                               )}
                             />
                             <TooltipContent className="w-[180px]">
-                              {t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}
+                              {t($ => $[`${prefixSettings}.more.copyrightTooltip`], { ns: 'appOverview' })}
                             </TooltipContent>
                           </Tooltip>
                         )}
                   </div>
-                  <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
+                  <p className="pb-0.5 body-xs-regular text-text-tertiary">{t($ => $[`${prefixSettings}.more.copyrightTip`], { ns: 'appOverview' })}</p>
                   {copyrightSwitchValue && (
                     <Input
-                      aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                      aria-label={t($ => $[`${prefixSettings}.more.copyright`], { ns: 'appOverview' })}
                       className="mt-2 h-10"
                       value={inputInfo.copyright}
                       onChange={onChange('copyright')}
-                      placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
+                      placeholder={t($ => $[`${prefixSettings}.more.copyRightPlaceholder`], { ns: 'appOverview' }) as string}
                     />
                   )}
                 </div>
                 {/* privacy policy */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}</div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
                     <Trans
-                      i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
+                      i18nKey={$ => $[`${prefixSettings}.more.privacyPolicyTip`]}
                       ns="appOverview"
                       components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
                     />
                   </p>
                   <Input
-                    aria-label={t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}
+                    aria-label={t($ => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.privacyPolicy}
                     onChange={onChange('privacyPolicy')}
-                    placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
+                    placeholder={t($ => $[`${prefixSettings}.more.privacyPolicyPlaceholder`], { ns: 'appOverview' }) as string}
                   />
                 </div>
                 {/* custom disclaimer */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
-                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.more.customDisclaimer`], { ns: 'appOverview' })}</div>
+                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t($ => $[`${prefixSettings}.more.customDisclaimerTip`], { ns: 'appOverview' })}</p>
                   <Textarea
-                    aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
+                    aria-label={t($ => $[`${prefixSettings}.more.customDisclaimer`], { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
                     onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
-                    placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
+                    placeholder={t($ => $[`${prefixSettings}.more.customDisclaimerPlaceholder`], { ns: 'appOverview' }) as string}
                   />
                 </div>
               </div>
             </ScrollArea>
             {/* footer */}
             <div className="flex shrink-0 justify-end p-6 pt-5">
-              <Button type="button" className="mr-2" onClick={handleClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-              <Button type="submit" variant="primary" loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
+              <Button type="button" className="mr-2" onClick={handleClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+              <Button type="submit" variant="primary" loading={saveLoading}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
             </div>
           </Form>
         </DialogContent>

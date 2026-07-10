@@ -47,7 +47,7 @@ const WorkflowChecklist = ({
   const flowType = useHooksStore(s => s.configsMap?.flowType)
   const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
-  const checklistLabel = t('panel.checklist', { ns: 'workflow' })
+  const checklistLabel = t($ => $['panel.checklist'], { ns: 'workflow' })
 
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
@@ -118,14 +118,14 @@ const WorkflowChecklist = ({
               </div>
               <PopoverClose
                 className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
-                aria-label={t('operation.close', { ns: 'common' })}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
               >
                 <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
               </PopoverClose>
             </div>
             {needWarningNodes.length > 0 && (
               <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">
-                {t('panel.checklistDescription', { ns: 'workflow' })}
+                {t($ => $['panel.checklistDescription'], { ns: 'workflow' })}
               </PopoverDescription>
             )}
           </div>
@@ -149,7 +149,7 @@ const WorkflowChecklist = ({
             : (
                 <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
                   <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
-                  {t('panel.checklistResolved', { ns: 'workflow' })}
+                  {t($ => $['panel.checklistResolved'], { ns: 'workflow' })}
                 </div>
               )}
         </div>

@@ -1,11 +1,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import VarPanel from '../var-panel'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+  })
+})
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
   default: ({ url, title, onCancel }: { url: string, title: string, onCancel: () => void }) => (

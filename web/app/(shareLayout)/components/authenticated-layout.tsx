@@ -83,7 +83,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
         <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t($ => $['userProfile.logout'], { ns: 'common' })}</span>
       </div>
     )
   }

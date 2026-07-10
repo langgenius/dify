@@ -25,17 +25,17 @@ const Footer: FC<FooterProps> = ({
       if (isError) {
         return (
           <span className="text-red-500">
-            {t('gotoAnything.someServicesUnavailable', { ns: 'app' })}
+            {t($ => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
           </span>
         )
       }
 
       return (
         <>
-          {t('gotoAnything.resultCount', { ns: 'app', count: resultCount })}
+          {t($ => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
           {searchMode !== 'general' && (
             <span className="ml-2 opacity-60">
-              {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
+              {t($ => $['gotoAnything.inScope'], { ns: 'app', scope: searchMode.replace('@', '') })}
             </span>
           )}
         </>
@@ -46,12 +46,12 @@ const Footer: FC<FooterProps> = ({
       <span className="opacity-60">
         {(() => {
           if (isCommandsMode)
-            return t('gotoAnything.selectToNavigate', { ns: 'app' })
+            return t($ => $['gotoAnything.selectToNavigate'], { ns: 'app' })
 
           if (hasQuery)
-            return t('gotoAnything.searching', { ns: 'app' })
+            return t($ => $['gotoAnything.searching'], { ns: 'app' })
 
-          return t('gotoAnything.startTyping', { ns: 'app' })
+          return t($ => $['gotoAnything.startTyping'], { ns: 'app' })
         })()}
       </span>
     )
@@ -62,8 +62,8 @@ const Footer: FC<FooterProps> = ({
       return (
         <span className="opacity-60">
           {searchMode !== 'general'
-            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
-            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
+            ? t($ => $['gotoAnything.clearToSearchAll'], { ns: 'app' })
+            : t($ => $['gotoAnything.useAtForSpecific'], { ns: 'app' })}
         </span>
       )
     }
@@ -71,8 +71,8 @@ const Footer: FC<FooterProps> = ({
     return (
       <span className="opacity-60">
         {hasQuery || isCommandsMode
-          ? t('gotoAnything.tips', { ns: 'app' })
-          : t('gotoAnything.pressEscToClose', { ns: 'app' })}
+          ? t($ => $['gotoAnything.tips'], { ns: 'app' })
+          : t($ => $['gotoAnything.pressEscToClose'], { ns: 'app' })}
       </span>
     )
   }

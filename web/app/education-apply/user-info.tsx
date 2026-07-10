@@ -25,7 +25,7 @@ const UserInfo = () => {
     <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 pt-9 pr-8 pb-6 pl-6 shadow-shadow-shadow-5">
       <div className="absolute top-0 left-0 flex items-center">
         <div className="flex h-[22px] items-center bg-components-panel-on-panel-item-bg pt-1 pl-2 system-2xs-semibold-uppercase text-text-accent-light-mode-only">
-          {t('currentSigned', { ns: 'education' })}
+          {t($ => $.currentSigned, { ns: 'education' })}
         </div>
         <Triangle className="h-[22px] w-4 text-components-panel-on-panel-item-bg" />
       </div>
@@ -49,7 +49,7 @@ const UserInfo = () => {
         variant="secondary"
         onClick={handleLogout}
       >
-        {t('userProfile.logout', { ns: 'common' })}
+        {t($ => $['userProfile.logout'], { ns: 'common' })}
       </Button>
     </div>
   )

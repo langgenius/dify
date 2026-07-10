@@ -117,11 +117,11 @@ export const useFileUpload = ({
     const ext = `.${getFileExtension(file.name)}`
     const isValidType = acceptTypes.includes(ext.toLowerCase())
     if (!isValidType)
-      toast.error(t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }))
+      toast.error(t($ => $['stepOne.uploader.validation.typeError'], { ns: 'datasetCreation' }))
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      toast.error(t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
+      toast.error(t($ => $['stepOne.uploader.validation.size'], { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
 
     return isValidType && isValidSize
   }, [fileUploadConfig, t, acceptTypes])
@@ -153,7 +153,7 @@ export const useFileUpload = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
+        const errorMessage = getFileUploadErrorMessage(e, t($ => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }), t)
         toast.error(errorMessage)
         onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
         return Promise.resolve({ ...fileItem })
@@ -189,7 +189,7 @@ export const useFileUpload = ({
       return false
 
     if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
-      toast.error(t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }))
+      toast.error(t($ => $['stepOne.uploader.validation.filesNumber'], { ns: 'datasetCreation', filesNumber: filesCountLimit }))
       return false
     }
 

@@ -53,7 +53,7 @@ const LimitConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
+        title={t($ => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
         operations={(
           <Switch
             checked={payload.enabled}
@@ -66,7 +66,7 @@ const LimitConfig: FC<Props> = ({
         {payload?.enabled
           ? (
               <InputNumberWithSlider
-                label={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
+                label={t($ => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
                 value={payload?.size || LIMIT_SIZE_DEFAULT}
                 min={LIMIT_SIZE_MIN}
                 max={LIMIT_SIZE_MAX}

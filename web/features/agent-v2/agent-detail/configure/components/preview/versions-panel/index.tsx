@@ -60,7 +60,7 @@ export function AgentPreviewVersionsPanel({
     <aside className="flex h-full w-[268px] shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
         <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
-          {tWorkflow('versionHistory.title')}
+          {tWorkflow($ => $['versionHistory.title'])}
         </h2>
         <VersionFilter
           filterValue={filterValue}
@@ -69,7 +69,7 @@ export function AgentPreviewVersionsPanel({
         <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
         <button
           type="button"
-          aria-label={tCommon('operation.close')}
+          aria-label={tCommon($ => $['operation.close'])}
           onClick={onClose}
           className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
@@ -87,7 +87,7 @@ export function AgentPreviewVersionsPanel({
         )}
         {!versionsQuery.isPending && versions.length === 0 && (
           <div className="rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 py-6 text-center system-sm-regular text-text-tertiary">
-            {t('agentDetail.versionHistory.empty')}
+            {t($ => $['agentDetail.versionHistory.empty'])}
           </div>
         )}
         {!versionsQuery.isPending && versions.length > 0 && (

@@ -25,7 +25,7 @@ const DataSource = ({
   return (
     <div className="flex flex-col">
       <div className="px-4 pt-2 system-sm-semibold-uppercase text-text-secondary">
-        {t('inputFieldPanel.preview.stepOneTitle', { ns: 'datasetPipeline' })}
+        {t($ => $['inputFieldPanel.preview.stepOneTitle'], { ns: 'datasetPipeline' })}
       </div>
       <div className="px-4 py-2">
         <DataSourceOptions

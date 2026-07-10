@@ -132,12 +132,12 @@ export function AgentPreviewHeader({
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
-  const buildLabel = t('agentDetail.configure.rightPanel.build')
-  const buildTipBody = t('agentDetail.configure.rightPanel.buildTipBody')
-  const previewLabel = t('agentDetail.configure.rightPanel.preview')
-  const previewTipBody = t('agentDetail.configure.rightPanel.previewTipBody')
-  const previewDisabledTip = t('agentDetail.configure.rightPanel.previewDisabledTip')
-  const learnMoreLabel = t('agentDetail.configure.rightPanel.learnMore')
+  const buildLabel = t($ => $['agentDetail.configure.rightPanel.build'])
+  const buildTipBody = t($ => $['agentDetail.configure.rightPanel.buildTipBody'])
+  const previewLabel = t($ => $['agentDetail.configure.rightPanel.preview'])
+  const previewTipBody = t($ => $['agentDetail.configure.rightPanel.previewTipBody'])
+  const previewDisabledTip = t($ => $['agentDetail.configure.rightPanel.previewDisabledTip'])
+  const learnMoreLabel = t($ => $['agentDetail.configure.rightPanel.learnMore'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
 
   return (
@@ -150,15 +150,15 @@ export function AgentPreviewHeader({
             if (nextMode && (nextMode !== 'preview' || previewEnabled))
               onModeChange(nextMode)
           }}
-          aria-label={t('agentDetail.configure.rightPanel.modeLabel')}
+          aria-label={t($ => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
           <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
             <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
-            {t('agentDetail.configure.rightPanel.build')}
+            {t($ => $['agentDetail.configure.rightPanel.build'])}
           </SegmentedControlItem>
           <PreviewModeItem previewEnabled={previewEnabled} disabledTip={previewDisabledTip}>
             <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
-            {t('agentDetail.configure.rightPanel.preview')}
+            {t($ => $['agentDetail.configure.rightPanel.preview'])}
           </PreviewModeItem>
         </SegmentedControl>
         <ModeInfoTip ariaLabel={modeTip}>
@@ -192,7 +192,7 @@ export function AgentPreviewHeader({
               type="button"
               disabled={refreshDisabled}
               className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={t('agentDetail.configure.preview.restart')}
+              aria-label={t($ => $['agentDetail.configure.preview.restart'])}
             >
               <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
             </button>
@@ -202,10 +202,10 @@ export function AgentPreviewHeader({
               type="button"
               onClick={onOpenWorkingDirectory}
               className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t('agentDetail.configure.workingDirectory.open')}
+              aria-label={t($ => $['agentDetail.configure.workingDirectory.open'])}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.workingDirectory.fileSystem')}</span>
+              <span className="px-0.5 system-sm-medium">{t($ => $['agentDetail.configure.workingDirectory.fileSystem'])}</span>
             </button>
           )}
         </div>
@@ -220,10 +220,10 @@ export function AgentPreviewHeader({
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
               )}
-              aria-label={t('agentDetail.configure.preview.chatFeatures')}
+              aria-label={t($ => $['agentDetail.configure.preview.chatFeatures'])}
             >
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
-              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
+              <span className="px-0.5 system-sm-medium">{t($ => $['agentDetail.configure.preview.chatFeatures'])}</span>
             </button>
           </>
         )}

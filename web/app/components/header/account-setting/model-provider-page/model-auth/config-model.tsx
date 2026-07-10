@@ -29,7 +29,7 @@ const ConfigModel = ({
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 size-3" />
-        {t('modelProvider.auth.authorizationError', { ns: 'common' })}
+        {t($ => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
       </div>
     )
@@ -48,7 +48,7 @@ const ConfigModel = ({
       {
         credentialRemoved && (
           <>
-            {t('modelProvider.auth.credentialRemoved', { ns: 'common' })}
+            {t($ => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
             <StatusDot status="error" className="ml-2" />
           </>
         )
@@ -57,7 +57,7 @@ const ConfigModel = ({
         !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiEqualizer2Line className="mr-1 size-4" />
-            {t('operation.config', { ns: 'common' })}
+            {t($ => $['operation.config'], { ns: 'common' })}
           </>
         )
       }
@@ -65,7 +65,7 @@ const ConfigModel = ({
         loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiScales3Line className="mr-1 size-4" />
-            {t('modelProvider.auth.configLoadBalancing', { ns: 'common' })}
+            {t($ => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
           </>
         )
       }

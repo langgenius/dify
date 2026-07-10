@@ -106,10 +106,10 @@ function Banner({
     >
       <div className="flex w-full flex-col gap-1">
         <p className="truncate title-3xl-semi-bold text-text-primary">
-          {t('banner.greeting', { name: userName, ns: 'explore' })}
+          {t($ => $['banner.greeting'], { name: userName, ns: 'explore' })}
         </p>
         <p className="truncate body-sm-regular text-text-secondary">
-          {t('banner.tagline', { ns: 'explore' })}
+          {t($ => $['banner.tagline'], { ns: 'explore' })}
         </p>
       </div>
 

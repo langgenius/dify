@@ -170,7 +170,7 @@ function SearchMethodRadioCard({
               {isRecommended
                 ? (
                     <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
-                      {t('stepTwo.recommend', { ns: 'datasetCreation' })}
+                      {t($ => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                     </Badge>
                   )
                 : null}
@@ -245,8 +245,8 @@ export function SearchMethodOption({
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
   const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)
   const showRerankModelSelector = shouldShowRerankModelSelector(option.id, hybridSearch.mode)
-  const rerankModelLabel = t('modelProvider.rerankModel.key', { ns: 'common' })
-  const rerankModelTip = t('modelProvider.rerankModel.tip', { ns: 'common' })
+  const rerankModelLabel = t($ => $['modelProvider.rerankModel.key'], { ns: 'common' })
+  const rerankModelTip = t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })
   const scoreThresholdHidden = option.id === RetrievalSearchMethodEnum.keywordSearch
   const config = (
     <div className="space-y-3">
@@ -323,7 +323,7 @@ export function SearchMethodOption({
                         <div className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
                       </div>
                       <span className="system-xs-medium text-text-primary">
-                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                        {t($ => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
                       </span>
                     </div>
                   )

@@ -45,7 +45,7 @@ function AgentTaskToolbar({
           onClick={handleInsert}
         >
           <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
-          {t(`${i18nPrefix}.task.insert`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.task.insert`], { ns: 'workflow' })}
         </button>
       </div>
       <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">
@@ -93,7 +93,7 @@ export function AgentTaskField({
     }
     if (node.data.type === BlockEnum.Start) {
       acc.sys = {
-        title: t('blocks.start', { ns: 'workflow' }),
+        title: t($ => $['blocks.start'], { ns: 'workflow' }),
         type: BlockEnum.Start,
       }
     }
@@ -104,13 +104,13 @@ export function AgentTaskField({
     <FieldRoot name="agent_task" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-1">
         <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
-          {t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
         </FieldLabel>
         <Infotip
-          aria-label={t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}
+          aria-label={t($ => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
           popupClassName="whitespace-pre-line"
         >
-          {t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.task.tooltip`], { ns: 'workflow' })}
         </Infotip>
       </div>
       <div
@@ -122,7 +122,7 @@ export function AgentTaskField({
       >
         <div className={cn('flex h-full flex-col rounded-lg', isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal')}>
           <PromptEditor
-            aria-label={t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
+            aria-label={t($ => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
             wrapperClassName="flex h-full flex-col"
             value={data.agent_task || ''}
             onChange={onChange}
@@ -130,7 +130,7 @@ export function AgentTaskField({
             compact
             className="min-h-0 flex-1 overflow-y-auto px-3 py-2"
             placeholderClassName="px-3 py-2"
-            placeholder={t(`${i18nPrefix}.task.placeholder`, { ns: 'workflow' })}
+            placeholder={t($ => $[`${i18nPrefix}.task.placeholder`], { ns: 'workflow' })}
             onFocus={setFocus}
             onBlur={setBlur}
             workflowVariableBlock={{

@@ -81,7 +81,7 @@ const SegmentList = (
                 key={`${segItem.id}-checkbox`}
                 className="mt-3.5 shrink-0"
                 value={segItem.id}
-                aria-label={`${t('segment.chunk', { ns: 'datasetDocuments' })} ${segItem.position}`}
+                aria-label={`${t($ => $['segment.chunk'], { ns: 'datasetDocuments' })} ${segItem.position}`}
               />
               <div className="min-w-0 grow">
                 <SegmentCard

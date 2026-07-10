@@ -30,19 +30,19 @@ const IdeaOutput: FC<Props> = ({
         className="mb-1.5 flex cursor-pointer items-center text-sm/5 font-medium text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
-        <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}</div>
         <div className="system-xs-regular text-text-tertiary">
           (
-          {t(`${i18nPrefix}.optional`, { ns: 'appDebug' })}
+          {t($ => $[`${i18nPrefix}.optional`], { ns: 'appDebug' })}
           )
         </div>
         <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-px -rotate-90')} />
       </div>
       {!isFoldIdeaOutput && (
         <Textarea
-          aria-label={t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}
+          aria-label={t($ => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
           className="h-[80px]"
-          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`, { ns: 'appDebug' })}
+          placeholder={t($ => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appDebug' })}
           value={value}
           onValueChange={value => onChange(value)}
         />

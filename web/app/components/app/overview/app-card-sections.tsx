@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { TFunction } from 'i18next'
+import type { SelectorParam, TFunction } from 'i18next'
 import type { ComponentType, FormEvent, ReactNode } from 'react'
 import type {
   OverviewOperationKey,
@@ -49,12 +49,6 @@ type AppInfo = AppDetailResponse & Partial<AppSSO>
 
 type OperationIcon = ComponentType<{ className?: string }>
 
-type AccessModeLabelKey
-  = | 'accessControlDialog.accessItems.organization'
-    | 'accessControlDialog.accessItems.specific'
-    | 'accessControlDialog.accessItems.anyone'
-    | 'accessControlDialog.accessItems.external'
-
 type AppCardOperation = {
   key: OverviewOperationKey
   label: string
@@ -84,11 +78,11 @@ const ACCESS_MODE_ICON_MAP: Record<AccessMode, OperationIcon> = {
   [AccessMode.EXTERNAL_MEMBERS]: RiVerifiedBadgeLine,
 }
 
-const ACCESS_MODE_LABEL_MAP: Record<AccessMode, AccessModeLabelKey> = {
-  [AccessMode.ORGANIZATION]: 'accessControlDialog.accessItems.organization',
-  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: 'accessControlDialog.accessItems.specific',
-  [AccessMode.PUBLIC]: 'accessControlDialog.accessItems.anyone',
-  [AccessMode.EXTERNAL_MEMBERS]: 'accessControlDialog.accessItems.external',
+const ACCESS_MODE_LABEL_MAP: Record<AccessMode, SelectorParam<'app'>> = {
+  [AccessMode.ORGANIZATION]: $ => $['accessControlDialog.accessItems.organization'],
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: $ => $['accessControlDialog.accessItems.specific'],
+  [AccessMode.PUBLIC]: $ => $['accessControlDialog.accessItems.anyone'],
+  [AccessMode.EXTERNAL_MEMBERS]: $ => $['accessControlDialog.accessItems.external'],
 }
 
 const MaybeTooltip = ({
@@ -142,11 +136,11 @@ export const WorkflowLaunchDialog = ({
       <DialogContent className="w-[560px]! max-w-[calc(100vw-2rem)]! p-0!">
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t('overview.appInfo.workflowLaunchHiddenInputs.title', { ns: 'appOverview' })}
+            {t($ => $['overview.appInfo.workflowLaunchHiddenInputs.title'], { ns: 'appOverview' })}
           </DialogTitle>
           <DialogDescription className="system-md-regular text-text-tertiary">
             <Trans
-              i18nKey="overview.appInfo.workflowLaunchHiddenInputs.description"
+              i18nKey={$ => $['overview.appInfo.workflowLaunchHiddenInputs.description']}
               ns="appOverview"
               components={{ bold: <span className="system-md-medium" /> }}
             />
@@ -162,10 +156,10 @@ export const WorkflowLaunchDialog = ({
           </div>
           <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
             <Button onClick={() => onOpenChange(false)}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" variant="primary">
-              {t('overview.appInfo.launch', { ns: 'appOverview' })}
+              {t($ => $['overview.appInfo.launch'], { ns: 'appOverview' })}
             </Button>
           </div>
         </form>
@@ -196,11 +190,11 @@ export const createAppCardOperations = ({
   onDevelop: () => void
 }): AppCardOperation[] => {
   const labelMap: Record<OverviewOperationKey, string> = {
-    launch: t('overview.appInfo.launch', { ns: 'appOverview' }),
-    embedded: t('overview.appInfo.embedded.entry', { ns: 'appOverview' }),
-    customize: t('overview.appInfo.customize.entry', { ns: 'appOverview' }),
-    settings: t('overview.appInfo.settings.entry', { ns: 'appOverview' }),
-    develop: t('overview.apiInfo.doc', { ns: 'appOverview' }),
+    launch: t($ => $['overview.appInfo.launch'], { ns: 'appOverview' }),
+    embedded: t($ => $['overview.appInfo.embedded.entry'], { ns: 'appOverview' }),
+    customize: t($ => $['overview.appInfo.customize.entry'], { ns: 'appOverview' }),
+    settings: t($ => $['overview.appInfo.settings.entry'], { ns: 'appOverview' }),
+    develop: t($ => $['overview.apiInfo.doc'], { ns: 'appOverview' }),
   }
   const onClickMap: Record<OverviewOperationKey, () => void> = {
     launch: onLaunch,
@@ -246,8 +240,8 @@ export const AppCardUrlSection = ({
   <div className="flex flex-col items-start justify-center self-stretch">
     <div className="pb-1 system-xs-medium text-text-tertiary">
       {isApp
-        ? t('overview.appInfo.accessibleAddress', { ns: 'appOverview' })
-        : t('overview.apiInfo.accessibleAddress', { ns: 'appOverview' })}
+        ? t($ => $['overview.appInfo.accessibleAddress'], { ns: 'appOverview' })
+        : t($ => $['overview.apiInfo.accessibleAddress'], { ns: 'appOverview' })}
     </div>
     <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
       <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -262,24 +256,24 @@ export const AppCardUrlSection = ({
         <AlertDialogContent>
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-              {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+              {t($ => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
+              {t($ => $['overview.appInfo.regenerateNotice'], { ns: 'appOverview' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton onClick={onHideRegenerateConfirm}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onRegenerate}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
       {isApp && canRegenerateUrl && (
-        <MaybeTooltip content={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
+        <MaybeTooltip content={t($ => $['overview.appInfo.regenerate'], { ns: 'appOverview' }) || ''}>
           <div
             className="size-6 cursor-pointer rounded-md hover:bg-state-base-hover"
             onClick={onShowRegenerateConfirm}
@@ -304,20 +298,20 @@ export const AppCardAccessControlSection = ({
   onClick: () => void
 }) => {
   const Icon = ACCESS_MODE_ICON_MAP[appDetail.access_mode]
-  const labelKey = ACCESS_MODE_LABEL_MAP[appDetail.access_mode]
+  const labelSelector = ACCESS_MODE_LABEL_MAP[appDetail.access_mode]
 
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="pb-1 system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
+      <div className="pb-1 system-xs-medium text-text-tertiary">{t($ => $['publishApp.title'], { ns: 'app' })}</div>
       <div
         className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5"
         onClick={onClick}
       >
         <div className="flex grow items-center gap-x-1.5 pr-1">
           <Icon className="size-4 shrink-0 text-text-secondary" />
-          <p className="system-sm-medium text-text-secondary">{t(labelKey, { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-secondary">{t(labelSelector, { ns: 'app' })}</p>
         </div>
-        {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+        {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t($ => $['publishApp.notSet'], { ns: 'app' })}</p>}
         <div className="flex size-4 shrink-0 items-center justify-center">
           <RiArrowRightSLine className="size-4 text-text-quaternary" />
         </div>
@@ -357,7 +351,7 @@ export const AppCardOperations = ({
         return (
           <div key={key} className="mr-1 inline-flex shrink-0">
             <MaybeTooltip
-              content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+              content={t($ => $['overview.appInfo.preUseReminder'], { ns: 'appOverview' }) ?? ''}
               tooltipClassName="mt-[-8px]"
               show={disabled}
             >
@@ -419,7 +413,7 @@ export const AppCardOperations = ({
         return (
           <MaybeTooltip
             key={key}
-            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+            content={t($ => $['overview.appInfo.preUseReminder'], { ns: 'appOverview' }) ?? ''}
             tooltipClassName="mt-[-8px]"
           >
             {actionButton}

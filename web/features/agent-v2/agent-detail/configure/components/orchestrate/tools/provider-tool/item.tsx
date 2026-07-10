@@ -95,7 +95,7 @@ function UnauthorizedCredentialStatus({
             disabled={disabled}
             onClick={onClick}
           >
-            {t('notAuthorized', { ns: 'tools' })}
+            {t($ => $.notAuthorized, { ns: 'tools' })}
             <StatusDot className="ml-2" status="warning" />
           </Button>
         )}
@@ -111,7 +111,7 @@ function UnauthorizedCredentialStatus({
         className="shrink-0"
         onClick={handleApiKeyModalOpen}
       >
-        {t('notAuthorized', { ns: 'tools' })}
+        {t($ => $.notAuthorized, { ns: 'tools' })}
         <StatusDot className="ml-2" status="warning" />
       </Button>
       <ApiKeyModal
@@ -204,7 +204,7 @@ const ProviderToolActionItem = memo(({
         <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
           <button
             type="button"
-            aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
+            aria-label={t($ => $['agentDetail.configure.tools.editAction'], { name: action.name })}
             onClick={handleConfigureAction}
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -212,7 +212,7 @@ const ProviderToolActionItem = memo(({
           </button>
           <button
             type="button"
-            aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
+            aria-label={t($ => $['agentDetail.configure.tools.removeAction'], { name: action.name })}
             onClick={handleRemoveAction}
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -274,10 +274,10 @@ export const AgentProviderToolItem = memo(({
           <>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+                aria-label={t($ => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
               >
-                <span className="sr-only">{t('agentDetail.configure.tools.moreActions', { name: tool.name })}</span>
+                <span className="sr-only">{t($ => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}</span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
@@ -287,7 +287,7 @@ export const AgentProviderToolItem = memo(({
                   onClick={onRemoveProvider}
                 >
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                  <span>{t('agentDetail.configure.tools.removeProvider')}</span>
+                  <span>{t($ => $['agentDetail.configure.tools.removeProvider'])}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -97,7 +97,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
     }
 
     if (errorMsgKey && typeName) {
-      toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
+      toast.error(t($ => $[errorMsgKey], { ns: 'appDebug', key: t($ => $[typeName], { ns: 'appDebug' }) }))
       return false
     }
     setInputs(newInputs)

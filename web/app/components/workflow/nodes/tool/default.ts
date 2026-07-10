@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
@@ -23,11 +24,11 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     tool_configurations: {},
     tool_node_version: '2',
   },
-  checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
+  checkValid(payload: ToolNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
     if (notAuthed)
-      errorMessages = t(`${i18nPrefix}.authRequired`, { ns: 'workflow' })
+      errorMessages = t($ => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })
 
     if (!errorMessages) {
       toolInputsSchema.filter((field: any) => {
@@ -35,17 +36,17 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const targetVar = payload.tool_parameters[field.variable]
         if (!targetVar) {
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+          errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
           return
         }
         const { type: variable_type, value } = targetVar
         if (variable_type === VarKindType.variable) {
           if (!errorMessages && (!value || value.length === 0))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+            errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
         }
         else {
           if (!errorMessages && (value === undefined || value === null || value === ''))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+            errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
         }
       })
     }
@@ -56,9 +57,9 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       }).forEach((field: any) => {
         const value = payload.tool_configurations[field.variable]
         if (!errorMessages && (value === undefined || value === null || value === ''))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
+          errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label[language] })
         if (!errorMessages && typeof value === 'object' && !!value.type && (value.value === undefined || value.value === null || value.value === '' || (Array.isArray(value.value) && value.value.length === 0)))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
+          errorMessages = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label[language] })
       })
     }
 

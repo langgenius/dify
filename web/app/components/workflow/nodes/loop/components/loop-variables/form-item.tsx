@@ -89,7 +89,7 @@ const FormItem = ({
             value={normalizedVarValue}
             onChange={handleChange}
             filterVar={filterVar}
-            placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
+            placeholder={t($ => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string}
           />
         )
       }

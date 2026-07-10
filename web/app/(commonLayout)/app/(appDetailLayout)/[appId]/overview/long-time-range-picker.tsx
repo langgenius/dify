@@ -30,7 +30,7 @@ const LongTimeRangePicker: FC<Props> = ({
   const items = React.useMemo<TimePeriodOption[]>(() => {
     return Object.entries(periodMapping).map(([key, period]) => ({
       value: key,
-      name: t(`filter.period.${period.name}`, { ns: 'appLog' }),
+      name: t($ => $[`filter.period.${period.name}`], { ns: 'appLog' }),
     }))
   }, [periodMapping, t])
   const [value, setValue] = React.useState('2')
@@ -41,9 +41,9 @@ const LongTimeRangePicker: FC<Props> = ({
   const handleSelect = React.useCallback((item: TimePeriodOption) => {
     const id = item.value
     const value = periodMapping[id]?.value ?? '-1'
-    const name = item.name || t('filter.period.allTime', { ns: 'appLog' })
+    const name = item.name || t($ => $['filter.period.allTime'], { ns: 'appLog' })
     if (value === -1) {
-      onSelect({ name: t('filter.period.allTime', { ns: 'appLog' }), query: undefined })
+      onSelect({ name: t($ => $['filter.period.allTime'], { ns: 'appLog' }), query: undefined })
     }
     else if (value === 0) {
       const startOfToday = today.startOf('day').format(queryDateFormat)
@@ -81,7 +81,7 @@ const LongTimeRangePicker: FC<Props> = ({
       }}
     >
       <SelectTrigger className="mt-0 w-fit max-w-none">
-        {selectedItem?.name ?? t('placeholder.select', { ns: 'common' })}
+        {selectedItem?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
       </SelectTrigger>
       <SelectContent>
         {items.map(item => (

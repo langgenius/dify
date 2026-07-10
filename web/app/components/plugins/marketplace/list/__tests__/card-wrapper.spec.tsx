@@ -6,12 +6,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import CardWrapper from '../card-wrapper'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-  useLocale: () => 'en-US',
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
+    }),
+    useLocale: () => 'en-US',
+  })
+})
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({

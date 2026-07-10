@@ -55,7 +55,7 @@ const AddBlock = ({
       )}
       >
         <RiAddLine className="mr-1 size-4" />
-        {t('common.addBlock', { ns: 'workflow' })}
+        {t($ => $['common.addBlock'], { ns: 'workflow' })}
       </div>
     )
   }, [nodesReadOnly, t])

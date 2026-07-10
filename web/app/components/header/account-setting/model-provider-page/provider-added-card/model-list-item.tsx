@@ -109,7 +109,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                 <Popover>
                   <PopoverTrigger nativeButton={false} openOnHover render={<span><Switch checked={false} disabled size="md" /></span>} />
                   <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
-                    {t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}
+                    {t($ => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
                   </PopoverContent>
                 </Popover>
               )

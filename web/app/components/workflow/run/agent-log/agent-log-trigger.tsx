@@ -25,7 +25,7 @@ export function AgentLogTrigger({
       }}
     >
       <div className="flex items-center px-3 pt-2 system-2xs-medium-uppercase text-text-tertiary">
-        {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        {t($ => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
       </div>
       <div className="flex items-center pt-1 pr-2 pb-1.5 pl-3">
         {agentStrategy
@@ -38,7 +38,7 @@ export function AgentLogTrigger({
         <div
           className="flex shrink-0 cursor-pointer items-center px-px system-xs-regular-uppercase text-text-tertiary"
         >
-          {t('detail', { ns: 'runLog' })}
+          {t($ => $.detail, { ns: 'runLog' })}
           <span aria-hidden className="ml-0.5 i-ri-arrow-right-line size-3.5" />
         </div>
       </div>

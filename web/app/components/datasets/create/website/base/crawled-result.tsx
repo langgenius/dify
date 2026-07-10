@@ -63,11 +63,11 @@ const CrawledResult: FC<Props> = ({
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll}
-          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+          label={isCheckAll ? t($ => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' }) : t($ => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })}
           labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
         />
         <div className="text-xs text-text-tertiary">
-          {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+          {t($ => $[`${I18N_PREFIX}.scrapTimeInfo`], {
             ns: 'datasetCreation',
             total: list.length,
             time: usedTime.toFixed(1),

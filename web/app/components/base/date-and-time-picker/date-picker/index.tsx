@@ -193,10 +193,10 @@ const DatePicker = ({
     setView(ViewType.date)
   }
 
-  const timeFormat = needTimePicker ? t('dateFormats.displayWithTime', { ns: 'time' }) : t('dateFormats.display', { ns: 'time' })
+  const timeFormat = needTimePicker ? t($ => $['dateFormats.displayWithTime'], { ns: 'time' }) : t($ => $['dateFormats.display'], { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
+  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t($ => $.defaultPlaceholder, { ns: 'time' }))
 
   return (
     <Popover
@@ -230,7 +230,7 @@ const DatePicker = ({
                 <span className={cn('i-ri-calendar-line size-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden')} />
                 <button
                   type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
+                  aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                   className={cn('hidden size-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block')}
                   onClick={handleClear}
                 >

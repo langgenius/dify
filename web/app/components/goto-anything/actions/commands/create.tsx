@@ -79,7 +79,7 @@ export const createCommand: SlashCommandHandler = {
   async search(args: string, locale?: string) {
     const i18n = getI18n()
     const tr = (key: (typeof OPTIONS)[number]['titleKey' | 'descKey']) =>
-      i18n.t(key, { ns: 'app', lng: locale })
+      i18n.t($ => $[key], { ns: 'app', lng: locale })
 
     const renderIcon = (Icon: CreateOption['icon']) => (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

@@ -3,17 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ReasoningPanel from '../reasoning-panel'
 
 // Mock react-i18next so the reused chat.thinking/chat.thought labels resolve.
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.thinking': 'Thinking...',
-        'chat.thought': 'Thought',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const translations: Record<string, string> = {
+          'chat.thinking': 'Thinking...',
+          'chat.thought': 'Thought',
+        }
+        return translations[key] || key
+      }),
+    }),
+  })
+})
 
 // Mock the heavy Markdown renderer to a simple passthrough.
 vi.mock('@/app/components/base/markdown', () => ({

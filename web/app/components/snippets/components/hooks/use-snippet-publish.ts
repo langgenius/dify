@@ -43,11 +43,11 @@ export const useSnippetPublish = ({
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
       resetWorkflowVersionHistory()
-      toast.success(t('publishSuccess'))
+      toast.success(t($ => $.publishSuccess))
       return true
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('publishFailed'))
+      toast.error(error instanceof Error ? error.message : t($ => $.publishFailed))
       return false
     }
   }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, resetWorkflowVersionHistory, snippetId, t, workflowStore])

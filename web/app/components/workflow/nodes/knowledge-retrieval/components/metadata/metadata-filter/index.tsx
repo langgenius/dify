@@ -52,12 +52,12 @@ const MetadataFilter = ({
       <CollapseHeader>
         <CollapseTrigger>
           <CollapseTitle>
-            {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflow' })}
           </CollapseTitle>
           {metadataFilterMode === MetadataFilteringModeEnum.automatic && <CollapseIndicator />}
         </CollapseTrigger>
-        <Infotip aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })} popupClassName="w-[200px]">
-          {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+        <Infotip aria-label={t($ => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })} popupClassName="w-[200px]">
+          {t($ => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflow' })}
         </Infotip>
         <CollapseActions>
           <div className="flex items-center pr-4">
@@ -77,7 +77,7 @@ const MetadataFilter = ({
         {metadataFilterMode === MetadataFilteringModeEnum.automatic && (
           <>
             <div className="px-4 body-xs-regular text-text-tertiary">
-              {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
+              {t($ => $['nodes.knowledgeRetrieval.metadata.options.automatic.desc'], { ns: 'workflow' })}
             </div>
             <div className="mt-1 px-4">
               <ModelParameterModal

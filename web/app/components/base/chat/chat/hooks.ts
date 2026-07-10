@@ -825,7 +825,7 @@ export const useChat = (
     setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
     }
 

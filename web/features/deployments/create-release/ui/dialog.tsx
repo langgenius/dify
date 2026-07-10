@@ -62,17 +62,17 @@ function CreateReleaseDialogSurface() {
       if (!response)
         return
 
-      toast.success(t('versions.createSuccess', { name: response.release.displayName }))
+      toast.success(t($ => $['versions.createSuccess'], { name: response.release.displayName }))
       closeDialog()
     }
     catch (error) {
       if (error instanceof CreateReleaseSubmissionBlockedError) {
-        toast.error(t('versions.dslUnsupportedMode'))
+        toast.error(t($ => $['versions.dslUnsupportedMode']))
         return
       }
 
       const message = await deploymentErrorMessage(error)
-      toast.error(message || t('versions.createFailed'))
+      toast.error(message || t($ => $['versions.createFailed']))
     }
   }
 
@@ -91,10 +91,10 @@ function CreateReleaseDialogSurface() {
         <div className="border-b border-divider-subtle px-6 py-5 pr-14">
           <div className="min-w-0">
             <DialogTitle className="title-xl-semi-bold text-text-primary">
-              {t('versions.createRelease')}
+              {t($ => $['versions.createRelease'])}
             </DialogTitle>
             <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {t('versions.createReleaseDescription')}
+              {t($ => $['versions.createReleaseDescription'])}
             </DialogDescription>
           </div>
         </div>

@@ -26,17 +26,17 @@ const Instruction = ({
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="system-sm-medium text-text-secondary">
-          {t('nodes.knowledgeBase.chunkStructureTip.title', { ns: 'workflow' })}
+          {t($ => $['nodes.knowledgeBase.chunkStructureTip.title'], { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular">
-          <p className="text-text-tertiary">{t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}</p>
+          <p className="text-text-tertiary">{t($ => $['nodes.knowledgeBase.chunkStructureTip.message'], { ns: 'workflow' })}</p>
           <a
             href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
             target="_blank"
             rel="noopener noreferrer"
             className="text-text-accent"
           >
-            {t('nodes.knowledgeBase.chunkStructureTip.learnMore', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeBase.chunkStructureTip.learnMore'], { ns: 'workflow' })}
           </a>
         </div>
       </div>

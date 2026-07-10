@@ -49,7 +49,7 @@ const EmailInput = ({
 
   const placeholder = useMemo(() => {
     return (selectedEmails.length === 0 || isFocus)
-      ? t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`, { ns: 'workflow' })
+      ? t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`], { ns: 'workflow' })
       : ''
   }, [selectedEmails, t, isFocus])
 

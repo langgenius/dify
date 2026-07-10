@@ -18,7 +18,7 @@ const InputCopy = ({
   children,
 }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
-  const copyLabel = isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`
+  const copyLabel = isCopied ? `${t($ => $.copied, { ns: 'appApi' })}` : `${t($ => $.copy, { ns: 'appApi' })}`
   const handleCopy = () => {
     writeTextToClipboard(value).then(() => {
       setIsCopied(true)

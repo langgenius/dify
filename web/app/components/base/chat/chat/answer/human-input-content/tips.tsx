@@ -23,19 +23,19 @@ const Tips = ({
       <Divider className="my-2! w-[30px]" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
+          <div className="system-xs-regular text-text-secondary">{t($ => $['common.humanInputEmailTip'], { ns: 'workflow' })}</div>
         )}
         {showEmailTip && isEmailDebugMode && (
           <div className="system-xs-regular text-text-secondary">
             <Trans
-              i18nKey="common.humanInputEmailTipInDebugMode"
+              i18nKey={$ => $['common.humanInputEmailTipInDebugMode']}
               ns="workflow"
               components={{ email: <span className="system-xs-semibold"></span> }}
               values={{ email }}
             />
           </div>
         )}
-        {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
+        {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t($ => $['common.humanInputWebappTip'], { ns: 'workflow' })}</div>}
       </div>
     </>
   )

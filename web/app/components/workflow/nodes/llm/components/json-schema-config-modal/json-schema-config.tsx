@@ -200,7 +200,7 @@ function JsonSchemaConfigContent({
     }
     else if (selectedSchemaView === SchemaView.VisualEditor) {
       if (advancedEditing || isAddingNewField) {
-        toast.warning(t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }))
+        toast.warning(t($ => $['nodes.llm.jsonSchema.warningTips.saveSchema'], { ns: 'workflow' }))
         return
       }
     }
@@ -213,12 +213,12 @@ function JsonSchemaConfigContent({
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
         <div className="grow truncate title-2xl-semi-bold text-text-primary">
-          {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
+          {t($ => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
         </div>
         <button
           type="button"
           className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
@@ -226,7 +226,7 @@ function JsonSchemaConfigContent({
       </div>
       <div className="flex items-center justify-between px-6 py-2">
         <SegmentedControl<SchemaView>
-          aria-label={t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
+          aria-label={t($ => $['nodes.llm.jsonSchema.title'], { ns: 'workflow' })}
           value={selectedSchemaViews}
           onValueChange={(nextSchemaViews) => {
             const value = nextSchemaViews[0]
@@ -276,16 +276,16 @@ function JsonSchemaConfigContent({
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>
-              {t('nodes.llm.jsonSchema.resetDefaults', { ns: 'workflow' })}
+              {t($ => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflow' })}
             </Button>
             <Divider type="vertical" className="mr-0 ml-1 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button variant="primary" onClick={handleSave}>
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

@@ -56,7 +56,7 @@ const ModelList: FC<ModelListProps> = ({
         <div className="flex items-center pr-0.75 pl-1">
           <span className="group mr-2 flex shrink-0 items-center">
             <span className="inline-flex h-6 items-center pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:hidden">
-              {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
+              {t($ => $['modelProvider.modelsNum'], { ns: 'common', num: models.length })}
               <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
             </span>
             <button
@@ -64,7 +64,7 @@ const ModelList: FC<ModelListProps> = ({
               className="hidden h-6 cursor-pointer items-center rounded-lg border-none bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:inline-flex"
               onClick={() => onCollapse()}
             >
-              {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
+              {t($ => $['modelProvider.modelsNum'], { ns: 'common', num: models.length })}
               <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
             </button>
           </span>

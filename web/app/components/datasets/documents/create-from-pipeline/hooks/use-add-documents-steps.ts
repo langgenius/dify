@@ -19,15 +19,15 @@ export const useAddDocumentsSteps = () => {
 
   const steps = [
     {
-      label: t('addDocuments.steps.chooseDatasource', { ns: 'datasetPipeline' }),
+      label: t($ => $['addDocuments.steps.chooseDatasource'], { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.dataSource,
     },
     {
-      label: t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' }),
+      label: t($ => $['addDocuments.steps.processDocuments'], { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.processDocuments,
     },
     {
-      label: t('addDocuments.steps.processingDocuments', { ns: 'datasetPipeline' }),
+      label: t($ => $['addDocuments.steps.processingDocuments'], { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.processingDocuments,
     },
   ]

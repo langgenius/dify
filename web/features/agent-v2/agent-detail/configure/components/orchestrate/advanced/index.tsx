@@ -12,10 +12,10 @@ export function AgentAdvancedSettings() {
 
   return (
     <ConfigureSection
-      label={t('agentDetail.configure.advancedSettings.label')}
+      label={t($ => $['agentDetail.configure.advancedSettings.label'])}
       labelId="agent-configure-advanced-settings-label"
       panelId={advancedSettingsPanelId}
-      description={t('agentDetail.configure.advancedSettings.description')}
+      description={t($ => $['agentDetail.configure.advancedSettings.description'])}
       defaultOpen={false}
       buildDraftChangeSection="advancedSettings"
       rootClassName="gap-2 pt-1 pb-3"

@@ -46,8 +46,8 @@ function Chip<T extends ItemValue>({
   const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
   const clearLabel = triggerContent
-    ? `${t('operation.clear', { ns: 'common' })} ${triggerContent}`
-    : t('operation.clear', { ns: 'common' })
+    ? `${t($ => $['operation.clear'], { ns: 'common' })} ${triggerContent}`
+    : t($ => $['operation.clear'], { ns: 'common' })
 
   return (
     <Select
@@ -64,7 +64,7 @@ function Chip<T extends ItemValue>({
     >
       <div className="relative w-fit max-w-full">
         <SelectTrigger
-          aria-label={triggerContent || t('placeholder.select', { ns: 'common' })}
+          aria-label={triggerContent || t($ => $['placeholder.select'], { ns: 'common' })}
           className={cn(
             'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue && 'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',

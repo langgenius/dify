@@ -23,12 +23,15 @@ let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,

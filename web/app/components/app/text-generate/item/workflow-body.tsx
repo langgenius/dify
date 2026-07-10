@@ -55,7 +55,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
         {taskId && (
           <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
             <RiPlayList2Line className="mr-1 size-3" />
-            <span>{t('generation.execution', { ns: 'share' })}</span>
+            <span>{t($ => $['generation.execution'], { ns: 'share' })}</span>
             <span className="px-1">·</span>
             <span>{getGenerationTaskLabel(taskId, depth)}</span>
           </div>
@@ -78,7 +78,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               )}
               onClick={() => onSwitchTab('RESULT')}
             >
-              {t('result', { ns: 'runLog' })}
+              {t($ => $.result, { ns: 'runLog' })}
             </div>
             <div
               className={cn(
@@ -87,7 +87,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               )}
               onClick={() => onSwitchTab('DETAIL')}
             >
-              {t('detail', { ns: 'runLog' })}
+              {t($ => $.detail, { ns: 'runLog' })}
             </div>
           </div>
         )}

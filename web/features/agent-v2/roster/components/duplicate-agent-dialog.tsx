@@ -104,7 +104,7 @@ export function DuplicateAgentDialog({
       body,
     }, {
       onSuccess: () => {
-        toast.success(t('roster.duplicateSuccess'))
+        toast.success(t($ => $['roster.duplicateSuccess']))
         handleOpenChange(false)
       },
     })
@@ -117,10 +117,10 @@ export function DuplicateAgentDialog({
           <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('roster.duplicateDialog.title')}
+              {t($ => $['roster.duplicateDialog.title'])}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              {t('roster.duplicateDialog.description', { name: latestAgent.name })}
+              {t($ => $['roster.duplicateDialog.description'], { name: latestAgent.name })}
             </DialogDescription>
           </div>
           <Form<AgentFormValues>
@@ -132,7 +132,7 @@ export function DuplicateAgentDialog({
               <div className="flex items-end gap-4 pb-2">
                 <button
                   type="button"
-                  aria-label={t('roster.duplicateForm.changeIcon', { name: latestAgent.name })}
+                  aria-label={t($ => $['roster.duplicateForm.changeIcon'], { name: latestAgent.name })}
                   className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => setIconPickerOpen(true)}
                 >
@@ -149,9 +149,9 @@ export function DuplicateAgentDialog({
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
                   <FieldRoot name="name" className="relative min-w-0 flex-1">
                     <FieldLabel>
-                      {t('roster.createForm.nameLabel')}
+                      {t($ => $['roster.createForm.nameLabel'])}
                       <span className="ml-1 system-xs-regular text-text-tertiary">
-                        {tCommon('label.optional')}
+                        {tCommon($ => $['label.optional'])}
                       </span>
                     </FieldLabel>
                     <FieldControl
@@ -169,16 +169,16 @@ export function DuplicateAgentDialog({
                     className="relative min-w-0 flex-1"
                   >
                     <FieldLabel>
-                      {t('roster.createForm.roleLabel')}
+                      {t($ => $['roster.createForm.roleLabel'])}
                       <span className="ml-1 system-xs-regular text-text-tertiary">
-                        {tCommon('label.optional')}
+                        {tCommon($ => $['label.optional'])}
                       </span>
                     </FieldLabel>
                     <FieldControl
                       autoComplete="off"
                       maxLength={255}
                       onValueChange={setRole}
-                      placeholder={t('roster.createForm.rolePlaceholder')}
+                      placeholder={t($ => $['roster.createForm.rolePlaceholder'])}
                       value={role}
                     />
                   </FieldRoot>
@@ -186,23 +186,23 @@ export function DuplicateAgentDialog({
               </div>
               <FieldRoot name="description">
                 <FieldLabel>
-                  {t('roster.createForm.descriptionLabel')}
+                  {t($ => $['roster.createForm.descriptionLabel'])}
                   <span className="ml-1 system-xs-regular text-text-tertiary">
-                    {tCommon('label.optional')}
+                    {tCommon($ => $['label.optional'])}
                   </span>
                 </FieldLabel>
                 <Textarea
                   autoComplete="off"
                   className="h-20 resize-none"
                   onValueChange={setDescription}
-                  placeholder={t('roster.createForm.descriptionPlaceholder')}
+                  placeholder={t($ => $['roster.createForm.descriptionPlaceholder'])}
                   value={description}
                 />
               </FieldRoot>
             </div>
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={duplicateAgentMutation.isPending}>
-                {tCommon('operation.cancel')}
+                {tCommon($ => $['operation.cancel'])}
               </Button>
               <Button
                 type="submit"
@@ -210,7 +210,7 @@ export function DuplicateAgentDialog({
                 className="min-w-18"
                 loading={duplicateAgentMutation.isPending}
               >
-                {tCommon('operation.duplicate')}
+                {tCommon($ => $['operation.duplicate'])}
               </Button>
             </div>
           </Form>

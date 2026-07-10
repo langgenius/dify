@@ -55,7 +55,7 @@ const FieldList = ({
           {LabelRightContent}
         </div>
         <ActionButton
-          aria-label={t('operation.add', { ns: 'common' })}
+          aria-label={t($ => $['operation.add'], { ns: 'common' })}
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}

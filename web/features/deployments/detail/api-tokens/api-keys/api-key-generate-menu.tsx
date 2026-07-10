@@ -130,7 +130,7 @@ export function ApiKeyGenerateMenu({
           resetCreateDialog()
         },
         onError: () => {
-          toast.error(t('access.api.createFailed'))
+          toast.error(t($ => $['access.api.createFailed']))
         },
       },
     )
@@ -145,7 +145,7 @@ export function ApiKeyGenerateMenu({
       className={cn('gap-1.5', triggerClassName)}
     >
       <span className="i-ri-add-line size-4" aria-hidden="true" />
-      {t('access.api.newKey')}
+      {t($ => $['access.api.newKey'])}
     </Button>
   )
 
@@ -158,10 +158,10 @@ export function ApiKeyGenerateMenu({
           <form onSubmit={handleGenerateApiKey}>
             <div className="border-b border-divider-subtle px-6 py-5 pr-14">
               <DialogTitle className="title-xl-semi-bold text-text-primary">
-                {t('access.api.createKeyTitle')}
+                {t($ => $['access.api.createKeyTitle'])}
               </DialogTitle>
               <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-                {t('access.api.description')}
+                {t($ => $['access.api.description'])}
               </DialogDescription>
             </div>
 
@@ -171,7 +171,7 @@ export function ApiKeyGenerateMenu({
                   htmlFor={nameInputId}
                   className="mb-1 block system-sm-medium text-text-secondary"
                 >
-                  {t('access.api.nameLabel')}
+                  {t($ => $['access.api.nameLabel'])}
                 </label>
                 <Input
                   ref={nameInputRef}
@@ -180,14 +180,14 @@ export function ApiKeyGenerateMenu({
                   disabled={isCreating}
                   aria-invalid={nameError || undefined}
                   aria-describedby={nameError ? `${nameInputId}-error` : undefined}
-                  placeholder={t('access.api.namePlaceholder')}
+                  placeholder={t($ => $['access.api.namePlaceholder'])}
                   onChange={(event) => {
                     handleDraftNameChange(event.target.value)
                   }}
                 />
                 {nameError && (
                   <div id={`${nameInputId}-error`} className="mt-1 system-xs-regular text-text-destructive">
-                    {t('access.api.nameRequired')}
+                    {t($ => $['access.api.nameRequired'])}
                   </div>
                 )}
               </div>
@@ -199,7 +199,7 @@ export function ApiKeyGenerateMenu({
                   onValueChange={value => value && handleEnvironmentChange(value)}
                 >
                   <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
-                    {t('access.api.table.environment')}
+                    {t($ => $['access.api.table.environment'])}
                   </SelectLabel>
                   <SelectTrigger>
                     {selectedEnvironment?.displayName ?? '—'}
@@ -223,7 +223,7 @@ export function ApiKeyGenerateMenu({
                 disabled={isCreating}
                 onClick={() => handleDialogOpenChange(false)}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 type="submit"
@@ -231,7 +231,7 @@ export function ApiKeyGenerateMenu({
                 loading={isCreating}
                 disabled={isCreating || !selectedEnvironmentId}
               >
-                {t('access.api.createKey')}
+                {t($ => $['access.api.createKey'])}
               </Button>
             </div>
           </form>

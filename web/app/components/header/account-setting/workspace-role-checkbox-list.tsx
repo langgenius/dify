@@ -168,9 +168,9 @@ const WorkspaceRoleCheckboxList = ({
       : getLegacyRoleDescriptionKey(role)
 
     if (legacyRoleDescriptionKey)
-      return t(LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey], { ns: 'common' })
+      return t($ => $[LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey]], { ns: 'common' })
 
-    return t('role.noDescription', { ns: 'permission' })
+    return t($ => $['role.noDescription'], { ns: 'permission' })
   }
 
   const renderRoleText = (role: Role) => {
@@ -199,14 +199,14 @@ const WorkspaceRoleCheckboxList = ({
           <Input
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            placeholder={t('role.searchPlaceholder', { ns: 'permission' })}
+            placeholder={t($ => $['role.searchPlaceholder'], { ns: 'permission' })}
             className="pr-8 pl-8"
           />
           {keyword && (
             <button
               type="button"
               className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-components-input-border-active"
-              aria-label={t('operation.clear', { ns: 'common' })}
+              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
               onClick={() => setKeyword('')}
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -223,13 +223,13 @@ const WorkspaceRoleCheckboxList = ({
         {rolesLoading
           ? (
               <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                {t('role.loading', { ns: 'permission' })}
+                {t($ => $['role.loading'], { ns: 'permission' })}
               </div>
             )
           : filteredRoles.length === 0
             ? (
                 <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                  {t('role.noMatchingRoles', { ns: 'permission' })}
+                  {t($ => $['role.noMatchingRoles'], { ns: 'permission' })}
                 </div>
               )
             : (

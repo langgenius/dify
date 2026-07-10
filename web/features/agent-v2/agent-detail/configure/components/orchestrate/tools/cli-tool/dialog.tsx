@@ -92,11 +92,11 @@ export function CliToolDialog({
     const trimmedInstallCommand = formValues.installCommand?.trim() || installCommand.trim()
 
     if (!trimmedInstallCommand) {
-      toast.error(t('agentDetail.configure.tools.cliDialog.installCommand.required'))
+      toast.error(t($ => $['agentDetail.configure.tools.cliDialog.installCommand.required']))
       return
     }
     if (!trimmedName) {
-      toast.error(t('agentDetail.configure.tools.cliDialog.name.required'))
+      toast.error(t($ => $['agentDetail.configure.tools.cliDialog.name.required']))
       return
     }
 
@@ -132,10 +132,10 @@ export function CliToolDialog({
         <div className="relative px-6 pt-6 pb-3">
           <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(mode === 'edit' ? 'agentDetail.configure.tools.cliDialog.editTitle' : 'agentDetail.configure.tools.cliDialog.title')}
+            {t($ => $[mode === 'edit' ? 'agentDetail.configure.tools.cliDialog.editTitle' : 'agentDetail.configure.tools.cliDialog.title'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-            {t('agentDetail.configure.tools.cliDialog.description')}
+            {t($ => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
         </div>
         <Form<CliToolFormValues>
@@ -145,26 +145,26 @@ export function CliToolDialog({
           <div className="flex flex-col gap-4">
             <FieldRoot name="installCommand">
               <FieldLabel>
-                {t('agentDetail.configure.tools.cliDialog.installCommand.label')}
+                {t($ => $['agentDetail.configure.tools.cliDialog.installCommand.label'])}
               </FieldLabel>
               <FieldDescription>
-                {t('agentDetail.configure.tools.cliDialog.installCommand.description')}
+                {t($ => $['agentDetail.configure.tools.cliDialog.installCommand.description'])}
               </FieldDescription>
               <FieldControl
                 autoComplete="off"
                 onValueChange={setInstallCommand}
-                placeholder={t('agentDetail.configure.tools.cliDialog.installCommand.placeholder')}
+                placeholder={t($ => $['agentDetail.configure.tools.cliDialog.installCommand.placeholder'])}
                 value={installCommand}
               />
             </FieldRoot>
             <FieldRoot name="name">
               <FieldLabel>
-                {t('agentDetail.configure.tools.cliDialog.name.label')}
+                {t($ => $['agentDetail.configure.tools.cliDialog.name.label'])}
               </FieldLabel>
               <FieldControl
                 autoComplete="off"
                 onValueChange={setToolName}
-                placeholder={t('agentDetail.configure.tools.cliDialog.name.placeholder')}
+                placeholder={t($ => $['agentDetail.configure.tools.cliDialog.name.placeholder'])}
                 value={toolName}
               />
             </FieldRoot>
@@ -172,14 +172,14 @@ export function CliToolDialog({
               <div className="mb-3 h-px bg-divider-subtle" />
               <div className="mb-1 flex min-h-6 items-center gap-1">
                 <span className="system-sm-medium text-text-secondary">
-                  {t('agentDetail.configure.tools.cliDialog.env.label')}
+                  {t($ => $['agentDetail.configure.tools.cliDialog.env.label'])}
                 </span>
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('agentDetail.configure.tools.cliDialog.env.optional')}
+                  {t($ => $['agentDetail.configure.tools.cliDialog.env.optional'])}
                 </span>
               </div>
               <p className="mb-2 body-xs-regular text-text-tertiary">
-                {t('agentDetail.configure.tools.cliDialog.env.description')}
+                {t($ => $['agentDetail.configure.tools.cliDialog.env.description'])}
               </p>
               <EnvVariablesTable
                 editable
@@ -201,24 +201,24 @@ export function CliToolDialog({
               rel="noreferrer"
               className="inline-flex min-w-0 flex-1 items-center gap-1 system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              <span>{t('agentDetail.configure.tools.cliDialog.learnMore')}</span>
+              <span>{t($ => $['agentDetail.configure.tools.cliDialog.learnMore'])}</span>
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
             <div className="flex shrink-0 items-center gap-3">
               {mode === 'edit' && tool && onDeleteCliTool && (
                 <div className="flex items-center gap-3">
                   <Button type="button" tone="destructive" onClick={handleDelete}>
-                    {tCommon('operation.remove')}
+                    {tCommon($ => $['operation.remove'])}
                   </Button>
                   <div className="h-4 w-px bg-divider-regular" aria-hidden />
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <Button type="button" onClick={handleCancel}>
-                  {tCommon('operation.cancel')}
+                  {tCommon($ => $['operation.cancel'])}
                 </Button>
                 <Button type="submit" variant="primary">
-                  {tCommon(mode === 'edit' ? 'operation.save' : 'operation.add')}
+                  {tCommon($ => $[mode === 'edit' ? 'operation.save' : 'operation.add'])}
                 </Button>
               </div>
             </div>
@@ -227,7 +227,7 @@ export function CliToolDialog({
         <div className="flex items-start justify-center gap-1 border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3">
           <span aria-hidden className="mt-0.5 i-ri-lock-2-fill size-3 text-text-tertiary" />
           <p className="system-xs-regular text-text-tertiary">
-            {t('agentDetail.configure.tools.cliDialog.securityTip')}
+            {t($ => $['agentDetail.configure.tools.cliDialog.securityTip'])}
           </p>
         </div>
       </DialogContent>

@@ -141,7 +141,7 @@ const useSingleRunFormParams = ({
     if (varInputs.length > 0) {
       forms.push(
         {
-          label: t(`${i18nPrefix}.singleRun.variable`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.singleRun.variable`], { ns: 'workflow' })!,
           inputs: varInputs,
           values: inputVarValues,
           onChange: setInputVarValues,
@@ -152,7 +152,7 @@ const useSingleRunFormParams = ({
     if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
       forms.push(
         {
-          label: t(`${i18nPrefix}.context`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.context`], { ns: 'workflow' })!,
           inputs: [{
             label: '',
             variable: '#context#',
@@ -169,7 +169,7 @@ const useSingleRunFormParams = ({
 
       forms.push(
         {
-          label: t(`${i18nPrefix}.vision`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.vision`], { ns: 'workflow' })!,
           inputs: [{
             label: currentVariable?.variable as any,
             variable: '#files#',

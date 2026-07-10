@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   renderActionLabel,
   renderDriftTitle,
@@ -8,9 +9,9 @@ import {
   resolveConfig,
 } from '../environment-tile-utils'
 
-const t = ((key: string, options?: Record<string, unknown>) => {
+const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
   return options ? `${key}:${JSON.stringify(options)}` : key
-}) as TFunction<'deployments'>
+}, 'deployments') as unknown as TFunction<'deployments'>
 
 describe('resolveConfig', () => {
   it('treats undeploying environments as in progress', () => {

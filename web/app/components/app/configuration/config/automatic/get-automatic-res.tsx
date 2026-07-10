@@ -149,7 +149,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
   const handleChooseTemplate = useCallback((key: TemplateKey) => {
     return () => {
-      const template = t(`generate.template.${key}.instruction` as const, { ns: 'appDebug' })
+      const template = t($ => $[`generate.template.${key}.instruction` as const], { ns: 'appDebug' })
       setInstruction(template)
       setEditorKey(`${flowId}-${Date.now()}`)
     }
@@ -165,9 +165,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      toast.error(t('errorMsg.fieldRequired', {
+      toast.error(t($ => $['errorMsg.fieldRequired'], {
         ns: 'common',
-        field: t('generate.instruction', { ns: 'appDebug' }),
+        field: t($ => $['generate.instruction'], { ns: 'appDebug' }),
       }))
       return false
     }
@@ -197,7 +197,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('generate.loading', { ns: 'appDebug' })}</div>
+      <div className="text-[13px] text-text-tertiary">{t($ => $['generate.loading'], { ns: 'appDebug' })}</div>
     </div>
   )
 
@@ -290,8 +290,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         <div className="flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
-              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
-              <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('generate.description', { ns: 'appDebug' })}</div>
+              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t($ => $['generate.title'], { ns: 'appDebug' })}</div>
+              <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t($ => $['generate.description'], { ns: 'appDebug' })}</div>
             </div>
             <div>
               <ModelParameterModal
@@ -308,7 +308,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {isBasicMode && (
               <div className="mt-4">
                 <div className="flex items-center">
-                  <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">{t('generate.tryIt', { ns: 'appDebug' })}</div>
+                  <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary uppercase">{t($ => $['generate.tryIt'], { ns: 'appDebug' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -322,7 +322,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                     <TryLabel
                       key={item.key}
                       Icon={item.icon}
-                      text={t(`generate.template.${item.key}.name`, { ns: 'appDebug' })}
+                      text={t($ => $[`generate.template.${item.key}.name`], { ns: 'appDebug' })}
                       onClick={handleChooseTemplate(item.key)}
                     />
                   ))}
@@ -333,7 +333,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {/* inputs */}
             <div className="mt-4">
               <div>
-                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
+                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t($ => $['generate.instruction'], { ns: 'appDebug' })}</div>
                 {isBasicMode
                   ? (
                       <InstructionEditorInBasic
@@ -364,7 +364,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               />
 
               <div className="mt-7 flex justify-end space-x-2">
-                <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
+                <Button onClick={onClose}>{t($ => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}</Button>
                 <Button
                   className="flex space-x-1"
                   variant="primary"
@@ -372,7 +372,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   disabled={isLoading}
                 >
                   <Generator className="size-4" />
-                  <span className="text-xs font-semibold">{t('generate.generate', { ns: 'appDebug' })}</span>
+                  <span className="text-xs font-semibold">{t($ => $['generate.generate'], { ns: 'appDebug' })}</span>
                 </Button>
               </div>
             </div>
@@ -398,21 +398,21 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('generate.overwriteTitle', { ns: 'appDebug' })}
+                  {t($ => $['generate.overwriteTitle'], { ns: 'appDebug' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t('generate.overwriteMessage', { ns: 'appDebug' })}
+                  {t($ => $['generate.overwriteMessage'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
               </div>
               <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
                 <AlertDialogConfirmButton
                   onClick={() => {
                     hideShowConfirmOverwrite()
                     onFinished(current!)
                   }}
                 >
-                  {t('operation.confirm', { ns: 'common' })}
+                  {t($ => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>

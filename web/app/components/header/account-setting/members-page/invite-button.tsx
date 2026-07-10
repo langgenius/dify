@@ -29,7 +29,7 @@ const InviteButton = (props: InviteButtonProps) => {
   return (
     <Button variant="primary" {...props}>
       <RiUserAddLine className="mr-1 size-4" />
-      {t('members.invite', { ns: 'common' })}
+      {t($ => $['members.invite'], { ns: 'common' })}
     </Button>
   )
 }

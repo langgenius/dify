@@ -155,18 +155,18 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {`${t('deleteExternalAPIConfirmWarningContent.title.front', { ns: 'dataset' })} ${api.name}${t('deleteExternalAPIConfirmWarningContent.title.end', { ns: 'dataset' })}`}
+              {`${t($ => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t($ => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {usageCount > 0
-                ? `${t('deleteExternalAPIConfirmWarningContent.content.front', { ns: 'dataset' })} ${usageCount} ${t('deleteExternalAPIConfirmWarningContent.content.end', { ns: 'dataset' })}`
-                : t('deleteExternalAPIConfirmWarningContent.noConnectionContent', { ns: 'dataset' })}
+                ? `${t($ => $['deleteExternalAPIConfirmWarningContent.content.front'], { ns: 'dataset' })} ${usageCount} ${t($ => $['deleteExternalAPIConfirmWarningContent.content.end'], { ns: 'dataset' })}`
+                : t($ => $['deleteExternalAPIConfirmWarningContent.noConnectionContent'], { ns: 'dataset' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

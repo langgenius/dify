@@ -2,21 +2,24 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import ClearAllAnnotationsConfirmModal from '../index'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const translations: Record<string, string> = {
-        'table.header.clearAllConfirm': 'Clear all annotations?',
-        'operation.confirm': 'Confirm',
-        'operation.cancel': 'Cancel',
-      }
-      if (translations[key])
-        return translations[key]
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        const translations: Record<string, string> = {
+          'table.header.clearAllConfirm': 'Clear all annotations?',
+          'operation.confirm': 'Confirm',
+          'operation.cancel': 'Cancel',
+        }
+        if (translations[key])
+          return translations[key]
+        const prefix = options?.ns ? `${options.ns}.` : ''
+        return `${prefix}${key}`
+      }),
+    }),
+  })
+})
 
 beforeEach(() => {
   vi.clearAllMocks()

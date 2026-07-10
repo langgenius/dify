@@ -4,17 +4,20 @@ import { ChatContextProvider } from '@/app/components/base/chat/chat/context-pro
 import ThinkBlock from '../think-block'
 
 // Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.thinking': 'Thinking...',
-        'chat.thought': 'Thought',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const translations: Record<string, string> = {
+          'chat.thinking': 'Thinking...',
+          'chat.thought': 'Thought',
+        }
+        return translations[key] || key
+      }),
+    }),
+  })
+})
 
 // Helper to wrap component with ChatContextProvider
 const renderWithContext = (

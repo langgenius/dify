@@ -127,7 +127,7 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
+      toast.success(t($ => $['action.deleteSuccess'], { ns: 'plugin' }))
       handlePluginUpdated(true)
       refreshPluginList({ category })
 

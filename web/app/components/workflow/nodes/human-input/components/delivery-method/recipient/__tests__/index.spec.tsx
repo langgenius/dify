@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -93,7 +94,7 @@ describe('Recipient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
+      t: withSelectorKey((key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key),
     })
     mockUseAppContext.mockReturnValue(mockAppContextState)
     mockUseMembers.mockReturnValue({

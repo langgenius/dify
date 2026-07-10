@@ -61,7 +61,7 @@ export function useCreateInlineAgentBinding() {
 
   const createInlineAgentBinding = useCallback(async (nodeId: string, options?: CreateInlineAgentBindingOptions) => {
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) {
-      toast.error(t('roster.nodeSelector.createInlineFailed'))
+      toast.error(t($ => $['roster.nodeSelector.createInlineFailed']))
       options?.onError?.()
       return
     }
@@ -91,7 +91,7 @@ export function useCreateInlineAgentBinding() {
         || !binding.agent_id
         || !binding.current_snapshot_id
       ) {
-        toast.error(t('roster.nodeSelector.createInlineFailed'))
+        toast.error(t($ => $['roster.nodeSelector.createInlineFailed']))
         options?.onError?.()
         return
       }

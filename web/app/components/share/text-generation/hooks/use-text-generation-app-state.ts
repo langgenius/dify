@@ -102,14 +102,14 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
     if (!appId)
       return
     await saveMessage(messageId, appSourceType, appId)
-    toast.success(t('api.saved', { ns: 'common' }))
+    toast.success(t($ => $['api.saved'], { ns: 'common' }))
     await fetchSavedMessages(appId)
   }, [appId, appSourceType, fetchSavedMessages, t])
   const handleRemoveSavedMessage = useCallback(async (messageId: string) => {
     if (!appId)
       return
     await removeMessage(messageId, appSourceType, appId)
-    toast.success(t('api.remove', { ns: 'common' }))
+    toast.success(t($ => $['api.remove'], { ns: 'common' }))
     await fetchSavedMessages(appId)
   }, [appId, appSourceType, fetchSavedMessages, t])
   useEffect(() => {
@@ -154,7 +154,7 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
       cancelled = true
     }
   }, [appData, appParams, fetchSavedMessages, isInstalledApp, isWorkflow])
-  useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
+  useDocumentTitle(siteInfo?.title || t($ => $['generation.title'], { ns: 'share' }))
   useAppFavicon({
     enable: !isInstalledApp,
     icon_type: siteInfo?.icon_type,

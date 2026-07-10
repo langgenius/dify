@@ -23,13 +23,13 @@ export function useActivateCredential(provider: ModelProvider) {
     setOptimisticId(credential.credential_id)
     mutate({ credential_id: credential.credential_id }, {
       onSuccess: () => {
-        toast.success(t('api.actionSuccess', { ns: 'common' }))
+        toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
         updateModelProviders()
         supportedModelTypesRef.current.forEach(type => updateModelList(type))
       },
       onError: () => {
         setOptimisticId(undefined)
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     })
   }, [mutate, t, updateModelProviders, updateModelList])

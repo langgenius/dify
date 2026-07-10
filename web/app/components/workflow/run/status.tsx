@@ -44,7 +44,7 @@ const StatusPanel: FC<ResultProps> = ({
       node => node.pause_type.type === 'human_input',
     )
     if (hasHumanInputNode) {
-      reasons.push(t('nodes.humanInput.log.reasonContent', { ns: 'workflow' }))
+      reasons.push(t($ => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' }))
     }
     return reasons
   }, [pausedDetails, t])
@@ -70,7 +70,7 @@ const StatusPanel: FC<ResultProps> = ({
   const partialSucceededTip = exceptionCounts
     ? (
         <Trans
-          i18nKey="nodes.common.errorHandle.partialSucceeded.tip"
+          i18nKey={$ => $['nodes.common.errorHandle.partialSucceeded.tip']}
           ns="workflow"
           values={{ num: exceptionCounts }}
           components={{
@@ -99,7 +99,7 @@ const StatusPanel: FC<ResultProps> = ({
           status === 'partial-succeeded' && 'min-w-[140px]',
         )}
         >
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['resultPanel.status'], { ns: 'runLog' })}</div>
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
@@ -155,7 +155,7 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="max-w-[152px] flex-[33%]">
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['resultPanel.time'], { ns: 'runLog' })}</div>
           <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-16 animate-pulse rounded-xs bg-text-quaternary" />
@@ -166,7 +166,7 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="flex-[33%]">
-          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
+          <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['resultPanel.tokens'], { ns: 'runLog' })}</div>
           <div className="flex items-center gap-1 system-sm-medium text-text-secondary">
             {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 animate-pulse rounded-xs bg-text-quaternary" />
@@ -215,7 +215,7 @@ const StatusPanel: FC<ResultProps> = ({
                 rel="noopener noreferrer"
                 className="text-text-accent"
               >
-                {t('common.learnMore', { ns: 'workflow' })}
+                {t($ => $['common.learnMore'], { ns: 'workflow' })}
               </a>
             </div>
           </>
@@ -226,7 +226,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="my-2 h-[0.5px] bg-divider-deep" />
           <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['nodes.humanInput.log.reason'], { ns: 'workflow' })}</div>
               {
                 pausedReasons.length > 0
                   ? pausedReasons.map(reason => (
@@ -239,7 +239,7 @@ const StatusPanel: FC<ResultProps> = ({
             </div>
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.backstageInputURL', { ns: 'workflow' })}</div>
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['nodes.humanInput.log.backstageInputURL'], { ns: 'workflow' })}</div>
                 {pausedInputURLs.map(url => (
                   <a
                     key={url}

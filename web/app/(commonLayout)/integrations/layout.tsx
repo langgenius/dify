@@ -6,7 +6,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function IntegrationsLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
-  useDocumentTitle(t('mainNav.integrations', { ns: 'common' }))
+  useDocumentTitle(t($ => $['mainNav.integrations'], { ns: 'common' }))
 
   return children
 }

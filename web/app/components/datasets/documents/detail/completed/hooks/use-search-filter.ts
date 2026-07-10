@@ -34,9 +34,9 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all')
 
   const statusList = useRef<SegmentStatusFilterOption[]>([
-    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
-    { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
-    { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
+    { value: 'all', name: t($ => $['list.index.all'], { ns: 'datasetDocuments' }) },
+    { value: 0, name: t($ => $['list.status.disabled'], { ns: 'datasetDocuments' }) },
+    { value: 1, name: t($ => $['list.status.enabled'], { ns: 'datasetDocuments' }) },
   ])
 
   const { run: handleSearch } = useDebounceFn(() => {

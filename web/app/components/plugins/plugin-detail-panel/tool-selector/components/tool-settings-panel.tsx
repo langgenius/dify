@@ -40,10 +40,10 @@ const ParamsTips: FC = () => {
   return (
     <div className="pb-1">
       <div className="system-xs-regular text-text-tertiary">
-        {t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}
+        {t($ => $['detailPanel.toolSelector.paramsTip1'], { ns: 'plugin' })}
       </div>
       <div className="system-xs-regular text-text-tertiary">
-        {t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}
+        {t($ => $['detailPanel.toolSelector.paramsTip2'], { ns: 'plugin' })}
       </div>
     </div>
   )
@@ -93,8 +93,8 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
               onCurrTypeChange(v)
           }}
           options={[
-            { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
-            { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
+            { value: 'settings', text: t($ => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })! },
+            { value: 'params', text: t($ => $['detailPanel.toolSelector.params'], { ns: 'plugin' })! },
           ]}
         />
       )}
@@ -110,7 +110,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
       {userSettingsOnly && (
         <div className="p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t('detailPanel.toolSelector.settings', { ns: 'plugin' })}
+            {t($ => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })}
           </div>
         </div>
       )}
@@ -119,7 +119,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
       {nodeId && reasoningConfigOnly && (
         <div className="mb-1 p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t('detailPanel.toolSelector.params', { ns: 'plugin' })}
+            {t($ => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
           </div>
           <ParamsTips />
         </div>

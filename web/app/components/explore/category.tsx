@@ -29,7 +29,7 @@ function Category({
 
   const renderCategoryName = (name: AppCategory) => {
     const categoryKey = `category.${name}` as keyof typeof exploreI18n
-    return categoryKey in exploreI18n ? t(categoryKey, { ns: 'explore' }) : name
+    return categoryKey in exploreI18n ? t($ => $[categoryKey], { ns: 'explore' }) : name
   }
 
   const handleValueChange = (nextCategory: string) => {
@@ -39,13 +39,13 @@ function Category({
 
   return (
     <RadioGroup
-      aria-label={t('tryApp.category', { ns: 'explore' })}
+      aria-label={t($ => $['tryApp.category'], { ns: 'explore' })}
       className={cn(className, 'flex max-w-full flex-wrap items-start gap-1 overflow-visible rounded-none bg-transparent p-0 text-[13px]')}
       value={selectedCategory}
       onValueChange={handleValueChange}
     >
       {[
-        { name: allCategoriesEn, label: t('apps.allCategories', { ns: 'explore' }), isAll: true },
+        { name: allCategoriesEn, label: t($ => $['apps.allCategories'], { ns: 'explore' }), isAll: true },
         ...list.filter(name => name !== allCategoriesEn).map(name => ({
           name,
           label: renderCategoryName(name),

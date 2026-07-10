@@ -10,7 +10,7 @@ type MemberItemProps = {
   isSelected: boolean
   isMe?: boolean
   onClick?: () => void
-  i18nNamespace?: string
+  i18nNamespace?: 'datasetSettings'
 }
 
 const MemberItem = ({
@@ -35,7 +35,7 @@ const MemberItem = ({
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
-              {t('form.me', { ns: i18nNamespace })}
+              {t($ => $['form.me'], { ns: i18nNamespace })}
             </span>
           )}
         </div>

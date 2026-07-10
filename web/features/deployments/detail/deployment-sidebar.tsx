@@ -137,7 +137,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                   <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
                     <div className="w-full min-w-0 pr-1">
                       <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
-                        {t('detail.notFound')}
+                        {t($ => $['detail.notFound'])}
                       </div>
                     </div>
                     <TitleTooltip content={appInstanceId}>
@@ -215,7 +215,7 @@ export function DeploymentDetailTop({
       <div className="flex min-w-0 flex-1 items-center gap-px">
         <Link
           href="/"
-          aria-label={t('mainNav.home', { ns: 'common' })}
+          aria-label={t($ => $['mainNav.home'], { ns: 'common' })}
           className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary"
         >
           <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -228,7 +228,7 @@ export function DeploymentDetailTop({
           href="/deployments"
           className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
         >
-          {t('menus.deployments', { ns: 'common' })}
+          {t($ => $['menus.deployments'], { ns: 'common' })}
         </Link>
       </div>
       <Tooltip>
@@ -236,7 +236,7 @@ export function DeploymentDetailTop({
           render={(
             <button
               type="button"
-              aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+              aria-label={t($ => $['gotoAnything.searchTitle'], { ns: 'app' })}
               className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
               onClick={() => setGotoAnythingOpen(true)}
             >
@@ -245,7 +245,7 @@ export function DeploymentDetailTop({
           )}
         />
         <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
-          <span className="px-0.5">{t('gotoAnything.quickAction', { ns: 'app' })}</span>
+          <span className="px-0.5">{t($ => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
             {SEARCH_SHORTCUT.map(key => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
@@ -298,7 +298,7 @@ export function DeploymentDetailSection({
             key={tab.key}
             mode={expand ? 'expand' : 'collapse'}
             iconMap={{ selected: tab.selectedIcon, normal: tab.icon }}
-            name={t(`tabs.${tab.key}.name`)}
+            name={t($ => $[`tabs.${tab.key}.name`])}
             href={`/deployments/${appInstanceId}/${tab.key}`}
             pathname={pathname}
           />

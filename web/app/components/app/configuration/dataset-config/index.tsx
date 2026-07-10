@@ -265,7 +265,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t('feature.dataSet.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.dataSet.title'], { ns: 'appDebug' })}
       headerRight={(
         !readonly && (
           <div className="flex items-center gap-1">
@@ -294,7 +294,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
+              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t($ => $['feature.dataSet.noData'], { ns: 'appDebug' })}</div>
             </div>
           )}
 

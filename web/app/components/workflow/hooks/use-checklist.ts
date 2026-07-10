@@ -137,7 +137,7 @@ const getDuplicateEndOutputMessages = (
 
     Array.from(new Set(nodeIds)).forEach((nodeId) => {
       const messages = nodeMessages.get(nodeId) || []
-      messages.push(t('errorMsg.duplicateOutputVariable', { ns: 'workflow', variable }))
+      messages.push(t($ => $['errorMsg.duplicateOutputVariable'], { ns: 'workflow', variable }))
       nodeMessages.set(nodeId, messages)
     })
   })
@@ -276,7 +276,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         const errorMessages: string[] = []
 
         if (isPluginMissing) {
-          errorMessages.push(t('nodes.common.pluginNotInstalled', { ns: 'workflow' }))
+          errorMessages.push(t($ => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
         }
         else {
           if (node!.data.type === BlockEnum.LLM) {
@@ -286,7 +286,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
               isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
             })
             if (modelIssue === LLMModelIssueCode.providerPluginUnavailable)
-              errorMessages.push(t('errorMsg.configureModel', { ns: 'workflow' }))
+              errorMessages.push(t($ => $['errorMsg.configureModel'], { ns: 'workflow' }))
           }
 
           if (validator) {
@@ -307,7 +307,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
               hasInvalidVar = true
           }
           if (hasInvalidVar)
-            errorMessages.push(t('errorMsg.invalidVariable', { ns: 'workflow' }))
+            errorMessages.push(t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' }))
 
           errorMessages.push(...(duplicateEndOutputMessages.get(node!.id) || []))
         }
@@ -346,8 +346,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,
-          title: t('panel.startNode', { ns: 'workflow' }),
-          errorMessages: [t('common.needStartNode', { ns: 'workflow' })],
+          title: t($ => $['panel.startNode'], { ns: 'workflow' }),
+          errorMessages: [t($ => $['common.needStartNode'], { ns: 'workflow' })],
           canNavigate: false,
         })
       }
@@ -360,8 +360,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }),
-          errorMessages: [t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) })],
+          title: t($ => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], { ns: 'workflow' }),
+          errorMessages: [t($ => $['common.needAdd'], { ns: 'workflow', node: t($ => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], { ns: 'workflow' }) })],
           canNavigate: false,
         })
       }
@@ -450,7 +450,7 @@ export const useChecklistBeforePublish = () => {
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
-      toast.error(t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }))
+      toast.error(t($ => $['common.maxTreeDepth'], { ns: 'workflow', depth: MAX_TREE_DEPTH }))
       return false
     }
 
@@ -548,7 +548,7 @@ export const useChecklistBeforePublish = () => {
           isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),
         })
         if (modelIssue === LLMModelIssueCode.providerPluginUnavailable) {
-          toast.error(`[${node!.data.title}] ${t('errorMsg.configureModel', { ns: 'workflow' })}`)
+          toast.error(`[${node!.data.title}] ${t($ => $['errorMsg.configureModel'], { ns: 'workflow' })}`)
           return false
         }
       }
@@ -576,12 +576,12 @@ export const useChecklistBeforePublish = () => {
           if (usedNode) {
             const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
             if (!usedVar) {
-              toast.error(`[${node!.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
+              toast.error(`[${node!.data.title}] ${t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' })}`)
               return false
             }
           }
           else {
-            toast.error(`[${node!.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}`)
+            toast.error(`[${node!.data.title}] ${t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' })}`)
             return false
           }
         }
@@ -592,7 +592,7 @@ export const useChecklistBeforePublish = () => {
       const isUnconnected = !validNodes.some(n => n.id === node!.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
-        toast.error(`[${node!.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}`)
+        toast.error(`[${node!.data.title}] ${t($ => $['common.needConnectTip'], { ns: 'workflow' })}`)
         return false
       }
     }
@@ -600,7 +600,7 @@ export const useChecklistBeforePublish = () => {
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
       if (startNodesFiltered.length === 0) {
-        toast.error(t('common.needStartNode', { ns: 'workflow' }))
+        toast.error(t($ => $['common.needStartNode'], { ns: 'workflow' }))
         return false
       }
     }
@@ -611,7 +611,7 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.some(node => node.data.type === type)) {
-        toast.error(t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }))
+        toast.error(t($ => $['common.needAdd'], { ns: 'workflow', node: t($ => $[`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>], { ns: 'workflow' }) }))
         return false
       }
     }
@@ -633,7 +633,7 @@ export const useWorkflowRunValidation = () => {
 
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {
-      toast.error(t('panel.checklistTip', { ns: 'workflow' }))
+      toast.error(t($ => $['panel.checklistTip'], { ns: 'workflow' }))
       return false
     }
     return true

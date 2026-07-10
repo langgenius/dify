@@ -21,7 +21,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         className="w-full"
       >
         <RiAddLine className="mr-1 size-4" />
-        {t('nodes.dataSource.add', { ns: 'workflow' })}
+        {t($ => $['nodes.dataSource.add'], { ns: 'workflow' })}
       </Button>
     )
   }, [])
@@ -39,7 +39,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
     >
       <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
         <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
-          {t('blocks.datasource', { ns: 'workflow' })}
+          {t($ => $['blocks.datasource'], { ns: 'workflow' })}
         </div>
       </div>
       <div

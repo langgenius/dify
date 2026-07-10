@@ -17,7 +17,7 @@ const EditingTitle = () => {
       {
         !!draftUpdatedAt && (
           <>
-            {t('common.autoSaved', { ns: 'workflow' })}
+            {t($ => $['common.autoSaved'], { ns: 'workflow' })}
             {' '}
             {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
           </>
@@ -26,14 +26,14 @@ const EditingTitle = () => {
       <span className="mx-1 flex items-center">·</span>
       {
         publishedAt
-          ? `${t('common.published', { ns: 'workflow' })} ${formatTimeFromNow(publishedAt)}`
-          : t('common.unpublished', { ns: 'workflow' })
+          ? `${t($ => $['common.published'], { ns: 'workflow' })} ${formatTimeFromNow(publishedAt)}`
+          : t($ => $['common.unpublished'], { ns: 'workflow' })
       }
       {
         isSyncingWorkflowDraft && (
           <>
             <span className="mx-1 flex items-center">·</span>
-            {t('common.syncingData', { ns: 'workflow' })}
+            {t($ => $['common.syncingData'], { ns: 'workflow' })}
           </>
         )
       }

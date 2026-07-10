@@ -70,7 +70,7 @@ export function AgentSkillItem({
   }, [])
   const detail = useAgentSkillDetail({
     apiContext,
-    description: skill.description ?? t('agentDetail.configure.skills.tip'),
+    description: skill.description ?? t($ => $['agentDetail.configure.skills.tip']),
     isOpen: isPreviewOpen,
     skill,
   })
@@ -94,12 +94,12 @@ export function AgentSkillItem({
               'group-focus-within:opacity-0 group-hover:opacity-0',
             )}
           >
-            {t('agentDetail.configure.skills.itemType')}
+            {t($ => $['agentDetail.configure.skills.itemType'])}
           </span>
         </button>
         <button
           type="button"
-          aria-label={`${tCommon('operation.download')} ${skill.name}`}
+          aria-label={`${tCommon($ => $['operation.download'])} ${skill.name}`}
           onClick={handleDownload}
           className={cn(
             'pointer-events-none absolute top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
@@ -112,7 +112,7 @@ export function AgentSkillItem({
           <button
             type="button"
             data-agent-skill-remove-button
-            aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
+            aria-label={t($ => $['agentDetail.configure.skills.remove'], { name: skill.name })}
             onClick={handleRemove}
             className="pointer-events-none absolute top-1/2 right-1 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >

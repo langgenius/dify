@@ -53,7 +53,7 @@ export const TriggerEventsList = () => {
     <div className="px-4 pt-2 pb-4">
       <div className="mb-1 py-1">
         <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
-          {t('events.actionNum', { ns: 'pluginTrigger', num: triggerEvents.length, event: t(`events.${triggerEvents.length > 1 ? 'events' : 'event'}`, { ns: 'pluginTrigger' }) })}
+          {t($ => $['events.actionNum'], { ns: 'pluginTrigger', num: triggerEvents.length, event: t($ => $[`events.${triggerEvents.length > 1 ? 'events' : 'event'}`], { ns: 'pluginTrigger' }) })}
         </div>
       </div>
       <div className="flex flex-col gap-2">

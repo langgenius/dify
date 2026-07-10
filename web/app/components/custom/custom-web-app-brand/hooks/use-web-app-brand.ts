@@ -45,7 +45,7 @@ const useWebAppBrand = () => {
     if (!file)
       return
     if (file.size > MAX_LOGO_FILE_SIZE) {
-      toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }))
+      toast.error(t($ => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 5 }))
       return
     }
     imageUpload({
@@ -56,7 +56,7 @@ const useWebAppBrand = () => {
         setFileId(res.id)
       },
       onErrorCallback: (error) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+        const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
         toast.error(errorMessage)
         setUploadProgress(-1)
       },
