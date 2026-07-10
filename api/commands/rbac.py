@@ -213,7 +213,7 @@ def migrate_member_roles_to_rbac(
                 member_account_ids=[account_id for account_id, _ in batch],
             )
             current_roles_by_account_id = {
-                item.account_id: {str(role.id) for role in item.roles} for item in current_roles
+                item.account_id: {role.id for role in item.roles} for item in current_roles
             }
 
         replace_jobs: list[tuple[str, str]] = []

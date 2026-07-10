@@ -578,11 +578,18 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
                 "initialize_created_app_rbac_access_task",
                 initialize_rbac_task,
             )
+            replace_whitelist = MagicMock()
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "replace_whitelist",
+                replace_whitelist,
+            )
 
             resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+    assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
     initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", "app-new")
 
 

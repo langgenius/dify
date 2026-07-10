@@ -5,7 +5,6 @@ import logging
 from celery import shared_task
 
 from configs import dify_config
-from core.rbac import RBACResourceWhitelistScope
 from extensions.ext_database import db
 from services.account_service import TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -19,22 +18,16 @@ APP_RBAC_QUEUE = "app_rbac"
 
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
 def initialize_created_app_rbac_access_task(self, tenant_id: str, account_id: str, app_id: str) -> None:
-    """Grant the default app policy to current members after a committed app creation.
+    """Grant the default app policy to current workspace members.
 
-    The replace operations are idempotent, so retrying the whole initialization
-    is safe when the enterprise RBAC service is temporarily unavailable.
+    App scope is persisted synchronously before this task is queued. Replacing
+    member policies is idempotent, so retrying the whole synchronization is safe
+    when the enterprise RBAC service is temporarily unavailable.
     """
     if not dify_config.RBAC_ENABLED:
         return
 
     try:
-        enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-            tenant_id=tenant_id,
-            account_id=account_id,
-            app_id=app_id,
-            payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-        )
-
         for account_ids in TenantService.iter_member_account_id_batches(
             tenant_id,
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,

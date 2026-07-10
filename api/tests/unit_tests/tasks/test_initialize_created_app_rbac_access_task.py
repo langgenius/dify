@@ -36,8 +36,7 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
 
     initialize_created_app_rbac_access_task.run("tenant-1", "actor-1", "app-1")
 
-    replace_whitelist.assert_called_once()
-    assert replace_whitelist.call_args.kwargs["payload"].scope is task_module.RBACResourceWhitelistScope.ALL
+    replace_whitelist.assert_not_called()
     assert replace_user_access_policies.call_count == 2
     assert replace_user_access_policies.call_args_list[0].kwargs["payload"].account_ids == ["acct-1", "acct-2"]
     assert replace_user_access_policies.call_args_list[1].kwargs["payload"].account_ids == ["acct-3"]
@@ -51,8 +50,13 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch)
 
     monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(
+        task_module.TenantService,
+        "iter_member_account_id_batches",
+        lambda tenant_id, batch_size, session: iter([["acct-1"]]),
+    )
+    monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,
-        "replace_whitelist",
+        "replace_user_access_policies",
         MagicMock(side_effect=ConnectionError("RBAC unavailable")),
     )
     retry = MagicMock(return_value=RuntimeError("retry requested"))
