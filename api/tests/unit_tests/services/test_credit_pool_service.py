@@ -1,3 +1,5 @@
+"""Credit-pool accounting tests backed by real in-memory SQLite sessions."""
+
 from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
@@ -91,9 +93,10 @@ def test_check_and_deduct_credits_deducts_exact_amount_when_sufficient() -> None
 
 
 def test_check_and_deduct_credits_returns_zero_for_non_positive_request() -> None:
-    assert (
-        CreditPoolService.check_and_deduct_credits(tenant_id=str(uuid4()), credits_required=0, session=MagicMock()) == 0
-    )
+    with _make_session(create_engine("sqlite:///:memory:")) as session:
+        assert (
+            CreditPoolService.check_and_deduct_credits(tenant_id=str(uuid4()), credits_required=0, session=session) == 0
+        )
 
 
 def test_check_and_deduct_credits_raises_when_pool_is_missing() -> None:
@@ -136,7 +139,8 @@ def test_check_and_deduct_credits_wraps_unexpected_deduction_errors() -> None:
 
 
 def test_deduct_credits_capped_returns_zero_for_non_positive_request() -> None:
-    assert CreditPoolService.deduct_credits_capped(tenant_id=str(uuid4()), credits_required=0, session=MagicMock()) == 0
+    with _make_session(create_engine("sqlite:///:memory:")) as session:
+        assert CreditPoolService.deduct_credits_capped(tenant_id=str(uuid4()), credits_required=0, session=session) == 0
 
 
 def test_deduct_credits_capped_returns_zero_when_pool_is_missing() -> None:
@@ -203,11 +207,12 @@ def test_deduct_credits_capped_reraises_quota_exceeded_errors() -> None:
 
 def test_check_and_deduct_credits_uses_tenant_redis_lock_before_db_deduction() -> None:
     tenant_id = "tenant-1"
-    session = MagicMock()
+    engine = create_engine("sqlite:///:memory:")
     pool = SimpleNamespace(remaining_credits=10, quota_used=2)
     redis_lock = _make_redis_lock()
 
     with (
+        _make_session(engine) as session,
         patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock) as lock,
         patch.object(CreditPoolService, "_get_locked_pool", return_value=pool) as get_locked_pool,
     ):
@@ -232,11 +237,12 @@ def test_check_and_deduct_credits_uses_tenant_redis_lock_before_db_deduction() -
 
 def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction() -> None:
     tenant_id = "tenant-1"
-    session = MagicMock()
+    engine = create_engine("sqlite:///:memory:")
     pool = SimpleNamespace(remaining_credits=2, quota_used=8)
     redis_lock = _make_redis_lock()
 
     with (
+        _make_session(engine) as session,
         patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock) as lock,
         patch.object(CreditPoolService, "_get_locked_pool", return_value=pool) as get_locked_pool,
     ):
@@ -413,32 +419,35 @@ def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> Non
     ],
 )
 def test_non_positive_credit_request_skips_tenant_redis_lock(deduct_method) -> None:
-    with patch("services.credit_pool_service.redis_client.lock") as lock:
-        result = deduct_method(tenant_id="tenant-1", credits_required=0, session=MagicMock())
+    with (
+        _make_session(create_engine("sqlite:///:memory:")) as session,
+        patch("services.credit_pool_service.redis_client.lock") as lock,
+    ):
+        result = deduct_method(tenant_id="tenant-1", credits_required=0, session=session)
 
     assert result == 0
     lock.assert_not_called()
 
 
 def test_check_and_deduct_credits_wraps_redis_lock_errors_without_querying_db() -> None:
-    session = MagicMock()
-
     with (
+        _make_session(create_engine("sqlite:///:memory:")) as session,
         patch("services.credit_pool_service.redis_client.lock", side_effect=RuntimeError("redis unavailable")),
         pytest.raises(QuotaExceededError, match="Failed to deduct credits"),
     ):
         CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=1, session=session)
 
-    session.scalar.assert_not_called()
+    assert session.in_transaction() is False
 
 
 def test_deduct_credits_capped_ignores_release_errors_after_successful_deduction() -> None:
-    session = MagicMock()
+    engine = create_engine("sqlite:///:memory:")
     pool = SimpleNamespace(remaining_credits=3, quota_used=7)
     redis_lock = _make_redis_lock()
     redis_lock.release.side_effect = RuntimeError("release failed")
 
     with (
+        _make_session(engine) as session,
         patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock),
         patch.object(CreditPoolService, "_get_locked_pool", return_value=pool),
     ):
