@@ -17,6 +17,7 @@ const {
   mockToastSuccess,
   mockCopy,
   mockIsPrivateOrLocalAddress,
+  mockGetNodeById,
 } = vi.hoisted(() => ({
   mockHandleStatusCodeChange: vi.fn(),
   mockGenerateWebhookUrl: vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockToastSuccess: vi.fn(),
   mockCopy: vi.fn(),
   mockIsPrivateOrLocalAddress: vi.fn((_url: string) => false),
+  mockGetNodeById: vi.fn(() => ({ id: 'node-1', data: { title: 'Webhook' } })),
 }))
 
 vi.mock('@langgenius/dify-ui/select', async () => {
@@ -154,6 +156,64 @@ vi.mock('../utils/render-output-vars', () => ({
 
 vi.mock('@/utils/urlValidation', () => ({
   isPrivateOrLocalAddress: (url: string) => mockIsPrivateOrLocalAddress(url),
+}))
+
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useWorkflow: () => ({
+    getNodeById: mockGetNodeById,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({
+    availableVars: [],
+    availableNodes: [],
+  }),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
+  default: ({ value, onChange, placeholder }: { value: string, onChange: (value: string) => void, placeholder: string }) => (
+    <textarea value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+  ),
+}))
+
+vi.mock('@langgenius/dify-ui/number-field', () => {
+  const React = require('react')
+  return {
+    NumberField: ({ value, min, max, disabled, onValueChange, onValueCommitted, children, className }: any) => {
+      const ref = React.useRef(value)
+      ref.current = value
+      return (
+        <div className={className} data-testid="number-field">
+          <input
+            type="number"
+            value={value ?? ''}
+            min={min}
+            max={max}
+            disabled={disabled}
+            onChange={(e: any) => {
+              const v = e.target.value === '' ? null : Number(e.target.value)
+              onValueChange?.(v)
+            }}
+            onBlur={() => {
+              onValueCommitted?.(ref.current, { reason: 'input-blur' })
+            }}
+          />
+        </div>
+      )
+    },
+    NumberFieldGroup: ({ children }: any) => <div>{children}</div>,
+    NumberFieldInput: () => null,
+    NumberFieldControls: ({ children }: any) => <div>{children}</div>,
+    NumberFieldIncrement: () => null,
+    NumberFieldDecrement: () => null,
+  }
+})
+
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 const mockConfigState = {
