@@ -1,10 +1,35 @@
+"""Snippet model properties backed by persisted SQLite collaborators."""
+
 import json
-from types import SimpleNamespace
-from unittest.mock import Mock
+from collections.abc import Iterator
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
+from models import snippet as snippet_module
+from models.account import Account
+from models.enums import TagType
+from models.model import Tag, TagBinding
 from models.snippet import CustomizedSnippet
+from models.workflow import Workflow, WorkflowType
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+WORKFLOW_ID = "22222222-2222-2222-2222-222222222222"
+APP_ID = "33333333-3333-3333-3333-333333333333"
+SNIPPET_ID = "44444444-4444-4444-4444-444444444444"
+ACCOUNT_1_ID = "55555555-5555-5555-5555-555555555555"
+ACCOUNT_2_ID = "55555555-5555-5555-5555-555555555556"
+
+
+@pytest.fixture
+def snippet_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    models = (Workflow, Tag, TagBinding, Account)
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    Workflow.metadata.create_all(sqlite_engine, tables=tables)
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        monkeypatch.setattr(snippet_module.db, "session", session)
+        yield session
 
 
 def test_graph_dict_returns_empty_without_workflow_id() -> None:
@@ -13,20 +38,26 @@ def test_graph_dict_returns_empty_without_workflow_id() -> None:
     assert snippet.graph_dict == {}
 
 
-def test_graph_dict_loads_published_workflow_graph(monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = SimpleNamespace(graph=json.dumps({"nodes": [{"id": "llm-1"}], "edges": []}))
-    session = SimpleNamespace(get=Mock(return_value=workflow))
-    monkeypatch.setattr("models.snippet.db.session", session)
-    snippet = CustomizedSnippet(workflow_id="workflow-1")
+def test_graph_dict_loads_published_workflow_graph(snippet_session: Session) -> None:
+    workflow = Workflow(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        type=WorkflowType.WORKFLOW,
+        version="1",
+        graph=json.dumps({"nodes": [{"id": "llm-1"}], "edges": []}),
+        _features="{}",
+        created_by=ACCOUNT_1_ID,
+    )
+    workflow.id = WORKFLOW_ID
+    snippet_session.add(workflow)
+    snippet_session.commit()
+    snippet = CustomizedSnippet(workflow_id=WORKFLOW_ID)
 
     assert snippet.graph_dict == {"nodes": [{"id": "llm-1"}], "edges": []}
-    session.get.assert_called_once()
 
 
-def test_graph_dict_returns_empty_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = SimpleNamespace(get=Mock(return_value=None))
-    monkeypatch.setattr("models.snippet.db.session", session)
-    snippet = CustomizedSnippet(workflow_id="missing-workflow")
+def test_graph_dict_returns_empty_when_workflow_missing(snippet_session: Session) -> None:
+    snippet = CustomizedSnippet(workflow_id=WORKFLOW_ID)
 
     assert snippet.graph_dict == {}
 
@@ -38,26 +69,28 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
     ]
 
 
-def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    tags = [SimpleNamespace(id="tag-1")]
-    session = SimpleNamespace(scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=tags))))
-    monkeypatch.setattr("models.snippet.db.session", session)
-    snippet = CustomizedSnippet(id="snippet-1", tenant_id="tenant-1")
+def test_tags_returns_query_results_or_empty(snippet_session: Session) -> None:
+    tag = Tag(tenant_id=TENANT_ID, type=TagType.SNIPPET, name="Reusable", created_by=ACCOUNT_1_ID)
+    binding = TagBinding(tenant_id=TENANT_ID, tag_id=tag.id, target_id=SNIPPET_ID, created_by=ACCOUNT_1_ID)
+    snippet_session.add_all((tag, binding))
+    snippet_session.commit()
+    snippet = CustomizedSnippet(id=SNIPPET_ID, tenant_id=TENANT_ID)
 
-    assert snippet.tags == tags
+    assert snippet.tags == [tag]
 
-    session.scalars.return_value.all.return_value = None
+    snippet_session.delete(binding)
+    snippet_session.commit()
     assert snippet.tags == []
 
 
-def test_account_properties_and_author_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = SimpleNamespace(id="account-1", name="Ada")
-    updated_account = SimpleNamespace(id="account-2", name="Grace")
-    session = SimpleNamespace(
-        get=Mock(side_effect=lambda _model, account_id: account if account_id == "account-1" else updated_account)
-    )
-    monkeypatch.setattr("models.snippet.db.session", session)
-    snippet = CustomizedSnippet(created_by="account-1", updated_by="account-2")
+def test_account_properties_and_author_name(snippet_session: Session) -> None:
+    account = Account(name="Ada", email="ada@example.com")
+    account.id = ACCOUNT_1_ID
+    updated_account = Account(name="Grace", email="grace@example.com")
+    updated_account.id = ACCOUNT_2_ID
+    snippet_session.add_all((account, updated_account))
+    snippet_session.commit()
+    snippet = CustomizedSnippet(created_by=ACCOUNT_1_ID, updated_by=ACCOUNT_2_ID)
 
     assert snippet.created_by_account is account
     assert snippet.author_name == "Ada"
