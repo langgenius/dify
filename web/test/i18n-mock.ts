@@ -23,7 +23,7 @@ function splitNamespacedKey(key: string) {
   }
 }
 
-export function resolveI18nKey<Ns extends Namespace>(key: TranslationKey<Ns>, namespace?: Ns) {
+function resolveI18nKey<Ns extends Namespace>(key: TranslationKey<Ns>, namespace?: Ns) {
   if (typeof key === 'string')
     return key
 

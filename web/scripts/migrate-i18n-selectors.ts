@@ -385,17 +385,39 @@ function isSelectorCompatibleExpression(
   })
 }
 
+function quoteSelectorKey(key: string) {
+  return `'${key.replaceAll('\\', '\\\\').replaceAll('\'', '\\\'')}'`
+}
+
+function selectorAccessFor(expression: ts.Expression, sourceFile: ts.SourceFile) {
+  if (ts.isStringLiteral(expression)) {
+    return ts.isIdentifierText(expression.text, ts.ScriptTarget.Latest)
+      ? `$.${expression.text}`
+      : `$[${quoteSelectorKey(expression.text)}]`
+  }
+
+  return `$[${expression.getText(sourceFile)}]`
+}
+
 function selectorFor(expression: ts.Expression, sourceFile: ts.SourceFile): string {
   if (ts.isArrayLiteralExpression(expression)) {
     const selectors = expression.elements.map((element) => {
       if (ts.isSpreadElement(element))
         return element.getText(sourceFile)
-      return `$ => $[${element.getText(sourceFile)}]`
+      return `$ => ${selectorAccessFor(element, sourceFile)}`
     })
     return `[${selectors.join(', ')}]`
   }
 
-  return `$ => $[${expression.getText(sourceFile)}]`
+  return `$ => ${selectorAccessFor(expression, sourceFile)}`
+}
+
+function isSelectorAccessRoot(expression: ts.Expression, parameterName: string): boolean {
+  if (ts.isIdentifier(expression))
+    return expression.text === parameterName
+  if (ts.isElementAccessExpression(expression) || ts.isPropertyAccessExpression(expression))
+    return isSelectorAccessRoot(expression.expression, parameterName)
+  return false
 }
 
 function isStringExpression(node: ts.Node): node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral {
@@ -770,6 +792,29 @@ function transformAnalyzedSource(
   }
 
   function visit(node: ts.Node) {
+    if (ts.isArrowFunction(node)
+      && node.parameters.length === 1
+      && ts.isIdentifier(node.parameters[0]!.name)
+      && ts.isElementAccessExpression(node.body)
+      && isSelectorAccessRoot(node.body.expression, node.parameters[0]!.name.text)
+      && ts.isStringLiteral(node.body.argumentExpression)) {
+      const argument = node.body.argumentExpression
+      if (ts.isIdentifierText(argument.text, ts.ScriptTarget.Latest)) {
+        edits.push({
+          end: node.body.end,
+          replacement: `${node.body.expression.getText(sourceFile)}.${argument.text}`,
+          start: node.body.getStart(sourceFile),
+        })
+      }
+      else if (argument.getText(sourceFile).startsWith('"')) {
+        edits.push({
+          end: argument.end,
+          replacement: quoteSelectorKey(argument.text),
+          start: argument.getStart(sourceFile),
+        })
+      }
+    }
+
     if (ts.isCallExpression(node) && isI18nMock(node)) {
       const factory = node.arguments[1]
       if (factory && (ts.isArrowFunction(factory) || ts.isFunctionExpression(factory))) {
@@ -822,7 +867,7 @@ function transformAnalyzedSource(
         if (initializer && ts.isStringLiteral(initializer)) {
           edits.push({
             end: initializer.end,
-            replacement: `{$ => $[${initializer.getText(sourceFile)}]}`,
+            replacement: `{${selectorFor(initializer, sourceFile)}}`,
             start: initializer.getStart(sourceFile),
           })
         }

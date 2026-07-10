@@ -90,8 +90,8 @@ type PluralBaseResources = {
     'plansCommon.teamMember': string
   }
   dataset: {
-    'docAllEnabled': string
-    'partialEnabled': string
+    docAllEnabled: string
+    partialEnabled: string
   }
   datasetDocuments: {
     'segment.characters': string

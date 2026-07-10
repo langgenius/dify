@@ -1,5 +1,4 @@
-import type { Namespace, Resources } from '../i18n-config/resources'
-import { defaultNS } from '../i18n-config/resources'
+import type { defaultNS, Namespace, Resources } from '../i18n-config/resources'
 import 'i18next'
 
 declare module 'i18next' {

@@ -22,10 +22,32 @@ export function Example() {
 
 export function Example() {
   const { t } = useTranslation('app')
-  return <Trans i18nKey={$ => $["account.changeEmail.description"]} ns="app">{t($ => $['account.changeEmail.title'])}</Trans>
+  return <Trans i18nKey={$ => $['account.changeEmail.description']} ns="app">{t($ => $['account.changeEmail.title'])}</Trans>
 }
 `)
       expect(result.changes).toBe(2)
+    })
+
+    it('should use property access for identifier keys and normalize existing selectors', () => {
+      // Arrange
+      const source = `import { useTranslation } from 'react-i18next'
+const { t } = useTranslation('app')
+const loadingSelector = $ => $["loading"]
+const dottedSelector = $ => $["account.changeEmail.title"]
+t('loading')
+`
+
+      // Act
+      const result = transformSource(source, 'example.ts')
+
+      // Assert
+      expect(result.output).toBe(`import { useTranslation } from 'react-i18next'
+const { t } = useTranslation('app')
+const loadingSelector = $ => $.loading
+const dottedSelector = $ => $['account.changeEmail.title']
+t($ => $.loading)
+`)
+      expect(result.changes).toBe(3)
     })
 
     it('should migrate global, instance, dynamic, and fallback translation calls', () => {
@@ -51,7 +73,7 @@ const { t } = useTranslation('app')
 globalT($ => $['global.key'], { ns: 'app' })
 i18n.t($ => $['instance.key'], { ns: 'app' })
 t($ => $[\`dynamic.\${kind}\`])
-t($ => $['withFallback'], { defaultValue: 'Fallback' })
+t($ => $.withFallback, { defaultValue: 'Fallback' })
 `)
       expect(result.changes).toBe(5)
     })
@@ -205,7 +227,7 @@ function Local({ Trans }: { Trans: (props: { i18nKey: string }) => null }) {
   return <Trans i18nKey="ordinary.key" />
 }
 
-export const translated = <Trans i18nKey={$ => $["global.key"]} />
+export const translated = <Trans i18nKey={$ => $['global.key']} />
 `)
       expect(result.changes).toBe(1)
     })
