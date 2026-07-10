@@ -155,26 +155,26 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
-  await getWebAppCard(this).getByRole('button', { name: 'Customize' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Custom Frontend' }).click()
 })
 
 Then('I should see the Agent v2 Web app customization dialog', async function (this: DifyWorld) {
-  const dialog = getDialog(this, 'Customize AI web app')
+  const dialog = getDialog(this, 'Custom Frontend')
 
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Customize AI web app')).toBeVisible()
+  await expect(dialog.getByText('Custom Frontend')).toBeVisible()
   await expect(dialog.getByText(/NEXT_PUBLIC_APP_ID|NEXT_PUBLIC_API_URL/)).toBeVisible()
 })
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
-  await getWebAppCard(this).getByRole('button', { name: 'Settings' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Branding' }).click()
 })
 
 Then('I should see the Agent v2 Web app settings dialog', async function (this: DifyWorld) {
-  const dialog = getDialog(this, 'Web App Settings')
+  const dialog = getDialog(this, 'Branding')
 
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('heading', { name: 'Web App Settings' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Branding' })).toBeVisible()
   await expect(dialog.getByText('web app Name')).toBeVisible()
   await expect(dialog.getByText('web app Description')).toBeVisible()
 })

@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiPaletteLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
 import { Trans } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
@@ -72,7 +73,7 @@ const OPERATION_ICON_MAP: Record<OverviewOperationKey, OperationIcon> = {
   launch: RiExternalLinkLine,
   embedded: RiWindowLine,
   customize: RiPaintBrushLine,
-  settings: RiEqualizer2Line,
+  settings: RiPaletteLine,
   develop: RiBookOpenLine,
 }
 
@@ -336,22 +337,25 @@ export const AppCardOperations = ({
 }) => (
   <>
     {operations.map(({ key, label, Icon, disabled, onClick }) => {
+      const shouldTruncate = key === 'customize' || key === 'settings'
       const buttonContent = (
-        <MaybeTooltip
-          content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-          tooltipClassName="mt-[-8px]"
-          show={disabled}
-        >
-          <div className="flex items-center justify-center gap-px">
-            <Icon className="size-3.5" />
-            <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
+        <div className={cn('flex items-center justify-center gap-px', shouldTruncate && 'max-w-full min-w-0')}>
+          <Icon className="size-3.5 shrink-0" />
+          <div
+            className={cn(
+              disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary',
+              'px-[3px] system-xs-medium',
+              shouldTruncate && 'min-w-0 truncate',
+            )}
+          >
+            {label}
           </div>
-        </MaybeTooltip>
+        </div>
       )
 
       if (key === 'launch' && launchConfigAction) {
         return (
-          <div key={key} className="mr-1 inline-flex">
+          <div key={key} className="mr-1 inline-flex shrink-0">
             <MaybeTooltip
               content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
               tooltipClassName="mt-[-8px]"
@@ -394,18 +398,36 @@ export const AppCardOperations = ({
         )
       }
 
-      return (
+      const actionButton = (
         <Button
-          className="mr-1 min-w-[88px]"
+          className={cn(
+            'mr-1 max-w-full min-w-[88px] overflow-hidden [&>*]:max-w-full [&>*]:min-w-0',
+            !shouldTruncate && 'shrink-0',
+          )}
           size="small"
           variant="ghost"
           key={key}
+          title={shouldTruncate ? label : undefined}
           onClick={onClick}
           disabled={disabled}
         >
           {buttonContent}
         </Button>
       )
+
+      if (disabled) {
+        return (
+          <MaybeTooltip
+            key={key}
+            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+            tooltipClassName="mt-[-8px]"
+          >
+            {actionButton}
+          </MaybeTooltip>
+        )
+      }
+
+      return actionButton
     })}
   </>
 )
