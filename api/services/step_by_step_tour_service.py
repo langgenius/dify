@@ -193,7 +193,7 @@ class StepByStepTourService:
             "completed_task_ids": cls._normalize_ids(state.completed_task_ids),
             "manually_enabled_workspace_ids": cls._normalize_ids(state.manually_enabled_workspace_ids),
             "manually_disabled_workspace_ids": cls._normalize_ids(state.manually_disabled_workspace_ids),
-            "updated_at": getattr(state, "updated_at", None),
+            "updated_at": state.updated_at,
         }
 
     @staticmethod
