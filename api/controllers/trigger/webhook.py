@@ -7,10 +7,25 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
+from enums.quota_type import QuotaType
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 
 logger = logging.getLogger(__name__)
+
+_QUOTA_EXCEEDED_MESSAGES = {
+    QuotaType.TRIGGER: "Trigger event quota exceeded. Please upgrade your plan.",
+    QuotaType.WORKFLOW: "Workflow execution quota exceeded. Please upgrade your plan.",
+}
+_DEFAULT_QUOTA_EXCEEDED_MESSAGE = "Quota exceeded. Please upgrade your plan."
+
+
+def _get_quota_exceeded_message(feature: str) -> str:
+    try:
+        quota_type = QuotaType(feature)
+    except ValueError:
+        return _DEFAULT_QUOTA_EXCEEDED_MESSAGE
+    return _QUOTA_EXCEEDED_MESSAGES.get(quota_type, _DEFAULT_QUOTA_EXCEEDED_MESSAGE)
 
 
 def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
@@ -61,11 +76,11 @@ def handle_webhook(webhook_id: str):
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
         return jsonify(response_data), status_code
 
-    except QuotaExceededError:
+    except QuotaExceededError as error:
         return jsonify(
             {
                 "error": "Too Many Requests",
-                "message": "Trigger event quota exceeded. Please upgrade your plan.",
+                "message": _get_quota_exceeded_message(error.feature),
             }
         ), 429
     except ValueError as error:
