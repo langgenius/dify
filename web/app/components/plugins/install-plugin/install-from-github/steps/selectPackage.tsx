@@ -2,7 +2,7 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldRoot } from '@langgenius/dify-ui/field'
+import { Field } from '@langgenius/dify-ui/field'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -78,7 +78,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
 
   return (
     <>
-      <FieldRoot name="version" className="gap-4 self-stretch">
+      <Field name="version" className="gap-4 self-stretch">
         <Select
           value={selectedVersionOption?.value ?? null}
           onValueChange={(value) => {
@@ -120,8 +120,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
-      <FieldRoot name="package" className="gap-4 self-stretch">
+      </Field>
+      <Field name="package" className="gap-4 self-stretch">
         <Select
           value={selectedPackageOption?.value ?? null}
           readOnly={!selectedVersion}
@@ -148,7 +148,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
+      </Field>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit
           && (

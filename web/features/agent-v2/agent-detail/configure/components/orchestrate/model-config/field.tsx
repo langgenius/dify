@@ -2,7 +2,7 @@
 
 import type { FormValue, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
-import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -27,7 +27,7 @@ export function AgentModelField({
   const canConfigureModelSettings = !readOnly && !!currentModel?.provider && !!currentModel.model
 
   return (
-    <FieldRoot name="model" className="gap-1 pb-4">
+    <Field name="model" className="gap-1 pb-4">
       <FieldLabel className="py-0 system-sm-semibold-uppercase! text-text-secondary">
         {t($ => $['agentDetail.configure.model.label'])}
       </FieldLabel>
@@ -97,6 +97,6 @@ export function AgentModelField({
               </div>
             )}
       </div>
-    </FieldRoot>
+    </Field>
   )
 }

@@ -1,7 +1,7 @@
 import type {
   Node,
 } from '@/app/components/workflow/types'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +68,7 @@ const RetryOnPanel = ({
         {
           retry_config?.retry_enabled && (
             <div className="px-4 pb-2">
-              <FieldsetRoot className="mb-1 flex w-full items-center">
+              <Fieldset className="mb-1 flex w-full items-center">
                 <FieldsetLegend className="sr-only">{maxRetriesLabel}</FieldsetLegend>
                 <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{maxRetriesLabel}</div>
                 <Slider
@@ -91,8 +91,8 @@ const RetryOnPanel = ({
                   unit={t($ => $['nodes.common.retry.times'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </FieldsetRoot>
-              <FieldsetRoot className="flex items-center">
+              </Fieldset>
+              <Fieldset className="flex items-center">
                 <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
                 <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{retryIntervalLabel}</div>
                 <Slider
@@ -115,7 +115,7 @@ const RetryOnPanel = ({
                   unit={t($ => $['nodes.common.retry.ms'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </FieldsetRoot>
+              </Fieldset>
             </div>
           )
         }

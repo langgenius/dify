@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
@@ -85,7 +85,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
-          <FieldRoot name="title" invalid={titleError} className="gap-y-1">
+          <Field name="title" invalid={titleError} className="gap-y-1">
             <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t($ => $['versionHistory.editField.title'], { ns: 'workflow' })}
             </FieldLabel>
@@ -94,8 +94,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               placeholder={`${t($ => $['versionHistory.nameThisVersion'], { ns: 'workflow' })}${t($ => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={setTitle}
             />
-          </FieldRoot>
-          <FieldRoot name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
+          </Field>
+          <Field name="releaseNotes" invalid={releaseNotesError} className="gap-y-1">
             <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
               {t($ => $['versionHistory.editField.releaseNotes'], { ns: 'workflow' })}
             </FieldLabel>
@@ -104,7 +104,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               placeholder={`${t($ => $['versionHistory.releaseNotesPlaceholder'], { ns: 'workflow' })}${t($ => $['panel.optional'], { ns: 'workflow' })}`}
               onValueChange={handleDescriptionChange}
             />
-          </FieldRoot>
+          </Field>
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">

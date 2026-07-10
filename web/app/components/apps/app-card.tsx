@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   Tooltip,
@@ -692,7 +692,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <FieldRoot name="confirm-app-name" className="mt-2">
+              <Field name="confirm-app-name" className="mt-2">
                 <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
                     i18nKey={$ => $.deleteAppConfirmInputLabel}
@@ -712,7 +712,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                   onValueChange={setConfirmDeleteInput}
                   className="border-components-input-border-hover bg-components-input-bg-normal focus:border-components-input-border-active focus:bg-components-input-bg-active"
                 />
-              </FieldRoot>
+              </Field>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
@@ -1286,7 +1286,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <FieldRoot name="confirm-app-name" className="mt-2">
+              <Field name="confirm-app-name" className="mt-2">
                 <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
                     i18nKey={$ => $.deleteAppConfirmInputLabel}
@@ -1315,7 +1315,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
                     {t($ => $['operation.fill'], { ns: 'common' })}
                   </button>
                 </div>
-              </FieldRoot>
+              </Field>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>

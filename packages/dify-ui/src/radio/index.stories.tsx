@@ -8,12 +8,12 @@ import {
   RadioSkeleton,
 } from '.'
 import {
+  Field,
   FieldDescription,
   FieldItem,
   FieldLabel,
-  FieldRoot,
 } from '../field'
-import { FieldsetLegend, FieldsetRoot } from '../fieldset'
+import { Fieldset, FieldsetLegend } from '../fieldset'
 
 const meta = {
   title: 'Base/Form/Radio',
@@ -36,8 +36,8 @@ function StandardFormRowsDemo() {
   const [value, setValue] = React.useState('vector')
 
   return (
-    <FieldRoot name="retrievalIndex" className="w-80">
-      <FieldsetRoot
+    <Field name="retrievalIndex" className="w-80">
+      <Fieldset
         render={(
           <RadioGroup value={value} onValueChange={setValue} className="flex-col items-start gap-3" />
         )}
@@ -55,8 +55,8 @@ function StandardFormRowsDemo() {
             </FieldLabel>
           </FieldItem>
         ))}
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -75,8 +75,8 @@ function BooleanInlineDemo() {
   const [value, setValue] = React.useState(true)
 
   return (
-    <FieldRoot name="streaming" className="w-80">
-      <FieldsetRoot
+    <Field name="streaming" className="w-80">
+      <Fieldset
         render={(
           <RadioGroup<boolean> value={value} onValueChange={setValue} className="gap-3" />
         )}
@@ -96,8 +96,8 @@ function BooleanInlineDemo() {
             </FieldLabel>
           </FieldItem>
         </div>
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -135,8 +135,8 @@ function OptionCardsDemo() {
   }>
 
   return (
-    <FieldRoot name="promptMode" className="w-100">
-      <FieldsetRoot
+    <Field name="promptMode" className="w-100">
+      <Fieldset
         render={(
           <RadioGroup<PromptMode> value={value} onValueChange={setValue} className="flex-col items-stretch gap-3" />
         )}
@@ -164,8 +164,8 @@ function OptionCardsDemo() {
             </RadioItem>
           </FieldItem>
         ))}
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -189,11 +189,11 @@ function DynamicFormFieldDemo() {
   const [selected, setSelected] = React.useState('automatic')
 
   return (
-    <FieldRoot name="generation_mode" className="flex w-80 flex-col gap-2">
+    <Field name="generation_mode" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
         This mirrors Dify dynamic form fields where radio options are controlled by schema and persisted as a single value.
       </FieldDescription>
-      <FieldsetRoot
+      <Fieldset
         render={(
           <RadioGroup
             value={selected}
@@ -213,8 +213,8 @@ function DynamicFormFieldDemo() {
             </FieldLabel>
           </FieldItem>
         ))}
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -232,8 +232,8 @@ export const DynamicFormField: Story = {
 export const StateMatrix: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
-      <FieldRoot name="radioStates">
-        <FieldsetRoot render={<RadioGroup defaultValue="checked" className="flex-col items-start gap-3" />}>
+      <Field name="radioStates">
+        <Fieldset render={<RadioGroup defaultValue="checked" className="flex-col items-start gap-3" />}>
           <FieldsetLegend>Interactive radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
@@ -247,10 +247,10 @@ export const StateMatrix: Story = {
               Checked
             </FieldLabel>
           </FieldItem>
-        </FieldsetRoot>
-      </FieldRoot>
-      <FieldRoot name="disabledRadioStates">
-        <FieldsetRoot render={<RadioGroup defaultValue="disabled-checked" disabled className="flex-col items-start gap-3" />}>
+        </Fieldset>
+      </Field>
+      <Field name="disabledRadioStates">
+        <Fieldset render={<RadioGroup defaultValue="disabled-checked" disabled className="flex-col items-start gap-3" />}>
           <FieldsetLegend>Disabled radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
@@ -264,8 +264,8 @@ export const StateMatrix: Story = {
               Disabled checked
             </FieldLabel>
           </FieldItem>
-        </FieldsetRoot>
-      </FieldRoot>
+        </Fieldset>
+      </Field>
       <div className="flex items-center gap-2 system-sm-medium text-text-secondary">
         <RadioSkeleton aria-hidden="true" />
         Skeleton

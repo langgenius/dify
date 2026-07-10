@@ -8,8 +8,8 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldItem, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
@@ -147,8 +147,8 @@ const FollowUpSettingModal = ({
               hideDebugWithMultipleModel
             />
           </div>
-          <FieldRoot name="follow_up_prompt_mode" className="contents">
-            <FieldsetRoot
+          <Field name="follow_up_prompt_mode" className="contents">
+            <Fieldset
               render={(
                 <RadioGroup<PromptMode>
                   className="flex-col items-stretch gap-3"
@@ -227,8 +227,8 @@ const FollowUpSettingModal = ({
                   )}
                 </RadioItem>
               </FieldItem>
-            </FieldsetRoot>
-          </FieldRoot>
+            </Fieldset>
+          </Field>
         </div>
         <div className="mt-6 flex items-center justify-end gap-2">
           <Button onClick={onCancel}>

@@ -45,17 +45,17 @@ Flag:
 
 Prefer Base UI/Dify UI data attributes and CSS variables for visual state: `data-open`, `data-checked`, `data-disabled`, `data-highlighted`, `data-popup-open`, `group-data-*`, `peer-data-*`, `has-[:focus-visible]`, and primitive CSS variables such as anchor width or transform origin. Use JS conditional classes for product/business state that the primitive does not expose.
 
-For non-string `Select` and `RadioGroup` values, prefer explicit domain generics at the root and at child value carriers. JSX children do not inherit the parent generic, so `RadioGroup<PromptMode>` should compose with `Radio<PromptMode>`, `RadioRoot<PromptMode>`, or option values from a typed collection. For `Select`, prefer the Base UI `items` collection pattern for typed value-to-label rendering, and flag string coercion helpers used only to recover display labels.
+For non-string `Select` and `RadioGroup` values, prefer explicit domain generics at the root and at child value carriers. JSX children do not inherit the parent generic, so `RadioGroup<PromptMode>` should compose with `Radio<PromptMode>`, `RadioItem<PromptMode>`, or option values from a typed collection. For `Select`, prefer the Base UI `items` collection pattern for typed value-to-label rendering, and flag string coercion helpers used only to recover display labels.
 
 ## Forms
 
 Flag:
 
 - Form-like UI using unrelated `Input` and `Button` pieces without a submit boundary.
-- Text-like fields not composed through `FieldRoot`, `FieldLabel`, and `FieldControl` when using Dify UI form semantics.
+- Text-like fields not composed through `Field`, `FieldLabel`, and `FieldControl` when using Dify UI form semantics.
 - Select fields using `FieldLabel` instead of `SelectLabel`.
 - Slider fields using a generic label instead of `SliderLabel`.
-- Checkbox/radio groups missing `FieldsetRoot` and `FieldsetLegend`.
+- Checkbox/radio groups missing `Fieldset` and `FieldsetLegend`.
 - Field errors or descriptions rendered without `FieldDescription` / `FieldError` relationships.
 
 `Form` is the submit boundary. Dify UI form primitives are not a form state-management framework; business validation and schema-driven behavior belong in `web/`.

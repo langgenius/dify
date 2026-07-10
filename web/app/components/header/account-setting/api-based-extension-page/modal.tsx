@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
@@ -81,7 +81,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             : t($ => $['apiBasedExtension.modal.title'], { ns: 'common' })}
         </DialogTitle>
         <Form<ApiBasedExtensionPayload> className="grid gap-4 pt-2" onFormSubmit={handleSubmit}>
-          <FieldRoot name="name">
+          <Field name="name">
             <FieldLabel>{nameLabel}</FieldLabel>
             <FieldControl
               required
@@ -89,9 +89,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               placeholder={t($ => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''}
             />
             <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}</FieldError>
-          </FieldRoot>
+          </Field>
 
-          <FieldRoot name="api_endpoint">
+          <Field name="api_endpoint">
             <FieldLabel>{apiEndpointLabel}</FieldLabel>
             <FieldControl
               required
@@ -110,9 +110,9 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               </a>
             </FieldDescription>
             <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: apiEndpointLabel })}</FieldError>
-          </FieldRoot>
+          </Field>
 
-          <FieldRoot
+          <Field
             name="api_key"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && value.length < 5)
@@ -129,7 +129,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             />
             <FieldError match="valueMissing">{t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}</FieldError>
             <FieldError match="customError" />
-          </FieldRoot>
+          </Field>
 
           <div className="mt-2 flex items-center justify-end gap-2">
             <Button type="button" onClick={() => onOpenChange(false)}>

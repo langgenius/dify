@@ -2,7 +2,7 @@ import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/type
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -83,7 +83,7 @@ export function OutputEditCard({
       >
         <div className="px-2 pt-2">
           <div className="flex h-6 items-center gap-x-2">
-            <FieldRoot name="name" invalid={hasNameError} className="contents">
+            <Field name="name" invalid={hasNameError} className="contents">
               <FieldLabel className="sr-only">
                 {t($ => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflow' })}
               </FieldLabel>
@@ -99,12 +99,12 @@ export function OutputEditCard({
                 className="h-6 w-24 px-1.5 py-0 code-sm-semibold"
                 onChange={event => updateDraft({ name: event.currentTarget.value })}
               />
-            </FieldRoot>
+            </Field>
             <OutputTypeSelect
               value={draft.type}
               onChange={value => updateDraft({ type: value })}
             />
-            <FieldRoot name="required" className="contents">
+            <Field name="required" className="contents">
               <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
                 <Switch
                   aria-label={t($ => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
@@ -114,18 +114,18 @@ export function OutputEditCard({
                 />
                 {t($ => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
               </FieldLabel>
-            </FieldRoot>
+            </Field>
           </div>
           {hasNameError && (
-            <FieldRoot name="nameError" invalid className="contents">
+            <Field name="nameError" invalid className="contents">
               <FieldError id={nameErrorId} match className="mt-1 px-1 py-0 system-xs-regular text-text-destructive">
                 {duplicateName
                   ? t($ => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflow' })
                   : t($ => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflow' })}
               </FieldError>
-            </FieldRoot>
+            </Field>
           )}
-          <FieldRoot name="description" className="contents">
+          <Field name="description" className="contents">
             <FieldLabel className="sr-only">
               {t($ => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflow' })}
             </FieldLabel>
@@ -136,7 +136,7 @@ export function OutputEditCard({
               className="mt-2 h-5 border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
               onChange={event => updateDraft({ description: event.currentTarget.value })}
             />
-          </FieldRoot>
+          </Field>
         </div>
         {allowDefaultValue && (
           <CollapsibleRoot>
@@ -149,7 +149,7 @@ export function OutputEditCard({
             </CollapsibleTrigger>
             <CollapsiblePanel className="border-t border-divider-subtle">
               <div className="px-3 py-2">
-                <FieldRoot name="defaultValue" className="gap-1">
+                <Field name="defaultValue" className="gap-1">
                   <FieldLabel className="py-0 system-xs-medium text-text-secondary">
                     {t($ => $['nodes.agent.outputVars.defaultValueLabel'], { ns: 'workflow' })}
                   </FieldLabel>
@@ -165,7 +165,7 @@ export function OutputEditCard({
                       {t($ => $[defaultValueErrorKey], { ns: 'workflow' })}
                     </FieldError>
                   )}
-                </FieldRoot>
+                </Field>
               </div>
             </CollapsiblePanel>
           </CollapsibleRoot>

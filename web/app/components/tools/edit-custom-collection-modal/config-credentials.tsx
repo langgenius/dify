@@ -12,8 +12,8 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -123,8 +123,8 @@ export default function ConfigCredential({
                   content: 'space-y-4 pt-2 pr-8 pl-6',
                 }}
               >
-                <FieldRoot name="auth_type" className="contents">
-                  <FieldsetRoot
+                <Field name="auth_type" className="contents">
+                  <Fieldset
                     render={(
                       <RadioGroup<AuthType>
                         className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
@@ -151,12 +151,12 @@ export default function ConfigCredential({
                       value={AuthType.apiKeyQuery}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
                     />
-                  </FieldsetRoot>
-                </FieldRoot>
+                  </Fieldset>
+                </Field>
                 {tempCredential.auth_type === AuthType.apiKeyHeader && (
                   <>
-                    <FieldRoot name="api_key_header_prefix" className="contents">
-                      <FieldsetRoot
+                    <Field name="api_key_header_prefix" className="contents">
+                      <Fieldset
                         render={(
                           <RadioGroup<AuthHeaderPrefix>
                             className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
@@ -183,8 +183,8 @@ export default function ConfigCredential({
                           value={AuthHeaderPrefix.custom}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
                         />
-                      </FieldsetRoot>
-                    </FieldRoot>
+                      </Fieldset>
+                    </Field>
                     <div>
                       <div className="flex items-center py-2 system-sm-medium text-text-primary">
                         {t($ => $['createTool.authMethod.key'], { ns: 'tools' })}

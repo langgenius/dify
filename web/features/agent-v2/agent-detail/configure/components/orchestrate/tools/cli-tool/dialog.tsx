@@ -3,7 +3,7 @@
 import type { AgentCliTool, EnvScope, EnvVariable } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
@@ -143,7 +143,7 @@ export function CliToolDialog({
           onFormSubmit={handleSubmit}
         >
           <div className="flex flex-col gap-4">
-            <FieldRoot name="installCommand">
+            <Field name="installCommand">
               <FieldLabel>
                 {t($ => $['agentDetail.configure.tools.cliDialog.installCommand.label'])}
               </FieldLabel>
@@ -156,8 +156,8 @@ export function CliToolDialog({
                 placeholder={t($ => $['agentDetail.configure.tools.cliDialog.installCommand.placeholder'])}
                 value={installCommand}
               />
-            </FieldRoot>
-            <FieldRoot name="name">
+            </Field>
+            <Field name="name">
               <FieldLabel>
                 {t($ => $['agentDetail.configure.tools.cliDialog.name.label'])}
               </FieldLabel>
@@ -167,7 +167,7 @@ export function CliToolDialog({
                 placeholder={t($ => $['agentDetail.configure.tools.cliDialog.name.placeholder'])}
                 value={toolName}
               />
-            </FieldRoot>
+            </Field>
             <div className="pt-1">
               <div className="mb-3 h-px bg-divider-subtle" />
               <div className="mb-1 flex min-h-6 items-center gap-1">
