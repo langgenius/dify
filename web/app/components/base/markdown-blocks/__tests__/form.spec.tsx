@@ -534,6 +534,26 @@ describe('MarkdownForm', () => {
 
   // Unicode letters should be valid form field names.
   describe('Unicode name support', () => {
+    it('should include fields whose names contain supported full-width and half-width punctuation', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'hidden', name: '字段（）！＊＆－', value: 'full-width' }),
+          createElementNode('input', { type: 'hidden', name: 'field()!*&-', value: 'half-width' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"字段（）！＊＆－":"full-width","field()!*&-":"half-width"}')
+      })
+    })
+
     it('should include Unicode-named fields from all supported controls in JSON output', async () => {
       const user = userEvent.setup()
       const node = createRootNode(
