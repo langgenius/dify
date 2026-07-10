@@ -1,4 +1,4 @@
-import yaml from 'js-yaml'
+import { dump } from 'js-yaml'
 import { OutputFormatNotSupportedError } from './errors'
 
 export type RawOutput = {
@@ -91,7 +91,7 @@ function stringifyFormattedOutput(output: FormattedOutput<FormattedPrintable>): 
     case OutputFormat.JSON:
       return `${JSON.stringify(output.data.json(), null, 2)}\n`
     case OutputFormat.YAML:
-      return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
+      return dump(output.data.json(), { indent: 2, lineWidth: -1 })
     case OutputFormat.NAME:
       return `${toName(output.data)}\n`
     default:
@@ -107,7 +107,7 @@ function stringifyTableOutput(output: TableOutput<TablePrintable>): string {
     case OutputFormat.JSON:
       return `${JSON.stringify(output.data.json(), null, 2)}\n`
     case OutputFormat.YAML:
-      return yaml.dump(output.data.json(), { indent: 2, lineWidth: -1 })
+      return dump(output.data.json(), { indent: 2, lineWidth: -1 })
     case OutputFormat.NAME:
       return `${toName(output.data)}\n`
     default:

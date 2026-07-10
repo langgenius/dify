@@ -16,7 +16,7 @@ export class ConcurrentAccessError extends BaseError {
 type YamlMark = {
   line: number
   column: number
-  snippet?: string
+  snippet?: string | null
 }
 
 type YamlParseError = {

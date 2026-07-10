@@ -22,6 +22,20 @@ workflow:
       expect(validateDSLContent(content, AppModeEnum.ADVANCED_CHAT)).toBe(false)
     })
 
+    it('should reject disallowed node types inherited through YAML merge keys', () => {
+      const content = `
+trigger: &trigger
+  type: trigger-webhook
+workflow:
+  graph:
+    nodes:
+      - data:
+          <<: *trigger
+`
+
+      expect(validateDSLContent(content, AppModeEnum.ADVANCED_CHAT)).toBe(false)
+    })
+
     it('should reject malformed yaml and answer nodes in non-advanced mode', () => {
       expect(validateDSLContent('[', AppModeEnum.CHAT)).toBe(false)
       expect(validateDSLContent(`
@@ -41,6 +55,18 @@ workflow:
       - data:
           type: tool
 `, AppModeEnum.ADVANCED_CHAT)).toBe(true)
+    })
+
+    it('should accept empty yaml content', () => {
+      expect(validateDSLContent('', AppModeEnum.CHAT)).toBe(true)
+    })
+
+    it('should accept comment-only yaml content', () => {
+      expect(validateDSLContent('# No document', AppModeEnum.CHAT)).toBe(true)
+    })
+
+    it('should reject yaml streams with multiple documents', () => {
+      expect(validateDSLContent('---\n{}\n---\n{}', AppModeEnum.CHAT)).toBe(false)
     })
 
     it('should expose the invalid node sets per mode', () => {

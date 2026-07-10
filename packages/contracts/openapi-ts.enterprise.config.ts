@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@hey-api/openapi-ts'
-import yaml from 'js-yaml'
+import { loadOpenApiYaml } from './openapi-yaml'
 
 type JsonObject = Record<string, unknown>
 
@@ -267,7 +267,7 @@ const promoteReusableEnumSchemasForHeyApi = (document: OpenApiDocument) => {
 }
 
 const normalizeEnterpriseOpenApi = () => {
-  const openApi = yaml.load(fs.readFileSync(enterpriseOpenApiPath, 'utf8'))
+  const openApi = loadOpenApiYaml(fs.readFileSync(enterpriseOpenApiPath, 'utf8'))
 
   if (!openApi || typeof openApi !== 'object' || Array.isArray(openApi))
     throw new Error(`Invalid enterprise OpenAPI document: ${enterpriseOpenApiPath}`)
