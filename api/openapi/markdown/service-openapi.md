@@ -806,7 +806,7 @@ Permanently delete a knowledge base and all its documents. The knowledge base mu
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | `not_found` : Dataset not found. |
-| 409 | `dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the apps before deleting. |
+| 409 | `dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the apps before deleting. `dataset_indexing_in_progress` : Some documents are still being indexed. Wait for indexing to finish or pause the documents before deleting. |
 
 ### [GET] /datasets/{dataset_id}
 **Get Knowledge Base**
