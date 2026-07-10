@@ -386,12 +386,18 @@ const ChatWrapper = () => {
             />
           )
         : null
+  const speechToTextTarget = appSourceType === AppSourceType.webApp
+    ? { type: 'app' as const, appSourceType }
+    : appId
+      ? { type: 'app' as const, appId, appSourceType }
+      : undefined
 
   return (
     <Chat
       isTryApp={isTryApp}
       appData={appData || undefined}
       config={appConfig}
+      speechToTextTarget={speechToTextTarget}
       chatList={messageList}
       isResponding={respondingState}
       chatContainerInnerClassName={cn('mx-auto w-full max-w-full px-4', messageList.length && 'pt-4')}

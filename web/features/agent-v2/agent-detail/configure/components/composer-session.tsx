@@ -408,6 +408,9 @@ function AgentConfigurePageComposerContent({
               onConversationIdChange={(mode, conversationId) => {
                 setConversationId({ mode, conversationId })
               }}
+              onBeforeSpeechToText={rightPanelChatMode === 'build'
+                ? buildDraftActions.prepareBuildDraftBeforeRun
+                : saveDraft}
               onSaveDraftBeforeRun={rightPanelChatMode === 'build'
                 ? async () => {
                   if (!currentModel?.provider || !currentModel.model) {

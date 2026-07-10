@@ -87,7 +87,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Voice input component for recording audio and converting speech to text. Features waveform visualization, recording timer (max 10 minutes), and audio-to-text conversion using js-audio-recorder.\n\n**Note:** This is a simplified mock for Storybook. The actual component requires microphone permissions and audio-to-text API.',
+        component: 'Voice input component for recording audio and converting speech to text. Features waveform visualization, recording timer (max 10 minutes), and browser-side MP3 encoding.\n\n**Note:** This is a simplified mock for Storybook. The actual component requires microphone permissions and audio-to-text API.',
       },
     },
   },
@@ -482,7 +482,7 @@ export const FeaturesShowcase: Story = {
         <div className="rounded-lg bg-blue-50 p-4">
           <div className="mb-2 text-sm font-medium text-blue-900">🎤 Audio Recording</div>
           <ul className="space-y-1 text-xs text-blue-800">
-            <li>• Uses js-audio-recorder for browser-based recording</li>
+            <li>• Uses AudioWorklet for browser-based recording</li>
             <li>• 16kHz sample rate, 16-bit, mono channel</li>
             <li>• Converts to MP3 format for transmission</li>
           </ul>

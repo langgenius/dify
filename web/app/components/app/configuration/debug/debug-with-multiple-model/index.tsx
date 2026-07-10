@@ -23,6 +23,7 @@ const DebugWithMultipleModel = () => {
     mode,
     inputs,
     modelConfig,
+    appId,
     readonly,
     canTestAndRun = false,
   } = useDebugConfigurationContext()
@@ -153,6 +154,7 @@ const DebugWithMultipleModel = () => {
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
+            speechToTextTarget={{ type: 'consoleApp', appId }}
             visionConfig={file}
             inputs={inputs}
             inputsForm={inputsForm}

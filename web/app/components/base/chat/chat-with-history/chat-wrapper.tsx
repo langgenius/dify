@@ -1,4 +1,5 @@
 import type { FileEntity } from '../../file-uploader/types'
+import type { SpeechToTextTarget } from '../../voice-input/types'
 import type {
   ChatConfig,
   ChatItem,
@@ -389,6 +390,11 @@ const ChatWrapper = () => {
         />
       )
     : null
+  const speechToTextTarget: SpeechToTextTarget | undefined = appSourceType === AppSourceType.webApp
+    ? { type: 'app' as const, appSourceType: AppSourceType.webApp }
+    : appId
+      ? { type: 'app' as const, appId, appSourceType }
+      : undefined
 
   return (
     <div
@@ -397,6 +403,7 @@ const ChatWrapper = () => {
       <Chat
         appData={appData ?? undefined}
         config={appConfig}
+        speechToTextTarget={speechToTextTarget}
         chatList={messageList}
         isResponding={respondingState}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}

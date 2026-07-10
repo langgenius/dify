@@ -50,7 +50,7 @@ const Operation: FC<OperationProps> = ({
         <div className="flex items-center gap-1">
           {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
           {
-            speechToTextConfig?.enabled && (
+            speechToTextConfig?.enabled && onShowVoiceInput && (
               <ActionButton
                 size="l"
                 aria-label={t('voiceInput.start', { ns: 'common' })}

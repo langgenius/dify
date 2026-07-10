@@ -3,11 +3,11 @@ import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import Recorder from 'js-audio-recorder'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
@@ -22,10 +22,6 @@ import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 
-type AudioRecorderWithPermission = typeof Recorder & {
-  getPermission: () => Promise<void>
-}
-
 type SendAcceptance = void | boolean | Promise<void | boolean>
 
 type ChatInputAreaProps = {
@@ -39,6 +35,8 @@ type ChatInputAreaProps = {
   onFeatureBarClick?: (state: boolean) => void
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
+  speechToTextTarget?: SpeechToTextTarget
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSend?: OnSend
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
@@ -58,7 +56,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, footerNoticeTooltip, autoFocus = true, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, speechToTextTarget, onBeforeSpeechToText, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, footerNoticeTooltip, autoFocus = true, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -161,13 +159,15 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
     }
   }
   const handleShowVoiceInput = useCallback(() => {
-    ;(Recorder as AudioRecorderWithPermission).getPermission().then(() => {
-      setShowVoiceInput(true)
-    }, () => {
-      toast.error(t('voiceInput.notAllow', { ns: 'common' }))
-    })
+    setShowVoiceInput(true)
+  }, [])
+  const handleVoiceInputStartError = useCallback(() => {
+    toast.error(t('voiceInput.notAllow', { ns: 'common' }))
   }, [t])
-  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
+  const handleVoiceInputError = useCallback(() => {
+    toast.error(t('api.actionFailed', { ns: 'common' }))
+  }, [t])
+  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={speechToTextTarget ? handleShowVoiceInput : undefined} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
   const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
   const shouldShowFooterNoticeTooltip = footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
   const footerNoticeText = typeof footerNotice === 'string' ? footerNotice.trim() : ''
@@ -209,7 +209,16 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
             </div>
             {!isMultipleLine && operation}
           </div>
-          {showVoiceInput && (<VoiceInput onCancel={() => setShowVoiceInput(false)} onConverted={text => handleQueryChange(text)} />)}
+          {showVoiceInput && speechToTextTarget && (
+            <VoiceInput
+              target={speechToTextTarget}
+              onCancel={() => setShowVoiceInput(false)}
+              onBeforeTranscribe={onBeforeSpeechToText}
+              onConverted={text => handleQueryChange(text)}
+              onError={handleVoiceInputError}
+              onStartError={handleVoiceInputStartError}
+            />
+          )}
         </div>
         {isMultipleLine && (<div className="px-[9px]">{operation}</div>)}
       </div>

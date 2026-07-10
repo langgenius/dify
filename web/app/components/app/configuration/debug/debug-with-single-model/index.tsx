@@ -159,6 +159,7 @@ const DebugWithSingleModel = (
     <Chat
       readonly={debugInputReadonly}
       config={config}
+      speechToTextTarget={{ type: 'consoleApp', appId }}
       chatList={chatList}
       isResponding={isResponding}
       chatContainerClassName="px-3 pt-6"

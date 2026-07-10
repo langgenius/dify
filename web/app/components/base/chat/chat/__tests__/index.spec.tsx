@@ -1,5 +1,6 @@
 import type { ChatConfig, ChatItem, OnSend } from '../../types'
 import type { ChatProps } from '../index'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -10,8 +11,8 @@ import Chat from '../index'
 // Answer        – transitively pulls Markdown (rehype/remark/katex), AgentContent,
 //                 WorkflowProcessItem and Operation; none can resolve in the test DOM runtime.
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
-// ChatInputArea – pulls js-audio-recorder (requires Web Audio API unavailable in
-//                 the test DOM runtime) and VoiceInput / FileContextProvider chains.
+// ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
+//                 and the VoiceInput / FileContextProvider chains.
 // PromptLogModal– pulls CopyFeedbackNew and deep modal dep chain.
 // AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
 //                 from ahooks, and AgentLogDetail (workflow graph renderer).
@@ -47,17 +48,24 @@ vi.mock('../chat-input-area', () => ({
     disabled,
     readonly,
     footerNotice,
+    onBeforeSpeechToText,
+    speechToTextTarget,
   }: {
     customPlaceholder?: string
     disabled?: boolean
     readonly?: boolean
     footerNotice?: string
+    onBeforeSpeechToText?: () => Promise<unknown>
+    speechToTextTarget?: SpeechToTextTarget
   }) => (
     <div
       data-testid="chat-input-area"
       data-custom-placeholder={customPlaceholder}
       data-disabled={String(!!disabled)}
       data-readonly={String(!!readonly)}
+      data-has-before-speech={String(!!onBeforeSpeechToText)}
+      data-speech-app-id={speechToTextTarget?.type !== 'agent' ? speechToTextTarget?.appId : undefined}
+      data-speech-source={speechToTextTarget?.type === 'app' ? speechToTextTarget.appSourceType : speechToTextTarget?.type}
     >
       {footerNotice}
     </div>
@@ -395,6 +403,23 @@ describe('Chat', () => {
     it('should pass readonly=true to ChatInputArea when readonly=true', () => {
       renderChat({ readonly: true })
       expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-readonly', 'true')
+    })
+
+    it('should pass the explicit speech-to-text target to ChatInputArea', () => {
+      renderChat({
+        speechToTextTarget: {
+          type: 'consoleApp',
+          appId: 'app-123',
+        },
+      })
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-speech-app-id', 'app-123')
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-speech-source', 'consoleApp')
+    })
+
+    it('should pass the save-before-transcribe callback to ChatInputArea', () => {
+      renderChat({ onBeforeSpeechToText: vi.fn().mockResolvedValue(undefined) })
+
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-has-before-speech', 'true')
     })
   })
 
