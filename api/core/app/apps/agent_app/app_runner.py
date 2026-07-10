@@ -690,7 +690,7 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
-                reason = getattr(terminal, "reason", None)
+                reason = terminal.reason
                 if reason == "sandbox_expired":
                     raise AgentBackendError("The agent session sandbox has expired. Please start a new conversation.")
                 raise _agent_backend_failure_to_exception(terminal)
