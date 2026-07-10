@@ -1,8 +1,11 @@
 import time
 import uuid
-from unittest.mock import MagicMock, Mock
+from collections.abc import Iterator
+from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
@@ -19,6 +22,24 @@ from graphon.variables import ArrayFileSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
+@pytest.fixture
+def sqlite_db_session(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[Session]:
+    """Bind ``db.session`` to SQLite and open a caller-owned transaction as a lifecycle sentinel."""
+    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    monkeypatch.setattr(db, "session", session_registry)
+    session = session_registry()
+    assert session.scalar(select(1)) == 1
+    try:
+        yield session
+    finally:
+        session_registry.remove()
+
+
+def _assert_caller_transaction_is_preserved(session: Session) -> None:
+    assert db.session() is session
+    assert session.in_transaction()
+
+
 def _build_if_else_node(
     *,
     node_data: IfElseNodeData | dict[str, object],
@@ -33,7 +54,7 @@ def _build_if_else_node(
     )
 
 
-def test_execute_if_else_result_true():
+def test_execute_if_else_result_true(sqlite_db_session: Session):
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
     init_params = build_test_graph_init_params(
@@ -124,18 +145,16 @@ def test_execute_if_else_result_true():
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["result"] is True
+    _assert_caller_transaction_is_preserved(sqlite_db_session)
 
 
-def test_execute_if_else_result_false():
+def test_execute_if_else_result_false(sqlite_db_session: Session):
     # Create a simple graph for IfElse node testing
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
@@ -188,15 +207,13 @@ def test_execute_if_else_result_false():
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["result"] is False
+    _assert_caller_transaction_is_preserved(sqlite_db_session)
 
 
 def test_array_file_contains_file_name():
@@ -292,7 +309,7 @@ def _get_condition_test_id(c: Condition):
 
 
 @pytest.mark.parametrize("condition", _get_test_conditions(), ids=_get_condition_test_id)
-def test_execute_if_else_boolean_conditions(condition: Condition):
+def test_execute_if_else_boolean_conditions(condition: Condition, sqlite_db_session: Session):
     """Test IfElseNode with boolean conditions using various operators"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
@@ -335,18 +352,16 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["result"] is True
+    _assert_caller_transaction_is_preserved(sqlite_db_session)
 
 
-def test_execute_if_else_boolean_false_conditions():
+def test_execute_if_else_boolean_false_conditions(sqlite_db_session: Session):
     """Test IfElseNode with boolean conditions that should evaluate to false"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
@@ -400,18 +415,16 @@ def test_execute_if_else_boolean_false_conditions():
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["result"] is False
+    _assert_caller_transaction_is_preserved(sqlite_db_session)
 
 
-def test_execute_if_else_boolean_cases_structure():
+def test_execute_if_else_boolean_cases_structure(sqlite_db_session: Session):
     """Test IfElseNode with boolean conditions using the new cases structure"""
     graph_config = {"edges": [], "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}]}
 
@@ -468,9 +481,6 @@ def test_execute_if_else_boolean_cases_structure():
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
@@ -478,3 +488,4 @@ def test_execute_if_else_boolean_cases_structure():
     assert result.outputs is not None
     assert result.outputs["result"] is True
     assert result.outputs["selected_case_id"] == "true"
+    _assert_caller_transaction_is_preserved(sqlite_db_session)
