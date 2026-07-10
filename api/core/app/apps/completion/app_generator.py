@@ -26,7 +26,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from models import Account, App, EndUser, Message
+from models import Account, App, AppModelConfig, Conversation, EndUser, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
@@ -79,6 +79,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         Generate App response.
 
+        :param session: caller-owned database session forwarded to the generation worker
         :param app_model: App
         :param user: account or end user
         :param args: request args
@@ -263,6 +264,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         Generate App response.
 
+        :param session: caller-owned database session used for message and historical model-config reads
         :param app_model: App
         :param message_id: message ID
         :param user: account or end user
@@ -276,7 +278,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
             Message.from_account_id == (user.id if isinstance(user, Account) else None),
         )
-        message = db.session.scalar(stmt)
+        message = session.scalar(stmt)
 
         if not message:
             raise MessageNotExistsError()
@@ -290,7 +292,12 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
             raise MoreLikeThisDisabledError()
 
-        app_model_config = message.app_model_config
+        conversation = session.get(Conversation, message.conversation_id)
+        app_model_config = (
+            session.get(AppModelConfig, conversation.app_model_config_id)
+            if conversation and conversation.app_model_config_id
+            else None
+        )
         if not app_model_config:
             raise ValueError("Message app_model_config is None")
         override_model_config_dict = app_model_config.to_dict()
