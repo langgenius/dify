@@ -12,7 +12,10 @@ import { getCurrentAgentId } from './configure-helpers'
 const getAgentInput = (world: DifyWorld) =>
   world.getPage().getByPlaceholder('Describe what your agent should do')
 
-const escapeRegExp = (value: string) => value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const normalizeFixturePhrase = (value: string) => value
+  .toLocaleLowerCase()
+  .replaceAll('seven', '7')
+  .replaceAll(/[^\p{L}\p{N}]+/gu, '')
 
 Given(
   'an Agent v2 test agent with speech-to-text enabled has been created via API',
@@ -82,11 +85,32 @@ Then('the Agent v2 speech-to-text request should succeed', async function (this:
 Then(
   'the transcribed fixture phrase {string} should appear in the Agent v2 input',
   async function (this: DifyWorld, expectedPhrase: string) {
-    const phrasePattern = new RegExp(
-      expectedPhrase.trim().split(/\s+/).map(escapeRegExp).join('\\s+'),
-      'i',
-    )
+    const input = getAgentInput(this)
+    await expect.poll(
+      async () => normalizeFixturePhrase(await input.inputValue()),
+      { timeout: 60_000 },
+    ).toBe(normalizeFixturePhrase(expectedPhrase))
+  },
+)
 
-    await expect(getAgentInput(this)).toHaveValue(phrasePattern, { timeout: 60_000 })
+Then(
+  'the Agent v2 input should regain focus after transcription',
+  async function (this: DifyWorld) {
+    const input = getAgentInput(this)
+    await expect(input).toBeFocused()
+
+    const selection = await input.evaluate((element) => {
+      const textarea = element as HTMLTextAreaElement
+      return {
+        end: textarea.selectionEnd,
+        length: textarea.value.length,
+        start: textarea.selectionStart,
+      }
+    })
+    expect(selection).toEqual({
+      end: selection.length,
+      length: selection.length,
+      start: selection.length,
+    })
   },
 )

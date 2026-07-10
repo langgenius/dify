@@ -10,3 +10,4 @@ Feature: Agent v2 speech-to-text
     And I stop Agent v2 voice input after the fixture speech has played
     Then the Agent v2 speech-to-text request should succeed
     And the transcribed fixture phrase "Purple elephant seven" should appear in the Agent v2 input
+    And the Agent v2 input should regain focus after transcription

@@ -167,6 +167,25 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const handleVoiceInputError = useCallback(() => {
     toast.error(t('api.actionFailed', { ns: 'common' }))
   }, [t])
+  const handleVoiceInputConverted = (text: string) => {
+    handleQueryChange(text)
+    queueMicrotask(() => {
+      const textareaElement = textareaRef.current
+      if (!textareaElement)
+        return
+
+      const activeElement = textareaElement.ownerDocument.activeElement
+      if (activeElement
+        && activeElement !== textareaElement.ownerDocument.body
+        && activeElement !== textareaElement) {
+        return
+      }
+
+      textareaElement.focus({ preventScroll: true })
+      const caretPosition = textareaElement.value.length
+      textareaElement.setSelectionRange(caretPosition, caretPosition)
+    })
+  }
   const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={speechToTextTarget ? handleShowVoiceInput : undefined} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
   const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
   const shouldShowFooterNoticeTooltip = footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
@@ -214,7 +233,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
               target={speechToTextTarget}
               onCancel={() => setShowVoiceInput(false)}
               onBeforeTranscribe={onBeforeSpeechToText}
-              onConverted={text => handleQueryChange(text)}
+              onConverted={handleVoiceInputConverted}
               onError={handleVoiceInputError}
               onStartError={handleVoiceInputStartError}
             />

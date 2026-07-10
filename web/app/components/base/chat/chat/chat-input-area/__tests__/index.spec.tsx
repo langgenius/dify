@@ -1,7 +1,7 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
@@ -493,6 +493,45 @@ describe('ChatInputArea', () => {
       await waitFor(() => {
         expect(getTextarea()!).toHaveValue('Converted voice text')
       })
+    })
+
+    it('should focus the textarea at the end of converted voice text', async () => {
+      const user = userEvent.setup({ delay: null })
+      render(<ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+
+      await waitFor(() => expect(textarea).toHaveValue('Converted voice text'))
+      await waitFor(() => expect(textarea).toHaveFocus())
+      expect(textarea.selectionStart).toBe(textarea.value.length)
+      expect(textarea.selectionEnd).toBe(textarea.value.length)
+    })
+
+    it('should preserve focus when the user moves elsewhere during transcription', async () => {
+      const user = userEvent.setup({ delay: null })
+      let resolveTranscription: ((value: { text: string }) => void) | undefined
+      vi.mocked(transcribeAudio).mockReturnValueOnce(new Promise((resolve) => {
+        resolveTranscription = resolve
+      }))
+      render(
+        <>
+          <button type="button">Elsewhere</button>
+          <ChatInputArea speechToTextConfig={{ enabled: true }} speechToTextTarget={speechToTextTarget} visionConfig={mockVisionConfig} />
+        </>,
+      )
+      const textarea = getTextarea()!
+      const elsewhereButton = screen.getByRole('button', { name: 'Elsewhere' })
+
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.submit' }))
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
+      await user.click(elsewhereButton)
+      await act(async () => resolveTranscription?.({ text: 'Converted voice text' }))
+
+      await waitFor(() => expect(textarea).toHaveValue('Converted voice text'))
+      expect(elsewhereButton).toHaveFocus()
     })
 
     it('should wait for the owning draft before transcription', async () => {
