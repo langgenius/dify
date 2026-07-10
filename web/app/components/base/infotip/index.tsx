@@ -3,7 +3,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useId } from 'react'
 
 const iconClassNames = {
   question: 'i-ri-question-line',
@@ -46,7 +45,7 @@ type InfotipIconSize = keyof typeof iconSizeClassNames
 type InfotipProps = {
   /** Popup content. Rich nodes are allowed. */
   'children': ReactNode
-  /** Concise accessible name for the Infotip topic, applied to the trigger and popup. */
+  /** Accessible name for the icon-only trigger. */
   'aria-label': string
   /** Extra classes on the trigger for contextual layout and color. */
   'className'?: string
@@ -66,8 +65,6 @@ export function Infotip({
   iconSize = 'medium',
   popupClassName,
 }: InfotipProps) {
-  const triggerId = useId()
-
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
   }
@@ -75,7 +72,6 @@ export function Infotip({
   return (
     <Popover>
       <PopoverTrigger
-        id={triggerId}
         openOnHover
         delay={300}
         closeDelay={200}
@@ -91,7 +87,6 @@ export function Infotip({
       <PopoverContent
         placement="top"
         popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
-        popupProps={{ 'aria-labelledby': triggerId }}
       >
         {children}
       </PopoverContent>

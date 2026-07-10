@@ -220,7 +220,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
             {shouldShowFooterNoticeTooltip && (
               <Infotip
                 aria-label={footerNoticeAriaLabel}
-                className="ml-auto size-6 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                 iconVariant="information"
                 popupClassName="max-w-80 border-0 text-start wrap-break-word"
               >
