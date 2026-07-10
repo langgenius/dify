@@ -67,7 +67,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.dataset import DatasetIndexingInProgressError, DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 
@@ -82,6 +82,7 @@ __all__ = [
     "DataSource",
     "Dataset",
     "DatasetCollectionBindingService",
+    "DatasetIndexingInProgressError",
     "DatasetNameDuplicateError",
     "DatasetPermissionEnum",
     "DatasetPermissionService",

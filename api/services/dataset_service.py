@@ -82,7 +82,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
-from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.dataset import DatasetIndexingInProgressError, DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
@@ -1331,13 +1331,46 @@ class DatasetService:
                 deal_dataset_index_update_task.delay(dataset.id, action)
 
     @staticmethod
+    def _has_documents_indexing(dataset_id: str, session: Session) -> bool:
+        """Return whether any document of the dataset is being indexed right now.
+
+        Deleting a dataset while documents are mid-indexing races the in-flight
+        pipeline against `clean_dataset_task`, orphaning segments, child chunks
+        and vector collections (#38518). Only the in-flight statuses matter:
+        a WAITING document's task no-ops once the dataset rows are gone, and
+        blocking on WAITING would strand users because the console offers no
+        pause control for queued documents. Paused documents are excluded so
+        pausing stays the escape hatch for stuck indexing runs.
+        """
+        stmt = select(
+            exists().where(
+                Document.dataset_id == dataset_id,
+                Document.indexing_status.in_(DocumentService._INDEXING_STATUSES),
+                Document.is_paused.is_not(True),
+            )
+        )
+        return bool(session.scalar(stmt))
+
+    @staticmethod
     def delete_dataset(dataset_id, user, session: Session):
+        """Delete a dataset after permission and in-flight indexing checks.
+
+        Raises:
+            NoPermissionError: If the user cannot access the dataset.
+            DatasetIndexingInProgressError: If any document is actively indexing.
+        """
         dataset = DatasetService.get_dataset(dataset_id, session)
 
         if dataset is None:
             return False
 
         DatasetService.check_dataset_permission(dataset, user, session)
+
+        if DatasetService._has_documents_indexing(dataset.id, session):
+            raise DatasetIndexingInProgressError(
+                "Some documents in this dataset are still being indexed. "
+                "Wait for indexing to finish or pause the documents before deleting the dataset."
+            )
 
         dataset_was_deleted.send(dataset)
 

@@ -7,3 +7,7 @@ class DatasetNameDuplicateError(BaseServiceError):
 
 class DatasetInUseError(BaseServiceError):
     pass
+
+
+class DatasetIndexingInProgressError(BaseServiceError):
+    pass

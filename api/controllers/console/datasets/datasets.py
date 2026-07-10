@@ -17,7 +17,12 @@ from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.app.wraps import with_session
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+)
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -730,6 +735,8 @@ class DatasetApi(Resource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
+        except services.errors.dataset.DatasetIndexingInProgressError:
+            raise DatasetIndexingInProgressError()
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
