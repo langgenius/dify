@@ -7,28 +7,19 @@ import pytest
 import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
+from sqlalchemy.orm import Session
 
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
 
 MODULE = "core.plugin.plugin_service"
-
-
-class _FakeSession:
-    def __init__(self) -> None:
-        self.execute = Mock()
-        self.scalars = Mock(return_value=SimpleNamespace(all=Mock(return_value=[])))
-
-    def __enter__(self) -> "_FakeSession":
-        return self
-
-    def __exit__(self, exc_type, exc, traceback) -> None:
-        return None
-
-    def begin(self) -> "_FakeSession":
-        return self
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def _build_provider_entity(provider: str = "openai") -> ProviderEntity:
@@ -1146,19 +1137,72 @@ class TestPluginModelProviderCacheInvalidation:
         assert result is True
         invalidate_cache.assert_called_once_with("tenant-1")
 
-    def test_uninstall_existing_plugin_invalidates_cache_after_credential_cleanup(self) -> None:
+    @pytest.mark.parametrize(
+        "sqlite_session", [(Provider, ProviderCredential, TenantPreferredModelProvider)], indirect=True
+    )
+    def test_uninstall_existing_plugin_invalidates_cache_after_credential_cleanup(
+        self, sqlite_session: Session
+    ) -> None:
         """Successful uninstall with plugin metadata also invalidates the mutated tenant provider cache."""
+        plugin_id = "langgenius/openai"
+        provider_name = f"{plugin_id}/openai"
         plugin = SimpleNamespace(
             installation_id="installation-1",
-            plugin_id="langgenius/openai",
+            plugin_id=plugin_id,
             plugin_unique_identifier="langgenius/openai:1.0.0",
         )
-        session = _FakeSession()
+        credential = ProviderCredential(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            credential_name="Target credential",
+            encrypted_config="{}",
+            user_id=USER_ID,
+        )
+        other_credential = ProviderCredential(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            credential_name="Other credential",
+            encrypted_config="{}",
+            user_id=USER_ID,
+        )
+        sqlite_session.add_all([credential, other_credential])
+        sqlite_session.flush()
+        provider = Provider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            provider_type=ProviderType.CUSTOM,
+            credential_id=credential.id,
+        )
+        other_provider = Provider(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            provider_type=ProviderType.CUSTOM,
+            credential_id=other_credential.id,
+        )
+        preferred_provider = TenantPreferredModelProvider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        other_preferred_provider = TenantPreferredModelProvider(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        sqlite_session.add_all([provider, other_provider, preferred_provider, other_preferred_provider])
+        sqlite_session.commit()
+        credential_id = credential.id
+        other_credential_id = other_credential.id
+        provider_id = provider.id
+        other_provider_id = other_provider.id
+        preferred_provider_id = preferred_provider.id
+        other_preferred_provider_id = other_preferred_provider.id
+
         with (
-            patch(f"{MODULE}.db", SimpleNamespace(engine=object())),
+            patch(f"{MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind())),
             patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
-            patch(f"{MODULE}.Session", return_value=session),
+            patch(f"{MODULE}.ProviderCredentialsCache") as credentials_cache,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_config.ENTERPRISE_ENABLED = False
@@ -1168,8 +1212,26 @@ class TestPluginModelProviderCacheInvalidation:
 
             from core.plugin.plugin_service import PluginService
 
-            result = PluginService.uninstall("tenant-1", "installation-1")
+            result = PluginService.uninstall(TENANT_ID, "installation-1")
 
         assert result is True
-        installer.uninstall.assert_called_once_with("tenant-1", "installation-1")
-        invalidate_cache.assert_called_once_with("tenant-1")
+        installer.uninstall.assert_called_once_with(TENANT_ID, "installation-1")
+        invalidate_cache.assert_called_once_with(TENANT_ID)
+        credentials_cache.assert_called_once_with(
+            tenant_id=TENANT_ID,
+            identity_id=provider_id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        )
+        credentials_cache.return_value.delete.assert_called_once_with()
+
+        sqlite_session.expunge_all()
+        assert sqlite_session.get(ProviderCredential, credential_id) is None
+        persisted_provider = sqlite_session.get(Provider, provider_id)
+        assert persisted_provider is not None
+        assert persisted_provider.credential_id is None
+        assert sqlite_session.get(TenantPreferredModelProvider, preferred_provider_id) is None
+        assert sqlite_session.get(ProviderCredential, other_credential_id) is not None
+        persisted_other_provider = sqlite_session.get(Provider, other_provider_id)
+        assert persisted_other_provider is not None
+        assert persisted_other_provider.credential_id == other_credential_id
+        assert sqlite_session.get(TenantPreferredModelProvider, other_preferred_provider_id) is not None
