@@ -6,11 +6,17 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from flask import Flask
 from jwt import InvalidTokenError
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 import services.errors.account
+from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
+from models.model import DifySetup
 from services.entities.auth_entities import LoginFailureReason
+
+pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
 
 
 def encode_code(code: str) -> str:
@@ -32,17 +38,27 @@ def app():
 
 
 @pytest.fixture(autouse=True)
-def _patch_wraps():
+def _patch_wraps(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+):
     wraps_features = SimpleNamespace(enable_email_password_login=True)
     console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
     web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
+    sqlite_session.add(DifySetup(version="test"))
+    sqlite_session.commit()
+    console_wraps._is_setup_completed.reset_success()
+    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    monkeypatch.setattr(console_wraps.db, "session", session_registry)
     with (
-        patch("controllers.console.wraps.db") as mock_db,
         patch("controllers.console.wraps.dify_config", console_dify),
         patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         patch("controllers.web.login.dify_config", web_dify),
     ):
         yield
+    session_registry.remove()
+    console_wraps._is_setup_completed.reset_success()
 
 
 class TestEmailCodeLoginSendEmailApi:
