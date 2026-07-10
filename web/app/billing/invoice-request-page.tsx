@@ -9,7 +9,7 @@ import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { ALL_PLANS } from '@/app/components/billing/config'
@@ -56,6 +56,20 @@ type InvoiceRequestFormValues = {
   invoice_recipient_email: string
 }
 
+function InvoiceTermsLink({ href, children }: { href: string, children?: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={event => event.stopPropagation()}
+      className="system-sm-semibold underline underline-offset-2 hover:text-text-primary focus-visible:ring-1 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+    >
+      {children}
+    </a>
+  )
+}
+
 export default function InvoiceRequestPage() {
   const { t } = useTranslation()
   const router = useRouter()
@@ -66,11 +80,14 @@ export default function InvoiceRequestPage() {
   const [billingActionClicked, setBillingActionClicked] = useState(false)
   const [logoutActionClicked, setLogoutActionClicked] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const invoiceTermsCheckboxId = useId()
+  const invoiceTermsTextId = useId()
   const plan = normalizePlan(searchParams.get('plan'))
   const interval = normalizeInterval(searchParams.get('cycle'))
   const canRequestInvoice = isCurrentWorkspaceManager && hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const isInvoiceFlowLocked = !!currentPlan.invoiceFlow?.locked
   const price = getPrice(plan, interval)
+  const invoiceTermsLabel = t('invoice.form.terms', { ns: 'billing' }).replace(/<[^>]+>/g, '')
 
   const handleBack = () => {
     router.back()
@@ -112,17 +129,17 @@ export default function InvoiceRequestPage() {
 
   if (submittedEmail) {
     return (
-      <div className="fixed inset-0 z-31 overflow-y-auto bg-background-default p-6">
+      <div className="min-h-dvh overflow-y-auto bg-background-default p-6">
         <div className="mx-auto flex min-h-[calc(100dvh-48px)] w-full items-center justify-center">
-          <div className="relative flex min-h-[373px] w-full max-w-[600px] flex-col gap-3 overflow-hidden rounded-3xl border-[0.5px] border-components-panel-border-subtle bg-background-section p-8">
+          <div className="relative flex min-h-[373px] w-full max-w-150 flex-col gap-3 overflow-hidden rounded-[20px] border-[0.5px] border-components-panel-border-subtle bg-background-section p-8">
             <InvoiceRequestGridTexture />
-            <div className="relative z-1 flex w-full justify-end pb-2">
-              <DifyLogo size="large" className="h-[27px] w-[60px]" />
+            <div className="relative flex w-full justify-end pb-2">
+              <DifyLogo size="large" />
             </div>
-            <div className="relative z-1 flex size-13 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border-subtle bg-background-default-lighter text-saas-dify-blue-accessible shadow-lg backdrop-blur-[5px]">
+            <div className="relative flex size-13 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border-subtle bg-background-default-lighter text-saas-dify-blue-accessible shadow-lg backdrop-blur-[5px]">
               <span className="i-ri-mail-send-fill size-6" aria-hidden="true" />
             </div>
-            <div className="relative z-1 flex w-full flex-col gap-1 pt-1 break-words">
+            <div className="relative flex w-full flex-col gap-1 pt-1 break-words">
               <h1 className="title-2xl-semi-bold text-text-primary">{t('invoice.requestReceived.title', { ns: 'billing' })}</h1>
               <p className="system-md-regular text-text-secondary">
                 <Trans
@@ -136,7 +153,7 @@ export default function InvoiceRequestPage() {
                 />
               </p>
             </div>
-            <div className="relative z-1 flex w-full flex-col gap-2 pt-2 pb-3">
+            <div className="relative flex w-full flex-col gap-2 pt-2 pb-3">
               <p className="system-xs-regular text-text-tertiary">
                 {t('invoice.requestReceived.statusTip', { ns: 'billing' })}
               </p>
@@ -148,7 +165,7 @@ export default function InvoiceRequestPage() {
               size="medium"
               variant="primary"
               data-local-clicked={billingActionClicked || undefined}
-              className="relative z-1 gap-1 px-3"
+              className="relative gap-0.5 self-start border-[0.5px] px-3"
               onClick={handleOpenBillingSettings}
             >
               <span>{t('invoice.requestReceived.goToBilling', { ns: 'billing' })}</span>
@@ -161,20 +178,22 @@ export default function InvoiceRequestPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-31 overflow-y-auto bg-background-default">
+    <div className="min-h-dvh bg-background-default">
       <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(360px,724px)_minmax(560px,1fr)]">
         <aside className="flex min-h-dvh justify-center bg-background-section-burn px-6 py-10 lg:justify-end lg:px-10">
           <div className="relative flex w-full max-w-80 flex-col">
             <button
               type="button"
               aria-label={t('operation.back', { ns: 'common' })}
-              className="absolute top-0 -left-13 hidden size-8 items-center justify-center rounded-full border border-divider-subtle bg-background-default text-text-secondary shadow-xs hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden lg:flex"
+              className="absolute -top-px -left-13 hidden size-8 items-center justify-center rounded-full border border-divider-subtle bg-background-default text-text-secondary shadow-xs hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden lg:flex"
               onClick={handleBack}
             >
               <span aria-hidden="true" className="i-ri-arrow-left-line size-4" />
             </button>
             <div className="flex items-start gap-6">
-              <DifyLogo size="large" />
+              <div className="flex h-9 pt-1">
+                <DifyLogo size="large" />
+              </div>
               <div className="min-w-0">
                 <div className="title-xl-semi-bold text-text-primary">{t('invoice.summary.title', { ns: 'billing' })}</div>
                 <div className="mt-1 system-sm-regular text-text-tertiary">{t('invoice.summary.subtitle', { ns: 'billing' })}</div>
@@ -182,13 +201,11 @@ export default function InvoiceRequestPage() {
             </div>
 
             <div className="mt-8 rounded-lg border border-effects-highlight bg-background-default-subtle p-6 shadow-xs">
-              <div className="size-10 overflow-hidden">
-                <div className="origin-top-left scale-[0.66]">
-                  {INVOICE_ICON_MAP[plan]}
-                </div>
+              <div className="flex size-10 items-center justify-center [&_svg]:size-10">
+                {INVOICE_ICON_MAP[plan]}
               </div>
               <h1 className="mt-5 title-2xl-semi-bold text-text-primary">{t(`plans.${plan}.name`, { ns: 'billing' })}</h1>
-              <div className="mt-4 flex items-end gap-1.5">
+              <div className="mt-5 flex items-end gap-1.5">
                 <span className="title-2xl-semi-bold text-text-primary">
                   $
                   {price}
@@ -199,7 +216,7 @@ export default function InvoiceRequestPage() {
                 </span>
               </div>
               <RadioGroup<BillingInterval>
-                className="mt-6 flex-col items-stretch gap-2"
+                className="mt-5 flex-col items-stretch gap-2"
                 value={interval}
                 onValueChange={(nextInterval) => {
                   if (nextInterval)
@@ -211,10 +228,12 @@ export default function InvoiceRequestPage() {
                   <RadioItem<BillingInterval>
                     key={item}
                     value={item}
-                    className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid data-checked:text-text-primary"
+                    className="flex h-9 cursor-pointer items-center justify-between rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid data-checked:text-text-primary"
                   >
-                    <RadioControl aria-hidden="true" />
-                    <span className="grow system-sm-semibold">{t(`plansCommon.${item}`, { ns: 'billing' })}</span>
+                    <span className="flex h-7 items-center gap-2 px-1">
+                      <RadioControl aria-hidden="true" />
+                      <span className="system-sm-medium">{t(`invoice.summary.${item}`, { ns: 'billing' })}</span>
+                    </span>
                     {item === 'year' && (
                       <span className="rounded border border-state-accent-solid px-1 system-2xs-semibold-uppercase text-text-accent">
                         {t('invoice.summary.saveAnnual', { ns: 'billing', percent: 17 })}
@@ -248,7 +267,7 @@ export default function InvoiceRequestPage() {
           </div>
         </aside>
         <main className="bg-background-default px-6 py-10 lg:px-10">
-          <div className="w-full max-w-[480px]">
+          <div className="w-full max-w-120">
             <div className="mb-6">
               <h2 className="title-xl-semi-bold text-text-primary">{t('invoice.form.title', { ns: 'billing' })}</h2>
               <p className="mt-1 system-sm-regular text-text-tertiary">{t('invoice.form.description', { ns: 'billing' })}</p>
@@ -288,18 +307,30 @@ export default function InvoiceRequestPage() {
                 <FieldLabel>{t('invoice.form.invoiceEmail', { ns: 'billing' })}</FieldLabel>
                 <FieldControl required size="large" type="email" autoComplete="email" placeholder={t('invoice.form.placeholder.invoiceEmail', { ns: 'billing' })} />
               </FieldRoot>
-              <label className="flex min-h-22 cursor-pointer items-start gap-2 py-2">
+              <label htmlFor={invoiceTermsCheckboxId} className="flex min-h-22 cursor-pointer items-start gap-2 py-2">
                 <Checkbox
+                  id={invoiceTermsCheckboxId}
                   checked={termsAccepted}
                   onCheckedChange={checked => setTermsAccepted(checked === true)}
-                  aria-label={t('invoice.form.terms', { ns: 'billing' })}
+                  aria-label={invoiceTermsLabel}
+                  aria-describedby={invoiceTermsTextId}
                 />
-                <span className="system-sm-regular text-text-secondary">{t('invoice.form.terms', { ns: 'billing' })}</span>
+                <span id={invoiceTermsTextId} className="system-sm-regular text-text-secondary">
+                  <Trans
+                    i18nKey="invoice.form.terms"
+                    ns="billing"
+                    components={{
+                      terms: <InvoiceTermsLink href="https://dify.ai/terms" />,
+                      privacy: <InvoiceTermsLink href="https://dify.ai/privacy" />,
+                    }}
+                  />
+                </span>
               </label>
               <Button
                 type="submit"
                 variant="primary"
                 size="large"
+                disabled={!termsAccepted}
                 className="w-full"
               >
                 {t('invoice.form.submit', { ns: 'billing' })}

@@ -9,7 +9,7 @@ export function InvoiceRequestGridTexture() {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-0 h-[180px] w-full"
+      className="pointer-events-none absolute inset-x-0 top-0 h-45 w-full"
       fill="none"
       preserveAspectRatio="xMidYMin slice"
       viewBox="0 0 598 180"
