@@ -193,7 +193,7 @@ function Operation({
     <>
       <div
         className={cn(
-          'absolute flex justify-end gap-1',
+          'absolute flex justify-end gap-1 rtl:flex-row-reverse rtl:justify-start',
           hasWorkflowProcess && 'right-2 -bottom-4',
           !positionRight && 'right-2 -bottom-4',
           !hasWorkflowProcess && positionRight && 'top-[9px]!',
@@ -203,7 +203,7 @@ function Operation({
       >
         {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs rtl:mr-1 rtl:ml-0',
             hasUserFeedback ? 'flex' : `hidden ${answerActiveFlexClassName}`,
           )}
           >
@@ -245,7 +245,7 @@ function Operation({
         )}
         {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
-            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+            'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs rtl:mr-1 rtl:ml-0',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : `hidden ${answerActiveFlexClassName}`,
           )}
           >
@@ -318,7 +318,7 @@ function Operation({
           </div>
         )}
         {!isOpeningStatement && (
-          <div className={cn('ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs', answerActiveFlexClassName)} data-testid="operation-actions">
+          <div className={cn('ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs rtl:mr-1 rtl:ml-0', answerActiveFlexClassName)} data-testid="operation-actions">
             {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}
