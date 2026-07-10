@@ -161,7 +161,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             {rolesLoading
               ? (
                   <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                    {t($ => $['loading'], { ns: 'common' })}
+                    {t($ => $.loading, { ns: 'common' })}
                   </div>
                 )
               : roles.length === 0

@@ -121,7 +121,7 @@ const ToolItem = ({
       {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
-          {t($ => $['notAuthorized'], { ns: 'tools' })}
+          {t($ => $.notAuthorized, { ns: 'tools' })}
           <StatusDot className="ml-2" status="warning" />
         </Button>
       )}

@@ -60,14 +60,14 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       }}
     >
       <FieldRoot name="email" disabled={isInvite} className="mb-2">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t($ => $['email'], { ns: 'login' })}</FieldLabel>
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t($ => $.email, { ns: 'login' })}</FieldLabel>
         <FieldControl
           type="email"
           autoComplete="email"
           spellCheck={false}
           disabled={isInvite}
           value={email}
-          placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) as string}
+          placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) as string}
           onValueChange={setEmail}
         />
         <div className="mt-3">

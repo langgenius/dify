@@ -282,7 +282,7 @@ const ProviderDetail = ({
                         {collection.type === CollectionType.workflow || collection.type === CollectionType.custom
                           ? (
                               <div className="truncate system-xs-regular text-text-tertiary">
-                                {collection.author && `${t($ => $['author'], { ns: 'tools' })} ${collection.author}`}
+                                {collection.author && `${t($ => $.author, { ns: 'tools' })} ${collection.author}`}
                               </div>
                             )
                           : (
@@ -321,9 +321,9 @@ const ProviderDetail = ({
                         nativeButton={false}
                         variant="primary"
                         className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
-                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t($ => $['openInStudio'], { ns: 'tools' })} />}
+                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t($ => $.openInStudio, { ns: 'tools' })} />}
                       >
-                        <span className="min-w-0 truncate px-0.5 system-sm-medium">{t($ => $['openInStudio'], { ns: 'tools' })}</span>
+                        <span className="min-w-0 truncate px-0.5 system-sm-medium">{t($ => $.openInStudio, { ns: 'tools' })}</span>
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
                       </Button>
                       <Button
@@ -365,7 +365,7 @@ const ProviderDetail = ({
                         {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
                           <>
                             <div className="system-sm-semibold-uppercase text-text-secondary">
-                              <span className="">{t($ => $['includeToolNum'], { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                              <span className="">{t($ => $.includeToolNum, { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                               <span className="px-1">·</span>
                               <span className="text-util-colors-orange-orange-600">{t($ => $['auth.setup'], { ns: 'tools' }).toLocaleUpperCase()}</span>
                             </div>
@@ -384,7 +384,7 @@ const ProviderDetail = ({
                         )}
                         {(collection.type === CollectionType.custom) && (
                           <div className="system-sm-semibold-uppercase text-text-secondary">
-                            <span className="">{t($ => $['includeToolNum'], { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                            <span className="">{t($ => $.includeToolNum, { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                           </div>
                         )}
                         {(collection.type === CollectionType.workflow) && (

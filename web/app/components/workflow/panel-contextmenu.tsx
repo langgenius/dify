@@ -180,14 +180,14 @@ export function PanelContextmenu({
               className="justify-between gap-4 px-3 text-text-secondary"
               onClick={() => exportCheck?.()}
             >
-              {t($ => $['export'], { ns: 'app' })}
+              {t($ => $.export, { ns: 'app' })}
             </ContextMenuItem>
             {!shouldHideImportApp && (
               <ContextMenuItem
                 className="justify-between gap-4 px-3 text-text-secondary"
                 onClick={() => setShowImportDSLModal(true)}
               >
-                {t($ => $['importApp'], { ns: 'app' })}
+                {t($ => $.importApp, { ns: 'app' })}
               </ContextMenuItem>
             )}
           </ContextMenuGroup>

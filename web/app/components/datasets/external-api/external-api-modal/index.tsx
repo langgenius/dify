@@ -125,7 +125,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
         <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
           <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="grow self-stretch title-2xl-semi-bold text-text-primary">
-              {isEditMode ? t($ => $['editExternalAPIFormTitle'], { ns: 'dataset' }) : t($ => $['createExternalAPI'], { ns: 'dataset' })}
+              {isEditMode ? t($ => $.editExternalAPIFormTitle, { ns: 'dataset' }) : t($ => $.createExternalAPI, { ns: 'dataset' })}
             </DialogTitle>
             {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
               <div className="flex items-center system-xs-regular text-text-tertiary">
@@ -155,7 +155,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
-                          <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t($ => $['editExternalAPITooltipTitle'], { ns: 'dataset' })}`}</div>
+                          <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t($ => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
                         </div>
                         {datasetBindings?.map(binding => (
                           <div key={binding.id} className="flex items-center gap-1 self-stretch px-2 py-1">

@@ -48,7 +48,7 @@ function FirstEmptyState({
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t($ => $['importDSL'], { ns: 'app' }),
+      title: t($ => $.importDSL, { ns: 'app' }),
       description: t($ => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
     },

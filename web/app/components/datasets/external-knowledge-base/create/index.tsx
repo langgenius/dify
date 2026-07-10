@@ -56,7 +56,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
         <div className="flex w-full max-w-[960px] flex-col items-center px-14 py-0">
           <div className="flex w-full max-w-[640px] grow flex-col items-center gap-4 pt-6 pb-8">
             <div className="relative flex flex-col items-center gap-[2px] self-stretch py-2">
-              <div className="grow self-stretch system-xl-semibold text-text-primary">{t($ => $['connectDataset'], { ns: 'dataset' })}</div>
+              <div className="grow self-stretch system-xl-semibold text-text-primary">{t($ => $.connectDataset, { ns: 'dataset' })}</div>
               <p className="system-sm-regular text-text-tertiary">
                 <span>{t($ => $['connectHelper.helper1'], { ns: 'dataset' })}</span>
                 <span className="system-sm-medium text-text-secondary">{t($ => $['connectHelper.helper2'], { ns: 'dataset' })}</span>

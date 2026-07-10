@@ -145,7 +145,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     </div>
                     <div className={cn('max-w-50 truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && 'max-w-30! opacity-30')}>{item.name}</div>
                     {!item.embedding_available && (
-                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">{t($ => $['unavailable'], { ns: 'dataset' })}</span>
+                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">{t($ => $.unavailable, { ns: 'dataset' })}</span>
                     )}
                   </div>
                   {item.is_multimodal && (
@@ -163,7 +163,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   }
                   {
                     item.provider === 'external' && (
-                      <Badge className="shrink-0" text={t($ => $['externalTag'], { ns: 'dataset' })} />
+                      <Badge className="shrink-0" text={t($ => $.externalTag, { ns: 'dataset' })} />
                     )
                   }
                 </button>

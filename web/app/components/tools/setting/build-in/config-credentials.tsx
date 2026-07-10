@@ -132,7 +132,7 @@ const ConfigCredential: FC<Props> = ({
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center text-xs text-text-accent"
                                 >
-                                  {t($ => $['howToGet'], { ns: 'tools' })}
+                                  {t($ => $.howToGet, { ns: 'tools' })}
                                   <LinkExternal02 className="ml-1 size-3" />
                                 </a>
                               )

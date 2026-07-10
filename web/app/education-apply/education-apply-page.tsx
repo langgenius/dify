@@ -90,7 +90,7 @@ const EducationApplyAgeContent = () => {
         setHasSubmittedEducation(true)
       }
       else {
-        toast.error(t($ => $['submitError'], { ns: 'education' }))
+        toast.error(t($ => $.submitError, { ns: 'education' }))
       }
     })
   }
@@ -147,7 +147,7 @@ const EducationApplyAgeContent = () => {
     if (appliedEducationCase === AppliedEducationCase.eligible) {
       return (
         <Button variant="primary" onClick={handleEducationDiscount}>
-          {t($ => $['useEducationDiscount'], { ns: 'education' })}
+          {t($ => $.useEducationDiscount, { ns: 'education' })}
         </Button>
       )
     }
@@ -159,7 +159,7 @@ const EducationApplyAgeContent = () => {
             <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
               <Trans
-                i18nKey={$ => $["applied.activeSubscription.description"]}
+                i18nKey={$ => $['applied.activeSubscription.description']}
                 ns="education"
                 components={{
                   stripeLink: (
@@ -207,7 +207,7 @@ const EducationApplyAgeContent = () => {
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
-            <div className="mb-2 title-5xl-bold shadow-xs">{t($ => $['toVerified'], { ns: 'education' })}</div>
+            <div className="mb-2 title-5xl-bold shadow-xs">{t($ => $.toVerified, { ns: 'education' })}</div>
             <div className="system-md-medium shadow-xs">
               {t($ => $['toVerifiedTip.front'], { ns: 'education' })}
               &nbsp;
@@ -290,7 +290,7 @@ const EducationApplyAgeContent = () => {
                     disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
                     onClick={handleSubmit}
                   >
-                    {t($ => $['submit'], { ns: 'education' })}
+                    {t($ => $.submit, { ns: 'education' })}
                   </Button>
                   <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
                   <a
@@ -298,7 +298,7 @@ const EducationApplyAgeContent = () => {
                     href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
                     target="_blank"
                   >
-                    {t($ => $['learn'], { ns: 'education' })}
+                    {t($ => $.learn, { ns: 'education' })}
                     <span className="ml-1 i-ri-external-link-line size-3" />
                   </a>
                 </>

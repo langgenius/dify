@@ -77,7 +77,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
         popupClassName="w-[288px] p-1"
       >
         <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
-          {t($ => $['publishAs'], { ns: 'appDebug' })}
+          {t($ => $.publishAs, { ns: 'appDebug' })}
         </div>
         {
           validModelConfigs.map((item, index) => (

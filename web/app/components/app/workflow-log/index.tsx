@@ -69,8 +69,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   return (
     <div className="flex h-full flex-col">
       <PageTitle
-        title={t($ => $['workflowTitle'], { ns: 'appLog' })}
-        description={t($ => $['workflowSubtitle'], { ns: 'appLog' })}
+        title={t($ => $.workflowTitle, { ns: 'appLog' })}
+        description={t($ => $.workflowSubtitle, { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />

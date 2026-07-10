@@ -51,7 +51,7 @@ export default function Form({
     >
       <div className="mb-3">
         <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
-          {t($ => $['email'], { ns: 'login' })}
+          {t($ => $.email, { ns: 'login' })}
         </label>
         <div className="mt-1">
           <Input
@@ -60,7 +60,7 @@ export default function Form({
             id="email"
             type="email"
             autoComplete="email"
-            placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) || ''}
+            placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
             tabIndex={1}
           />
         </div>
@@ -91,7 +91,7 @@ export default function Form({
       {!systemFeatures.branding.enabled && (
         <>
           <div className="mt-3 block w-full system-xs-regular text-text-tertiary">
-            {t($ => $['tosDesc'], { ns: 'login' })}
+            {t($ => $.tosDesc, { ns: 'login' })}
             &nbsp;
             <Link
               className="system-xs-medium text-text-secondary hover:underline"
@@ -99,7 +99,7 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/terms"
             >
-              {t($ => $['tos'], { ns: 'login' })}
+              {t($ => $.tos, { ns: 'login' })}
             </Link>
             &nbsp;&&nbsp;
             <Link
@@ -108,7 +108,7 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/privacy"
             >
-              {t($ => $['pp'], { ns: 'login' })}
+              {t($ => $.pp, { ns: 'login' })}
             </Link>
           </div>
         </>

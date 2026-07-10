@@ -53,7 +53,7 @@ const CustomWebAppBrand = () => {
                 disabled={uploadDisabled || (!webappLogo && !webappBrandRemoved)}
                 onClick={handleRestore}
               >
-                {t($ => $['restore'], { ns: 'custom' })}
+                {t($ => $.restore, { ns: 'custom' })}
               </Button>
               <div className="mx-2 h-5 w-px bg-divider-regular"></div>
             </>
@@ -67,8 +67,8 @@ const CustomWebAppBrand = () => {
                 <span className="mr-1 i-ri-image-add-line size-4" />
                 {
                   (webappLogo || fileId)
-                    ? t($ => $['change'], { ns: 'custom' })
-                    : t($ => $['upload'], { ns: 'custom' })
+                    ? t($ => $.change, { ns: 'custom' })
+                    : t($ => $.upload, { ns: 'custom' })
                 }
                 <input
                   className={cn('absolute inset-0 block w-full text-[0] opacity-0', uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
@@ -88,7 +88,7 @@ const CustomWebAppBrand = () => {
                 disabled={true}
               >
                 <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
-                {t($ => $['uploading'], { ns: 'custom' })}
+                {t($ => $.uploading, { ns: 'custom' })}
               </Button>
             )
           }
@@ -108,7 +108,7 @@ const CustomWebAppBrand = () => {
                   onClick={handleApply}
                   disabled={webappBrandRemoved || !canManageCustomBrand}
                 >
-                  {t($ => $['apply'], { ns: 'custom' })}
+                  {t($ => $.apply, { ns: 'custom' })}
                 </Button>
               </>
             )
@@ -116,7 +116,7 @@ const CustomWebAppBrand = () => {
         </div>
       </div>
       {uploadProgress === -1 && (
-        <div className="mt-2 text-xs text-[#D92D20]">{t($ => $['uploadedFail'], { ns: 'custom' })}</div>
+        <div className="mt-2 text-xs text-[#D92D20]">{t($ => $.uploadedFail, { ns: 'custom' })}</div>
       )}
       <div className="mt-5 mb-2 flex items-center gap-2">
         <div className="shrink-0 system-xs-medium-uppercase text-text-tertiary">{t($ => $['overview.appInfo.preview'], { ns: 'appOverview' })}</div>

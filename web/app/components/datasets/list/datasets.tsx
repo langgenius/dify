@@ -41,7 +41,7 @@ const Datasets = ({
   const showDatasetSkeleton = !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
 
   useEffect(() => {
-    document.title = `${t($ => $['knowledge'], { ns: 'dataset' })} - Dify`
+    document.title = `${t($ => $.knowledge, { ns: 'dataset' })} - Dify`
   }, [t])
 
   useEffect(() => {
@@ -63,7 +63,7 @@ const Datasets = ({
     <>
       <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
         {showDatasetSkeleton
-          ? <DatasetCardSkeleton label={t($ => $['loading'], { ns: 'common' })} />
+          ? <DatasetCardSkeleton label={t($ => $.loading, { ns: 'common' })} />
           : datasets.map(dataset => (
               <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
             )}

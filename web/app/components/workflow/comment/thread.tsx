@@ -740,7 +740,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             <div className="flex items-center gap-3">
               <Avatar
                 avatar={userProfile?.avatar_url || null}
-                name={userProfile?.name || t($ => $['you'], { ns: 'common' })}
+                name={userProfile?.name || t($ => $.you, { ns: 'common' })}
                 size="sm"
                 className="size-8"
               />

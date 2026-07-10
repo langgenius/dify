@@ -139,7 +139,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
-                    <div className="system-xl-semibold text-text-primary">{t($ => $['orchestrate'], { ns: 'appDebug' })}</div>
+                    <div className="system-xl-semibold text-text-primary">{t($ => $.orchestrate, { ns: 'appDebug' })}</div>
                     {showLegacyAgentBadge && <LegacyAgentBadge />}
                     {isAdvancedMode && (
                       <div className="flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">

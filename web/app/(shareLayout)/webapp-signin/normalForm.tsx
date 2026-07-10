@@ -61,8 +61,8 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t($ => $['licenseLost'], { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['licenseLostTip'], { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseLost, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseLostTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -77,8 +77,8 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t($ => $['licenseExpired'], { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['licenseExpiredTip'], { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseExpired, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseExpiredTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -93,8 +93,8 @@ const NormalForm = () => {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t($ => $['licenseInactive'], { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['licenseInactiveTip'], { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t($ => $.licenseInactive, { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.licenseInactiveTip, { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -105,8 +105,8 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t($ => $['pageTitleForE'], { ns: 'login' }) : t($ => $['pageTitle'], { ns: 'login' })}</h2>
-          <p className="mt-2 body-md-regular text-text-tertiary">{t($ => $['welcome'], { ns: 'login' })}</p>
+          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t($ => $.pageTitleForE, { ns: 'login' }) : t($ => $.pageTitle, { ns: 'login' })}</h2>
+          <p className="mt-2 body-md-regular text-text-tertiary">{t($ => $.welcome, { ns: 'login' })}</p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
@@ -123,7 +123,7 @@ const NormalForm = () => {
                 <div className="h-px w-full bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 system-xs-medium-uppercase text-text-tertiary">{t($ => $['or'], { ns: 'login' })}</span>
+                <span className="px-2 system-xs-medium-uppercase text-text-tertiary">{t($ => $.or, { ns: 'login' })}</span>
               </div>
             </div>
           )}
@@ -135,7 +135,7 @@ const NormalForm = () => {
                     <MailAndCodeAuth />
                     {systemFeatures.enable_email_password_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('password') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $['usePassword'], { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $.usePassword, { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
@@ -145,7 +145,7 @@ const NormalForm = () => {
                     <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
                     {systemFeatures.enable_email_code_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('code') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $['useVerificationCode'], { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t($ => $.useVerificationCode, { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
@@ -159,8 +159,8 @@ const NormalForm = () => {
                 <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
-                <p className="system-sm-medium text-text-primary">{t($ => $['noLoginMethod'], { ns: 'login' })}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['noLoginMethodTip'], { ns: 'login' })}</p>
+                <p className="system-sm-medium text-text-primary">{t($ => $.noLoginMethod, { ns: 'login' })}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">{t($ => $.noLoginMethodTip, { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -172,7 +172,7 @@ const NormalForm = () => {
           {!systemFeatures.branding.enabled && (
             <>
               <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-                {t($ => $['tosDesc'], { ns: 'login' })}
+                {t($ => $.tosDesc, { ns: 'login' })}
               &nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
@@ -180,7 +180,7 @@ const NormalForm = () => {
                   rel="noopener noreferrer"
                   href="https://dify.ai/terms"
                 >
-                  {t($ => $['tos'], { ns: 'login' })}
+                  {t($ => $.tos, { ns: 'login' })}
                 </Link>
               &nbsp;&&nbsp;
                 <Link
@@ -189,18 +189,18 @@ const NormalForm = () => {
                   rel="noopener noreferrer"
                   href="https://dify.ai/privacy"
                 >
-                  {t($ => $['pp'], { ns: 'login' })}
+                  {t($ => $.pp, { ns: 'login' })}
                 </Link>
               </div>
               {IS_CE_EDITION && (
                 <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
-                  {t($ => $['goToInit'], { ns: 'login' })}
+                  {t($ => $.goToInit, { ns: 'login' })}
               &nbsp;
                   <Link
                     className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"
                   >
-                    {t($ => $['setAdminAccount'], { ns: 'login' })}
+                    {t($ => $.setAdminAccount, { ns: 'login' })}
                   </Link>
                 </div>
               )}

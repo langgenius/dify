@@ -67,7 +67,7 @@ const FileImageItem = ({
               <ProgressCircle
                 value={progress}
                 color="white"
-                aria-label={t($ => $['uploading'], { ns: 'custom' })}
+                aria-label={t($ => $.uploading, { ns: 'custom' })}
               />
             </div>
           )

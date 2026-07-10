@@ -180,11 +180,11 @@ const AdvancedPromptInput: FC<Props> = ({
                           {t($ => $['pageTitle.line1'], { ns: 'appDebug' })}
                         </div>
                         <Infotip
-                          aria-label={t($ => $['promptTip'], { ns: 'appDebug' })}
+                          aria-label={t($ => $.promptTip, { ns: 'appDebug' })}
                           className="ml-1"
                           popupClassName="w-[180px]"
                         >
-                          {t($ => $['promptTip'], { ns: 'appDebug' })}
+                          {t($ => $.promptTip, { ns: 'appDebug' })}
                         </Infotip>
                       </div>
                     )}

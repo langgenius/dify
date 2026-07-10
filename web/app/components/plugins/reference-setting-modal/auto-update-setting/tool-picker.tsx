@@ -117,7 +117,7 @@ const ToolPicker: FC<Props> = ({
                 onSearchChange={setQuery}
                 tags={tags}
                 onTagsChange={setTags}
-                placeholder={t($ => $['searchTools'], { ns: 'plugin' })!}
+                placeholder={t($ => $.searchTools, { ns: 'plugin' })!}
                 inputClassName="w-full"
               />
             </div>

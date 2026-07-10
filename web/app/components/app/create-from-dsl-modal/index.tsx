@@ -218,11 +218,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t($ => $['importFromDSLFile'], { ns: 'app' }),
+      label: t($ => $.importFromDSLFile, { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t($ => $['importFromDSLUrl'], { ns: 'app' }),
+      label: t($ => $.importFromDSLUrl, { ns: 'app' }),
     },
   ]
 
@@ -242,7 +242,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
 
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t($ => $['importApp'], { ns: 'app' })}
+            {t($ => $.importApp, { ns: 'app' })}
             <div
               className="flex size-8 cursor-pointer items-center"
               onClick={() => onClose()}
@@ -286,7 +286,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 <div>
                   <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
                   <Input
-                    placeholder={t($ => $['importFromDSLUrlPlaceholder'], { ns: 'app' }) || ''}
+                    placeholder={t($ => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
                     value={dslUrlValue}
                     onChange={e => setDslUrlValue(e.target.value)}
                   />

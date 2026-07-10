@@ -325,7 +325,7 @@ const Answer: FC<AnswerProps> = ({
                 annotation?.id && annotation.authorName && (
                   <EditTitle
                     className="mt-1"
-                    title={t($ => $['editBy'], { ns: 'appAnnotation', author: annotation.authorName })}
+                    title={t($ => $.editBy, { ns: 'appAnnotation', author: annotation.authorName })}
                   />
                 )
               }
@@ -435,7 +435,7 @@ const Answer: FC<AnswerProps> = ({
                 annotation?.id && annotation.authorName && (
                   <EditTitle
                     className="mt-1"
-                    title={t($ => $['editBy'], { ns: 'appAnnotation', author: annotation.authorName })}
+                    title={t($ => $.editBy, { ns: 'appAnnotation', author: annotation.authorName })}
                   />
                 )
               }

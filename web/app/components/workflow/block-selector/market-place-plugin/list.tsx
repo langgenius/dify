@@ -84,7 +84,7 @@ const List = ({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <span>{t($ => $['findMoreInMarketplace'], { ns: 'plugin' })}</span>
+        <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
         <RiArrowRightUpLine className="ml-0.5 size-3" />
       </Link>
     )
@@ -99,7 +99,7 @@ const List = ({
           className={cn('sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 system-sm-medium text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
-          <span>{t($ => $['fromMarketplace'], { ns: 'plugin' })}</span>
+          <span>{t($ => $.fromMarketplace, { ns: 'plugin' })}</span>
           <Link
             href={urlWithSearchText}
             target="_blank"
@@ -107,7 +107,7 @@ const List = ({
             className="flex items-center text-text-accent-light-mode-only"
             onClick={e => e.stopPropagation()}
           >
-            <span>{t($ => $['searchInMarketplace'], { ns: 'plugin' })}</span>
+            <span>{t($ => $.searchInMarketplace, { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         </div>

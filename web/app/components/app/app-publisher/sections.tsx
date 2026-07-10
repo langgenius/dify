@@ -346,7 +346,7 @@ export const PublisherActionsSection = ({
       </ActionTooltip>
       <ActionTooltip
         disabled={!publishedAt || missingStartNode}
-        tooltip={!publishedAt ? t($ => $['notPublishedYet'], { ns: 'app' }) : t($ => $['noUserInputNode'], { ns: 'app' })}
+        tooltip={!publishedAt ? t($ => $.notPublishedYet, { ns: 'app' }) : t($ => $.noUserInputNode, { ns: 'app' })}
       >
         <SuggestedAction
           className="flex-1"

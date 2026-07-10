@@ -112,14 +112,14 @@ const Card = ({
               <div className="flex h-4 min-w-0 items-center gap-2 system-xs-regular text-text-tertiary">
                 {org && (
                   <div className="flex min-w-0 items-center gap-1">
-                    <span className="shrink-0 lowercase">{t($ => $['author'], { ns: 'tools' })}</span>
+                    <span className="shrink-0 lowercase">{t($ => $.author, { ns: 'tools' })}</span>
                     <span className="truncate">{org}</span>
                   </div>
                 )}
                 {org && payload.install_count !== undefined && <span className="shrink-0 text-text-quaternary">·</span>}
                 {payload.install_count !== undefined && (
                   <span className="shrink-0">
-                    {t($ => $['install'], { ns: 'plugin', num: formatNumber(payload.install_count) })}
+                    {t($ => $.install, { ns: 'plugin', num: formatNumber(payload.install_count) })}
                   </span>
                 )}
               </div>

@@ -48,7 +48,7 @@ function DatasetFirstEmptyState({
         href: '/datasets/connect',
         icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
         id: 'connect',
-        title: t($ => $['connectDataset'], { ns: 'dataset' }),
+        title: t($ => $.connectDataset, { ns: 'dataset' }),
         description: t($ => $['firstEmpty.connectDescription'], { ns: 'dataset' }),
       }
     : undefined

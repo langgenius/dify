@@ -50,7 +50,7 @@ function ModelProviderListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $['loading'], { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 3 }, (_, index) => (
         <ModelProviderCardSkeleton key={index} />
       ))}
@@ -75,7 +75,7 @@ function EmptyProviderState({
         {enableMarketplace
           ? (
               <Trans
-                i18nKey={$ => $["modelProvider.emptyProviderTipWithMarketplace"]}
+                i18nKey={$ => $['modelProvider.emptyProviderTipWithMarketplace']}
                 ns="common"
                 components={{
                   marketplace: (

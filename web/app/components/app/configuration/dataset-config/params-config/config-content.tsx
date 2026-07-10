@@ -188,15 +188,15 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className="system-xl-semibold text-text-primary">{t($ => $['retrievalSettings'], { ns: 'dataset' })}</div>
+      <div className="system-xl-semibold text-text-primary">{t($ => $.retrievalSettings, { ns: 'dataset' })}</div>
       <div className="system-xs-regular text-text-tertiary">
-        {t($ => $['defaultRetrievalTip'], { ns: 'dataset' })}
+        {t($ => $.defaultRetrievalTip, { ns: 'dataset' })}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex flex-col items-center py-1">
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
-              {t($ => $['rerankSettings'], { ns: 'dataset' })}
+              {t($ => $.rerankSettings, { ns: 'dataset' })}
             </div>
             <Divider bgStyle="gradient" className="m-0 h-px!" />
           </div>
@@ -204,21 +204,21 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t($ => $['inconsistentEmbeddingModelTip'], { ns: 'dataset' })}
+                {t($ => $.inconsistentEmbeddingModelTip, { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t($ => $['mixtureInternalAndExternalTip'], { ns: 'dataset' })}
+                {t($ => $.mixtureInternalAndExternalTip, { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t($ => $['allExternalTip'], { ns: 'dataset' })}
+                {t($ => $.allExternalTip, { ns: 'dataset' })}
               </div>
             )
           }
@@ -226,7 +226,7 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t($ => $['mixtureHighQualityAndEconomicTip'], { ns: 'dataset' })}
+                {t($ => $.mixtureHighQualityAndEconomicTip, { ns: 'dataset' })}
               </div>
             )
           }

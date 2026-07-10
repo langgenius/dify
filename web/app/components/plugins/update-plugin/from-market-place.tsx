@@ -102,7 +102,7 @@ const UpdatePluginModal = ({
         if (response.task?.status === TaskStatus.failed) {
           const failedPlugin = response.task.plugins?.find(plugin => plugin.plugin_unique_identifier === targetPackageInfo.id)
             ?? response.task.plugins?.[0]
-          toast.error(failedPlugin?.message || t($ => $['error'], { ns: 'common' }))
+          toast.error(failedPlugin?.message || t($ => $.error, { ns: 'common' }))
           setUploadStep(UploadStep.notStarted)
           return
         }

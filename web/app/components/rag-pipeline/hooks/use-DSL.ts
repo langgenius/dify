@@ -39,7 +39,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
     finally {
       setExporting(false)
@@ -64,7 +64,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } as any)
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }, [eventEmitter, handleExportDSL, t, workflowStore])
   return {

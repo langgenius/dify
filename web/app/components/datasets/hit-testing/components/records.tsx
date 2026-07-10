@@ -104,7 +104,7 @@ const Records = ({
                   </div>
                 </td>
                 <td className="w-48 p-3 pr-2">
-                  {formatTime(created_at, t($ => $['dateTimeFormat'], { ns: 'datasetHitTesting' }) as string)}
+                  {formatTime(created_at, t($ => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string)}
                 </td>
               </tr>
             )

@@ -17,7 +17,7 @@ const ToolDetail = ({
 }: ToolDetailProps) => {
   const { t } = useTranslation()
   const { name, label, input, isFinished, output } = payload
-  const toolLabel = name.startsWith('dataset_') ? t($ => $['knowledge'], { ns: 'dataset' }) : label
+  const toolLabel = name.startsWith('dataset_') ? t($ => $.knowledge, { ns: 'dataset' }) : label
   const [expand, setExpand] = useState(false)
 
   return (

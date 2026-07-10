@@ -119,7 +119,7 @@ const ParamsConfig = ({
         disabled={disabled}
       >
         <RiEqualizer2Line className="mr-1 size-3.5" />
-        {t($ => $['retrievalSettings'], { ns: 'dataset' })}
+        {t($ => $.retrievalSettings, { ns: 'dataset' })}
       </Button>
       {
         rerankSettingModalOpen && (

@@ -78,7 +78,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               )}
               onClick={() => onSwitchTab('RESULT')}
             >
-              {t($ => $['result'], { ns: 'runLog' })}
+              {t($ => $.result, { ns: 'runLog' })}
             </div>
             <div
               className={cn(
@@ -87,7 +87,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               )}
               onClick={() => onSwitchTab('DETAIL')}
             >
-              {t($ => $['detail'], { ns: 'runLog' })}
+              {t($ => $.detail, { ns: 'runLog' })}
             </div>
           </div>
         )}

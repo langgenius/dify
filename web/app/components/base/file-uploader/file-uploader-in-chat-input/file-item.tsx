@@ -112,7 +112,7 @@ const FileItem = ({
               <ProgressCircle
                 value={progress}
                 className="shrink-0"
-                aria-label={t($ => $['uploading'], { ns: 'custom' })}
+                aria-label={t($ => $.uploading, { ns: 'custom' })}
               />
             )
           }

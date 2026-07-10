@@ -161,7 +161,7 @@ export default function DevicePage() {
             <h1 className="text-2xl font-semibold text-text-primary">{t($ => $['chooser.title'])}</h1>
             <p className="mt-2 text-sm text-text-secondary">
               <Trans
-                i18nKey={$ => $["chooser.subtitle"]}
+                i18nKey={$ => $['chooser.subtitle']}
                 ns="deviceFlow"
                 values={{ code: view.userCode }}
                 components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
@@ -214,7 +214,7 @@ export default function DevicePage() {
           <h1 className="text-xl font-semibold text-text-primary">{t($ => $['errorExpired.title'])}</h1>
           <p className="text-sm text-text-secondary">
             <Trans
-              i18nKey={$ => $["errorExpired.body"]}
+              i18nKey={$ => $['errorExpired.body']}
               ns="deviceFlow"
               components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
             />
@@ -249,7 +249,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            {t($ => $['tryAgain'])}
+            {t($ => $.tryAgain)}
           </Button>
         </div>
       )}
@@ -272,7 +272,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            {t($ => $['tryAgain'])}
+            {t($ => $.tryAgain)}
           </Button>
         </div>
       )}

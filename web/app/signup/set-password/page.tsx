@@ -111,10 +111,10 @@ const ChangePasswordForm = () => {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <h2 className="title-4xl-semi-bold text-text-primary">
-            {t($ => $['changePassword'], { ns: 'login' })}
+            {t($ => $.changePassword, { ns: 'login' })}
           </h2>
           <p className="mt-2 body-md-regular text-text-secondary">
-            {t($ => $['changePasswordTip'], { ns: 'login' })}
+            {t($ => $.changePasswordTip, { ns: 'login' })}
           </p>
         </div>
 
@@ -131,7 +131,7 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={t($ => $['passwordPlaceholder'], { ns: 'login' }) || ''}
+                  placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
                 />
 
               </div>
@@ -148,7 +148,7 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t($ => $['confirmPasswordPlaceholder'], { ns: 'login' }) || ''}
+                  placeholder={t($ => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                 />
               </div>
             </div>
@@ -159,7 +159,7 @@ const ChangePasswordForm = () => {
                 onClick={handleSubmit}
                 disabled={isPending || !password || !confirmPassword}
               >
-                {t($ => $['changePasswordBtn'], { ns: 'login' })}
+                {t($ => $.changePasswordBtn, { ns: 'login' })}
               </Button>
             </div>
           </div>

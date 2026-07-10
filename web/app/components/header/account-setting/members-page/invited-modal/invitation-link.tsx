@@ -52,7 +52,7 @@ const InvitationLink = ({
               )}
             />
             <TooltipContent>
-              {isCopied ? t($ => $['copied'], { ns: 'appApi' }) : t($ => $['copy'], { ns: 'appApi' })}
+              {isCopied ? t($ => $.copied, { ns: 'appApi' }) : t($ => $.copy, { ns: 'appApi' })}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -63,7 +63,7 @@ const InvitationLink = ({
               <div className="shrink-0 px-0.5">
                 <button
                   type="button"
-                  aria-label={t($ => $['copy'], { ns: 'appApi' })}
+                  aria-label={t($ => $.copy, { ns: 'appApi' })}
                   className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
                   onClick={copyHandle}
                 />
@@ -71,7 +71,7 @@ const InvitationLink = ({
             )}
           />
           <TooltipContent>
-            {isCopied ? t($ => $['copied'], { ns: 'appApi' }) : t($ => $['copy'], { ns: 'appApi' })}
+            {isCopied ? t($ => $.copied, { ns: 'appApi' }) : t($ => $.copy, { ns: 'appApi' })}
           </TooltipContent>
         </Tooltip>
       </div>

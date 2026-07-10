@@ -139,7 +139,7 @@ export function AgentApiKeyModal({
             <div className="max-h-[280px] overflow-auto">
               {apiKeysQuery.isPending && (
                 <div role="status" className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
-                  {t($ => $['loading'])}
+                  {t($ => $.loading)}
                 </div>
               )}
               {apiKeysQuery.isError && (
@@ -158,7 +158,7 @@ export function AgentApiKeyModal({
               )}
               {apiKeysQuery.isSuccess && apiKeys.length === 0 && (
                 <div className="flex h-20 items-center justify-center system-sm-regular text-text-tertiary">
-                  {tCommon($ => $['noData'])}
+                  {tCommon($ => $.noData)}
                 </div>
               )}
               {apiKeysQuery.isSuccess && apiKeys.map(apiKey => (
@@ -167,10 +167,10 @@ export function AgentApiKeyModal({
                     {maskApiKey(apiKey.token)}
                   </div>
                   <div className="w-[200px] shrink-0 truncate px-3">
-                    {apiKey.created_at ? formatTime(apiKey.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' })) : t($ => $['never'])}
+                    {apiKey.created_at ? formatTime(apiKey.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' })) : t($ => $.never)}
                   </div>
                   <div className="w-[200px] shrink-0 truncate px-3">
-                    {apiKey.last_used_at ? formatTime(apiKey.last_used_at, t($ => $['dateTimeFormat'], { ns: 'appLog' })) : t($ => $['never'])}
+                    {apiKey.last_used_at ? formatTime(apiKey.last_used_at, t($ => $.dateTimeFormat, { ns: 'appLog' })) : t($ => $.never)}
                   </div>
                   <div className="flex grow gap-2 px-3">
                     <CopyFeedback content={apiKey.token} />

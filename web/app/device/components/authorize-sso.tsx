@@ -74,7 +74,7 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
         <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.sessionInvalidTitle'])}</h2>
         <p className="mt-2 text-sm text-text-secondary">
           <Trans
-            i18nKey={$ => $["authorize.sessionInvalidBody"]}
+            i18nKey={$ => $['authorize.sessionInvalidBody']}
             ns="deviceFlow"
             components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
           />

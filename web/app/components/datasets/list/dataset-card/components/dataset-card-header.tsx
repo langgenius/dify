@@ -33,7 +33,7 @@ const DocModeInfo = ({
   if (isExternalProvider) {
     return (
       <div className={docModeInfoClassName}>
-        <span>{t($ => $['externalKnowledgeBase'], { ns: 'dataset' })}</span>
+        <span>{t($ => $.externalKnowledgeBase, { ns: 'dataset' })}</span>
       </div>
     )
   }
@@ -74,9 +74,9 @@ const DocModeInfo = ({
       {isShowDocModeInfo && dataset.is_multimodal && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t($ => $['multimodal'], { ns: 'dataset' })}
+          title={t($ => $.multimodal, { ns: 'dataset' })}
         >
-          {t($ => $['multimodal'], { ns: 'dataset' })}
+          {t($ => $.multimodal, { ns: 'dataset' })}
         </span>
       )}
     </div>

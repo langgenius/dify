@@ -85,7 +85,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
             />
           </Item>
 
-          <Item title={t($ => $['modelProvider.embeddingModel.key'], { ns: 'common' })} tooltip={t($ => $['embeddingModelSwitchTip'], { ns: 'appAnnotation' })}>
+          <Item title={t($ => $['modelProvider.embeddingModel.key'], { ns: 'common' })} tooltip={t($ => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}>
             <div className="pt-1">
               <ModelSelector
                 defaultModel={embeddingModel && {

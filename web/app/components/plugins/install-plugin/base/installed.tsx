@@ -80,7 +80,7 @@ const Installed: FC<Props> = ({
               ? (
                   <Trans
                     t={t}
-                    i18nKey={$ => $["installModal.installedSuccessfullyWithPageDesc"]}
+                    i18nKey={$ => $['installModal.installedSuccessfullyWithPageDesc']}
                     ns="plugin"
                     components={{
                       categoryName: <span className="system-sm-semibold text-text-secondary" />,

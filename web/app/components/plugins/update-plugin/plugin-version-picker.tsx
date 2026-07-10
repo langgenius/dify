@@ -49,7 +49,7 @@ const PluginVersionPicker: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const format = t($ => $['dateTimeFormat'], { ns: 'appLog' }).split(' ')[0]
+  const format = t($ => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
   const { data: res } = useVersionListOfPlugin(pluginID)

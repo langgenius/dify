@@ -109,8 +109,8 @@ const InstallForm = () => {
       : (
           <>
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
-              <h2 className="text-[32px] font-bold text-text-primary">{t($ => $['setAdminAccount'], { ns: 'login' })}</h2>
-              <p className="mt-1 text-sm text-text-secondary">{t($ => $['setAdminAccountDesc'], { ns: 'login' })}</p>
+              <h2 className="text-[32px] font-bold text-text-primary">{t($ => $.setAdminAccount, { ns: 'login' })}</h2>
+              <p className="mt-1 text-sm text-text-secondary">{t($ => $.setAdminAccountDesc, { ns: 'login' })}</p>
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
               <div className="relative">
@@ -126,7 +126,7 @@ const InstallForm = () => {
                   >
                     <div className="mb-5">
                       <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t($ => $['email'], { ns: 'login' })}
+                        {t($ => $.email, { ns: 'login' })}
                       </label>
                       <div className="mt-1">
                         <form.AppField name="email">
@@ -136,7 +136,7 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) || ''}
+                              placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
@@ -150,7 +150,7 @@ const InstallForm = () => {
 
                     <div className="mb-5">
                       <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t($ => $['name'], { ns: 'login' })}
+                        {t($ => $.name, { ns: 'login' })}
                       </label>
                       <div className="relative mt-1">
                         <form.AppField name="name">
@@ -160,7 +160,7 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t($ => $['namePlaceholder'], { ns: 'login' }) || ''}
+                              placeholder={t($ => $.namePlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
@@ -174,7 +174,7 @@ const InstallForm = () => {
 
                     <div className="mb-5">
                       <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t($ => $['password'], { ns: 'login' })}
+                        {t($ => $.password, { ns: 'login' })}
                       </label>
                       <div className="relative mt-1">
                         <form.AppField name="password">
@@ -185,7 +185,7 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t($ => $['passwordPlaceholder'], { ns: 'login' }) || ''}
+                              placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
@@ -211,7 +211,7 @@ const InstallForm = () => {
 
                     <div>
                       <Button variant="primary" type="submit" disabled={isSubmitting} loading={isSubmitting} className="w-full">
-                        {t($ => $['installBtn'], { ns: 'login' })}
+                        {t($ => $.installBtn, { ns: 'login' })}
                       </Button>
                     </div>
                   </form>

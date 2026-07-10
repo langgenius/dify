@@ -307,7 +307,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             rel="noopener noreferrer"
             className="inline-flex items-center text-xs text-text-accent"
           >
-            {t($ => $['howToGet'], { ns: 'tools' })}
+            {t($ => $.howToGet, { ns: 'tools' })}
             <RiArrowRightUpLine className="ml-1 size-3" />
           </a>
         )}

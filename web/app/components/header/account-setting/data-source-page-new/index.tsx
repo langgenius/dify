@@ -44,7 +44,7 @@ function DataSourceListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $['loading'], { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <DataSourceCardSkeleton key={index} />
       ))}
@@ -131,7 +131,7 @@ const DataSourcePage = ({
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">
             <Trans
-              i18nKey={$ => $["dataSourcePage.notSetUpTitle"]}
+              i18nKey={$ => $['dataSourcePage.notSetUpTitle']}
               ns="common"
               components={{
                 highlight: <span className="text-text-primary" />,

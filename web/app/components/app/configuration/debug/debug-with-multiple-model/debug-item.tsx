@@ -105,12 +105,12 @@ const DebugItem: FC<DebugItemProps> = ({
           >
             {showDuplicate && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
-                {t($ => $['duplicateModel'], { ns: 'appDebug' })}
+                {t($ => $.duplicateModel, { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showDebugAsSingleModel && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDebugAsSingleModel}>
-                {t($ => $['debugAsSingleModel'], { ns: 'appDebug' })}
+                {t($ => $.debugAsSingleModel, { ns: 'appDebug' })}
               </DropdownMenuItem>
             )}
             {showRemove && (

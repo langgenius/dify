@@ -42,7 +42,7 @@ function AccessSubjectSelectionListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-busy="true" aria-label={t($ => $['loading'], { ns: 'common' })} className="flex flex-col gap-y-2">
+    <div role="status" aria-busy="true" aria-label={t($ => $.loading, { ns: 'common' })} className="flex flex-col gap-y-2">
       <SkeletonRectangle className="my-0 h-3 w-14 animate-pulse" />
       <div className="flex flex-row flex-wrap gap-1">
         {[0, 1].map(index => (

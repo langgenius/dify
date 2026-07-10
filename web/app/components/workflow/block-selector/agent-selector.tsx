@@ -138,7 +138,7 @@ export function AgentSelectorContent({
         <ComboboxList className="max-h-none overflow-visible p-0">
           <div role="presentation" className="max-h-54 overflow-y-auto p-1">
             {isLoading && (
-              <AgentSelectorLoadingSkeleton label={t($ => $['loading'], { ns: 'common' })} />
+              <AgentSelectorLoadingSkeleton label={t($ => $.loading, { ns: 'common' })} />
             )}
             {!isLoading && agentsQuery.isError && (
               <ComboboxStatus className="px-3 py-2 system-xs-regular">

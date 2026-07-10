@@ -231,7 +231,7 @@ export function AppPublisher({
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
         return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-      throw new Error(t($ => $['notPublishedYet'], { ns: 'app' }))
+      throw new Error(t($ => $.notPublishedYet, { ns: 'app' }))
     }, {
       onError: (err) => {
         toast.error(`${err.message || err}`)

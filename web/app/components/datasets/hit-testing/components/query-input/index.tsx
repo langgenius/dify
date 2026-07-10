@@ -225,7 +225,7 @@ const QueryInput = ({
                 >
                   <RiEqualizer2Line className="size-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
-                    <span className="system-xs-medium text-components-button-secondary-text">{t($ => $['settingTitle'], { ns: 'datasetHitTesting' })}</span>
+                    <span className="system-xs-medium text-components-button-secondary-text">{t($ => $.settingTitle, { ns: 'datasetHitTesting' })}</span>
                   </div>
                 </Button>
               )

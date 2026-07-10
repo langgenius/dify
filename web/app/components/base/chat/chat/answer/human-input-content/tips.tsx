@@ -28,7 +28,7 @@ const Tips = ({
         {showEmailTip && isEmailDebugMode && (
           <div className="system-xs-regular text-text-secondary">
             <Trans
-              i18nKey={$ => $["common.humanInputEmailTipInDebugMode"]}
+              i18nKey={$ => $['common.humanInputEmailTipInDebugMode']}
               ns="workflow"
               components={{ email: <span className="system-xs-semibold"></span> }}
               values={{ email }}

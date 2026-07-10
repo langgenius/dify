@@ -125,7 +125,7 @@ export function List({
                 <AnnotationTableRow
                   key={item.id}
                   item={item}
-                  formattedCreatedAt={formatTime(item.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}
+                  formattedCreatedAt={formatTime(item.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                   onView={onView}
                   onRemoveClick={(id) => {
                     setCurrId(id)

@@ -32,7 +32,7 @@ const PublishAction = ({
       disabled={isPublishing || !canSave}
       onClick={onPublish}
     >
-      {t($ => $['publishButton'])}
+      {t($ => $.publishButton)}
     </Button>
   )
 }
@@ -73,7 +73,7 @@ const SnippetHeader = ({
         },
         runAndHistoryProps: {
           showRunButton: true,
-          runButtonText: t($ => $['testRunButton']),
+          runButtonText: t($ => $.testRunButton),
           viewHistoryProps,
           components: {
             RunMode,

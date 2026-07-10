@@ -59,7 +59,7 @@ const StartBlocks = ({
     const normalizedSearch = searchText.toLowerCase()
     const getDisplayName = (blockType: BlockEnum) => {
       if (blockType === BlockEnumValues.TriggerWebhook)
-        return t($ => $['customWebhook'], { ns: 'workflow' })
+        return t($ => $.customWebhook, { ns: 'workflow' })
 
       return t($ => $[`blocks.${blockType}`], { ns: 'workflow' })
     }
@@ -225,9 +225,9 @@ function StartBlockPreviewCard({
         </div>
         {showDifyTeamAuthor && (
           <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t($ => $['author'], { ns: 'tools' })}
+            {t($ => $.author, { ns: 'tools' })}
             {' '}
-            {t($ => $['difyTeam'], { ns: 'workflow' })}
+            {t($ => $.difyTeam, { ns: 'workflow' })}
           </div>
         )}
       </div>

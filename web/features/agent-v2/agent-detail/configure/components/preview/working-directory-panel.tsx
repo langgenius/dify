@@ -624,7 +624,7 @@ export function AgentWorkingDirectoryPanel({
           onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) => loadingFolderPaths.has(file.id)
             ? (
-                <span aria-label={tCommon($ => $['loading'])} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
+                <span aria-label={tCommon($ => $.loading)} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
               )
             : null,
           selectedFileId: selectedWorkingDirectoryFile?.id,

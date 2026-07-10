@@ -188,13 +188,13 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         max_active_requests,
       })
       closeModal()
-      toast(t($ => $['editDone'], { ns: 'app' }), { type: 'success' })
+      toast(t($ => $.editDone, { ns: 'app' }), { type: 'success' })
       queryClient.setQueryData([...appDetailQueryKeyPrefix, app.id], app)
       setAppDetail(app)
       emitAppMetaUpdate()
     }
     catch {
-      toast(t($ => $['editFailed'], { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.editFailed, { ns: 'app' }), { type: 'error' })
     }
   }, [appDetail, closeModal, queryClient, setAppDetail, t, emitAppMetaUpdate])
 
@@ -235,7 +235,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      toast(t($ => $['exportFailed'], { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.exportFailed, { ns: 'app' }), { type: 'error' })
     }
   }, [appDetail, t])
 
@@ -262,7 +262,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       setSecretEnvList(list)
     }
     catch {
-      toast(t($ => $['exportFailed'], { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.exportFailed, { ns: 'app' }), { type: 'error' })
     }
     finally {
       closeModal()
@@ -274,14 +274,14 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       return
     try {
       await deleteApp(appDetail.id)
-      toast(t($ => $['appDeleted'], { ns: 'app' }), { type: 'success' })
+      toast(t($ => $.appDeleted, { ns: 'app' }), { type: 'success' })
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     }
     catch (e: unknown) {
-      toast(`${t($ => $['appDeleteFailed'], { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
+      toast(`${t($ => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
     }
     closeModal()
   }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])

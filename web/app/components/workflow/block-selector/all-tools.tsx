@@ -207,14 +207,14 @@ const AllTools = ({
   }, [onSelect])
   const toolsListTitle = useMemo(() => {
     if (activeTab === ToolTypeEnum.BuiltIn)
-      return t($ => $['allToolPlugins'], { ns: 'tools' })
+      return t($ => $.allToolPlugins, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.Custom)
-      return t($ => $['allSwaggerAPIAsTool'], { ns: 'tools' })
+      return t($ => $.allSwaggerAPIAsTool, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.Workflow)
-      return t($ => $['allWorkflowAsTool'], { ns: 'tools' })
+      return t($ => $.allWorkflowAsTool, { ns: 'tools' })
     if (activeTab === ToolTypeEnum.MCP)
-      return t($ => $['allMCP'], { ns: 'tools' })
-    return t($ => $['allTools'], { ns: 'tools' })
+      return t($ => $.allMCP, { ns: 'tools' })
+    return t($ => $.allTools, { ns: 'tools' })
   }, [activeTab, t])
 
   return (
@@ -331,7 +331,7 @@ const AllTools = ({
             href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
-            <span>{t($ => $['findMoreInMarketplace'], { ns: 'plugin' })}</span>
+            <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         )}

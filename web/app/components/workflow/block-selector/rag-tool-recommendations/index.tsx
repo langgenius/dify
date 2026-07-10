@@ -76,7 +76,7 @@ const RAGToolRecommendations = ({
           {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
             <p className="px-3 py-1 system-xs-regular text-text-tertiary">
               <Trans
-                i18nKey={$ => $["ragToolSuggestions.noRecommendationPlugins"]}
+                i18nKey={$ => $['ragToolSuggestions.noRecommendationPlugins']}
                 ns="pipeline"
                 components={{
                   CustomLink: (

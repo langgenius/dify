@@ -112,7 +112,7 @@ export function AgentBuildDraftBar({
           className="relative z-1 h-8 min-w-20 shrink-0 rounded-lg px-3"
           onClick={onApply}
         >
-          {tCustom($ => $['apply'])}
+          {tCustom($ => $.apply)}
         </Button>
       </div>
     </CollapsibleRoot>

@@ -153,7 +153,7 @@ const Installed: FC<Props> = ({
           <p>{t($ => $[`${i18nPrefix}.readyToInstall`], { ns: 'plugin' })}</p>
           {!isDifyVersionCompatible && (
             <p className="system-md-regular text-text-warning">
-              {t($ => $['difyVersionNotCompatible'], { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
+              {t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}
         </div>

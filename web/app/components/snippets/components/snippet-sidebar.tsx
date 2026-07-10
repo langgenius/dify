@@ -117,7 +117,7 @@ export const SnippetSidebarContent = ({
       <nav className="shrink-0 px-3 pt-4">
         <NavLink
           mode="expand"
-          name={t($ => $['sectionOrchestrate'], { ns: 'snippet' })}
+          name={t($ => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
           active
           iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
@@ -126,12 +126,12 @@ export const SnippetSidebarContent = ({
 
       <div className="flex min-h-0 grow flex-col px-3 pt-6">
         <Field
-          title={t($ => $['inputVariables'], { ns: 'snippet' })}
+          title={t($ => $.inputVariables, { ns: 'snippet' })}
           operations={!readonly
             ? (
                 <button
                   type="button"
-                  aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $['inputVariables'], { ns: 'snippet' })}`}
+                  aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $.inputVariables, { ns: 'snippet' })}`}
                   className={cn(
                     'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                     'cursor-pointer hover:bg-state-base-hover',

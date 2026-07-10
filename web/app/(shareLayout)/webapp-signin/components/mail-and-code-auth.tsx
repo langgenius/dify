@@ -53,9 +53,9 @@ export default function MailAndCodeAuth() {
     <form onSubmit={noop}>
       <input type="text" className="hidden" />
       <div className="mb-2">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t($ => $['email'], { ns: 'login' })}</label>
+        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t($ => $.email, { ns: 'login' })}</label>
         <div className="mt-1">
-          <Input id="email" type="email" value={email} placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+          <Input id="email" type="email" value={email} placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className="mt-3">
           <Button loading={loading} disabled={loading || !email} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t($ => $['signup.verifyMail'], { ns: 'login' })}</Button>

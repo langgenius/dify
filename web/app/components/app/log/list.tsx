@@ -240,7 +240,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setHasMore(messageRes.has_more)
 
-      const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)
+      const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)
 
       // Use functional update to avoid stale state issues
       setAllChatItems((prevItems: IChatItem[]) => mergeUniqueChatItems(prevItems, newItems))
@@ -362,7 +362,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         messageRes.data,
         detail.id,
         timezone!,
-        t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string,
+        t($ => $.dateTimeFormat, { ns: 'appLog' }) as string,
       )
 
       // Use functional update to get latest state and avoid stale closures
@@ -448,7 +448,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -902,8 +902,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                         </>
                       )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
               </tr>
             )
           })}

@@ -120,14 +120,14 @@ const PlanComp: FC<Props> = ({
             {IS_CLOUD_EDITION && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
                 <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                {t($ => $['toVerified'], { ns: 'education' })}
+                {t($ => $.toVerified, { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && canManageBilling && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
                 <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                {t($ => $['useEducationDiscount'], { ns: 'education' })}
+                {t($ => $.useEducationDiscount, { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
@@ -186,8 +186,8 @@ const PlanComp: FC<Props> = ({
         showLink
         email={userProfileEmail}
         isShow={showModal}
-        title={t($ => $['rejectTitle'], { ns: 'education' })}
-        content={t($ => $['rejectContent'], { ns: 'education' })}
+        title={t($ => $.rejectTitle, { ns: 'education' })}
+        content={t($ => $.rejectContent, { ns: 'education' })}
         onConfirm={() => setShowModal(false)}
         onCancel={() => setShowModal(false)}
       />

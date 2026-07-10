@@ -221,13 +221,13 @@ const AgentTools: FC = () => {
                     >
                       <div>
                         <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
-                        <div className="mb-1.5 text-text-tertiary">{t($ => $['toolNameUsageTip'], { ns: 'tools' })}</div>
+                        <div className="mb-1.5 text-text-tertiary">{t($ => $.toolNameUsageTip, { ns: 'tools' })}</div>
                         <button
                           type="button"
                           className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           onClick={() => void writeTextToClipboard(item.tool_name)}
                         >
-                          {t($ => $['copyToolName'], { ns: 'tools' })}
+                          {t($ => $.copyToolName, { ns: 'tools' })}
                         </button>
                       </div>
                     </Infotip>
@@ -240,7 +240,7 @@ const AgentTools: FC = () => {
                     <Popover>
                       <PopoverTrigger
                         openOnHover
-                        aria-label={t($ => $['toolRemoved'], { ns: 'tools' })}
+                        aria-label={t($ => $.toolRemoved, { ns: 'tools' })}
                         render={(
                           <button
                             type="button"
@@ -251,7 +251,7 @@ const AgentTools: FC = () => {
                         )}
                       />
                       <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-                        {t($ => $['toolRemoved'], { ns: 'tools' })}
+                        {t($ => $.toolRemoved, { ns: 'tools' })}
                       </PopoverContent>
                     </Popover>
                     <button
@@ -339,7 +339,7 @@ const AgentTools: FC = () => {
                         setIsShowSettingTool(true)
                       }}
                     >
-                      {t($ => $['notAuthorized'], { ns: 'tools' })}
+                      {t($ => $.notAuthorized, { ns: 'tools' })}
                       <StatusDot className="ml-2" status="warning" />
                     </Button>
                   )}

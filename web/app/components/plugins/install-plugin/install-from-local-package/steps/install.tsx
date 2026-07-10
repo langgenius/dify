@@ -130,7 +130,7 @@ const Installed: FC<Props> = ({
           </p>
           {!isDifyVersionCompatible && (
             <p className="flex items-center gap-1 system-md-regular text-text-warning">
-              {t($ => $['difyVersionNotCompatible'], { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
+              {t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}
         </div>

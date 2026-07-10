@@ -138,7 +138,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         }
       }
       catch {
-        toast.error(t($ => $['error'], { ns: 'common' }))
+        toast.error(t($ => $.error, { ns: 'common' }))
       }
     }
 

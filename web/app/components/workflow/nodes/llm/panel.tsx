@@ -98,7 +98,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         handleCompletionParamsChange(filtered)
       }
       catch {
-        toast.error(t($ => $['error'], { ns: 'common' }))
+        toast.error(t($ => $.error, { ns: 'common' }))
         handleCompletionParamsChange({})
       }
       finally {

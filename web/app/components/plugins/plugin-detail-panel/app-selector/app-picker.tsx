@@ -167,7 +167,7 @@ export function AppPicker({
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
             {isLoading && (
               <ComboboxStatus>
-                {t($ => $['loading'], { ns: 'common' })}
+                {t($ => $.loading, { ns: 'common' })}
               </ComboboxStatus>
             )}
             <ComboboxList className="max-h-none p-0">
@@ -176,7 +176,7 @@ export function AppPicker({
               )}
             </ComboboxList>
             <ComboboxEmpty>
-              {t($ => $['noData'], { ns: 'common' })}
+              {t($ => $.noData, { ns: 'common' })}
             </ComboboxEmpty>
             {hasMore && (
               <div className="flex justify-center px-3 py-2">
@@ -185,7 +185,7 @@ export function AppPicker({
                   disabled={isLoading}
                   onClick={() => onLoadMore()}
                 >
-                  {isLoading ? t($ => $['loading'], { ns: 'common' }) : t($ => $['common.loadMore'], { ns: 'workflow' })}
+                  {isLoading ? t($ => $.loading, { ns: 'common' }) : t($ => $['common.loadMore'], { ns: 'workflow' })}
                 </Button>
               </div>
             )}

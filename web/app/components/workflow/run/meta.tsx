@@ -73,7 +73,7 @@ const MetaData: FC<Props> = ({
               <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && (
-              <span>{startTime ? formatTime(startTime, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string) : '-'}</span>
+              <span>{startTime ? formatTime(startTime, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string) : '-'}</span>
             )}
           </div>
         </div>

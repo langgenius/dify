@@ -194,7 +194,7 @@ function AppCardOperationsMenu({
     e.stopPropagation()
     e.preventDefault()
     if (requiresPublishedWorkflowInExplore(app) && !app.workflow?.id) {
-      toast.error(t($ => $['notPublishedYet'], { ns: 'app' }))
+      toast.error(t($ => $.notPublishedYet, { ns: 'app' }))
       return
     }
 
@@ -203,7 +203,7 @@ function AppCardOperationsMenu({
         const { installed_apps } = await fetchInstalledAppList(app.id)
         if (installed_apps?.length > 0)
           return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-        throw new Error(t($ => $['notPublishedYet'], { ns: 'app' }))
+        throw new Error(t($ => $.notPublishedYet, { ns: 'app' }))
       }, {
         onError: (err) => {
           toast.error(`${err.message || err}`)
@@ -220,7 +220,7 @@ function AppCardOperationsMenu({
     <>
       {shouldShowEditOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onEdit)}>
-          <span className="system-sm-regular text-text-secondary">{t($ => $['editApp'], { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t($ => $.editApp, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {hasEditGroup && (hasCreateExportGroup || hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
@@ -228,12 +228,12 @@ function AppCardOperationsMenu({
       )}
       {shouldShowDuplicateOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onDuplicate)}>
-          <span className="system-sm-regular text-text-secondary">{t($ => $['duplicate'], { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t($ => $.duplicate, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {shouldShowExportOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
-          <span className="system-sm-regular text-text-secondary">{t($ => $['export'], { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t($ => $.export, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {hasCreateExportGroup && (hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
@@ -241,12 +241,12 @@ function AppCardOperationsMenu({
       )}
       {shouldShowSwitchOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSwitch)}>
-          <span className="text-sm/5 text-text-secondary">{t($ => $['switch'], { ns: 'app' })}</span>
+          <span className="text-sm/5 text-text-secondary">{t($ => $.switch, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {shouldShowOpenInExploreOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
-          <span className="system-sm-regular text-text-secondary">{t($ => $['openInExplore'], { ns: 'app' })}</span>
+          <span className="system-sm-regular text-text-secondary">{t($ => $.openInExplore, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {hasSwitchOrExploreGroup && hasAccessDeleteGroup && (
@@ -254,7 +254,7 @@ function AppCardOperationsMenu({
       )}
       {shouldShowAccessControlOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onAccessControl)}>
-          <span className="text-sm/5 text-text-secondary">{t($ => $['accessControl'], { ns: 'app' })}</span>
+          <span className="text-sm/5 text-text-secondary">{t($ => $.accessControl, { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
       {shouldShowAccessConfigOption && (
@@ -344,14 +344,14 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const onConfirmDelete = useCallback(async () => {
     try {
       await mutateDeleteApp(app.id)
-      toast.success(t($ => $['appDeleted'], { ns: 'app' }))
+      toast.success(t($ => $.appDeleted, { ns: 'app' }))
       onPlanInfoChanged()
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
     }
     catch (e) {
       const message = e instanceof Error ? e.message : ''
-      toast.error(`${t($ => $['appDeleteFailed'], { ns: 'app' })}${message ? `: ${message}` : ''}`)
+      toast.error(`${t($ => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
   }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
@@ -435,11 +435,11 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
         max_active_requests,
       })
       setShowEditModal(false)
-      toast.success(t($ => $['editDone'], { ns: 'app' }))
+      toast.success(t($ => $.editDone, { ns: 'app' }))
       onRefresh?.()
     }
     catch (e) {
-      toast.error(e instanceof Error ? e.message : t($ => $['editFailed'], { ns: 'app' }))
+      toast.error(e instanceof Error ? e.message : t($ => $.editFailed, { ns: 'app' }))
     }
   }, [app.id, onRefresh, t])
 
@@ -480,7 +480,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }
 
@@ -500,7 +500,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
       setSecretEnvList(list)
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }
 
@@ -687,15 +687,15 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
           <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t($ => $['deleteAppConfirmTitle'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t($ => $['deleteAppConfirmContent'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <FieldRoot name="confirm-app-name" className="mt-2">
                 <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
-                    i18nKey={$ => $["deleteAppConfirmInputLabel"]}
+                    i18nKey={$ => $.deleteAppConfirmInputLabel}
                     ns="app"
                     values={{ appName: app.name }}
                     components={{
@@ -707,7 +707,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                   type="text"
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder={t($ => $['deleteAppConfirmInputPlaceholder'], { ns: 'app' })}
+                  placeholder={t($ => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                   value={confirmDeleteInput}
                   onValueChange={setConfirmDeleteInput}
                   className="border-components-input-border-hover bg-components-input-bg-normal focus:border-components-input-border-active focus:bg-components-input-bg-active"
@@ -778,14 +778,14 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   async function onConfirmDelete() {
     try {
       await mutateDeleteApp(app.id)
-      toast.success(t($ => $['appDeleted'], { ns: 'app' }))
+      toast.success(t($ => $.appDeleted, { ns: 'app' }))
       onPlanInfoChanged()
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
     }
     catch (e) {
       const message = e instanceof Error ? e.message : ''
-      toast.error(`${t($ => $['appDeleteFailed'], { ns: 'app' })}${message ? `: ${message}` : ''}`)
+      toast.error(`${t($ => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
   }
 
@@ -869,12 +869,12 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
         max_active_requests,
       })
       setShowEditModal(false)
-      toast.success(t($ => $['editDone'], { ns: 'app' }))
+      toast.success(t($ => $.editDone, { ns: 'app' }))
       if (onRefresh)
         onRefresh()
     }
     catch (e) {
-      toast.error(e instanceof Error ? e.message : t($ => $['editFailed'], { ns: 'app' }))
+      toast.error(e instanceof Error ? e.message : t($ => $.editFailed, { ns: 'app' }))
     }
   }
 
@@ -916,7 +916,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }
 
@@ -936,7 +936,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
       setSecretEnvList(list)
     }
     catch {
-      toast.error(t($ => $['exportFailed'], { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }
 
@@ -1033,7 +1033,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
     ? t($ => $['studio.unstarApp'], { ns: 'app' })
     : t($ => $['studio.starApp'], { ns: 'app' })
   const showPreviewOnlyAccessWarning = useCallback(() => {
-    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
+    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
   }, [t])
   const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ')
@@ -1281,15 +1281,15 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
           <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t($ => $['deleteAppConfirmTitle'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t($ => $['deleteAppConfirmContent'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <FieldRoot name="confirm-app-name" className="mt-2">
                 <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
-                    i18nKey={$ => $["deleteAppConfirmInputLabel"]}
+                    i18nKey={$ => $.deleteAppConfirmInputLabel}
                     ns="app"
                     values={{ appName: app.name }}
                     components={{
@@ -1302,7 +1302,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder={t($ => $['deleteAppConfirmInputPlaceholder'], { ns: 'app' })}
+                    placeholder={t($ => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                     className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"

@@ -118,7 +118,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
     >
       <FieldRoot name="email" disabled={isInvite} className="mb-3">
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
-          {t($ => $['email'], { ns: 'login' })}
+          {t($ => $.email, { ns: 'login' })}
         </FieldLabel>
         <FieldControl
           value={email}
@@ -127,20 +127,20 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           type="email"
           autoComplete="email"
           spellCheck={false}
-          placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) || ''}
+          placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
         />
       </FieldRoot>
 
       <FieldRoot name="password" className="mb-3">
         <div className="my-2 flex items-center justify-between">
-          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t($ => $['password'], { ns: 'login' })}</FieldLabel>
+          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t($ => $.password, { ns: 'login' })}</FieldLabel>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
             tabIndex={isEmailSetup ? 0 : -1}
             aria-disabled={!isEmailSetup}
           >
-            {t($ => $['forget'], { ns: 'login' })}
+            {t($ => $.forget, { ns: 'login' })}
           </Link>
         </div>
         <div className="relative mt-1">
@@ -150,7 +150,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             spellCheck={false}
-            placeholder={t($ => $['passwordPlaceholder'], { ns: 'login' }) || ''}
+            placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
             className="pr-10"
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
@@ -178,7 +178,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           disabled={isLoading || !email || !password}
           className="w-full"
         >
-          {t($ => $['signBtn'], { ns: 'login' })}
+          {t($ => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
     </Form>

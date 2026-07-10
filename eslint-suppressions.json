@@ -668,7 +668,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/retrieval-section.tsx": {

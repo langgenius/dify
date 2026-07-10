@@ -56,7 +56,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
   )
   const showPreviewOnlyAccessWarning = useCallback(() => {
-    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
+    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
   }, [t])
   const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ')

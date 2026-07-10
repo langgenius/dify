@@ -137,7 +137,7 @@ const WorkflowPreview = () => {
               )}
               onClick={() => switchTab('INPUT')}
             >
-              {t($ => $['input'], { ns: 'runLog' })}
+              {t($ => $.input, { ns: 'runLog' })}
             </div>
           )}
           <div
@@ -152,7 +152,7 @@ const WorkflowPreview = () => {
               switchTab('RESULT')
             }}
           >
-            {t($ => $['result'], { ns: 'runLog' })}
+            {t($ => $.result, { ns: 'runLog' })}
           </div>
           <div
             className={cn(
@@ -166,7 +166,7 @@ const WorkflowPreview = () => {
               switchTab('DETAIL')
             }}
           >
-            {t($ => $['detail'], { ns: 'runLog' })}
+            {t($ => $.detail, { ns: 'runLog' })}
           </div>
           <div
             className={cn(
@@ -180,7 +180,7 @@ const WorkflowPreview = () => {
               switchTab('TRACING')
             }}
           >
-            {t($ => $['tracing'], { ns: 'runLog' })}
+            {t($ => $.tracing, { ns: 'runLog' })}
           </div>
         </div>
         <div className={cn(

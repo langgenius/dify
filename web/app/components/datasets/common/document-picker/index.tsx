@@ -183,7 +183,7 @@ export function DocumentPicker({
           ? (
               <ComboboxEmpty className="p-0">
                 <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
-                  {t($ => $['noData'], { ns: 'common' })}
+                  {t($ => $.noData, { ns: 'common' })}
                 </div>
               </ComboboxEmpty>
             )

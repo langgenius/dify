@@ -47,7 +47,7 @@ const Item: FC<Props> = ({
           <div className="flex space-x-1 system-xs-regular text-text-tertiary">
             <div>{payload.org}</div>
             <div>·</div>
-            <div>{t($ => $['install'], { ns: 'plugin', num: formatNumber(payload.install_count || 0) })}</div>
+            <div>{t($ => $.install, { ns: 'plugin', num: formatNumber(payload.install_count || 0) })}</div>
           </div>
         </div>
         {/* Action */}
@@ -58,7 +58,7 @@ const Item: FC<Props> = ({
               className="cursor-pointer rounded-md border-0 bg-transparent px-1.5 py-0.5 hover:bg-state-base-hover"
               onClick={showInstallModal}
             >
-              {t($ => $['installAction'], { ns: 'plugin' })}
+              {t($ => $.installAction, { ns: 'plugin' })}
             </button>
           )}
           <Action

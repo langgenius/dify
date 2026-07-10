@@ -117,7 +117,7 @@ const CreateAppModal = ({
         <DialogContent backdropProps={{ forceRender: true }} className="px-8">
           <DialogCloseButton />
           {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t($ => $['editAppTitle'], { ns: 'app' })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t($ => $.editAppTitle, { ns: 'app' })}</DialogTitle>
           )}
           {!isEditModal && (
             <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t($ => $['appCustomize.title'], { ns: 'explore', name: appName })}</DialogTitle>
@@ -170,18 +170,18 @@ const CreateAppModal = ({
             )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t($ => $['maxActiveRequests'], { ns: 'app' })}</div>
+                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t($ => $.maxActiveRequests, { ns: 'app' })}</div>
                 <Input
                   type="number"
                   min={1}
-                  placeholder={t($ => $['maxActiveRequestsPlaceholder'], { ns: 'app' })}
+                  placeholder={t($ => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
                   value={maxActiveRequestsInput}
                   onChange={(e) => {
                     setMaxActiveRequestsInput(e.target.value)
                   }}
                   className="h-10 w-full"
                 />
-                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t($ => $['maxActiveRequestsTip'], { ns: 'app' })}</p>
+                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t($ => $.maxActiveRequestsTip, { ns: 'app' })}</p>
               </div>
             )}
             {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}

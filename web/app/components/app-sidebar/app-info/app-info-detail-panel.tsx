@@ -53,7 +53,7 @@ const AppInfoDetailPanel = ({
     ...(appACLCapabilities.canEdit
       ? [{
           id: 'edit',
-          title: t($ => $['editApp'], { ns: 'app' }),
+          title: t($ => $.editApp, { ns: 'app' }),
           icon: <RiEditLine />,
           onClick: () => openModal('edit'),
         }]
@@ -61,7 +61,7 @@ const AppInfoDetailPanel = ({
     ...(canCreateApp
       ? [{
           id: 'duplicate',
-          title: t($ => $['duplicate'], { ns: 'app' }),
+          title: t($ => $.duplicate, { ns: 'app' }),
           icon: <RiFileCopy2Line />,
           onClick: () => openModal('duplicate'),
         }]
@@ -69,7 +69,7 @@ const AppInfoDetailPanel = ({
     ...(appACLCapabilities.canImportExportDSL
       ? [{
           id: 'export',
-          title: t($ => $['export'], { ns: 'app' }),
+          title: t($ => $.export, { ns: 'app' }),
           icon: <RiFileDownloadLine />,
           onClick: exportCheck,
         }]
@@ -111,7 +111,7 @@ const AppInfoDetailPanel = ({
       return null
     return {
       id: 'switch',
-      title: t($ => $['switch'], { ns: 'app' }),
+      title: t($ => $.switch, { ns: 'app' }),
       icon: <RiExchange2Line />,
       onClick: () => openModal('switch'),
     }

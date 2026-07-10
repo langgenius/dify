@@ -29,7 +29,7 @@ const List = () => {
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
-  useDocumentTitle(t($ => $['knowledge'], { ns: 'dataset' }))
+  useDocumentTitle(t($ => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

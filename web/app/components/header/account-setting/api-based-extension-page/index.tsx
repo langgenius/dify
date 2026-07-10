@@ -29,7 +29,7 @@ function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $['loading'], { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <div key={index} className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
           <SkeletonContainer className="h-16">

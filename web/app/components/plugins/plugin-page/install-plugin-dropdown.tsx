@@ -61,7 +61,7 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const buttonLabel = triggerLabel ?? t($ => $['installPlugin'], { ns: 'plugin' })
+  const buttonLabel = triggerLabel ?? t($ => $.installPlugin, { ns: 'plugin' })
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -176,7 +176,7 @@ const InstallPluginDropdown = ({
           popupClassName={cn('w-[200px] pb-2', popupClassName)}
         >
           <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-            {t($ => $['installFrom'], { ns: 'plugin' })}
+            {t($ => $.installFrom, { ns: 'plugin' })}
           </span>
           {installMethods.map(({ icon: Icon, text, action }) => (
             <DropdownMenuItem

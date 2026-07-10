@@ -67,7 +67,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
     const snippetInputFieldAvailability = appendSnippetInputFieldVars({
       availableNodes,
       fields: snippetInputFields,
-      title: t($ => $['panelTitle'], { ns: 'snippet' }),
+      title: t($ => $.panelTitle, { ns: 'snippet' }),
     })
 
     const {
@@ -122,7 +122,7 @@ export const useGetNodesAvailableVarList = () => {
       const snippetInputFieldAvailability = appendSnippetInputFieldVars({
         availableNodes,
         fields: snippetInputFields,
-        title: t($ => $['panelTitle'], { ns: 'snippet' }),
+        title: t($ => $.panelTitle, { ns: 'snippet' }),
       })
 
       const {

@@ -133,7 +133,7 @@ const UpdateSettingDialogForm = ({
               </div>
               <div className="body-xs-regular text-text-tertiary">
                 <Trans
-                  i18nKey={$ => $["autoUpdate.changeTimezone"]}
+                  i18nKey={$ => $['autoUpdate.changeTimezone']}
                   ns="plugin"
                   components={{
                     setTimezone: <SettingTimeZone onRequestClose={onRequestClose} />,

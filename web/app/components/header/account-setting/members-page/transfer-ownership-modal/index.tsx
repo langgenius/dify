@@ -129,7 +129,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <div className="body-md-medium text-text-destructive">{t($ => $['members.transferModal.warning'], { ns: 'common', workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
               <div className="body-md-regular text-text-secondary">{t($ => $['members.transferModal.warningTip'], { ns: 'common' })}</div>
               <div className="body-md-regular text-text-secondary">
-                <Trans i18nKey={$ => $["members.transferModal.sendTip"]} ns="common" components={{ email: <span className="body-md-medium text-text-primary"></span> }} values={{ email: userProfile.email }} />
+                <Trans i18nKey={$ => $['members.transferModal.sendTip']} ns="common" components={{ email: <span className="body-md-medium text-text-primary"></span> }} values={{ email: userProfile.email }} />
               </div>
             </div>
             <div className="pt-3"></div>
@@ -148,7 +148,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <div className="pb-3 title-2xl-semi-bold text-text-primary">{t($ => $['members.transferModal.verifyEmail'], { ns: 'common' })}</div>
             <div className="pt-1 pb-2">
               <div className="body-md-regular text-text-secondary">
-                <Trans i18nKey={$ => $["members.transferModal.verifyContent"]} ns="common" components={{ email: <span className="body-md-medium text-text-primary"></span> }} values={{ email: userProfile.email }} />
+                <Trans i18nKey={$ => $['members.transferModal.verifyContent']} ns="common" components={{ email: <span className="body-md-medium text-text-primary"></span> }} values={{ email: userProfile.email }} />
               </div>
               <div className="body-md-regular text-text-secondary">{t($ => $['members.transferModal.verifyContent2'], { ns: 'common' })}</div>
             </div>

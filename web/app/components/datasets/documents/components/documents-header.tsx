@@ -173,7 +173,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           {!embeddingAvailable && (
             <StatusWithAction
               type="warning"
-              description={t($ => $['embeddingModelNotAvailable'], { ns: 'dataset' })}
+              description={t($ => $.embeddingModelNotAvailable, { ns: 'dataset' })}
             />
           )}
           {embeddingAvailable && canManageMetadata && (

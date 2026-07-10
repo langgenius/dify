@@ -171,7 +171,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
             (
-            {t($ => $['you'], { ns: 'common' })}
+            {t($ => $.you, { ns: 'common' })}
             )
           </span>
         )}

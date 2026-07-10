@@ -200,7 +200,7 @@ const FormContent: FC<FormContentProps> = ({
       {isFocus && (
         <div className="flex h-8 shrink-0 items-center px-3 system-xs-regular text-components-input-text-placeholder">
           <Trans
-            i18nKey={$ => $["nodes.humanInput.formContent.hotkeyTip"]}
+            i18nKey={$ => $['nodes.humanInput.formContent.hotkeyTip']}
             ns="workflow"
             components={
               {

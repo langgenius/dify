@@ -177,14 +177,14 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t($ => $['chatSubTitle'], { ns: 'appDebug' }) : t($ => $['completionSubTitle'], { ns: 'appDebug' })}</div>
+              <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t($ => $.chatSubTitle, { ns: 'appDebug' }) : t($ => $.completionSubTitle, { ns: 'appDebug' })}</div>
               {!readonly && (
                 <Infotip
-                  aria-label={t($ => $['promptTip'], { ns: 'appDebug' })}
+                  aria-label={t($ => $.promptTip, { ns: 'appDebug' })}
                   className="ml-1"
                   popupClassName="w-[180px]"
                 >
-                  {t($ => $['promptTip'], { ns: 'appDebug' })}
+                  {t($ => $.promptTip, { ns: 'appDebug' })}
                 </Infotip>
               )}
             </div>

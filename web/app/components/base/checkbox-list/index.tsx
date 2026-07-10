@@ -158,7 +158,7 @@ export const CheckboxList = ({
                             <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t($ => $['operation.resetKeywords'], { ns: 'common' })}</Button>
                           </div>
                         )
-                      : t($ => $['noData'], { ns: 'common' })}
+                      : t($ => $.noData, { ns: 'common' })}
                   </div>
                 )
               : (

@@ -38,7 +38,7 @@ export function AgentLogTrigger({
         <div
           className="flex shrink-0 cursor-pointer items-center px-px system-xs-regular-uppercase text-text-tertiary"
         >
-          {t($ => $['detail'], { ns: 'runLog' })}
+          {t($ => $.detail, { ns: 'runLog' })}
           <span aria-hidden className="ml-0.5 i-ri-arrow-right-line size-3.5" />
         </div>
       </div>

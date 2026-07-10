@@ -520,8 +520,8 @@ const Debug: FC<IDebug> = ({
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="system-md-semibold text-text-secondary">{t($ => $['noModelSelected'], { ns: 'appDebug' })}</div>
-                    <div className="system-xs-regular text-text-tertiary">{t($ => $['noModelSelectedTip'], { ns: 'appDebug' })}</div>
+                    <div className="system-md-semibold text-text-secondary">{t($ => $.noModelSelected, { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-tertiary">{t($ => $.noModelSelectedTip, { ns: 'appDebug' })}</div>
                   </div>
                 </div>
               </div>
@@ -540,7 +540,7 @@ const Debug: FC<IDebug> = ({
               <>
                 {(completionRes || isResponding) && (
                   <>
-                    <div className="mx-4 mt-3"><GroupName name={t($ => $['result'], { ns: 'appDebug' })} /></div>
+                    <div className="mx-4 mt-3"><GroupName name={t($ => $.result, { ns: 'appDebug' })} /></div>
                     <div className="mx-3 mb-8">
                       <TextGeneration
                         appSourceType={AppSourceType.webApp}
@@ -560,7 +560,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="size-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t($ => $['noResult'], { ns: 'appDebug' })}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t($ => $.noResult, { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

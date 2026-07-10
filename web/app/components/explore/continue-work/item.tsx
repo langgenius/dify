@@ -44,7 +44,7 @@ const ContinueWorkItem = ({
   )
 
   const showPreviewOnlyAccessWarning = () => {
-    toast.warning(t($ => $['noAccessResourcePermission'], { ns: 'app' }))
+    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
   }
 
   const handlePreviewOnlyCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {

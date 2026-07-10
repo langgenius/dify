@@ -66,8 +66,8 @@ function IntegrationsToolProviderCard({
             <div className="min-w-0 truncate system-md-semibold text-text-secondary" title={title}>
               {title}
             </div>
-            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t($ => $['author'], { ns: 'tools' })} ${collection.author}` : undefined}>
-              {collection.author && `${t($ => $['author'], { ns: 'tools' })} ${collection.author}`}
+            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t($ => $.author, { ns: 'tools' })} ${collection.author}` : undefined}>
+              {collection.author && `${t($ => $.author, { ns: 'tools' })} ${collection.author}`}
             </div>
           </div>
         </div>

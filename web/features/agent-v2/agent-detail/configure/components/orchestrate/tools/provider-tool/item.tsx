@@ -95,7 +95,7 @@ function UnauthorizedCredentialStatus({
             disabled={disabled}
             onClick={onClick}
           >
-            {t($ => $['notAuthorized'], { ns: 'tools' })}
+            {t($ => $.notAuthorized, { ns: 'tools' })}
             <StatusDot className="ml-2" status="warning" />
           </Button>
         )}
@@ -111,7 +111,7 @@ function UnauthorizedCredentialStatus({
         className="shrink-0"
         onClick={handleApiKeyModalOpen}
       >
-        {t($ => $['notAuthorized'], { ns: 'tools' })}
+        {t($ => $.notAuthorized, { ns: 'tools' })}
         <StatusDot className="ml-2" status="warning" />
       </Button>
       <ApiKeyModal

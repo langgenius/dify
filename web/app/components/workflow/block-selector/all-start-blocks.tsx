@@ -273,7 +273,7 @@ const AllStartBlocks = ({
                 )
               : (
                   <>
-                    <span>{t($ => $['findMoreInMarketplace'], { ns: 'plugin' })}</span>
+                    <span>{t($ => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
                     <RiArrowRightUpLine className="ml-0.5 size-3" />
                   </>
                 )}

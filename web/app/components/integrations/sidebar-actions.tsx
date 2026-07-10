@@ -70,7 +70,7 @@ export function IntegrationSidebarActions({
     <IntegrationSidebarInstallActions
       canManagement={canManagement}
       installContextCategory={installContextCategory}
-      installLabel={t($ => $['installAction'], { ns: 'plugin' })}
+      installLabel={t($ => $.installAction, { ns: 'plugin' })}
       permissionTooltip={t($ => $['privilege.noInstallPermissionTooltip'], { ns: 'plugin' })}
       onSwitchToMarketplace={onSwitchToMarketplace}
     />

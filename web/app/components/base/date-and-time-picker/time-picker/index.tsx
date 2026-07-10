@@ -188,7 +188,7 @@ const TimePicker = ({
 
   const placeholderDate = isOpen && isDayjsObject(selectedTime)
     ? selectedTime.format(timeFormat)
-    : (placeholder || t($ => $['defaultPlaceholder'], { ns: 'time' }))
+    : (placeholder || t($ => $.defaultPlaceholder, { ns: 'time' }))
 
   const inputElem = (
     <input

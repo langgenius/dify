@@ -195,7 +195,7 @@ const EditAnnotationModal: FC<Props> = ({
                               <div>
                                 {t($ => $['editModal.createdAt'], { ns: 'appAnnotation' })}
 &nbsp;
-                                {formatTime(createdAt, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}
+                                {formatTime(createdAt, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                               </div>
                             )}
                           </div>

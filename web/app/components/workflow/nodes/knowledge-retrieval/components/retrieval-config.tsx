@@ -134,7 +134,7 @@ const RetrievalConfig: FC<Props> = ({
             className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
           >
             <RiEqualizer2Line className="mr-1 size-3.5" />
-            {t($ => $['retrievalSettings'], { ns: 'dataset' })}
+            {t($ => $.retrievalSettings, { ns: 'dataset' })}
           </Button>
         )}
       />

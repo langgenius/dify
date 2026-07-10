@@ -73,7 +73,7 @@ const CreateFromDSLModal = ({
                   DSL URL
                 </div>
                 <Input
-                  placeholder={t($ => $['importFromDSLUrlPlaceholder'], { ns: 'app' }) || ''}
+                  placeholder={t($ => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
                   value={dslUrlValue}
                   onChange={e => setDslUrlValue(e.target.value)}
                 />

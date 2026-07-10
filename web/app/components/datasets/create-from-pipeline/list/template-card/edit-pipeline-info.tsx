@@ -54,7 +54,7 @@ const EditPipelineInfo = ({
 
   const handleSave = useCallback(async () => {
     if (!name) {
-      toast.error(t($ => $['editPipelineInfoNameRequired'], { ns: 'datasetPipeline' }))
+      toast.error(t($ => $.editPipelineInfoNameRequired, { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -81,7 +81,7 @@ const EditPipelineInfo = ({
       {/* Header */}
       <div className="pt-6 pr-14 pb-3 pl-6">
         <span className="title-2xl-semi-bold text-text-primary">
-          {t($ => $['editPipelineInfo'], { ns: 'datasetPipeline' })}
+          {t($ => $.editPipelineInfo, { ns: 'datasetPipeline' })}
         </span>
       </div>
       <button
@@ -96,12 +96,12 @@ const EditPipelineInfo = ({
         <div className="flex items-end gap-x-3 self-stretch">
           <div className="flex grow flex-col gap-y-1 pb-1">
             <label className="flex h-6 items-center system-sm-medium text-text-secondary">
-              {t($ => $['pipelineNameAndIcon'], { ns: 'datasetPipeline' })}
+              {t($ => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}
             </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder={t($ => $['knowledgeNameAndIconPlaceholder'], { ns: 'datasetPipeline' })}
+              placeholder={t($ => $.knowledgeNameAndIconPlaceholder, { ns: 'datasetPipeline' })}
             />
           </div>
           <AppIcon
@@ -117,13 +117,13 @@ const EditPipelineInfo = ({
         </div>
         <div className="flex flex-col gap-y-1">
           <label className="flex h-6 items-center system-sm-medium text-text-secondary">
-            {t($ => $['knowledgeDescription'], { ns: 'datasetPipeline' })}
+            {t($ => $.knowledgeDescription, { ns: 'datasetPipeline' })}
           </label>
           <Textarea
-            aria-label={t($ => $['knowledgeDescription'], { ns: 'datasetPipeline' })}
+            aria-label={t($ => $.knowledgeDescription, { ns: 'datasetPipeline' })}
             onValueChange={handleDescriptionChange}
             value={description}
-            placeholder={t($ => $['knowledgeDescriptionPlaceholder'], { ns: 'datasetPipeline' })}
+            placeholder={t($ => $.knowledgeDescriptionPlaceholder, { ns: 'datasetPipeline' })}
           />
         </div>
       </div>

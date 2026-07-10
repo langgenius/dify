@@ -123,8 +123,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   return (
     <div className="flex h-full grow flex-col">
       <PageTitle
-        title={t($ => $['title'], { ns: 'appLog' })}
-        description={t($ => $['description'], { ns: 'appLog' })}
+        title={t($ => $.title, { ns: 'appLog' })}
+        description={t($ => $.description, { ns: 'appLog' })}
         learnMoreHref={docLink('/use-dify/monitor/logs')}
         learnMoreLabel={t($ => $['operation.learnMore'], { ns: 'common' })}
       />

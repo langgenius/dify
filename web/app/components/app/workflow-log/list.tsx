@@ -168,7 +168,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     </div>
                   )}
                 </td>
-                <td className="w-[180px] p-3 pr-2">{formatTime(log.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</td>
+                <td className="w-[180px] p-3 pr-2">{formatTime(log.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
                 <td className="p-3 pr-2">{statusTdRender(log.workflow_run.status)}</td>
                 <td className="p-3 pr-2">
                   <div className={cn(

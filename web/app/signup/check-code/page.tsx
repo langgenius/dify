@@ -94,7 +94,7 @@ export default function CheckCode() {
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="ml-2 system-xs-regular">{t($ => $['back'], { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t($ => $.back, { ns: 'login' })}</span>
       </div>
     </div>
   )

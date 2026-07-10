@@ -70,7 +70,7 @@ const StatusPanel: FC<ResultProps> = ({
   const partialSucceededTip = exceptionCounts
     ? (
         <Trans
-          i18nKey={$ => $["nodes.common.errorHandle.partialSucceeded.tip"]}
+          i18nKey={$ => $['nodes.common.errorHandle.partialSucceeded.tip']}
           ns="workflow"
           values={{ num: exceptionCounts }}
           components={{

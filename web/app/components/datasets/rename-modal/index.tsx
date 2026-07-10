@@ -83,7 +83,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       <DialogContent className="w-full max-w-[520px] overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
 
         <div className="flex items-center justify-between pb-2">
-          <div className="text-xl leading-[30px] font-medium text-text-primary">{t($ => $['title'], { ns: 'datasetSettings' })}</div>
+          <div className="text-xl leading-[30px] font-medium text-text-primary">{t($ => $.title, { ns: 'datasetSettings' })}</div>
           <button
             type="button"
             className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

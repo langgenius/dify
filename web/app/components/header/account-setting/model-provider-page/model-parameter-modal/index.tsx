@@ -243,8 +243,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           >
             {
               debugWithMultipleModel
-                ? t($ => $['debugAsSingleModel'], { ns: 'appDebug' })
-                : t($ => $['debugAsMultipleModel'], { ns: 'appDebug' })
+                ? t($ => $.debugAsSingleModel, { ns: 'appDebug' })
+                : t($ => $.debugAsMultipleModel, { ns: 'appDebug' })
             }
             <ArrowNarrowLeft className="size-3 rotate-180" />
           </div>

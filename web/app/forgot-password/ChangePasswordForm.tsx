@@ -83,11 +83,11 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
-            <h2 className="text-[32px] font-bold text-text-primary">{t($ => $['invalid'], { ns: 'login' })}</h2>
+            <h2 className="text-[32px] font-bold text-text-primary">{t($ => $.invalid, { ns: 'login' })}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full text-sm!">
-              <a href="https://dify.ai">{t($ => $['explore'], { ns: 'login' })}</a>
+              <a href="https://dify.ai">{t($ => $.explore, { ns: 'login' })}</a>
             </Button>
           </div>
         </div>
@@ -96,10 +96,10 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t($ => $['changePassword'], { ns: 'login' })}
+              {t($ => $.changePassword, { ns: 'login' })}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              {t($ => $['changePasswordTip'], { ns: 'login' })}
+              {t($ => $.changePasswordTip, { ns: 'login' })}
             </p>
           </div>
 
@@ -115,7 +115,7 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={t($ => $['passwordPlaceholder'], { ns: 'login' }) || ''}
+                  placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   className="mt-1"
                 />
                 <div className="mt-1 text-xs text-text-secondary">{t($ => $['error.passwordInvalid'], { ns: 'login' })}</div>
@@ -130,7 +130,7 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t($ => $['confirmPasswordPlaceholder'], { ns: 'login' }) || ''}
+                  placeholder={t($ => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   className="mt-1"
                 />
               </div>
@@ -154,12 +154,12 @@ const ChangePasswordForm = () => {
               <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
             </div>
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t($ => $['passwordChangedTip'], { ns: 'login' })}
+              {t($ => $.passwordChangedTip, { ns: 'login' })}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full">
-              <a href={`${basePath}/signin`}>{t($ => $['passwordChanged'], { ns: 'login' })}</a>
+              <a href={`${basePath}/signin`}>{t($ => $.passwordChanged, { ns: 'login' })}</a>
             </Button>
           </div>
         </div>

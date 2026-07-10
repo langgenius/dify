@@ -89,7 +89,7 @@ export function SubmitRequestDropdown({
       <DropdownMenuTrigger
         render={(
           <Button
-            aria-label={t($ => $['requestSubmit'], { ns: 'plugin', defaultValue: t($ => $['requestAPlugin'], { ns: 'plugin' }) })}
+            aria-label={t($ => $.requestSubmit, { ns: 'plugin', defaultValue: t($ => $.requestAPlugin, { ns: 'plugin' }) })}
             variant="ghost"
             className={cn(
               'size-8 p-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',

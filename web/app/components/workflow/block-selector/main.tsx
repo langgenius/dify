@@ -324,7 +324,7 @@ function NodeSelector({
                         onSearchChange={setSearchText}
                         tags={tags}
                         onTagsChange={setTags}
-                        placeholder={t($ => $['searchTools'], { ns: 'plugin' })!}
+                        placeholder={t($ => $.searchTools, { ns: 'plugin' })!}
                         inputClassName="grow"
                       />
                     )}

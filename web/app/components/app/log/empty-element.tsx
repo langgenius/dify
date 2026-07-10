@@ -43,7 +43,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
         </span>
         <div className="mt-2 system-sm-regular text-text-tertiary">
           <Trans
-            i18nKey={$ => $["table.empty.element.content"]}
+            i18nKey={$ => $['table.empty.element.content']}
             ns="appLog"
             components={{
               shareLink: (

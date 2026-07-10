@@ -207,7 +207,7 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
   const copy = {
     componentStack: t($ => $['errorBoundary.componentStack'], { ns: 'common' }),
     details: t($ => $['errorBoundary.details'], { ns: 'common' }),
-    error: `${t($ => $['error'], { ns: 'common' })}:`,
+    error: `${t($ => $.error, { ns: 'common' })}:`,
     formatErrorCount: (count: number) => t($ => $['errorBoundary.errorCount'], { ns: 'common', count }),
     message: t($ => $['errorBoundary.message'], { ns: 'common' }),
     reload: t($ => $['errorBoundary.reloadPage'], { ns: 'common' }),

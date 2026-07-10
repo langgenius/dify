@@ -125,7 +125,7 @@ const EndpointModal: FC<Props> = ({
                             rel="noopener noreferrer"
                             className="inline-flex items-center body-xs-regular text-text-accent-secondary"
                           >
-                            {t($ => $['howToGet'], { ns: 'tools' })}
+                            {t($ => $.howToGet, { ns: 'tools' })}
                             <RiArrowRightUpLine className="ml-1 size-3" />
                           </a>
                         )

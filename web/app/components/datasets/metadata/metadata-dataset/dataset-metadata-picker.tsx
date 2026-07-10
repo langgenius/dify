@@ -213,7 +213,7 @@ function MetadataPickerSelectPanel({
         )}
       </ComboboxList>
       <ComboboxEmpty>
-        {t($ => $['noData'], { ns: 'common' })}
+        {t($ => $.noData, { ns: 'common' })}
       </ComboboxEmpty>
       <ComboboxSeparator />
       <MetadataPickerActions

@@ -83,7 +83,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <div className="flex">
               <div className="w-[104px] shrink-0 truncate px-2 py-[5px] text-xs leading-[18px] text-text-tertiary">{t($ => $['meta.startTime'], { ns: 'runLog' })}</div>
               <div className="grow px-2 py-[5px] text-xs leading-[18px] text-text-primary">
-                <span>{formatTime(Date.parse(created_at) / 1000, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</span>
+                <span>{formatTime(Date.parse(created_at) / 1000, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</span>
               </div>
             </div>
             <div className="flex">

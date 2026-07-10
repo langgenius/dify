@@ -117,7 +117,7 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.CUSTOM,
-      name: t($ => $['custom'], { ns: 'custom' }),
+      name: t($ => $.custom, { ns: 'custom' }),
       icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },

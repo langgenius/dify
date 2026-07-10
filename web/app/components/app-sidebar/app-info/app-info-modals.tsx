@@ -150,15 +150,15 @@ const AppInfoModals = ({
           >
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t($ => $['deleteAppConfirmTitle'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t($ => $['deleteAppConfirmContent'], { ns: 'app' })}
+                {t($ => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <div className="mt-2">
                 <label className="mb-1 block system-sm-regular text-text-secondary">
                   <Trans
-                    i18nKey={$ => $["deleteAppConfirmInputLabel"]}
+                    i18nKey={$ => $.deleteAppConfirmInputLabel}
                     ns="app"
                     values={{ appName: appDetail.name }}
                     components={{
@@ -171,7 +171,7 @@ const AppInfoModals = ({
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
-                    placeholder={t($ => $['deleteAppConfirmInputPlaceholder'], { ns: 'app' })}
+                    placeholder={t($ => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                     value={confirmDeleteInput}
                     onChange={e => setConfirmDeleteInput(e.target.value)}
                     className="pr-20"

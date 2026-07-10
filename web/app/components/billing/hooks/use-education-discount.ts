@@ -19,7 +19,7 @@ export const useEducationDiscount = () => {
       return
 
     if (!canManageBilling) {
-      toast.error(t($ => $['buyPermissionDeniedTip'], { ns: 'billing' }))
+      toast.error(t($ => $.buyPermissionDeniedTip, { ns: 'billing' }))
       return
     }
 

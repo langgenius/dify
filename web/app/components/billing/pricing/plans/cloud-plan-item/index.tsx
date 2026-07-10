@@ -64,7 +64,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
   const educationDiscountWarningText = canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
-    ? t($ => $['planNotSupportEducationDiscount'], { ns: 'education' })
+    ? t($ => $.planNotSupportEducationDiscount, { ns: 'education' })
     : undefined
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
@@ -72,7 +72,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
 
   const btnText = useMemo(() => {
     if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
-      return t($ => $['useEducationDiscount'], { ns: 'education' })
+      return t($ => $.useEducationDiscount, { ns: 'education' })
 
     if (isCurrent)
       return t($ => $['plansCommon.currentPlan'], { ns: 'billing' })
@@ -95,7 +95,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     try {
       if (isCurrentPaidPlan) {
         if (!canManageBillingSubscription) {
-          toast.error(t($ => $['buyPermissionDeniedTip'], { ns: 'billing' }))
+          toast.error(t($ => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
         }
 
@@ -116,7 +116,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
         return
 
       if (!canManageBilling) {
-        toast.error(t($ => $['buyPermissionDeniedTip'], { ns: 'billing' }))
+        toast.error(t($ => $.buyPermissionDeniedTip, { ns: 'billing' }))
         return
       }
 

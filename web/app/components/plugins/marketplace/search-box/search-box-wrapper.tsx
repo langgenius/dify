@@ -37,7 +37,7 @@ const SearchBoxWrapper = ({
       onSearchChange={handleSearchPluginTextChange}
       tags={filterPluginTags}
       onTagsChange={handleFilterPluginTagsChange}
-      placeholder={placeholder ?? t($ => $['searchPlugins'], { ns: 'plugin' })}
+      placeholder={placeholder ?? t($ => $.searchPlugins, { ns: 'plugin' })}
       showTags={showTags}
       usedInMarketplace={usedInMarketplace}
     />

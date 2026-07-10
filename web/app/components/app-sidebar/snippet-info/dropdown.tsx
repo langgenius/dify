@@ -69,7 +69,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     }
     catch {
-      toast.error(t($ => $['exportFailed']))
+      toast.error(t($ => $.exportFailed))
     }
   }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
@@ -85,11 +85,11 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       },
     }, {
       onSuccess: () => {
-        toast.success(t($ => $['editDone']))
+        toast.success(t($ => $.editDone))
         setIsEditDialogOpen(false)
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t($ => $['editFailed']))
+        toast.error(error instanceof Error ? error.message : t($ => $.editFailed))
       },
     })
   }, [snippet.id, t, updateSnippetMutation])
@@ -99,12 +99,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
     }, {
       onSuccess: () => {
-        toast.success(t($ => $['deleted']))
+        toast.success(t($ => $.deleted))
         setIsDeleteDialogOpen(false)
         replace('/snippets')
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t($ => $['deleteFailed']))
+        toast.error(error instanceof Error ? error.message : t($ => $.deleteFailed))
       },
     })
   }, [deleteSnippetMutation, replace, snippet.id, t])
@@ -160,7 +160,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
           initialValue={initialValue}
-          title={t($ => $['editDialogTitle'])}
+          title={t($ => $.editDialogTitle)}
           confirmText={t($ => $['operation.save'], { ns: 'common' })}
           isSubmitting={updateSnippetMutation.isPending}
           onClose={() => setIsEditDialogOpen(false)}
@@ -172,10 +172,10 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t($ => $['deleteConfirmTitle'])}
+              {t($ => $.deleteConfirmTitle)}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t($ => $['deleteConfirmContent'])}
+              {t($ => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-0">

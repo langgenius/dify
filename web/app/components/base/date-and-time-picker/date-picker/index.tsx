@@ -196,7 +196,7 @@ const DatePicker = ({
   const timeFormat = needTimePicker ? t($ => $['dateFormats.displayWithTime'], { ns: 'time' }) : t($ => $['dateFormats.display'], { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t($ => $['defaultPlaceholder'], { ns: 'time' }))
+  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t($ => $.defaultPlaceholder, { ns: 'time' }))
 
   return (
     <Popover

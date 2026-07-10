@@ -65,7 +65,7 @@ const SnippetCard = ({
 
   const updatedByName = (snippet.updated_by ? memberNameById.get(snippet.updated_by) : undefined)
     || (snippet.created_by ? memberNameById.get(snippet.created_by) : undefined)
-    || t($ => $['unknownUser'])
+    || t($ => $.unknownUser)
 
   const updatedAt = snippet.updated_at || snippet.created_at
   const updatedAtText = formatTime({
@@ -93,7 +93,7 @@ const SnippetCard = ({
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     }
     catch {
-      toast.error(t($ => $['exportFailed']))
+      toast.error(t($ => $.exportFailed))
     }
   }
 
@@ -102,12 +102,12 @@ const SnippetCard = ({
       params: { snippetId: snippet.id },
     }, {
       onSuccess: () => {
-        toast.success(t($ => $['deleted']))
+        toast.success(t($ => $.deleted))
         setIsDeleteDialogOpen(false)
         onRefresh?.()
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t($ => $['deleteFailed']))
+        toast.error(error instanceof Error ? error.message : t($ => $.deleteFailed))
       },
     })
   }
@@ -124,12 +124,12 @@ const SnippetCard = ({
       },
     }, {
       onSuccess: () => {
-        toast.success(t($ => $['editDone']))
+        toast.success(t($ => $.editDone))
         setIsEditDialogOpen(false)
         onRefresh?.()
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t($ => $['editFailed']))
+        toast.error(error instanceof Error ? error.message : t($ => $.editFailed))
       },
     })
   }
@@ -233,7 +233,7 @@ const SnippetCard = ({
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
           initialValue={initialValue}
-          title={t($ => $['editDialogTitle'])}
+          title={t($ => $.editDialogTitle)}
           confirmText={tCommon($ => $['operation.save'], { ns: 'common' })}
           isSubmitting={updateSnippetMutation.isPending}
           onClose={() => setIsEditDialogOpen(false)}
@@ -244,10 +244,10 @@ const SnippetCard = ({
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t($ => $['deleteConfirmTitle'])}
+              {t($ => $.deleteConfirmTitle)}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t($ => $['deleteConfirmContent'])}
+              {t($ => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-0">

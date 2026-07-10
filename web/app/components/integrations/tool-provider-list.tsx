@@ -221,7 +221,7 @@ const ProviderList = ({
                 />
               )}
               {!isCollectionListLoading && !activeTabCollectionList.length && activeTab === 'builtin' && (
-                <Empty lightCard text={t($ => $['noTools'], { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
+                <Empty lightCard text={t($ => $.noTools, { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
               )}
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
                 <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />

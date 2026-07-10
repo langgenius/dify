@@ -190,7 +190,7 @@ const ViewAnnotationModal: FC<Props> = ({
                   </td>
                   <td className="p-3 pr-2">{item.source}</td>
                   <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
-                  <td className="p-3 pr-2">{formatTime(item.created_at, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</td>
+                  <td className="p-3 pr-2">{formatTime(item.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
                 </tr>
               ))}
             </tbody>
@@ -295,7 +295,7 @@ const ViewAnnotationModal: FC<Props> = ({
                     <div>
                       {t($ => $['editModal.createdAt'], { ns: 'appAnnotation' })}
 &nbsp;
-                      {formatTime(createdAt, t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}
+                      {formatTime(createdAt, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                     </div>
                   </div>
                 )}

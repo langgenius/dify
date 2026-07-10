@@ -254,10 +254,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={(
         <div className="flex items-center">
-          <div className="mr-1">{t($ => $['variableTitle'], { ns: 'appDebug' })}</div>
+          <div className="mr-1">{t($ => $.variableTitle, { ns: 'appDebug' })}</div>
           {!readonly && (
-            <Infotip aria-label={t($ => $['variableTip'], { ns: 'appDebug' })} popupClassName="w-[180px]">
-              {t($ => $['variableTip'], { ns: 'appDebug' })}
+            <Infotip aria-label={t($ => $.variableTip, { ns: 'appDebug' })} popupClassName="w-[180px]">
+              {t($ => $.variableTip, { ns: 'appDebug' })}
             </Infotip>
           )}
         </div>
@@ -267,7 +267,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pt-2 pb-1 text-xs text-text-tertiary">{t($ => $['notSetVar'], { ns: 'appDebug' })}</div>
+          <div className="pt-2 pb-1 text-xs text-text-tertiary">{t($ => $.notSetVar, { ns: 'appDebug' })}</div>
         </div>
       )}
       {hasVar && (

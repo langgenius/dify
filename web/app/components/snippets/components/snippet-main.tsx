@@ -102,7 +102,7 @@ const SnippetMainContent = ({
       return false
 
     if (!hasSnippetDraftNodes(syncedDraftPayload)) {
-      toast.error(t($ => $['emptyGraphSaveError']))
+      toast.error(t($ => $.emptyGraphSaveError))
       return false
     }
 

@@ -154,8 +154,8 @@ const SecretKeyModal = ({
                   {apiKeysList.data.map(api => (
                     <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
                       <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
-                      <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string)}</div>
-                      <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t($ => $['dateTimeFormat'], { ns: 'appLog' }) as string) : t($ => $['never'], { ns: 'appApi' })}</div>
+                      <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</div>
+                      <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t($ => $.dateTimeFormat, { ns: 'appLog' }) as string) : t($ => $.never, { ns: 'appApi' })}</div>
                       <div className="flex grow space-x-2 px-3">
                         <CopyFeedback content={api.token} />
                         {canManage && (

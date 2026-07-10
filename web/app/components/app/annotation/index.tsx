@@ -149,7 +149,7 @@ const Annotation: FC<Props> = (props) => {
   return (
     <div className="flex h-full flex-col">
       <PageTitle
-        title={t($ => $['title'], { ns: 'appAnnotation' })}
+        title={t($ => $.title, { ns: 'appAnnotation' })}
         description={t($ => $['noData.description'], { ns: 'appAnnotation' })}
         learnMoreHref={docLink('/use-dify/monitor/annotation-reply')}
         learnMoreLabel={t($ => $['operation.learnMore'], { ns: 'common' })}
@@ -161,7 +161,7 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
                   <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
-                  <div className="system-sm-medium text-text-primary">{t($ => $['name'], { ns: 'appAnnotation' })}</div>
+                  <div className="system-sm-medium text-text-primary">{t($ => $.name, { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     checked={annotationConfig?.enabled ?? false}

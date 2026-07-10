@@ -41,7 +41,7 @@ const useActionMenu = (props: ActionMenuProps) => {
       ...(canImportExportDSL && !pipelineId
         ? [{
             key: VersionHistoryContextMenuOptions.exportDSL,
-            name: t($ => $['export'], { ns: 'app' }),
+            name: t($ => $.export, { ns: 'app' }),
             ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
           }]
         : []),

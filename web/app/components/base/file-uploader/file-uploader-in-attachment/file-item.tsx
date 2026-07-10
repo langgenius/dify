@@ -111,7 +111,7 @@ const FileInAttachmentItem = ({
               <ProgressCircle
                 className="mr-2.5"
                 value={progress}
-                aria-label={t($ => $['uploading'], { ns: 'custom' })}
+                aria-label={t($ => $.uploading, { ns: 'custom' })}
               />
             )
           }

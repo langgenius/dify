@@ -54,15 +54,15 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ canManageExternalKn
       >
         <div className="flex items-start self-stretch p-4 pb-0">
           <div className="flex grow flex-col items-start gap-1">
-            <div className="self-stretch system-xl-semibold text-text-primary">{t($ => $['externalAPIPanelTitle'], { ns: 'dataset' })}</div>
-            <div className="self-stretch body-xs-regular text-text-tertiary">{t($ => $['externalAPIPanelDescription'], { ns: 'dataset' })}</div>
+            <div className="self-stretch system-xl-semibold text-text-primary">{t($ => $.externalAPIPanelTitle, { ns: 'dataset' })}</div>
+            <div className="self-stretch body-xs-regular text-text-tertiary">{t($ => $.externalAPIPanelDescription, { ns: 'dataset' })}</div>
             <a
               className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
               href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
               <RiBookOpenLine className="size-3 text-text-accent" />
-              <div className="grow body-xs-regular text-text-accent">{t($ => $['externalAPIPanelDocumentation'], { ns: 'dataset' })}</div>
+              <div className="grow body-xs-regular text-text-accent">{t($ => $.externalAPIPanelDocumentation, { ns: 'dataset' })}</div>
             </a>
           </div>
           <div className="flex items-center">
@@ -79,7 +79,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ canManageExternalKn
               onClick={handleOpenExternalAPIModal}
             >
               <RiAddLine className="size-4 text-components-button-primary-text" />
-              <div className="system-sm-medium text-components-button-primary-text">{t($ => $['createExternalAPI'], { ns: 'dataset' })}</div>
+              <div className="system-sm-medium text-components-button-primary-text">{t($ => $.createExternalAPI, { ns: 'dataset' })}</div>
             </Button>
           </div>
         )}

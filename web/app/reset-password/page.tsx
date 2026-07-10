@@ -62,21 +62,21 @@ export default function CheckCode() {
         <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t($ => $['resetPassword'], { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t($ => $.resetPassword, { ns: 'login' })}</h2>
         <p className="mt-2 body-md-regular text-text-secondary">
-          {t($ => $['resetPasswordDesc'], { ns: 'login' })}
+          {t($ => $.resetPasswordDesc, { ns: 'login' })}
         </p>
       </div>
 
       <form onSubmit={noop}>
         <input type="text" className="hidden" />
         <div className="mb-2">
-          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t($ => $['email'], { ns: 'login' })}</label>
+          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t($ => $.email, { ns: 'login' })}</label>
           <div className="mt-1">
-            <Input id="email" type="email" disabled={loading} value={email} placeholder={t($ => $['emailPlaceholder'], { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+            <Input id="email" type="email" disabled={loading} value={email} placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="mt-3">
-            <Button loading={loading} disabled={loading} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t($ => $['sendVerificationCode'], { ns: 'login' })}</Button>
+            <Button loading={loading} disabled={loading} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t($ => $.sendVerificationCode, { ns: 'login' })}</Button>
           </div>
         </div>
       </form>
@@ -87,7 +87,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="ml-2 system-xs-regular">{t($ => $['backToLogin'], { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t($ => $.backToLogin, { ns: 'login' })}</span>
       </Link>
     </div>
   )

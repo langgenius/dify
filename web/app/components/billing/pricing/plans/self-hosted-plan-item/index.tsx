@@ -58,7 +58,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
 
   const handleGetPayUrl = useCallback(() => {
     if (!canManageBilling) {
-      toast.error(t($ => $['buyPermissionDeniedTip'], { ns: 'billing' }))
+      toast.error(t($ => $.buyPermissionDeniedTip, { ns: 'billing' }))
       return
     }
     if (isFreePlan) {

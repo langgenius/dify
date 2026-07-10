@@ -131,7 +131,7 @@ export function AppListHeaderFilters({
                     <span aria-hidden className="i-ri-file-upload-line size-4 text-text-secondary" />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1">
-                    <span className="system-md-regular text-text-secondary">{t($ => $['importDSL'], { ns: 'app' })}</span>
+                    <span className="system-md-regular text-text-secondary">{t($ => $.importDSL, { ns: 'app' })}</span>
                     <span className="system-xs-regular text-text-tertiary">{t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}</span>
                   </span>
                 </DropdownMenuItem>

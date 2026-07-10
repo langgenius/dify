@@ -231,7 +231,7 @@ const UpdateSettingDialog = ({
               className="flex min-h-[260px] items-center justify-center gap-2 px-6 py-6 system-sm-regular text-text-tertiary"
             >
               <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none" />
-              <span>{t($ => $['loading'], { ns: 'common' })}</span>
+              <span>{t($ => $.loading, { ns: 'common' })}</span>
             </div>
           )}
           {!isSettingsLoading && !hasSettings && (
