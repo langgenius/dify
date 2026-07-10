@@ -52,6 +52,7 @@ const Operation: FC<OperationProps> = ({
           {
             speechToTextConfig?.enabled && onShowVoiceInput && (
               <ActionButton
+                className="shrink-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
                 size="l"
                 aria-label={t($ => $['voiceInput.start'], { ns: 'common' })}
                 disabled={readonly}
