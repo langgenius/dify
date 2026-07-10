@@ -39,7 +39,7 @@ const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
 const SAFE_NAME_RE = (() => {
   try {
-    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_-]*$', 'u')
+    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_()!*&（）！＊＆－-]*$', 'u')
   }
   catch {
     // Fallback for browsers without Unicode property escape support.
