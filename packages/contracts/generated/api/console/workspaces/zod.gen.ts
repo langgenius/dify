@@ -370,6 +370,7 @@ export const zDeleteMemberBindingsRequest = z.object({
  */
 export const zReplaceUserAccessPolicies = z.object({
   access_policy_ids: z.array(z.string()).optional(),
+  account_ids: z.array(z.string()).optional(),
 })
 
 /**
