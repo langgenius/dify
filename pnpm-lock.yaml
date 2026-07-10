@@ -790,6 +790,9 @@ importers:
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
+      eventsource-parser:
+        specifier: 'catalog:'
+        version: 3.1.0
       tsx:
         specifier: 'catalog:'
         version: 4.22.4
@@ -802,6 +805,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@25.9.4)(@vitest/browser-playwright@4.1.9)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.3(@types/node@25.9.4)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))(happy-dom@20.10.6)
       zod:
         specifier: 'catalog:'
         version: 4.4.3

@@ -14,6 +14,7 @@
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/seed.ts",
+    "test:unit": "vitest run ./tests/service-api-sse.test.ts",
     "type-check": "tsc"
   },
   "devDependencies": {
@@ -24,10 +25,12 @@
     "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
+    "eventsource-parser": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }
