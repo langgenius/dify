@@ -21,6 +21,8 @@ def create_shell_provider(settings: ShellAdapterSettings | None = None) -> Shell
             return EnterpriseShellProvider(
                 gateway_endpoint=(resolved.enterprise_sandbox_gateway_endpoint or "").strip(),
                 auth_token=resolved.enterprise_sandbox_gateway_auth_token or "",
+                gateway_timeout=resolved.enterprise_sandbox_gateway_timeout,
+                proxy_timeout=resolved.enterprise_sandbox_proxy_timeout,
             )
         case _:
             raise ValueError(f"Unknown shell provider: {resolved.shell_provider!r}.")

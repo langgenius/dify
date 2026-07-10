@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TypedDict
 
-import httpx
+import httpx2 as httpx
 
 from dify_agent.adapters.shell.protocols import (
     SandboxExpiredError,
@@ -39,6 +39,7 @@ class EnterpriseGatewayClient:
 
     endpoint: str
     auth_token: str
+    timeout: float = 30.0
     _client: httpx.AsyncClient = field(init=False)
 
     def __post_init__(self) -> None:
@@ -48,7 +49,7 @@ class EnterpriseGatewayClient:
         self._client = httpx.AsyncClient(
             base_url=self.endpoint.rstrip("/"),
             headers=headers,
-            timeout=httpx.Timeout(30.0),
+            timeout=httpx.Timeout(self.timeout),
         )
 
     async def create_sandbox(self, *, tenant_id: str | None = None, template: str | None = None) -> _CreateSandboxReply:
@@ -155,9 +156,15 @@ class EnterpriseShellProvider(ShellProviderProtocol):
     auth_token: str
     tenant_id: str | None = None
     template: str | None = None
+    gateway_timeout: float = 30.0
+    proxy_timeout: float = 60.0
 
     async def create(self) -> EnterpriseResource:
-        gateway = EnterpriseGatewayClient(endpoint=self.gateway_endpoint, auth_token=self.auth_token)
+        gateway = EnterpriseGatewayClient(
+            endpoint=self.gateway_endpoint,
+            auth_token=self.auth_token,
+            timeout=self.gateway_timeout,
+        )
         try:
             logger.info("Creating enterprise sandbox via gateway %s", self.gateway_endpoint)
             reply = await gateway.create_sandbox(tenant_id=self.tenant_id, template=self.template)
@@ -169,7 +176,11 @@ class EnterpriseShellProvider(ShellProviderProtocol):
         return self._build_resource(sandbox_id=sandbox_id, gateway=gateway)
 
     async def attach(self, sandbox_id: str) -> EnterpriseResource:
-        gateway = EnterpriseGatewayClient(endpoint=self.gateway_endpoint, auth_token=self.auth_token)
+        gateway = EnterpriseGatewayClient(
+            endpoint=self.gateway_endpoint,
+            auth_token=self.auth_token,
+            timeout=self.gateway_timeout,
+        )
         logger.info("Attaching to existing enterprise sandbox: id=%s", sandbox_id)
         resource = self._build_resource(sandbox_id=sandbox_id, gateway=gateway)
         # Verify the sandbox is alive by running a trivial command through the proxy.
@@ -196,11 +207,11 @@ class EnterpriseShellProvider(ShellProviderProtocol):
             base_url=proxy_base_url,
             headers=headers,
             follow_redirects=True,
-            timeout=httpx.Timeout(60.0),
+            timeout=httpx.Timeout(self.proxy_timeout),
             transport=httpx.AsyncHTTPTransport(retries=3),
         )
 
-        from shell_session_manager.shellctl.client import ShellctlClient
+        from shellctl.client import ShellctlClient
 
         client: ShellctlClientProtocol = ShellctlClient(
             proxy_base_url,

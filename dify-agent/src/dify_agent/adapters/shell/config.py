@@ -1,7 +1,7 @@
 from typing import ClassVar, Literal, Self
 from urllib.parse import urlparse
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_SHELL_PROVIDER = "shellctl"
@@ -22,6 +22,8 @@ class ShellAdapterSettings(BaseSettings):
 
     enterprise_sandbox_gateway_endpoint: str | None = None
     enterprise_sandbox_gateway_auth_token: str | None = None
+    enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
+    enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="DIFY_AGENT_",

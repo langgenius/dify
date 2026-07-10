@@ -38,6 +38,16 @@ def test_server_settings_reads_shellctl_auth_token_from_env(monkeypatch: pytest.
     assert settings.shellctl_auth_token == "shell-secret"
 
 
+def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT", "45")
+    monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT", "90")
+
+    settings = ServerSettings()
+
+    assert settings.enterprise_sandbox_gateway_timeout == 45
+    assert settings.enterprise_sandbox_proxy_timeout == 90
+
+
 def test_server_settings_defaults_shellctl_auth_token_to_none(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -255,6 +265,8 @@ def test_build_shell_provider_returns_enterprise_provider_when_selected() -> Non
         shell_provider="enterprise",
         enterprise_sandbox_gateway_endpoint="https://gateway.example",
         enterprise_sandbox_gateway_auth_token="gateway-secret",
+        enterprise_sandbox_gateway_timeout=45,
+        enterprise_sandbox_proxy_timeout=90,
     )
 
     provider = settings.build_shell_provider()
@@ -262,6 +274,8 @@ def test_build_shell_provider_returns_enterprise_provider_when_selected() -> Non
     assert isinstance(provider, EnterpriseShellProvider)
     assert provider.gateway_endpoint == "https://gateway.example"
     assert provider.auth_token == "gateway-secret"
+    assert provider.gateway_timeout == 45
+    assert provider.proxy_timeout == 90
 
 
 def test_build_shell_provider_returns_none_when_enterprise_endpoint_is_unset(

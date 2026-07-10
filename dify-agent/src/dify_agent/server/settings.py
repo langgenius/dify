@@ -46,6 +46,8 @@ class ServerSettings(BaseSettings):
     shellctl_auth_token: str | None = None
     enterprise_sandbox_gateway_endpoint: str | None = None
     enterprise_sandbox_gateway_auth_token: str | None = None
+    enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
+    enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
@@ -155,6 +157,8 @@ class ServerSettings(BaseSettings):
                 shellctl_auth_token=self.shellctl_auth_token,
                 enterprise_sandbox_gateway_endpoint=self.enterprise_sandbox_gateway_endpoint,
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
+                enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
+                enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
             )
         )
 
