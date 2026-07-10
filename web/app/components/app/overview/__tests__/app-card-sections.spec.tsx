@@ -117,11 +117,11 @@ describe('app-card-sections', () => {
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
     expect(onLaunchConfig).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('overview.appInfo.launch')).toHaveAttribute('title', 'overview.appInfo.launch')
+    expect(screen.getByText('overview.appInfo.launch')).not.toHaveAttribute('title')
     expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
   })
 
-  it('should expose full labels for operation buttons', () => {
+  it('should expose native titles only for truncated operation labels', () => {
     const operations = createAppCardOperations({
       operationKeys: ['launch', 'embedded', 'customize', 'settings', 'develop'],
       t: t as never,
@@ -136,15 +136,23 @@ describe('app-card-sections', () => {
 
     render(<AppCardOperations t={t as never} operations={operations} />)
 
-    const labels = [
+    const untruncatedLabels = [
       'overview.appInfo.launch',
       'overview.appInfo.embedded.entry',
-      'overview.appInfo.customize.entry',
-      'overview.appInfo.settings.entry',
       'overview.apiInfo.doc',
     ]
-    labels.forEach((label) => {
-      expect(screen.getByText(label)).toHaveAttribute('title', label)
+    untruncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByText(label)).not.toHaveAttribute('title')
+    })
+
+    const truncatedLabels = [
+      'overview.appInfo.customize.entry',
+      'overview.appInfo.settings.entry',
+    ]
+    truncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('title', label)
     })
   })
 
@@ -168,7 +176,7 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByText('overview.appInfo.customize.entry')).toHaveAttribute('title', 'overview.appInfo.customize.entry')
+    expect(screen.getByRole('button', { name: 'overview.appInfo.customize.entry' })).toHaveAttribute('title', 'overview.appInfo.customize.entry')
     expect(AppModeEnum.CHAT).toBe('chat')
   })
 

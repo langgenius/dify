@@ -339,25 +339,18 @@ export const AppCardOperations = ({
     {operations.map(({ key, label, Icon, disabled, onClick }) => {
       const shouldTruncate = key === 'customize' || key === 'settings'
       const buttonContent = (
-        <MaybeTooltip
-          content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-          tooltipClassName="mt-[-8px]"
-          show={disabled}
-        >
-          <div className={cn('flex items-center justify-center gap-px', shouldTruncate && 'max-w-full min-w-0')}>
-            <Icon className="size-3.5 shrink-0" />
-            <div
-              title={label}
-              className={cn(
-                disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary',
-                'px-[3px] system-xs-medium',
-                shouldTruncate && 'min-w-0 truncate',
-              )}
-            >
-              {label}
-            </div>
+        <div className={cn('flex items-center justify-center gap-px', shouldTruncate && 'max-w-full min-w-0')}>
+          <Icon className="size-3.5 shrink-0" />
+          <div
+            className={cn(
+              disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary',
+              'px-[3px] system-xs-medium',
+              shouldTruncate && 'min-w-0 truncate',
+            )}
+          >
+            {label}
           </div>
-        </MaybeTooltip>
+        </div>
       )
 
       if (key === 'launch' && launchConfigAction) {
@@ -378,7 +371,7 @@ export const AppCardOperations = ({
                 <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
                   <div className="flex items-center justify-center gap-px">
                     <Icon className="size-3.5" />
-                    <div title={label} className="px-[3px] system-xs-medium">{label}</div>
+                    <div className="px-[3px] system-xs-medium">{label}</div>
                   </div>
                 </div>
               </Button>
@@ -405,7 +398,7 @@ export const AppCardOperations = ({
         )
       }
 
-      return (
+      const actionButton = (
         <Button
           className={cn(
             'mr-1 max-w-full min-w-[88px] overflow-hidden [&>*]:max-w-full [&>*]:min-w-0',
@@ -414,12 +407,27 @@ export const AppCardOperations = ({
           size="small"
           variant="ghost"
           key={key}
+          title={shouldTruncate ? label : undefined}
           onClick={onClick}
           disabled={disabled}
         >
           {buttonContent}
         </Button>
       )
+
+      if (disabled) {
+        return (
+          <MaybeTooltip
+            key={key}
+            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+            tooltipClassName="mt-[-8px]"
+          >
+            {actionButton}
+          </MaybeTooltip>
+        )
+      }
+
+      return actionButton
     })}
   </>
 )

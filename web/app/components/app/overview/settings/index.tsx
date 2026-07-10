@@ -460,7 +460,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <FieldDescription>{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</FieldDescription>
               </FieldRoot>
               <Divider className="my-0 h-px" />
-              <div className="space-y-5 pt-5">
+              <div className="space-y-5">
                 {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
                   <div className="w-full">
                     <div className="flex items-center">
@@ -520,6 +520,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {webappCopyrightEnabled
                       ? (
                           <Switch
+                            aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
                             checked={copyrightSwitchValue}
                             onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                           />
@@ -530,6 +531,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                               render={(
                                 <div>
                                   <Switch
+                                    aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
                                     disabled
                                     checked={copyrightSwitchValue}
                                     onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
@@ -546,6 +548,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
                   {copyrightSwitchValue && (
                     <Input
+                      aria-label={t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
                       className="mt-2 h-10"
                       value={inputInfo.copyright}
                       onChange={onChange('copyright')}
@@ -564,6 +567,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     />
                   </p>
                   <Input
+                    aria-label={t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.privacyPolicy}
                     onChange={onChange('privacyPolicy')}
