@@ -183,7 +183,7 @@ const Card = ({
         </div>
       </div>
       <div className="flex h-4 items-center pl-3 system-xs-medium text-text-tertiary">
-        {t('auth.connectedWorkspace', { ns: 'plugin' })}
+        {t($ => $['auth.connectedWorkspace'], { ns: 'plugin' })}
         <div className="ml-3 h-px grow bg-divider-subtle"></div>
       </div>
       {
@@ -207,7 +207,7 @@ const Card = ({
         !credentials_list.length && (
           <div className="p-3 pt-1">
             <div className="flex h-10 items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary">
-              {t('auth.emptyAuth', { ns: 'plugin' })}
+              {t($ => $['auth.emptyAuth'], { ns: 'plugin' })}
             </div>
           </div>
         )
@@ -216,13 +216,13 @@ const Card = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('list.delete.title', { ns: 'datasetDocuments' })}
+              {t($ => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction || !canManageCredential} onClick={handleConfirm}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

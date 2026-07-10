@@ -15,15 +15,15 @@ const FontSizeSelector = () => {
   const FONT_SIZE_LIST = [
     {
       key: '12px',
-      value: t('nodes.note.editor.small', { ns: 'workflow' }),
+      value: t($ => $['nodes.note.editor.small'], { ns: 'workflow' }),
     },
     {
       key: '14px',
-      value: t('nodes.note.editor.medium', { ns: 'workflow' }),
+      value: t($ => $['nodes.note.editor.medium'], { ns: 'workflow' }),
     },
     {
       key: '16px',
-      value: t('nodes.note.editor.large', { ns: 'workflow' }),
+      value: t($ => $['nodes.note.editor.large'], { ns: 'workflow' }),
     },
   ]
   const {
@@ -49,7 +49,7 @@ const FontSizeSelector = () => {
             )}
           >
             <RiFontSize className="mr-1 size-4" />
-            {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
+            {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t($ => $['nodes.note.editor.small'], { ns: 'workflow' })}
           </button>
         )}
       />

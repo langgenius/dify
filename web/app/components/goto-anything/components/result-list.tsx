@@ -23,7 +23,7 @@ const ResultList: FC<ResultListProps> = ({ groupedResults, onSelect }) => {
       'command': 'gotoAnything.groups.commands',
       'recent': 'gotoAnything.groups.recent',
     } as const
-    return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
+    return t($ => $[typeMap[type as keyof typeof typeMap] || `${type}s`], { ns: 'app' })
   }
 
   return (

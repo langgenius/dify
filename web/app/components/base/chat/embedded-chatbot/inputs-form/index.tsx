@@ -49,7 +49,7 @@ const InputsFormNode = ({
         )}
         >
           <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow system-xl-semibold text-text-secondary">{t($ => $['chat.chatSettingsTitle'], { ns: 'share' })}</div>
           {collapsed && (
             <Button
               className="text-text-tertiary uppercase"
@@ -57,7 +57,7 @@ const InputsFormNode = ({
               variant="ghost"
               onClick={() => setCollapsed(false)}
             >
-              {t('operation.edit', { ns: 'common' })}
+              {t($ => $['operation.edit'], { ns: 'common' })}
             </Button>
           )}
           {!collapsed && currentConversationId && (
@@ -67,7 +67,7 @@ const InputsFormNode = ({
               variant="ghost"
               onClick={() => setCollapsed(true)}
             >
-              {t('operation.close', { ns: 'common' })}
+              {t($ => $['operation.close'], { ns: 'common' })}
             </Button>
           )}
         </div>
@@ -90,7 +90,7 @@ const InputsFormNode = ({
                   : {}
               }
             >
-              {t('chat.startChat', { ns: 'share' })}
+              {t($ => $['chat.startChat'], { ns: 'share' })}
             </Button>
           </div>
         )}

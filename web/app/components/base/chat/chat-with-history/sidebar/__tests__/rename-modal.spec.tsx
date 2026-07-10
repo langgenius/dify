@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import { expectLoadingButton } from '@/test/button'
+import { withSelectorKey } from '@/test/i18n-mock'
 import RenameModal from '../rename-modal'
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
@@ -117,7 +118,7 @@ describe('RenameModal', () => {
       const translation = originalUseTranslation(...args)
       return {
         ...translation,
-        t: ((key: string, options?: Record<string, unknown>) => {
+        t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
           if (key === 'chat.conversationNamePlaceholder')
             return ''
           const ns = options?.ns as string | undefined

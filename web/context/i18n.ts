@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
 import { IS_CLOUD_EDITION } from '@/config'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
-import { apiReferencePathTranslations, docPathProductAvailability } from '@/types/doc-paths'
+import { docPathProductAvailability } from '@/types/doc-paths'
 
 export const useLocale = () => {
   const { i18n } = useTranslation()
@@ -72,18 +72,9 @@ export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathM
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
       let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
-      let languagePrefix = `/${docLanguage}`
+      const languagePrefix = `/${docLanguage}`
 
-      if (targetPath.startsWith('/api-reference/')) {
-        languagePrefix = ''
-        if (docLanguage !== 'en') {
-          const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage]
-          if (translatedPath) {
-            targetPath = translatedPath
-          }
-        }
-      }
-      else if (!targetPath) {
+      if (!targetPath) {
         targetPath = getDocHomePath()
       }
       else {

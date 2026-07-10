@@ -39,8 +39,8 @@ const TopKItem: FC<Props> = ({
     <ParamItem
       className={className}
       id="top_k"
-      name={t('datasetConfig.top_k', { ns: 'appDebug' })}
-      tip={t('datasetConfig.top_kTip', { ns: 'appDebug' }) as string}
+      name={t($ => $['datasetConfig.top_k'], { ns: 'appDebug' })}
+      tip={t($ => $['datasetConfig.top_kTip'], { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

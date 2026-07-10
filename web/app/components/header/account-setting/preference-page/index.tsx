@@ -6,7 +6,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { refreshUserProfileAtom, userProfileAtom } from '@/context/app-context-state'
+import { refreshUserProfileAtom, userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
@@ -44,9 +44,9 @@ export default function PreferencePage() {
   const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter(item => item.supported)
   const themeOptions: SelectOption[] = [
-    { value: 'system', name: t('account.appearanceFollowSystem', { ns: 'common' }) },
-    { value: 'light', name: t('account.appearanceLight', { ns: 'common' }) },
-    { value: 'dark', name: t('account.appearanceDark', { ns: 'common' }) },
+    { value: 'system', name: t($ => $['account.appearanceFollowSystem'], { ns: 'common' }) },
+    { value: 'light', name: t($ => $['account.appearanceLight'], { ns: 'common' }) },
+    { value: 'dark', name: t($ => $['account.appearanceDark'], { ns: 'common' }) },
   ]
   const selectedLanguage = languageOptions.find(item => item.value === (locale || userProfile.interface_language))
   const selectedTheme = themeOptions.find(item => item.value === (theme || 'system'))
@@ -61,7 +61,7 @@ export default function PreferencePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
     }
@@ -78,7 +78,7 @@ export default function PreferencePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       refreshUserProfile()
     }
     catch (e) {
@@ -91,7 +91,7 @@ export default function PreferencePage() {
   return (
     <>
       <div className="mb-6">
-        <div className={titleClassName}>{t('account.appearanceLabel', { ns: 'common' })}</div>
+        <div className={titleClassName}>{t($ => $['account.appearanceLabel'], { ns: 'common' })}</div>
         <Select
           value={selectedTheme?.value ?? 'system'}
           onValueChange={(nextValue) => {
@@ -103,7 +103,7 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedTheme?.name ?? t('account.appearanceFollowSystem', { ns: 'common' })}
+            {selectedTheme?.name ?? t($ => $['account.appearanceFollowSystem'], { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
             {themeOptions.map(item => (
@@ -116,7 +116,7 @@ export default function PreferencePage() {
         </Select>
       </div>
       <div className="mb-6">
-        <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
+        <div className={titleClassName}>{t($ => $['language.displayLanguage'], { ns: 'common' })}</div>
         <Select
           value={selectedLanguage?.value ?? null}
           disabled={editing}
@@ -129,7 +129,7 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+            {selectedLanguage?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
             {languageOptions.map(item => (
@@ -142,7 +142,7 @@ export default function PreferencePage() {
         </Select>
       </div>
       <div className="mb-6">
-        <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
+        <div className={titleClassName}>{t($ => $['language.timezone'], { ns: 'common' })}</div>
         <Select
           value={selectedTimezone?.value ?? null}
           disabled={editing}
@@ -155,7 +155,7 @@ export default function PreferencePage() {
           }}
         >
           <SelectTrigger size="medium">
-            {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+            {selectedTimezone?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
             {timezones.map(item => (

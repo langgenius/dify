@@ -2,13 +2,6 @@ import { registerCommands, unregisterCommands } from '../command-bus'
 import { themeCommand } from '../theme'
 
 vi.mock('../command-bus')
-
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('themeCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks()

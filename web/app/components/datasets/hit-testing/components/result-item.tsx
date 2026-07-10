@@ -79,7 +79,7 @@ const ResultItem = ({
               }}
             >
               <Icon className={cn('size-4', isFold && 'opacity-50')} />
-              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
+              <div className="text-xs font-semibold uppercase">{t($ => $[`${i18nPrefix}hitChunks`], { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             </div>
             {!isFold && (
               <div className="space-y-2">

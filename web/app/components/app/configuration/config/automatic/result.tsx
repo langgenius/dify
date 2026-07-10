@@ -42,7 +42,7 @@ const Result: FC<Props> = ({
     <div className="flex h-full flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between">
         <div>
-          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">{t('generate.resTitle', { ns: 'appDebug' })}</div>
+          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">{t($ => $['generate.resTitle'], { ns: 'appDebug' })}</div>
           <VersionSelector
             versionLen={versions.length}
             value={currentVersionIndex}
@@ -54,13 +54,13 @@ const Result: FC<Props> = ({
             className="px-2"
             onClick={() => {
               copy(current.modified)
-              toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+              toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
             <RiClipboardLine className="size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
-            {t('generate.apply', { ns: 'appDebug' })}
+            {t($ => $['generate.apply'], { ns: 'appDebug' })}
           </Button>
         </div>
       </div>

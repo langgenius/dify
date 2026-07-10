@@ -33,8 +33,9 @@ import {
   useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { currentWorkspaceIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'

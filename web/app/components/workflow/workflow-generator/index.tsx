@@ -1,4 +1,5 @@
 'use client'
+import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { GenerateWorkflowBody, GenerateWorkflowResponse as StreamResult, WorkflowGenPlan } from '@/service/debug'
@@ -54,6 +55,52 @@ const MAX_INSTRUCTION_LENGTH = 10_000
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
 // can localise the message and point at the offending node.
 type GenError = { code: string, detail: string, node_id?: string }
+
+type WorkflowGeneratorErrorCode
+  = | 'DANGLING_EDGE'
+    | 'DUPLICATE_NODE_ID'
+    | 'EMPTY_INSTRUCTION'
+    | 'EMPTY_PLAN'
+    | 'GRAPH_CYCLE'
+    | 'INSTRUCTION_TOO_LONG'
+    | 'INVALID_CONTAINER'
+    | 'INVALID_JSON'
+    | 'INVALID_SCHEMA'
+    | 'MISSING_START'
+    | 'MISSING_TERMINAL'
+    | 'MODEL_ERROR'
+    | 'UNKNOWN_NODE_REFERENCE'
+    | 'UNKNOWN_TOOL'
+    | 'UNRESOLVED_REFERENCE'
+
+const workflowGeneratorErrorSelectors: Record<WorkflowGeneratorErrorCode, SelectorParam<'workflow'>> = {
+  DANGLING_EDGE: $ => $['workflowGenerator.errors.DANGLING_EDGE'],
+  DUPLICATE_NODE_ID: $ => $['workflowGenerator.errors.DUPLICATE_NODE_ID'],
+  EMPTY_INSTRUCTION: $ => $['workflowGenerator.errors.EMPTY_INSTRUCTION'],
+  EMPTY_PLAN: $ => $['workflowGenerator.errors.EMPTY_PLAN'],
+  GRAPH_CYCLE: $ => $['workflowGenerator.errors.GRAPH_CYCLE'],
+  INSTRUCTION_TOO_LONG: $ => $['workflowGenerator.errors.INSTRUCTION_TOO_LONG'],
+  INVALID_CONTAINER: $ => $['workflowGenerator.errors.INVALID_CONTAINER'],
+  INVALID_JSON: $ => $['workflowGenerator.errors.INVALID_JSON'],
+  INVALID_SCHEMA: $ => $['workflowGenerator.errors.INVALID_SCHEMA'],
+  MISSING_START: $ => $['workflowGenerator.errors.MISSING_START'],
+  MISSING_TERMINAL: $ => $['workflowGenerator.errors.MISSING_TERMINAL'],
+  MODEL_ERROR: $ => $['workflowGenerator.errors.MODEL_ERROR'],
+  UNKNOWN_NODE_REFERENCE: $ => $['workflowGenerator.errors.UNKNOWN_NODE_REFERENCE'],
+  UNKNOWN_TOOL: $ => $['workflowGenerator.errors.UNKNOWN_TOOL'],
+  UNRESOLVED_REFERENCE: $ => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
+}
+
+function isWorkflowGeneratorErrorCode(code: string): code is WorkflowGeneratorErrorCode {
+  return Object.hasOwn(workflowGeneratorErrorSelectors, code)
+}
+
+function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
+  if (isWorkflowGeneratorErrorCode(error.code))
+    return t(workflowGeneratorErrorSelectors[error.code])
+
+  return error.detail || t($ => $['workflowGenerator.generateFailed'])
+}
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -234,7 +281,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   const isValid = () => {
     const trimmed = instruction.trim()
     if (!trimmed) {
-      toast.error(t('workflowGenerator.instructionRequired'))
+      toast.error(t($ => $['workflowGenerator.instructionRequired']))
       return false
     }
     if (!model.name) {
@@ -242,7 +289,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       // loading). Without this guard the request would fly with an empty
       // ``model_config.name`` and surface as a backend 400 — not actionable
       // for the user. Tell them to pick a model.
-      toast.error(t('workflowGenerator.modelRequired'))
+      toast.error(t($ => $['workflowGenerator.modelRequired']))
       return false
     }
     return true
@@ -257,7 +304,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       return
     }
     if (!res.graph?.nodes?.length) {
-      setGenError([{ code: 'EMPTY', detail: res.error || t('workflowGenerator.generateFailed') }])
+      setGenError([{ code: 'EMPTY', detail: res.error || t($ => $['workflowGenerator.generateFailed']) }])
       return
     }
     setGenError(null)
@@ -281,7 +328,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
-      toast.error(t('workflowGenerator.errors.timeout'))
+      toast.error(t($ => $['workflowGenerator.errors.timeout']))
       setLoadingFalse()
     }, FE_TIMEOUT_MS)
 
@@ -301,7 +348,7 @@ const WorkflowGeneratorModal: React.FC = () => {
         currentGraph = undefined
       }
       if (!currentGraph)
-        toast.warning(t('workflowGenerator.refineDraftUnavailable'))
+        toast.warning(t($ => $['workflowGenerator.refineDraftUnavailable']))
     }
     setRefineBaseGraph(currentGraph ?? null)
 
@@ -346,7 +393,7 @@ const WorkflowGeneratorModal: React.FC = () => {
               if (isAbortError(e))
                 return
               const message = e instanceof Error ? e.message : ''
-              toast.error(message || t('workflowGenerator.generateFailed'))
+              toast.error(message || t($ => $['workflowGenerator.generateFailed']))
             })
             .finally(finish)
           return
@@ -393,7 +440,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       })
       // Nudge the freshly-created Studio toward iterating with cmd+k /refine
       // instead of regenerating from scratch for a small tweak.
-      toast.success(t('workflowGenerator.appliedRefineHint'))
+      toast.success(t($ => $['workflowGenerator.appliedRefineHint']))
       closeGenerator()
       router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }, { isRbacEnabled }))
     }
@@ -401,13 +448,13 @@ const WorkflowGeneratorModal: React.FC = () => {
       if (e instanceof WorkflowApplyOrphanError) {
         // Sync failed AND we couldn't roll back. Route the user to /apps so
         // the orphan is still discoverable — they can delete it by hand.
-        toast.error(t('workflowGenerator.errors.apply_failed_orphan'))
+        toast.error(t($ => $['workflowGenerator.errors.apply_failed_orphan']))
         closeGenerator()
         router.push('/apps')
         return
       }
       const message = e instanceof Error ? e.message : ''
-      toast.error(message || t('workflowGenerator.applyFailed'))
+      toast.error(message || t($ => $['workflowGenerator.applyFailed']))
     }
     finally {
       setApplyingFalse()
@@ -421,7 +468,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     setApplyingTrue()
     try {
       await applyToCurrentApp({ appId: currentAppId, graph: current.graph as GeneratedGraph })
-      toast.success(t('workflowGenerator.applied'))
+      toast.success(t($ => $['workflowGenerator.applied']))
       closeGenerator()
       // Hard reload the workflow page so the canvas picks up the new draft —
       // ``router.refresh()`` only revalidates server-rendered route data, and
@@ -440,14 +487,14 @@ const WorkflowGeneratorModal: React.FC = () => {
         return
       }
       const message = e instanceof Error ? e.message : ''
-      toast.error(message || t('workflowGenerator.applyFailed'))
+      toast.error(message || t($ => $['workflowGenerator.applyFailed']))
     }
     finally {
       setApplyingFalse()
     }
   }, [current, currentAppId, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse, showHashCollision])
 
-  const modeLabel = mode === 'workflow' ? t('workflowGenerator.modes.workflow') : t('workflowGenerator.modes.chatflow')
+  const modeLabel = mode === 'workflow' ? t($ => $['workflowGenerator.modes.workflow']) : t($ => $['workflowGenerator.modes.chatflow'])
 
   // Refine diff — what an "apply" would change vs. the draft we started from.
   const refineDiff = useMemo(() => {
@@ -460,7 +507,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   // Derived view of the last structured error for the actionable error panel.
   const firstGenError = genError?.[0]
   const genErrorMessage = firstGenError
-    ? (t(`workflowGenerator.errors.${firstGenError.code}`, { defaultValue: '' }) || firstGenError.detail || t('workflowGenerator.generateFailed'))
+    ? getWorkflowGeneratorErrorMessage(firstGenError, t)
     : ''
   const genErrorHasUnknownTool = !!genError?.some(e => e.code === 'UNKNOWN_TOOL')
 
@@ -484,11 +531,11 @@ const WorkflowGeneratorModal: React.FC = () => {
             <div className="mb-5">
               <div className="text-lg leading-[28px] font-bold text-text-primary">
                 {isRefine
-                  ? t('workflowGenerator.refineTitle', { mode: modeLabel })
-                  : t('workflowGenerator.title', { mode: modeLabel })}
+                  ? t($ => $['workflowGenerator.refineTitle'], { mode: modeLabel })
+                  : t($ => $['workflowGenerator.title'], { mode: modeLabel })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {isRefine ? t('workflowGenerator.refineDescription') : t('workflowGenerator.description')}
+                {isRefine ? t($ => $['workflowGenerator.refineDescription']) : t($ => $['workflowGenerator.description'])}
               </div>
             </div>
 
@@ -507,7 +554,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
             <div className="mt-4">
               <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                {t('workflowGenerator.instruction')}
+                {t($ => $['workflowGenerator.instruction'])}
               </div>
               <Textarea
                 // Autofocus is appropriate here: the modal's sole purpose is to
@@ -516,8 +563,8 @@ const WorkflowGeneratorModal: React.FC = () => {
                 autoFocus
                 className="h-[160px]"
                 placeholder={isRefine
-                  ? t('workflowGenerator.refineInstructionPlaceholder')
-                  : t('workflowGenerator.instructionPlaceholder')}
+                  ? t($ => $['workflowGenerator.refineInstructionPlaceholder'])
+                  : t($ => $['workflowGenerator.instructionPlaceholder'])}
                 value={instruction}
                 onValueChange={setInstruction}
                 onKeyDown={(e) => {
@@ -539,7 +586,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
               <div className="mt-7 flex justify-end space-x-2">
                 <Button onClick={closeGenerator}>
-                  {t('workflowGenerator.dismiss')}
+                  {t($ => $['workflowGenerator.dismiss'])}
                 </Button>
                 {isLoading
                   ? (
@@ -552,7 +599,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                         variant="secondary"
                         onClick={onCancelGeneration}
                       >
-                        <span className="text-xs font-semibold">{t('workflowGenerator.cancel')}</span>
+                        <span className="text-xs font-semibold">{t($ => $['workflowGenerator.cancel'])}</span>
                       </Button>
                     )
                   : (
@@ -563,7 +610,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                         disabled={!model.name}
                       >
                         <span className="i-custom-vender-other-generator size-4" />
-                        <span className="text-xs font-semibold">{t('workflowGenerator.generate')}</span>
+                        <span className="text-xs font-semibold">{t($ => $['workflowGenerator.generate'])}</span>
                       </Button>
                     )}
               </div>
@@ -583,13 +630,13 @@ const WorkflowGeneratorModal: React.FC = () => {
                       <div className="system-md-medium text-text-secondary">{genErrorMessage}</div>
                       {firstGenError?.node_id && (
                         <div className="mt-1 system-xs-regular text-text-tertiary">
-                          {t('workflowGenerator.errors.atNode', { node: firstGenError.node_id })}
+                          {t($ => $['workflowGenerator.errors.atNode'], { node: firstGenError.node_id })}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="small" variant="primary" onClick={onGenerate} disabled={!model.name}>
-                        {t('workflowGenerator.regenerate')}
+                        {t($ => $['workflowGenerator.regenerate'])}
                       </Button>
                       {genErrorHasUnknownTool && (
                         <Button
@@ -600,7 +647,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                             router.push('/tools')
                           }}
                         >
-                          {t('workflowGenerator.errors.installTools')}
+                          {t($ => $['workflowGenerator.errors.installTools'])}
                         </Button>
                       )}
                     </div>
@@ -637,7 +684,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                                   onClick={showConfirmOverwrite}
                                   disabled={isApplying}
                                 >
-                                  {t('workflowGenerator.studioApply')}
+                                  {t($ => $['workflowGenerator.studioApply'])}
                                 </Button>
                               )
                             : (
@@ -649,7 +696,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                                   onClick={handleApplyToNew}
                                   disabled={isApplying}
                                 >
-                                  {t('workflowGenerator.applyToNew')}
+                                  {t($ => $['workflowGenerator.applyToNew'])}
                                 </Button>
                               )}
                         </div>
@@ -665,7 +712,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                       {/* Refine diff — what an apply changes vs. the draft we started from. */}
                       {hasRefineChanges && refineDiff && (
                         <div className="mt-2 system-xs-regular text-text-tertiary">
-                          {t('workflowGenerator.diff.summary', {
+                          {t($ => $['workflowGenerator.diff.summary'], {
                             added: refineDiff.added.length,
                             removed: refineDiff.removed.length,
                             changed: refineDiff.changed.length,
@@ -679,16 +726,16 @@ const WorkflowGeneratorModal: React.FC = () => {
                       )}
                     </div>
                   )
-                : renderPlaceholder(t('workflowGenerator.placeholder'))}
+                : renderPlaceholder(t($ => $['workflowGenerator.placeholder']))}
         </div>
 
         <RecoveryDialog
           open={isShowConfirmOverwrite}
           onOpenChange={() => hideConfirmOverwrite()}
-          title={t('workflowGenerator.overwriteTitle')}
-          description={t('workflowGenerator.overwriteMessage')}
-          cancelLabel={t('operation.cancel', { ns: 'common' })}
-          confirmLabel={t('operation.confirm', { ns: 'common' })}
+          title={t($ => $['workflowGenerator.overwriteTitle'])}
+          description={t($ => $['workflowGenerator.overwriteMessage'])}
+          cancelLabel={t($ => $['operation.cancel'], { ns: 'common' })}
+          confirmLabel={t($ => $['operation.confirm'], { ns: 'common' })}
           onConfirm={handleApplyToCurrentConfirmed}
         />
 
@@ -699,10 +746,10 @@ const WorkflowGeneratorModal: React.FC = () => {
         <RecoveryDialog
           open={isShowHashCollision}
           onOpenChange={() => hideHashCollision()}
-          title={t('workflowGenerator.errors.hash_collision_title')}
-          description={t('workflowGenerator.errors.hash_collision')}
-          cancelLabel={t('operation.cancel', { ns: 'common' })}
-          confirmLabel={t('workflowGenerator.reload')}
+          title={t($ => $['workflowGenerator.errors.hash_collision_title'])}
+          description={t($ => $['workflowGenerator.errors.hash_collision'])}
+          cancelLabel={t($ => $['operation.cancel'], { ns: 'common' })}
+          confirmLabel={t($ => $['workflowGenerator.reload'])}
           onConfirm={() => {
             hideHashCollision()
             if (typeof window !== 'undefined')

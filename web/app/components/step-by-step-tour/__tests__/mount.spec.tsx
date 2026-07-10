@@ -346,10 +346,8 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+function getMockAppContextState() {
+  return {
     currentWorkspace: {
       id: 'workspace-1',
       name: 'Solar Studio',
@@ -364,7 +362,19 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  } satisfies AppContextStateMockState))
+  } satisfies AppContextStateMockState
+}
+
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, getMockAppContextState)
+})
+
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, getMockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {

@@ -117,9 +117,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>
-            <Infotip aria-label={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}>
-              {t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
+            <div className="system-sm-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}</div>
+            <Infotip aria-label={t($ => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}>
+              {t($ => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
             </Infotip>
           </div>
           {!readOnly && (
@@ -134,24 +134,24 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                 onClick={togglePreview}
               >
                 <RiEyeLine className="size-3.5" />
-                <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</div>
+                <div className="system-xs-medium">{t($ => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}</div>
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               <div className="flex items-center space-x-1">
                 <button
                   type="button"
-                  aria-label={t('operation.copy', { ns: 'common' })}
+                  aria-label={t($ => $['operation.copy'], { ns: 'common' })}
                   className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
-                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                    toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                   }}
                 >
                   <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
                 </button>
                 <button
                   type="button"
-                  aria-label={t(isExpandFormContent ? 'chat.collapse' : 'chat.expand', { ns: 'share' })}
+                  aria-label={t($ => $[isExpandFormContent ? 'chat.collapse' : 'chat.expand'], { ns: 'share' })}
                   className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
                   onClick={toggleExpandFormContent}
                 >
@@ -180,9 +180,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`, { ns: 'workflow' })}</div>
-            <Infotip aria-label={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}>
-              {t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
+            <div className="system-sm-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}</div>
+            <Infotip aria-label={t($ => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}>
+              {t($ => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
             </Infotip>
           </div>
           {!readOnly && (
@@ -196,7 +196,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">
@@ -217,7 +217,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">
-        <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.timeout.title`, { ns: 'workflow' })}</div>
+        <div className="system-sm-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}.timeout.title`], { ns: 'workflow' })}</div>
         <TimeoutInput
           timeout={inputs.timeout}
           unit={inputs.timeout_unit}

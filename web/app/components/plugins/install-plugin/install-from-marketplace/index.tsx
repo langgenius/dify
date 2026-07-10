@@ -50,12 +50,12 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
-    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
+    return t($ => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [isBundle, step, t])
 
   const handleInstalled = useCallback((notRefresh?: boolean) => {

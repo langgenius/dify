@@ -14,11 +14,6 @@ vi.mock('@/context/modal-context', () => ({
     setShowModerationSettingModal: mockSetShowModerationSettingModal,
   }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/service/use-common', () => ({
   useCodeBasedExtensions: () => ({ data: { data: mockCodeBasedExtensionData } }),
 }))

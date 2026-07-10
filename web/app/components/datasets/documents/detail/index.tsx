@@ -12,11 +12,9 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -82,11 +80,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === segmentImportStatus.error)
-          toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
+          toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
+        toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }
@@ -103,7 +101,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}`)
+        toast.error(`${t($ => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`)
       },
     })
   }
@@ -194,10 +192,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
   } as FullDocumentDetail), [documentDetail, documentMetadata])
 
-  const backButtonLabel = t('operation.back', { ns: 'common' })
+  const backButtonLabel = t($ => $['operation.back'], { ns: 'common' })
   const metadataToggleLabel = `${showMetadata
-    ? t('operation.close', { ns: 'common' })
-    : t('operation.view', { ns: 'common' })} ${t('metadata.title', { ns: 'datasetDocuments' })}`
+    ? t($ => $['operation.close'], { ns: 'common' })
+    : t($ => $['operation.view'], { ns: 'common' })} ${t($ => $['metadata.title'], { ns: 'datasetDocuments' })}`
 
   return (
     <DocumentContext.Provider value={contextValue}>

@@ -81,8 +81,8 @@ export const useNodeIterationInteractions = () => {
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const nextCount = getNextChildNodeTypeCount(childNodeTypeCount, childNodeType, nodesWithSameType.length)
       const title = nodesWithSameType.length > 0
-        ? `${t(`blocks.${childNodeType}`, { ns: 'workflow' })} ${nextCount}`
-        : t(`blocks.${childNodeType}`, { ns: 'workflow' })
+        ? `${t($ => $[`blocks.${childNodeType}`], { ns: 'workflow' })} ${nextCount}`
+        : t($ => $[`blocks.${childNodeType}`], { ns: 'workflow' })
       const childCopy = buildIterationChildCopy({
         child,
         childNodeType,

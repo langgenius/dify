@@ -2,7 +2,7 @@ import type { CommandConstructor, CommandEffect } from './command'
 import type { CommandTree } from './registry'
 import type { ArgValueType, FlagDefinition } from './types'
 import type { HelpTopic } from '@/help/topics'
-import yaml from 'js-yaml'
+import { dump } from 'js-yaml'
 import { CONTRACT, GLOBAL_FLAG_HELP } from '@/help/contract'
 import { TOPICS } from '@/help/topics'
 import { collectCommands } from './registry'
@@ -41,7 +41,7 @@ function isStructured(format: string): boolean {
 
 function serialize(value: unknown, format: string): string {
   if (format === 'yaml')
-    return yaml.dump(value, { indent: 2, lineWidth: -1 })
+    return dump(value, { indent: 2, lineWidth: -1 })
   return `${JSON.stringify(value, null, 2)}\n`
 }
 

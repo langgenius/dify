@@ -16,14 +16,15 @@ import UsageInfo from '@/app/components/billing/usage-info'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { IS_CLOUD_EDITION } from '@/config'
-import { userProfileEmailAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useModalContextSelector } from '@/context/modal-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
-import { Loading } from '../../base/icons/src/public/thought'
+import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import { Plan, SelfHostedPlan } from '../type'
@@ -111,22 +112,22 @@ const PlanComp: FC<Props> = ({
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
-              <div className="system-md-semibold-uppercase text-text-primary">{t(`plans.${type}.name`, { ns: 'billing' })}</div>
+              <div className="system-md-semibold-uppercase text-text-primary">{t($ => $[`plans.${type}.name`], { ns: 'billing' })}</div>
             </div>
-            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-util-colors-gray-gray-600">{t($ => $[`plans.${type}.for`], { ns: 'billing' })}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {IS_CLOUD_EDITION && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
                 <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                {t('toVerified', { ns: 'education' })}
+                {t($ => $.toVerified, { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && canManageBilling && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
                 <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                {t('useEducationDiscount', { ns: 'education' })}
+                {t($ => $.useEducationDiscount, { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
@@ -146,37 +147,37 @@ const PlanComp: FC<Props> = ({
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}
-          name={t('usagePage.teamMembers', { ns: 'billing' })}
+          name={t($ => $['usagePage.teamMembers'], { ns: 'billing' })}
           usage={usage.teamMembers}
           total={total.teamMembers}
         />
         <UsageInfo
           Icon={RiBook2Line}
-          name={t('usagePage.documentsUploadQuota', { ns: 'billing' })}
+          name={t($ => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
           usage={usage.documentsUploadQuota}
           total={total.documentsUploadQuota}
         />
         <VectorSpaceInfo />
         <UsageInfo
           Icon={RiFileEditLine}
-          name={t('usagePage.annotationQuota', { ns: 'billing' })}
+          name={t($ => $['usagePage.annotationQuota'], { ns: 'billing' })}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
         />
         <UsageInfo
           Icon={TriggerAll}
-          name={t('usagePage.triggerEvents', { ns: 'billing' })}
+          name={t($ => $['usagePage.triggerEvents'], { ns: 'billing' })}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
-          tooltip={t('plansCommon.triggerEvents.tooltip', { ns: 'billing' }) as string}
+          tooltip={t($ => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           Icon={ApiAggregate}
-          name={t('plansCommon.apiRateLimit', { ns: 'billing' })}
+          name={t($ => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
-          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('plansCommon.apiRateLimitTooltip', { ns: 'billing' }) as string}
+          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t($ => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string}
           resetInDays={apiRateLimitResetInDays}
         />
 
@@ -185,8 +186,8 @@ const PlanComp: FC<Props> = ({
         showLink
         email={userProfileEmail}
         isShow={showModal}
-        title={t('rejectTitle', { ns: 'education' })}
-        content={t('rejectContent', { ns: 'education' })}
+        title={t($ => $.rejectTitle, { ns: 'education' })}
+        content={t($ => $.rejectContent, { ns: 'education' })}
         onConfirm={() => setShowModal(false)}
         onCancel={() => setShowModal(false)}
       />

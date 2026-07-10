@@ -25,17 +25,6 @@ vi.mock('reactflow', async () => {
     }),
   }
 })
-
-vi.mock('react-i18next', async () => {
-  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
-  return {
-    ...actual,
-    useTranslation: () => ({
-      t: (key: string) => key,
-    }),
-  }
-})
-
 const nodes: Node[] = [{
   id: 'node-1',
   type: 'custom',
@@ -105,7 +94,7 @@ describe('useWorkflowHistory', () => {
       },
     })
 
-    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toBe('changeHistory.nodeDelete')
+    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toEqual(expect.stringMatching(/(?:^|\.)changeHistory\.nodeDelete(?=$|:)/))
     expect(result.current.getHistoryLabel('Unknown' as keyof typeof WorkflowHistoryEvent)).toBe('Unknown Event')
   })
 

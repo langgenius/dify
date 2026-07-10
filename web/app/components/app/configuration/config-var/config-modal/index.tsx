@@ -63,7 +63,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
     const { isValid, errorMessageKey } = checkKeys([value], canBeEmpty)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }))
+      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: t($ => $['variableConfig.varName'], { ns: 'appDebug' }) }))
       return false
     }
     return true
@@ -117,7 +117,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
+      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: errorKey }))
       return
     }
     handlePayloadChange('variable')(e.target.value)
@@ -152,7 +152,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
         <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-          {t(`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`, { ns: 'appDebug' })}
+          {t($ => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], { ns: 'appDebug' })}
         </DialogTitle>
 
         <div

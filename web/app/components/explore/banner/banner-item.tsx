@@ -197,7 +197,7 @@ export function BannerItem({
                 <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
-                {t('banner.viewMore', { ns: 'explore' })}
+                {t($ => $['banner.viewMore'], { ns: 'explore' })}
               </span>
             </div>
 

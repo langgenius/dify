@@ -77,16 +77,16 @@ const SwitchCredentialInLoadBalancing = ({
           )
         }
         {
-          authRemoved && t('modelProvider.auth.authRemoved', { ns: 'common' })
+          authRemoved && t($ => $['modelProvider.auth.authRemoved'], { ns: 'common' })
         }
         {
-          unavailable && t('auth.credentialUnavailableInButton', { ns: 'plugin' })
+          unavailable && t($ => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })
         }
         {
-          empty && canCreateCredential && !notAllowCustomCredential && t('modelProvider.auth.addCredential', { ns: 'common' })
+          empty && canCreateCredential && !notAllowCustomCredential && t($ => $['modelProvider.auth.addCredential'], { ns: 'common' })
         }
         {
-          empty && (!canCreateCredential || notAllowCustomCredential) && t('auth.credentialUnavailableInButton', { ns: 'plugin' })
+          empty && (!canCreateCredential || notAllowCustomCredential) && t($ => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })
         }
         {
           !authRemoved && !unavailable && !empty && customModelCredential?.credential_name
@@ -104,7 +104,7 @@ const SwitchCredentialInLoadBalancing = ({
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t($ => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )
@@ -145,7 +145,7 @@ const SwitchCredentialInLoadBalancing = ({
       enableAddModelCredential
       showItemSelectedIcon
       hideAddAction={!canCreateCredential}
-      popupTitle={t('modelProvider.auth.modelCredentials', { ns: 'common' })}
+      popupTitle={t($ => $['modelProvider.auth.modelCredentials'], { ns: 'common' })}
       triggerOnlyOpenModal={!credentials?.length && canCreateCredential}
     />
   )

@@ -46,7 +46,7 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
       return Promise.reject(new Error(errorMsg))
     }
     await doAddMetaData(payload)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
   }, [checkName, doAddMetaData, t])
   const hasData = list.length > 0
   const handleSave = async () => {
@@ -58,7 +58,7 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
       }],
     })
     setIsEdit(false)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
   }
   const handleCancel = () => {
     setTempList(list)

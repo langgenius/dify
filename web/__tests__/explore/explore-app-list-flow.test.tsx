@@ -21,7 +21,7 @@ type MockAppContext = {
 
 const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
 
-const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
+const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en-US"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
 let mockExploreData: { categories: string[], allList: App[] } | undefined
@@ -118,7 +118,27 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
@@ -215,8 +235,8 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   } as unknown as ReturnType<typeof useMembers>)
 }
 
-const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
+const localeInput = { query: { language: 'en-US' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
 const homeContinueWorkAppsInput = {
   query: {
     page: 1,

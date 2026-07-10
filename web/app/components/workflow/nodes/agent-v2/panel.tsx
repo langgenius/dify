@@ -139,9 +139,9 @@ export function AgentV2Panel({
   const displayedAgent = rosterAgentQuery.data ?? (isInlineAgentPending || isInlineAgentReady
     ? {
         id: inlineAgentId ?? id,
-        name: inlineAgent?.name || t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }),
+        name: inlineAgent?.name || t($ => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }),
         description: inlineAgent?.description,
-        role: t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }),
+        role: t($ => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }),
       }
     : undefined)
 

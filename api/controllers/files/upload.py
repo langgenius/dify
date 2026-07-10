@@ -1,5 +1,3 @@
-from mimetypes import guess_extension
-
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
@@ -8,7 +6,7 @@ from werkzeug.exceptions import Forbidden
 
 import services
 from core.tools.signature import verify_plugin_file_signature
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
 
@@ -110,7 +108,7 @@ class PluginUploadFileApi(Resource):
                 conversation_id=args.conversation_id,
             )
 
-            extension = guess_extension(tool_file.mimetype) or ".bin"
+            extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
 
             # Create a dictionary with all the necessary attributes

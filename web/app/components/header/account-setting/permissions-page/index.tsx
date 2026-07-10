@@ -7,8 +7,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useCreateWorkspaceRole, useUpdateWorkspaceRole } from '@/service/access-control/use-workspace-roles'
 import { hasPermission } from '@/utils/permission'
@@ -76,7 +76,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       if (mode === 'create') {
         createWorkspaceRole({ name, description, permission_keys: permissionKeys }, {
           onSuccess: () => {
-            toast.success(t('role.created', { ns: 'permission' }))
+            toast.success(t($ => $['role.created'], { ns: 'permission' }))
             closeModal()
           },
         })
@@ -84,7 +84,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       else if (mode === 'edit') {
         updateWorkspaceRole({ id: roleId, name, description, permission_keys: permissionKeys }, {
           onSuccess: () => {
-            toast.success(t('role.updated', { ns: 'permission' }))
+            toast.success(t($ => $['role.updated'], { ns: 'permission' }))
             closeModal()
           },
         })
@@ -127,10 +127,10 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
         <div className="flex min-h-[67px] min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
           <div className="flex min-w-0 grow flex-col gap-y-1 overflow-hidden">
             <div className="truncate system-md-semibold text-text-secondary">
-              {t('role.workspaceRoles.title', { ns: 'permission' })}
+              {t($ => $['role.workspaceRoles.title'], { ns: 'permission' })}
             </div>
             <div className="truncate system-xs-regular text-text-tertiary">
-              {t('role.workspaceRoles.description', { ns: 'permission' })}
+              {t($ => $['role.workspaceRoles.description'], { ns: 'permission' })}
             </div>
           </div>
           {canManageRoles && (
@@ -141,7 +141,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
                 onClick={openCreate}
                 disabled={isLoading}
               >
-                {t('role.addRole', { ns: 'permission' })}
+                {t($ => $['role.addRole'], { ns: 'permission' })}
               </Button>
             </div>
           )}

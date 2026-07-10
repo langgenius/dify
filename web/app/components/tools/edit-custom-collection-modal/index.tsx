@@ -163,10 +163,10 @@ const EditCustomCollectionModal: FC<Props> = ({
 
     let errorMessage = ''
     if (!postData.provider)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
+      errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: t($ => $['createTool.name'], { ns: 'tools' }) })
 
     if (!postData.schema)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
+      errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: t($ => $['createTool.schema'], { ns: 'tools' }) })
 
     if (errorMessage) {
       toast.error(errorMessage)
@@ -224,10 +224,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <div className="shrink-0 border-b border-divider-regular py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {t(`createTool.${isAdd ? 'title' : 'editTitle'}`, { ns: 'tools' })}
+                      {t($ => $[`createTool.${isAdd ? 'title' : 'editTitle'}`], { ns: 'tools' })}
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -237,7 +237,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
                       <div>
                         <div className="py-2 system-sm-medium text-text-primary">
-                          {t('createTool.name', { ns: 'tools' })}
+                          {t($ => $['createTool.name'], { ns: 'tools' })}
                           {' '}
                           <span className="ml-1 text-red-500">*</span>
                         </div>
@@ -245,7 +245,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" icon={emoji.content} background={emoji.background} />
                           <Input
                             className="h-10 grow"
-                            placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
+                            placeholder={t($ => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
                             value={customCollection.provider}
                             onChange={(e) => {
                               const newCollection = produce(customCollection, (draft) => {
@@ -262,7 +262,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div className="py-2 system-sm-medium text-text-primary">
-                              {t('createTool.schema', { ns: 'tools' })}
+                              {t($ => $['createTool.schema'], { ns: 'tools' })}
                               <span className="ml-1 text-red-500">*</span>
                             </div>
                             <div className="mx-2 h-3 w-px bg-divider-regular"></div>
@@ -272,7 +272,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                               rel="noopener noreferrer"
                               className="flex h-[18px] items-center space-x-1 text-text-accent"
                             >
-                              <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
+                              <div className="text-xs font-normal">{t($ => $['createTool.viewSchemaSpec'], { ns: 'tools' })}</div>
                               <LinkExternal02 className="size-3" />
                             </a>
                           </div>
@@ -280,26 +280,26 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                         </div>
                         <Textarea
-                          aria-label={t('createTool.schema', { ns: 'tools' })}
+                          aria-label={t($ => $['createTool.schema'], { ns: 'tools' })}
                           className="h-[240px] resize-none"
                           value={schema}
                           onValueChange={value => setSchema(value)}
-                          placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
+                          placeholder={t($ => $['createTool.schemaPlaceHolder'], { ns: 'tools' })!}
                         />
                       </div>
 
                       {/* Available Tools  */}
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">{t('createTool.availableTools.title', { ns: 'tools' })}</div>
+                        <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.availableTools.title'], { ns: 'tools' })}</div>
                         <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                           <table className="w-full system-xs-regular text-text-secondary">
                             <thead className="text-text-tertiary uppercase">
                               <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-divider-regular')}>
-                                <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.name', { ns: 'tools' })}</th>
-                                <th className="w-[236px] p-2 pl-3 font-medium">{t('createTool.availableTools.description', { ns: 'tools' })}</th>
-                                <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.method', { ns: 'tools' })}</th>
-                                <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.path', { ns: 'tools' })}</th>
-                                <th className="w-[54px] p-2 pl-3 font-medium">{t('createTool.availableTools.action', { ns: 'tools' })}</th>
+                                <th className="p-2 pl-3 font-medium">{t($ => $['createTool.availableTools.name'], { ns: 'tools' })}</th>
+                                <th className="w-[236px] p-2 pl-3 font-medium">{t($ => $['createTool.availableTools.description'], { ns: 'tools' })}</th>
+                                <th className="p-2 pl-3 font-medium">{t($ => $['createTool.availableTools.method'], { ns: 'tools' })}</th>
+                                <th className="p-2 pl-3 font-medium">{t($ => $['createTool.availableTools.path'], { ns: 'tools' })}</th>
+                                <th className="w-[54px] p-2 pl-3 font-medium">{t($ => $['createTool.availableTools.action'], { ns: 'tools' })}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -317,7 +317,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                         setIsShowTestApi(true)
                                       }}
                                     >
-                                      {t('createTool.availableTools.test', { ns: 'tools' })}
+                                      {t($ => $['createTool.availableTools.test'], { ns: 'tools' })}
                                     </Button>
                                   </td>
                                 </tr>
@@ -329,22 +329,22 @@ const EditCustomCollectionModal: FC<Props> = ({
 
                       {/* Authorization method */}
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                        <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.title'], { ns: 'tools' })}</div>
                         <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
-                          <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
+                          <div className="system-xs-regular text-text-primary">{t($ => $[`createTool.authMethod.types.${credential.auth_type}`], { ns: 'tools' })}</div>
                           <RiSettings2Line className="size-4 text-text-secondary" />
                         </div>
                       </div>
 
                       {/* Labels */}
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                        <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.toolInput.label'], { ns: 'tools' })}</div>
                         <LabelSelector value={labels} onChange={handleLabelSelect} />
                       </div>
 
                       {/* Privacy Policy */}
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                        <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.privacyPolicy'], { ns: 'tools' })}</div>
                         <Input
                           value={customCollection.privacy_policy}
                           onChange={(e) => {
@@ -354,12 +354,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                             setCustomCollection(newCollection)
                           }}
                           className="h-10 grow"
-                          placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                          placeholder={t($ => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''}
                         />
                       </div>
 
                       <div>
-                        <div className="py-2 system-sm-medium text-text-primary">{t('createTool.customDisclaimer', { ns: 'tools' })}</div>
+                        <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.customDisclaimer'], { ns: 'tools' })}</div>
                         <Input
                           value={customCollection.custom_disclaimer}
                           onChange={(e) => {
@@ -369,7 +369,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                             setCustomCollection(newCollection)
                           }}
                           className="h-10 grow"
-                          placeholder={t('createTool.customDisclaimerPlaceholder', { ns: 'tools' }) || ''}
+                          placeholder={t($ => $['createTool.customDisclaimerPlaceholder'], { ns: 'tools' }) || ''}
                         />
                       </div>
 
@@ -377,12 +377,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                     <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
                       {
                         isEdit && (
-                          <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                          <Button variant="primary" tone="destructive" onClick={onRemove}>{t($ => $['operation.delete'], { ns: 'common' })}</Button>
                         )
                       }
                       <div className="flex space-x-2">
-                        <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                        <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                        <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+                        <Button variant="primary" onClick={handleSave}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
                       </div>
                     </div>
                     {showEmojiPicker && (

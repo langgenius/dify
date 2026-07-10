@@ -90,11 +90,6 @@ vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
     </div>
   ),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))

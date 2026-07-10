@@ -21,7 +21,7 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
   })
   const { mutate: changePriority, isPending: isChangingPriority } = useMutation(consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions({
     onSuccess: () => {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       queryClient.invalidateQueries({
         queryKey: modelProviderModelListQueryKey,
         exact: true,
@@ -34,7 +34,7 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
       })
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     },
   }))
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {

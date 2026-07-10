@@ -71,12 +71,12 @@ const Uploading: FC<Props> = ({
         onBundleUploaded(response as Dependency[])
         return
       }
-      onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+      onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
       return
     }
 
     if (!isPackageUploadResponse(response)) {
-      onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+      onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
       return
     }
 
@@ -110,7 +110,7 @@ const Uploading: FC<Props> = ({
         <div className="flex items-center gap-1 self-stretch">
           <span className="i-ri-loader-2-line size-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
-            {t(`${i18nPrefix}.uploadingPackage`, {
+            {t($ => $[`${i18nPrefix}.uploadingPackage`], {
               ns: 'plugin',
               packageName: fileName,
             })}
@@ -130,14 +130,14 @@ const Uploading: FC<Props> = ({
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           className="min-w-[72px]"
           disabled
         >
-          {t(`${i18nPrefix}.install`, { ns: 'plugin' })}
+          {t($ => $[`${i18nPrefix}.install`], { ns: 'plugin' })}
         </Button>
       </div>
     </>

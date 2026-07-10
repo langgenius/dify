@@ -12,6 +12,18 @@ describe('YamlStore.doGet', () => {
     expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
   })
 
+  it('returns default when content is empty', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('')
+    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  })
+
+  it('returns default when content contains only comments', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('# empty configuration\n')
+    expect(store.doGet({ key: 'name', default: 'fallback' })).toBe('fallback')
+  })
+
   it('reads a flat key', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('name: alice\n')
@@ -22,6 +34,51 @@ describe('YamlStore.doGet', () => {
     const store = new YamlStore('/irrelevant')
     store.setRawContent('user:\n  id: 42\n')
     expect(store.doGet({ key: 'user.id', default: 0 })).toBe(42)
+  })
+
+  it('resolves YAML merge keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('defaults: &defaults\n  format: json\nselected:\n  <<: *defaults\n')
+    expect(store.doGet({ key: 'selected.format', default: '' })).toBe('json')
+  })
+
+  it('parses timestamp scalars as dates', () => {
+    const store = new YamlStore('/irrelevant')
+    const timestamp = '2026-07-10T03:04:05.000Z'
+    store.setRawContent(`created_at: ${timestamp}\n`)
+    expect(store.doGet<Date | null>({ key: 'created_at', default: null })).toEqual(new Date(timestamp))
+  })
+
+  it('rejects multiple YAML documents', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('name: alice\n---\nname: bob\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' }))
+      .toThrowError(/single document/)
+  })
+
+  it('rejects duplicate mapping keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('name: alice\nname: bob\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' }))
+      .toThrowError(/duplicated mapping key/)
+  })
+
+  it('rejects complex mapping keys', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('? [name, region]\n: deployment\n')
+
+    expect(() => store.doGet({ key: 'name', default: '' }))
+      .toThrowError(/does not support complex keys/)
+  })
+
+  it('parses explicit YAML sets as JavaScript sets', () => {
+    const store = new YamlStore('/irrelevant')
+    store.setRawContent('features: !!set\n  workflow:\n  chat:\n')
+
+    expect(store.doGet<Set<string>>({ key: 'features', default: new Set() }))
+      .toEqual(new Set(['workflow', 'chat']))
   })
 
   it('returns default for a missing flat key', () => {

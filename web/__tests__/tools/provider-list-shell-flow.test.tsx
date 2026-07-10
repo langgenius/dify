@@ -7,13 +7,6 @@ import { CollectionType } from '@/app/components/tools/types'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockInvalidateInstalledPluginList = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     getTagLabel: (name: string) => name,

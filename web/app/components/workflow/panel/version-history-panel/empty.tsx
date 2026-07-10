@@ -19,11 +19,11 @@ const Empty: FC<EmptyProps> = ({
         <RiHistoryLine className="size-10 text-text-empty-state-icon" />
       </div>
       <div className="flex justify-center system-xs-regular text-text-tertiary">
-        {t('versionHistory.filter.empty', { ns: 'workflow' })}
+        {t($ => $['versionHistory.filter.empty'], { ns: 'workflow' })}
       </div>
       <div className="flex justify-center">
         <Button nativeButton={false} size="small" onClick={onResetFilter}>
-          {t('versionHistory.filter.reset', { ns: 'workflow' })}
+          {t($ => $['versionHistory.filter.reset'], { ns: 'workflow' })}
         </Button>
       </div>
     </div>

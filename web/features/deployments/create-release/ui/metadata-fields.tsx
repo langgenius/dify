@@ -46,9 +46,9 @@ export function ReleaseMetadataFields() {
   const releaseNameErrors = releaseNameField.meta?.errors ?? []
   const hasReleaseNameRequired = hasReleaseNameRequiredError(releaseNameErrors)
   const releaseNameError = hasReleaseNameRequired
-    ? t('versions.releaseNameRequired')
+    ? t($ => $['versions.releaseNameRequired'])
     : hasReleaseNameConflict
-      ? t('versions.releaseNameConflict')
+      ? t($ => $['versions.releaseNameConflict'])
       : ''
 
   useEffect(() => {
@@ -59,13 +59,13 @@ export function ReleaseMetadataFields() {
     <>
       <div className="flex flex-col gap-2">
         <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-name">
-          {t('versions.releaseNameLabel')}
+          {t($ => $['versions.releaseNameLabel'])}
         </label>
         <Input
           ref={releaseNameInputRef}
           id="release-name"
           name="releaseName"
-          placeholder={t('versions.releaseNamePlaceholder')}
+          placeholder={t($ => $['versions.releaseNamePlaceholder'])}
           maxLength={128}
           autoComplete="off"
           value={releaseNameField.value}
@@ -86,11 +86,11 @@ export function ReleaseMetadataFields() {
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-description">
-            {t('versions.releaseDescriptionLabel')}
+            {t($ => $['versions.releaseDescriptionLabel'])}
           </label>
           <div className="flex items-center gap-2">
             <span className="system-xs-regular text-text-quaternary">
-              {t('versions.optional')}
+              {t($ => $['versions.optional'])}
             </span>
             <span
               className={cn(
@@ -107,7 +107,7 @@ export function ReleaseMetadataFields() {
         <Textarea
           id="release-description"
           name="releaseDescription"
-          placeholder={t('versions.releaseDescriptionPlaceholder')}
+          placeholder={t($ => $['versions.releaseDescriptionPlaceholder'])}
           maxLength={DESCRIPTION_MAX_LENGTH}
           autoComplete="off"
           value={releaseDescriptionField.value}

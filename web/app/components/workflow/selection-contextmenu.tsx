@@ -1,4 +1,5 @@
 import type { Node } from './types'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   ContextMenuContent,
   ContextMenuGroup,
@@ -16,7 +17,7 @@ import { useStore as useReactFlowStore } from 'reactflow'
 import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
 import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
@@ -47,11 +48,11 @@ type MenuItem = {
   alignType: AlignTypeValue
   icon: string
   iconClassName?: string
-  translationKey: string
+  translationKey: I18nKeysWithPrefix<'workflow', 'operator.'>
 }
 
 type MenuSection = {
-  titleKey: string
+  titleKey: I18nKeysWithPrefix<'workflow', 'operator.'>
   items: MenuItem[]
 }
 
@@ -383,7 +384,7 @@ export function SelectionContextmenu({
                 className="px-3 text-text-secondary"
                 onClick={handleOpenCreateSnippet}
               >
-                <span>{t('snippet.createDialogTitle', { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
+                <span>{t($ => $['snippet.createDialogTitle'], { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
               </ContextMenuItem>
             </ContextMenuGroup>
             <ContextMenuSeparator />
@@ -394,14 +395,14 @@ export function SelectionContextmenu({
             className="justify-between px-3 text-text-secondary"
             onClick={handleCopyNodes}
           >
-            <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
+            <span>{t($ => $['common.copy'], { defaultValue: 'common.copy', ns: 'workflow' })}</span>
             <ShortcutKbd shortcut="workflow.copy" />
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
             onClick={handleDuplicateNodes}
           >
-            <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
+            <span>{t($ => $['common.duplicate'], { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
             <ShortcutKbd shortcut="workflow.duplicate" />
           </ContextMenuItem>
         </ContextMenuGroup>
@@ -411,7 +412,7 @@ export function SelectionContextmenu({
             className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
             onClick={handleDeleteNodes}
           >
-            <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
+            <span>{t($ => $['operation.delete'], { defaultValue: 'operation.delete', ns: 'common' })}</span>
             <ShortcutKbd shortcut="workflow.delete" />
           </ContextMenuItem>
         </ContextMenuGroup>
@@ -420,7 +421,7 @@ export function SelectionContextmenu({
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
             <ContextMenuLabel>
-              {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
+              {t($ => $[section.titleKey], { defaultValue: section.titleKey, ns: 'workflow' })}
             </ContextMenuLabel>
             {section.items.map((item) => {
               return (
@@ -430,7 +431,7 @@ export function SelectionContextmenu({
                   onClick={() => handleAlignNodes(item.alignType)}
                 >
                   <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                  {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                  {t($ => $[item.translationKey], { defaultValue: item.translationKey, ns: 'workflow' })}
                 </ContextMenuItem>
               )
             })}

@@ -25,7 +25,8 @@ import {
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -61,7 +62,7 @@ const Panel: FC = () => {
     await updateTracingStatus({ appId, body: tracingStatus })
     setTracingStatus(tracingStatus)
     if (!noToast) {
-      toast(t('api.success', { ns: 'common' }), { type: 'success' })
+      toast(t($ => $['api.success'], { ns: 'common' }), { type: 'success' })
     }
   }
 
@@ -269,7 +270,7 @@ const Panel: FC = () => {
             )}
           >
             <TracingIcon size="md" />
-            <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="mx-2 system-sm-semibold text-text-secondary">{t($ => $[`${I18N_PREFIX}.title`], { ns: 'app' })}</div>
             <div className="rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
@@ -310,7 +311,7 @@ const Panel: FC = () => {
             <div className="mr-1 ml-4 flex items-center">
               <StatusDot status={enabled ? 'success' : 'disabled'} />
               <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
+                {t($ => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </div>
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}

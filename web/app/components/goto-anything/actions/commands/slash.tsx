@@ -8,11 +8,11 @@ export const slashAction: ActionItem = {
   shortcut: '/',
   get title() {
     const i18n = getI18n()
-    return i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' })
+    return i18n.t($ => $['gotoAnything.actions.slashTitle'], { ns: 'app' })
   },
   get description() {
     const i18n = getI18n()
-    return i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' })
+    return i18n.t($ => $['gotoAnything.actions.slashDesc'], { ns: 'app' })
   },
   action: (result) => {
     if (result.type !== 'command')

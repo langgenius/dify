@@ -4,12 +4,12 @@ import type {
 } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 
-type CollapseProps = Omit<ComponentProps<typeof CollapsibleRoot>, 'open' | 'onOpenChange'> & {
+type CollapseProps = Omit<ComponentProps<typeof Collapsible>, 'open' | 'onOpenChange'> & {
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
 }
@@ -20,7 +20,7 @@ export function Collapse({
   ...props
 }: CollapseProps) {
   return (
-    <CollapsibleRoot
+    <Collapsible
       open={collapsed === undefined ? undefined : !collapsed}
       onOpenChange={open => onCollapse?.(!open)}
       {...props}

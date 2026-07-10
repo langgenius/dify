@@ -11,10 +11,8 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  datasetRbacEnabledAtom,
-  userProfileAtom,
-} from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import Item from './permission-item'
@@ -113,7 +111,7 @@ const PermissionSelector = ({
                     <span className="i-ri-lock-2-line size-4 text-text-tertiary" />
                   </div>
                   <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">
-                    {t('form.permissionsAccessConfig', { ns: 'datasetSettings' })}
+                    {t($ => $['form.permissionsAccessConfig'], { ns: 'datasetSettings' })}
                   </div>
                 </>
               )}
@@ -124,7 +122,7 @@ const PermissionSelector = ({
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
                     </div>
                     <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                      {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
+                      {t($ => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
                     </div>
                   </>
                 )
@@ -136,7 +134,7 @@ const PermissionSelector = ({
                       <span className="i-ri-group-2-line size-4 text-text-secondary" />
                     </div>
                     <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                      {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
+                      {t($ => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
                     </div>
                   </>
                 )
@@ -203,7 +201,7 @@ const PermissionSelector = ({
                 leftIcon={
                   <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size="sm" />
                 }
-                text={t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
+                text={t($ => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
                 onClick={onSelectOnlyMe}
                 isSelected={isOnlyMe}
               />
@@ -214,7 +212,7 @@ const PermissionSelector = ({
                     <span className="i-ri-group-2-line size-4 text-text-secondary" />
                   </div>
                 )}
-                text={t('form.permissionsAllMember', { ns: 'datasetSettings' })}
+                text={t($ => $['form.permissionsAllMember'], { ns: 'datasetSettings' })}
                 onClick={onSelectAllMembers}
                 isSelected={isAllTeamMembers}
               />
@@ -225,7 +223,7 @@ const PermissionSelector = ({
                     <span className="i-ri-lock-2-line size-4 text-text-secondary" />
                   </div>
                 )}
-                text={t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}
+                text={t($ => $['form.permissionsInvitedMembers'], { ns: 'datasetSettings' })}
                 onClick={onSelectPartialMembers}
                 isSelected={isPartialMembers}
               />
@@ -238,13 +236,13 @@ const PermissionSelector = ({
                     <Input
                       className={cn('w-full pl-[26px]', keywords && 'pr-[26px]')}
                       value={keywords}
-                      placeholder={t('operation.search', { ns: 'common' }) || ''}
+                      placeholder={t($ => $['operation.search'], { ns: 'common' }) || ''}
                       onChange={e => handleKeywordsChange(e.target.value)}
                     />
                     {!!keywords && (
                       <button
                         type="button"
-                        aria-label={t('operation.clear', { ns: 'common' })}
+                        aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                         className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px"
                         onClick={() => handleKeywordsChange('')}
                       >
@@ -280,7 +278,7 @@ const PermissionSelector = ({
                   {
                     !showMe && filteredMemberList.length === 0 && (
                       <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
-                        {t('form.onSearchResults', { ns: 'datasetSettings' })}
+                        {t($ => $['form.onSearchResults'], { ns: 'datasetSettings' })}
                       </div>
                     )
                   }

@@ -117,7 +117,7 @@ const useSingleRunFormParams = ({
         onChange: setInputVarValues,
       },
       {
-        label: t(`${i18nPrefix}.input`, { ns: 'workflow' })!,
+        label: t($ => $[`${i18nPrefix}.input`], { ns: 'workflow' })!,
         inputs: [{
           label: '',
           variable: iteratorInputKey,

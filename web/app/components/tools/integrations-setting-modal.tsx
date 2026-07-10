@@ -46,7 +46,7 @@ export default function IntegrationsSettingModal({
               variant="tertiary"
               size="large"
               className="px-2"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
               <span className="i-ri-close-line h-5 w-5" />

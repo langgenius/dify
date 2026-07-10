@@ -39,7 +39,19 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
   }),
 }))
 
-vi.mock('@/context/app-context-state', () => ({
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
   workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
 }))
 

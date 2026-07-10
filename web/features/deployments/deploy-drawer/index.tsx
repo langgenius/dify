@@ -41,12 +41,12 @@ export function DeployDrawer() {
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:w-[640px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerCloseButton
-              aria-label={t('deployDrawer.close')}
+              aria-label={t($ => $['deployDrawer.close'])}
               className="absolute top-4 right-5 size-6 rounded-md"
             />
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               {!drawerAppInstanceId
-                ? <div className="p-6 text-text-tertiary">{t('deployDrawer.notFound')}</div>
+                ? <div className="p-6 text-text-tertiary">{t($ => $['deployDrawer.notFound'])}</div>
                 : (
                     <DeployForm
                       key={formKey}

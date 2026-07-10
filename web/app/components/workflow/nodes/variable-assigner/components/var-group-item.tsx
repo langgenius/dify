@@ -94,7 +94,7 @@ const VarGroupItem: FC<Props> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
+      toast.error(t($ => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: errorKey }))
       return
     }
     onGroupNameChange?.(value)
@@ -143,7 +143,7 @@ const VarGroupItem: FC<Props> = ({
               )}
             </div>
           )
-        : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
+        : t($ => $[`${i18nPrefix}.title`], { ns: 'workflow' })!}
       operations={(
         <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (

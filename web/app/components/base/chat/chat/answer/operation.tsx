@@ -112,21 +112,21 @@ function Operation({
   const canManageAnnotation = !readonly && !!onAnnotationAdded && !!onAnnotationEdited && !!onAnnotationRemoved
   const shouldShowAnnotationAction = canManageAnnotation && !!config?.supportAnnotation && !!config.annotation_reply?.enabled && !humanInputFormDataList?.length
 
-  const userFeedbackLabel = t('table.header.userRate', { ns: 'appLog' }) || 'User feedback'
-  const adminFeedbackLabel = t('table.header.adminRate', { ns: 'appLog' }) || 'Admin feedback'
-  const likeLabel = t('detail.operation.like', { ns: 'appLog' }) || 'Like'
-  const dislikeLabel = t('detail.operation.dislike', { ns: 'appLog' }) || 'Dislike'
-  const removeFeedbackLabel = t('operation.remove', { ns: 'common' }) || 'Remove'
-  const copyLabel = t('operation.copy', { ns: 'common' }) || 'Copy'
-  const regenerateLabel = t('operation.regenerate', { ns: 'common' }) || 'Regenerate'
+  const userFeedbackLabel = t($ => $['table.header.userRate'], { ns: 'appLog' }) || 'User feedback'
+  const adminFeedbackLabel = t($ => $['table.header.adminRate'], { ns: 'appLog' }) || 'Admin feedback'
+  const likeLabel = t($ => $['detail.operation.like'], { ns: 'appLog' }) || 'Like'
+  const dislikeLabel = t($ => $['detail.operation.dislike'], { ns: 'appLog' }) || 'Dislike'
+  const removeFeedbackLabel = t($ => $['operation.remove'], { ns: 'common' }) || 'Remove'
+  const copyLabel = t($ => $['operation.copy'], { ns: 'common' }) || 'Copy'
+  const regenerateLabel = t($ => $['operation.regenerate'], { ns: 'common' }) || 'Regenerate'
 
   const buildFeedbackTooltip = (feedbackData?: Feedback | null, label = userFeedbackLabel) => {
     if (!feedbackData?.rating)
       return label
 
     const ratingLabel = feedbackData.rating === 'like'
-      ? (t('detail.operation.like', { ns: 'appLog' }) || 'like')
-      : (t('detail.operation.dislike', { ns: 'appLog' }) || 'dislike')
+      ? (t($ => $['detail.operation.like'], { ns: 'appLog' }) || 'like')
+      : (t($ => $['detail.operation.dislike'], { ns: 'appLog' }) || 'dislike')
     const feedbackText = feedbackData.content?.trim()
 
     if (feedbackText)
@@ -331,7 +331,7 @@ function Operation({
                 aria-label={copyLabel}
                 onClick={() => {
                   copy(content)
-                  toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                  toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                 }}
               >
                 <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
@@ -386,37 +386,37 @@ function Operation({
             <div className="flex max-h-[80dvh] flex-col">
               <div className="relative shrink-0 p-6 pr-14 pb-3">
                 <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                  {t('feedback.title', { ns: 'common' }) || 'Provide Feedback'}
+                  {t($ => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
                 </DialogTitle>
                 <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-                  {t('feedback.subtitle', { ns: 'common' }) || 'Please tell us what went wrong with this response'}
+                  {t($ => $['feedback.subtitle'], { ns: 'common' }) || 'Please tell us what went wrong with this response'}
                 </DialogDescription>
                 <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
                 <label htmlFor={feedbackTextareaId} className="mb-2 block system-sm-semibold text-text-secondary">
-                  {t('feedback.content', { ns: 'common' }) || 'Feedback Content'}
+                  {t($ => $['feedback.content'], { ns: 'common' }) || 'Feedback Content'}
                 </label>
                 <Textarea
                   id={feedbackTextareaId}
                   name="feedback-content"
                   value={feedbackContent}
                   onValueChange={value => setFeedbackContent(value)}
-                  placeholder={t('feedback.placeholder', { ns: 'common' }) || 'Please describe what went wrong or how we can improve…'}
+                  placeholder={t($ => $['feedback.placeholder'], { ns: 'common' }) || 'Please describe what went wrong or how we can improve…'}
                   rows={4}
                   className="w-full"
                 />
               </div>
               <div className="flex shrink-0 justify-end p-6 pt-5">
                 <Button onClick={handleFeedbackCancel}>
-                  {t('operation.cancel', { ns: 'common' }) || 'Cancel'}
+                  {t($ => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
                 </Button>
                 <Button
                   className="ml-2"
                   variant="primary"
                   onClick={handleFeedbackSubmit}
                 >
-                  {t('operation.submit', { ns: 'common' }) || 'Submit'}
+                  {t($ => $['operation.submit'], { ns: 'common' }) || 'Submit'}
                 </Button>
               </div>
             </div>

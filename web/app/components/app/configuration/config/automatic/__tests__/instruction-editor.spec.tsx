@@ -4,13 +4,6 @@ import InstructionEditor from '../instruction-editor'
 import { GeneratorType } from '../types'
 
 const mockEmit = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -60,7 +53,7 @@ describe('InstructionEditor', () => {
       />,
     )
 
-    expect(screen.getByText('generate.instructionPlaceHolderTitle')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)generate\.instructionPlaceHolderTitle(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByTestId('current-block')).toHaveTextContent('true')
     expect(screen.getByTestId('error-block')).toHaveTextContent('false')
 
@@ -78,11 +71,11 @@ describe('InstructionEditor', () => {
       />,
     )
 
-    expect(screen.getByText('generate.codeGenInstructionPlaceHolderLine')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)generate\.codeGenInstructionPlaceHolderLine(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByTestId('error-block')).toHaveTextContent('true')
     expect(screen.getByTestId('last-run-block')).toHaveTextContent('true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'generate.insertContext' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.insertContext(?=$|:)/ }))
 
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
       instanceId: 'editor-1',

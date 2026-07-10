@@ -43,7 +43,7 @@ const useAvailableVarList = (nodeId: string, {
   const snippetInputFieldAvailability = appendSnippetInputFieldVars({
     availableNodes,
     fields: snippetInputFields,
-    title: t('panelTitle', { ns: 'snippet' }),
+    title: t($ => $.panelTitle, { ns: 'snippet' }),
   })
   const {
     parentNode: iterationNode,

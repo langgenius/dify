@@ -27,15 +27,15 @@ export function RosterSortSelect() {
       }}
     >
       <SelectTrigger
-        aria-label={t('roster.sort.label')}
+        aria-label={t($ => $['roster.sort.label'])}
         className="h-8 w-fit max-w-45 min-w-0 gap-0 py-1 pr-2.5 pl-2"
       >
         <span className="flex min-w-0 items-center gap-1 px-1">
           <span className="shrink-0 system-sm-regular text-text-tertiary">
-            {t('roster.sort.label')}
+            {t($ => $['roster.sort.label'])}
           </span>
           <span className="truncate system-sm-medium text-text-secondary">
-            {t(selectedOption.labelKey)}
+            {t($ => $[selectedOption.labelKey])}
           </span>
         </span>
       </SelectTrigger>
@@ -43,14 +43,14 @@ export function RosterSortSelect() {
         placement="bottom-start"
         sideOffset={4}
         popupClassName="w-60"
-        listProps={{ 'aria-label': t('roster.sort.optionsLabel') }}
+        listProps={{ 'aria-label': t($ => $['roster.sort.optionsLabel']) }}
       >
         {rosterSortOptions.map(option => (
           <SelectItem
             key={option.value}
             value={option.value}
           >
-            <SelectItemText title={t(option.labelKey)}>{t(option.labelKey)}</SelectItemText>
+            <SelectItemText title={t($ => $[option.labelKey])}>{t($ => $[option.labelKey])}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
         ))}

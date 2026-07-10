@@ -303,7 +303,7 @@ const VarReferencePicker: FC<Props> = ({
       }
     }
     if (tooltipType === 'invalid-variable')
-      return { kind: 'invalid-variable', message: t('errorMsg.invalidVariable', { ns: 'workflow' }) }
+      return { kind: 'invalid-variable', message: t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' }) }
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -343,7 +343,7 @@ const VarReferencePicker: FC<Props> = ({
     [isChatVar, isEnv, isGlobal, isLoopVar, isRagVar],
   )
 
-  const triggerPlaceholder = placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+  const triggerPlaceholder = placeholder ?? t($ => $['common.setVarValuePlaceholder'], { ns: 'workflow' })
   const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
 
   return (

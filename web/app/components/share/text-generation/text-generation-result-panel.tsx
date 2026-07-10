@@ -155,7 +155,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
               !isPC && 'px-4 pt-3 pb-1',
             )}
           >
-            <div className="system-md-semibold-uppercase text-text-primary">{t('generation.executions', { ns: 'share', num: allTaskList.length })}</div>
+            <div className="system-md-semibold-uppercase text-text-primary">{t($ => $['generation.executions'], { ns: 'share', num: allTaskList.length })}</div>
             {allSuccessTaskList.length > 0 && (
               <ResDownload
                 isMobile={!isPC}
@@ -182,14 +182,14 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
           <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
             <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
-            <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
+            <div className="system-sm-medium text-text-secondary">{t($ => $['generation.batchFailed.info'], { ns: 'share', num: allFailedTaskList.length })}</div>
             <div className="h-3.5 w-px bg-divider-regular"></div>
             <button
               type="button"
               className="inline cursor-pointer border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleRetryAllFailedTask}
             >
-              {t('generation.batchFailed.retry', { ns: 'share' })}
+              {t($ => $['generation.batchFailed.retry'], { ns: 'share' })}
             </button>
           </div>
         )}

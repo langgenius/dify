@@ -50,7 +50,7 @@ function PopupItem({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
-  const suggestionTip = t('modelProvider.selector.suggestionTip', { ns: 'common' })
+  const suggestionTip = t($ => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -124,13 +124,13 @@ function PopupItem({
                         ? (
                             <>
                               <CreditsCoin className="size-3" />
-                              <span className="ml-1 truncate">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
+                              <span className="ml-1 truncate">{t($ => $['modelProvider.selector.aiCredits'], { ns: 'common' })}</span>
                             </>
                           )
                         : (
                             <>
                               <span className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
-                              <span className="ml-1 truncate text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
+                              <span className="ml-1 truncate text-text-warning">{t($ => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}</span>
                             </>
                           )
                     )
@@ -144,7 +144,7 @@ function PopupItem({
                     : (
                         <>
                           <StatusDot size="small" status="disabled" />
-                          <span className="ml-1 truncate text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
+                          <span className="ml-1 truncate text-text-tertiary">{t($ => $['modelProvider.selector.configureRequired'], { ns: 'common' })}</span>
                         </>
                       )}
                 {canOpenCredentialDropdown && <span className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary" />}
@@ -226,7 +226,7 @@ function PopupItem({
                     className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
                     onClick={handleOpenModelModal}
                   >
-                    {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
+                    {t($ => $['operation.add'], { ns: 'common' }).toLocaleUpperCase()}
                   </button>
                 )}
               </div>

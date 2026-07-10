@@ -2,13 +2,6 @@ import { render, screen } from '@testing-library/react'
 import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('echarts-for-react', () => ({
   default: (props: { option: unknown, opts?: unknown }) => {
     reactEChartsMock(props)
@@ -88,7 +81,7 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('analysis.totalMessages.title'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)analysis\.totalMessages\.title(?=$|:)/))!.toBeInTheDocument()
       expect(screen.getByText('0'))!.toBeInTheDocument()
       expect(screen.getByTestId('echarts'))!.toBeInTheDocument()
 

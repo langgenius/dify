@@ -32,8 +32,8 @@ export function ReleaseStepContent() {
 
   return (
     <StepShell
-      title={t('createGuide.release.title')}
-      description={t('createGuide.release.description')}
+      title={t($ => $['createGuide.release.title'])}
+      description={t($ => $['createGuide.release.description'])}
       hideHeader
     >
       <div className="flex flex-col gap-6">
@@ -50,7 +50,7 @@ function DeploymentInfoSection() {
   return (
     <div className="flex flex-col gap-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t('createGuide.release.deployInfo')}
+        {t($ => $['createGuide.release.deployInfo'])}
       </h3>
       <InstanceNameField />
       <InstanceDescriptionField />
@@ -64,7 +64,7 @@ function InitialReleaseSection() {
   return (
     <div className="flex flex-col gap-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t('createGuide.release.firstVersion')}
+        {t($ => $['createGuide.release.firstVersion'])}
       </h3>
       <ReleaseNameField />
       <ReleaseDescriptionField />
@@ -80,18 +80,18 @@ function InstanceNameField() {
   const selectedApp = useAtomValue(selectedAppAtom)
   const dslDefaultAppName = useAtomValue(dslDefaultAppNameAtom)
   const instanceNamePlaceholder = method === 'importDsl'
-    ? dslDefaultAppName || t('createGuide.dsl.defaultAppName')
+    ? dslDefaultAppName || t($ => $['createGuide.dsl.defaultAppName'])
     : selectedApp?.name
   const hasInstanceNameConflict = useAtomValue(hasInstanceNameConflictAtom)
   const instanceNameError = hasInstanceNameConflict
-    ? t('createGuide.release.instanceNameConflict')
+    ? t($ => $['createGuide.release.instanceNameConflict'])
     : undefined
   const instanceNameErrorId = 'create-guide-instance-name-error'
 
   return (
     <div className="flex flex-col gap-2">
       <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-instance-name">
-        {t('createGuide.release.instanceName')}
+        {t($ => $['createGuide.release.instanceName'])}
       </label>
       <Input
         id="create-guide-instance-name"
@@ -120,13 +120,13 @@ function InstanceDescriptionField() {
   return (
     <div className="flex flex-col gap-2">
       <OptionalFieldLabel htmlFor="create-guide-instance-description">
-        {t('createGuide.release.instanceDescription')}
+        {t($ => $['createGuide.release.instanceDescription'])}
       </OptionalFieldLabel>
       <textarea
         id="create-guide-instance-description"
         value={instanceDescription}
         onChange={event => setInstanceDescription(event.target.value)}
-        placeholder={t('createGuide.release.instanceDescriptionPlaceholder')}
+        placeholder={t($ => $['createGuide.release.instanceDescriptionPlaceholder'])}
         className={releaseTextareaClassName}
       />
     </div>
@@ -141,13 +141,13 @@ function ReleaseNameField() {
   return (
     <div className="flex flex-col gap-2">
       <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="create-guide-release-name">
-        {t('createGuide.release.releaseName')}
+        {t($ => $['createGuide.release.releaseName'])}
       </label>
       <Input
         id="create-guide-release-name"
         value={releaseName}
         onChange={event => setReleaseName(event.target.value)}
-        placeholder={t('createGuide.release.defaultName')}
+        placeholder={t($ => $['createGuide.release.defaultName'])}
         required
         className="h-9"
       />
@@ -163,13 +163,13 @@ function ReleaseDescriptionField() {
   return (
     <div className="flex flex-col gap-2">
       <OptionalFieldLabel htmlFor="create-guide-release-description">
-        {t('createGuide.release.releaseDescription')}
+        {t($ => $['createGuide.release.releaseDescription'])}
       </OptionalFieldLabel>
       <textarea
         id="create-guide-release-description"
         value={releaseDescription}
         onChange={event => setReleaseDescription(event.target.value)}
-        placeholder={t('createGuide.release.releaseDescriptionPlaceholder')}
+        placeholder={t($ => $['createGuide.release.releaseDescriptionPlaceholder'])}
         className={releaseTextareaClassName}
       />
     </div>
@@ -187,7 +187,7 @@ function OptionalFieldLabel({ children, htmlFor }: {
       <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor={htmlFor}>
         {children}
       </label>
-      <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+      <span className="system-xs-regular text-text-quaternary">{t($ => $['versions.optional'])}</span>
     </div>
   )
 }
@@ -201,10 +201,10 @@ export function ReleaseActionButtons() {
   return (
     <>
       <Button type="button" variant="secondary" onClick={() => setStep('source')}>
-        {t('createGuide.actions.back')}
+        {t($ => $['createGuide.actions.back'])}
       </Button>
       <Button type="button" variant="primary" disabled={!canGoNext} onClick={continueFromRelease}>
-        {t('createGuide.actions.next')}
+        {t($ => $['createGuide.actions.next'])}
       </Button>
     </>
   )

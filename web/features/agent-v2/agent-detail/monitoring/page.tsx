@@ -51,7 +51,7 @@ export function AgentMonitoringPage({
   const { t: tCommon } = useTranslation('common')
   const docLink = useDocLink()
   const [period, setPeriod] = useState(() => ({
-    name: t('agentDetail.monitoring.timeRanges.today'),
+    name: t($ => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
   }))
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all')
@@ -80,7 +80,7 @@ export function AgentMonitoringPage({
   const sourceItems: SourceFilterItem[] = [
     {
       value: 'all' as const,
-      name: t('agentDetail.monitoring.sources.all'),
+      name: t($ => $['agentDetail.monitoring.sources.all']),
     },
     ...sources.map(source => ({
       value: source.id,
@@ -92,21 +92,21 @@ export function AgentMonitoringPage({
   const shouldShowError = statisticsQuery.isError && !statisticsQuery.data
 
   return (
-    <AgentDetailSectionSurface label={t('agentDetail.sections.monitoring')}>
+    <AgentDetailSectionSurface label={t($ => $['agentDetail.sections.monitoring'])}>
       <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
-            {t('agentDetail.monitoring.title')}
+            {t($ => $['agentDetail.monitoring.title'])}
           </h2>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t('agentDetail.monitoring.description')}</span>
+            <span>{t($ => $['agentDetail.monitoring.description'])}</span>
             <a
               href={docLink('/use-dify/monitor/logs')}
               target="_blank"
               rel="noreferrer"
               className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              {t('agentDetail.monitoring.learnMore')}
+              {t($ => $['agentDetail.monitoring.learnMore'])}
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
           </p>
@@ -121,7 +121,7 @@ export function AgentMonitoringPage({
           <AgentMonitoringSourceFilter
             value={sourceFilter}
             items={sourceItems}
-            label={t('agentDetail.metadata.sourceLabel')}
+            label={t($ => $['agentDetail.metadata.sourceLabel'])}
             onSelect={(item) => {
               setSourceFilter(item.value)
             }}
@@ -142,7 +142,7 @@ export function AgentMonitoringPage({
         {shouldShowError && (
           <AgentMonitoringState>
             <div className="flex items-center justify-center gap-2">
-              <span>{t('agentDetail.monitoring.loadFailed')}</span>
+              <span>{t($ => $['agentDetail.monitoring.loadFailed'])}</span>
               <Button
                 variant="secondary"
                 size="small"
@@ -150,7 +150,7 @@ export function AgentMonitoringPage({
                   void statisticsQuery.refetch()
                 }}
               >
-                {tCommon('operation.retry')}
+                {tCommon($ => $['operation.retry'])}
               </Button>
             </div>
           </AgentMonitoringState>
@@ -195,8 +195,8 @@ function AgentMonitoringSourceFilter({
   const selectedName = selectedItem?.name ?? ''
   const triggerLabel = selectedName ? `${label} ${selectedName}` : label
   const clearLabel = selectedName
-    ? `${t('operation.clear')} ${triggerLabel}`
-    : t('operation.clear')
+    ? `${t($ => $['operation.clear'])} ${triggerLabel}`
+    : t($ => $['operation.clear'])
 
   return (
     <Select

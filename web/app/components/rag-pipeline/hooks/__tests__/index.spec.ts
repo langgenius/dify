@@ -45,10 +45,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 vi.mock('@/app/components/workflow/constants', () => ({
   DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
   WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',

@@ -23,7 +23,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
     <>
       {deliveryMethods.length > 0 && (
         <div className="space-y-0.5 py-1">
-          <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}</div>
           <div className="space-y-0.5 px-2.5">
             {deliveryMethods.map(method => (
               <div key={method.type} className="flex items-center gap-1 rounded-md bg-workflow-block-parma-bg p-1">

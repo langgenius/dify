@@ -156,7 +156,7 @@ const PluginsPanelResults = ({
                 ? <Loading className="size-8" />
                 : (
                     <Button onClick={loadNextPage}>
-                      {t('common.loadMore', { ns: 'workflow' })}
+                      {t($ => $['common.loadMore'], { ns: 'workflow' })}
                     </Button>
                   )}
             </div>

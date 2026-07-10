@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -14,6 +15,10 @@ import Loading from '@/app/components/base/loading'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
+
+const translateResultKey: TextGenerationTranslate = (selector, options) => {
+  return t(selector, options)
+}
 
 type IResultProps = {
   isWorkflow: boolean
@@ -72,7 +77,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
     onShowRes,
     promptConfig,
     runState,
-    t,
+    t: translateResultKey,
     taskId,
     visionConfig,
   })
@@ -85,7 +90,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
             {runState.isStopping
               ? <span aria-hidden className="mr-[5px] i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
               : <span aria-hidden className="mr-[5px] i-ri-stop-circle-fill h-3.5 w-3.5" />}
-            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+            <span className="text-xs font-normal">{t($ => $['operation.stopResponding'], { ns: 'appDebug' })}</span>
           </Button>
         </div>
       )}

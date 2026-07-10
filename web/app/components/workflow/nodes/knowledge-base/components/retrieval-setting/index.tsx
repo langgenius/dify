@@ -9,14 +9,14 @@ import type {
   TopKFieldProps,
   VisibleScoreThresholdFieldProps,
 } from './top-k-and-score-threshold'
-import { FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import { Field as WorkflowField } from '@/app/components/workflow/nodes/_base/components/layout'
 import { useDocLink } from '@/context/i18n'
 import { useRetrievalSetting } from './hooks'
 import { SearchMethodOption } from './search-method-option'
@@ -71,20 +71,20 @@ const RetrievalSetting = ({
   } = useRetrievalSetting(indexMethod)
 
   return (
-    <Field
+    <WorkflowField
       fieldTitleProps={{
-        title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
+        title: t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' }),
         subTitle: (
           <div className="flex items-center body-xs-regular text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}</a>
             &nbsp;
-            {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
+            {t($ => $['nodes.knowledgeBase.aboutRetrieval'], { ns: 'workflow' })}
           </div>
         ),
       }}
     >
-      <FieldRoot name="retrieval_search_method" className="gap-0">
-        <FieldsetRoot
+      <Field name="retrieval_search_method" className="gap-0">
+        <Fieldset
           render={(
             <RadioGroup<RetrievalSearchMethodEnum>
               value={searchMethod}
@@ -95,7 +95,7 @@ const RetrievalSetting = ({
           )}
         >
           <FieldsetLegend className="sr-only">
-            {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+            {t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
           </FieldsetLegend>
           {options.map(option => (
             <SearchMethodOption
@@ -131,9 +131,9 @@ const RetrievalSetting = ({
               readonly={readonly}
             />
           ))}
-        </FieldsetRoot>
-      </FieldRoot>
-    </Field>
+        </Fieldset>
+      </Field>
+    </WorkflowField>
   )
 }
 

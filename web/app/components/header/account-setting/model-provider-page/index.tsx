@@ -188,7 +188,7 @@ const ModelProviderPage = ({
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+        placeholder={t($ => $['modelProvider.searchModels'], { ns: 'common' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
@@ -199,8 +199,8 @@ const ModelProviderPage = ({
                 <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
                 <div className="relative flex shrink-0 items-center gap-1">
                   <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
-                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
-                    {t(warningTextKey, { ns: 'common' })}
+                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t($ => $[warningTextKey], { ns: 'common' })}>
+                    {t($ => $[warningTextKey], { ns: 'common' })}
                   </span>
                 </div>
                 <div className="relative shrink-0">

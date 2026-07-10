@@ -73,11 +73,6 @@ vi.mock('@langgenius/dify-ui/tooltip', () => ({
   TooltipTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))

@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
@@ -120,17 +120,17 @@ const Installed: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
-          <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
+          <p>{t($ => $[`${i18nPrefix}.readyToInstall`], { ns: 'plugin' })}</p>
           <p>
             <Trans
-              i18nKey={`${i18nPrefix}.fromTrustSource`}
+              i18nKey={$ => $[`${i18nPrefix}.fromTrustSource`]}
               ns="plugin"
               components={{ trustSource: <span className="system-md-semibold" /> }}
             />
           </p>
           {!isDifyVersionCompatible && (
             <p className="flex items-center gap-1 system-md-regular text-text-warning">
-              {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
+              {t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}
         </div>
@@ -152,7 +152,7 @@ const Installed: FC<Props> = ({
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
           <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
@@ -162,7 +162,7 @@ const Installed: FC<Props> = ({
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+          <span>{t($ => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], { ns: 'plugin' })}</span>
         </Button>
       </div>
     </>

@@ -51,11 +51,11 @@ const NotionPagePreview = ({
     <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
-          <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
+          <span>{t($ => $['stepOne.pagePreview'], { ns: 'datasetCreation' })}</span>
           <button
             type="button"
             className="flex size-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             onClick={hidePreview}
           >
             <XMarkIcon className="size-4" aria-hidden="true"></XMarkIcon>

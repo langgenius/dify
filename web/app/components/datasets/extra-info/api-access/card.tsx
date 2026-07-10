@@ -5,11 +5,9 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
@@ -70,8 +68,8 @@ const Card = ({
                 )}
               >
                 {apiEnabled
-                  ? t('serviceApi.enabled', { ns: 'dataset' })
-                  : t('serviceApi.disabled', { ns: 'dataset' })}
+                  ? t($ => $['serviceApi.enabled'], { ns: 'dataset' })
+                  : t($ => $['serviceApi.disabled'], { ns: 'dataset' })}
               </div>
             </div>
             <Switch
@@ -81,7 +79,7 @@ const Card = ({
             />
           </div>
           <div className="system-xs-regular text-text-tertiary">
-            {t('appMenus.apiAccessTip', { ns: 'common' })}
+            {t($ => $['appMenus.apiAccessTip'], { ns: 'common' })}
           </div>
         </div>
       </div>
@@ -95,7 +93,7 @@ const Card = ({
         >
           <span className="i-ri-book-open-line size-3.5 shrink-0" />
           <div className="grow truncate system-sm-regular">
-            {t('overview.apiInfo.doc', { ns: 'appOverview' })}
+            {t($ => $['overview.apiInfo.doc'], { ns: 'appOverview' })}
           </div>
           <span className="i-ri-arrow-right-up-line size-3.5 shrink-0" />
         </Link>

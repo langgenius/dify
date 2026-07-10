@@ -4,6 +4,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -91,7 +92,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     }
 
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseAppStore.mockImplementation((selector: (state: { appDetail?: { id?: string, mode?: AppModeEnum } }) => unknown) => selector({ appDetail }))
     mockUseNodeCrud.mockImplementation(() => ({

@@ -13,8 +13,8 @@ type EmptyCreateAction = {
   icon: ReactNode
   title: string
   description: string
-  onClick: () => void
   target: string
+  onClick: () => void
 }
 
 type Props = {
@@ -36,24 +36,24 @@ function FirstEmptyState({
     {
       id: 'template',
       icon: <span aria-hidden className="i-ri-function-add-line size-4" />,
-      title: t('newApp.startFromTemplate', { ns: 'app' }),
-      description: t('firstEmpty.templateDescription', { ns: 'app' }),
+      title: t($ => $['newApp.startFromTemplate'], { ns: 'app' }),
+      description: t($ => $['firstEmpty.templateDescription'], { ns: 'app' }),
       onClick: onCreateTemplate,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
     },
     {
       id: 'blank',
       icon: <span aria-hidden className="i-ri-add-box-line size-4" />,
-      title: t('newApp.startFromBlank', { ns: 'app' }),
-      description: t('firstEmpty.blankDescription', { ns: 'app' }),
+      title: t($ => $['newApp.startFromBlank'], { ns: 'app' }),
+      description: t($ => $['firstEmpty.blankDescription'], { ns: 'app' }),
       onClick: onCreateBlank,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
     },
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t('importDSL', { ns: 'app' }),
-      description: t('firstEmpty.importDescription', { ns: 'app' }),
+      title: t($ => $.importDSL, { ns: 'app' }),
+      description: t($ => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
     },
@@ -77,7 +77,7 @@ function FirstEmptyState({
                 </div>
               </div>
               <h2 id="apps-first-empty-title" className="system-sm-regular text-text-tertiary">
-                {t('firstEmpty.title', { ns: 'app' })}
+                {t($ => $['firstEmpty.title'], { ns: 'app' })}
               </h2>
             </div>
             <div className="flex w-full flex-col gap-2">
@@ -96,7 +96,7 @@ function FirstEmptyState({
               </div>
               <div className="flex items-center gap-2 text-text-tertiary">
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'app' })}</span>
+                <span className="system-xs-medium-uppercase uppercase">{t($ => $['firstEmpty.or'], { ns: 'app' })}</span>
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
               </div>
               <FirstEmptyActionCard
@@ -118,7 +118,7 @@ function FirstEmptyState({
             dismissible={false}
             itemLimit={4}
             showDescription
-            title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+            title={t($ => $['firstEmpty.learnDifyTitle'], { ns: 'app' })}
           />
         </div>
       )}

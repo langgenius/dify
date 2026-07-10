@@ -53,12 +53,12 @@ function DeploymentsListEmpty() {
     <DeploymentEmptyState
       variant="page"
       icon={hasFilter ? 'i-ri-search-line' : 'i-ri-rocket-line'}
-      title={hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
-      description={hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
+      title={hasFilter ? t($ => $['list.emptyFilteredTitle']) : t($ => $['list.emptyTitle'])}
+      description={hasFilter ? t($ => $['list.emptyFilteredDescription']) : t($ => $['list.emptyDescription'])}
       action={hasFilter
         ? (
             <Button variant="secondary" size="small" onClick={clearFilters}>
-              {t('list.clearFilters')}
+              {t($ => $['list.clearFilters'])}
             </Button>
           )
         : <CreateDeploymentButton />}
@@ -118,15 +118,15 @@ function DeploymentsSearchInput({ className }: {
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
       <Input
         className="h-8 pr-8 pl-8"
-        aria-label={t('filter.searchPlaceholder')}
-        placeholder={t('filter.searchPlaceholder')}
+        aria-label={t($ => $['filter.searchPlaceholder'])}
+        placeholder={t($ => $['filter.searchPlaceholder'])}
         value={keywords}
         onChange={e => handleKeywordsChange(e.target.value)}
       />
       {keywords && (
         <button
           type="button"
-          aria-label={t('list.clearSearch')}
+          aria-label={t($ => $['list.clearSearch'])}
           className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
           onClick={() => handleKeywordsChange('')}
         >
@@ -144,7 +144,7 @@ function DeploymentsListControls() {
     <StudioListHeader
       title={(
         <div className="flex items-center">
-          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.deployments', { ns: 'common' })}</h1>
+          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $['menus.deployments'], { ns: 'common' })}</h1>
         </div>
       )}
     >
@@ -193,7 +193,7 @@ export function DeploymentsListShell() {
         {showSkeleton
           ? <DeploymentsListSkeleton />
           : showErrorState
-            ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
+            ? <DeploymentsListState>{t($ => $['common.loadFailed'])}</DeploymentsListState>
             : showEmptyState
               ? <DeploymentsListEmpty />
               : appInstanceSummaries.map(summary => (

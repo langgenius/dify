@@ -52,7 +52,7 @@ const ArrayValueList: FC<Props> = ({
       {list.map((item, index) => (
         <div className="flex items-center space-x-1" key={index}>
           <Input
-            placeholder={t('chatVariable.modal.arrayValue', { ns: 'workflow' }) || ''}
+            placeholder={t($ => $['chatVariable.modal.arrayValue'], { ns: 'workflow' }) || ''}
             value={list[index]}
             onChange={handleNameChange(index)}
             type={isString ? 'text' : 'number'}
@@ -65,7 +65,7 @@ const ArrayValueList: FC<Props> = ({
       ))}
       <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
         <RiAddLine className="mr-1 size-4" />
-        <span>{t('chatVariable.modal.addArrayValue', { ns: 'workflow' })}</span>
+        <span>{t($ => $['chatVariable.modal.addArrayValue'], { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

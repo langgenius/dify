@@ -23,7 +23,7 @@ import { AgentSkillUploadDialog } from './upload-dialog'
 
 export function AgentSkills() {
   const { t } = useTranslation('agentV2')
-  const skillsTip = t('agentDetail.configure.skills.tip')
+  const skillsTip = t($ => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
@@ -90,7 +90,7 @@ export function AgentSkills() {
   return (
     <>
       <ConfigureSection
-        label={t('agentDetail.configure.skills.label')}
+        label={t($ => $['agentDetail.configure.skills.label'])}
         labelId="agent-configure-skills-label"
         buildDraftChangeSection="skills"
         panelId={skillsListId}
@@ -100,7 +100,7 @@ export function AgentSkills() {
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={(
           <ConfigureSectionAddButton
-            ariaLabel={t('agentDetail.configure.skills.add')}
+            ariaLabel={t($ => $['agentDetail.configure.skills.add'])}
             onClick={() => handleOpenUpload()}
           />
         )}
@@ -108,8 +108,8 @@ export function AgentSkills() {
         {skills.length === 0
           ? (
               <ConfigureSectionEmpty
-                title={t('agentDetail.configure.skills.empty.title')}
-                description={t('agentDetail.configure.skills.empty.description')}
+                title={t($ => $['agentDetail.configure.skills.empty.title'])}
+                description={t($ => $['agentDetail.configure.skills.empty.description'])}
               />
             )
           : skills.map(skill => (

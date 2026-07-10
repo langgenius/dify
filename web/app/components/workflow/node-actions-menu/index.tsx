@@ -48,7 +48,7 @@ export function NodeActionsDropdown({
         render={(
           <button
             type="button"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t($ => $['operation.more'], { ns: 'common' })}
             className={cn(
               'flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-text-tertiary hover:bg-state-base-hover',
               'focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden data-popup-open:bg-state-base-hover',

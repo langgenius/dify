@@ -433,10 +433,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig)
-      toast.success(t('api.actionSuccess'))
+      toast.success(t($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(t('api.actionFailed'))
+      toast.error(t($ => $['api.actionFailed']))
     }
     finally {
       setIsApplyingInlineBuildDraft(false)
@@ -456,10 +456,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(agentSoulConfig)
-      toast.success(t('api.actionSuccess'))
+      toast.success(t($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(t('api.actionFailed'))
+      toast.error(t($ => $['api.actionFailed']))
     }
   }
   const hasRestartCurrentChatTarget = (inlineComposerState?.debug_conversation_has_messages ?? false)
@@ -556,7 +556,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                   type="button"
                   onClick={onClose}
                   className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  aria-label={t('operation.close')}
+                  aria-label={t($ => $['operation.close'])}
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </button>
@@ -635,7 +635,7 @@ function WorkflowInlineAgentConfigureMoreAction({
           <button
             type="button"
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            aria-label={t('operation.more')}
+            aria-label={t($ => $['operation.more'])}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </button>
@@ -644,7 +644,7 @@ function WorkflowInlineAgentConfigureMoreAction({
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
         <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span aria-hidden className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary" />
-          <span>{t('roster.saveToRoster', { ns: 'agentV2' })}</span>
+          <span>{t($ => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -41,7 +41,7 @@ const PluginListSkeleton = ({
   return (
     <div
       role="status"
-      aria-label={t('loading', { ns: 'common' })}
+      aria-label={t($ => $.loading, { ns: 'common' })}
       className={cn('min-h-0 grow self-stretch bg-components-panel-bg', contentFrameClassName)}
     >
       <div className="grid grid-cols-1 gap-3 pb-3 lg:grid-cols-2">

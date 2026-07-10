@@ -37,18 +37,18 @@ type IntegrationsPageProps = {
   section?: IntegrationSection
 }
 
-const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
+const headerDescriptionDocPaths = {
   'provider': '/use-dify/workspace/model-providers',
   'data-source': '/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
   'builtin': '/use-dify/workspace/tools',
-  'custom-tool': '/use-dify/workspace/tools#custom-tool',
-  'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
-  'mcp': '/use-dify/build/mcp',
+  'custom-tool': '/use-dify/workspace/tools#swagger-api',
+  'workflow-tool': '/use-dify/workspace/tools#workflow',
+  'mcp': '/use-dify/workspace/tools#mcp',
   'custom-endpoint': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
   'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
   'extension': '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
-}
+} satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
 
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
@@ -157,13 +157,13 @@ export default function IntegrationsPage({
       )
     : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
-  const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t('modelProvider.pageDesc', { ns: 'common' }) : undefined)
+  const headerDescription = integrationHeader?.description ?? (section === 'provider' ? t($ => $['modelProvider.pageDesc'], { ns: 'common' }) : undefined)
   const headerDescriptionDocPath = headerDescriptionDocPaths[section]
   const headerDescriptionWithLink = headerDescription && headerDescriptionDocPath
     ? (
         <DescriptionWithLearnMore
-          href={docLink(headerDescriptionDocPath as DocPathWithoutLang)}
-          label={t('modelProvider.learnMore', { ns: 'common' })}
+          href={docLink(headerDescriptionDocPath)}
+          label={t($ => $['modelProvider.learnMore'], { ns: 'common' })}
         >
           {headerDescription}
         </DescriptionWithLearnMore>
@@ -204,7 +204,7 @@ export default function IntegrationsPage({
           ? <span className="i-ri-arrow-up-s-line hidden size-4 group-hover:inline-block" />
           : <span className="i-ri-arrow-down-s-line hidden size-4 group-hover:inline-block" />}
       </span>
-      <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
+      <span className="min-w-0 flex-1 truncate">{t($ => $['menus.tools'], { ns: 'common' })}</span>
     </>
   )
 
@@ -228,7 +228,7 @@ export default function IntegrationsPage({
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
               <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                {t('settings.integrations', { ns: 'common' })}
+                {t($ => $['settings.integrations'], { ns: 'common' })}
               </div>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function IntegrationsPage({
             <div>
               <button
                 type="button"
-                aria-label={t('menus.tools', { ns: 'common' })}
+                aria-label={t($ => $['menus.tools'], { ns: 'common' })}
                 aria-expanded={isToolsExpanded}
                 className={cn(toolsNavItemClassName, 'border-none bg-transparent')}
                 onClick={handleToggleTools}

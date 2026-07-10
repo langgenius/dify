@@ -31,13 +31,14 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
-from collections.abc import AsyncIterable, Callable
+from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
@@ -48,6 +49,7 @@ from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
@@ -59,6 +61,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
+from dify_agent.adapters.shell.protocols import SandboxExpiredError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -102,6 +105,34 @@ class _HasTotalTokens(Protocol):
 
 class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
+
+
+def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
+    """Return the public failed-run error text and structured reason."""
+    message = str(exc) or type(exc).__name__
+    reason: str | None = None
+
+    if isinstance(exc, SandboxExpiredError):
+        return message, "sandbox_expired"
+
+    if isinstance(exc, ModelHTTPError):
+        body = exc.body
+        if isinstance(body, Mapping):
+            body_message = body.get("message")
+            if isinstance(body_message, str) and body_message:
+                message = body_message
+
+            error_type = body.get("error_type")
+            if isinstance(error_type, str) and error_type:
+                reason = error_type
+
+        if reason is None and exc.status_code == 429:
+            reason = "InvokeRateLimitError"
+
+    if isinstance(exc, DifyKnowledgeBaseClientError):
+        reason = exc.error_code or "DifyKnowledgeBaseClientError"
+
+    return message, reason
 
 
 def _has_model_layer(request: CreateRunRequest) -> bool:
@@ -165,8 +196,8 @@ class AgentRunRunner:
         try:
             outcome = await self._run_agent()
         except Exception as exc:
-            message = str(exc) or type(exc).__name__
-            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
+            message, reason = _run_failed_error_payload(exc)
+            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 

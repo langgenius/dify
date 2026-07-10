@@ -3,7 +3,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -58,7 +58,7 @@ export const useCreateSnippet = () => {
         },
       })
 
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      toast.success(t($ => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     }

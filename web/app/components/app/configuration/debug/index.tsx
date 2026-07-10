@@ -152,11 +152,11 @@ const Debug: FC<IDebug> = ({
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          toast.error(t('otherError.historyNoBeEmpty', { ns: 'appDebug' }))
+          toast.error(t($ => $['otherError.historyNoBeEmpty'], { ns: 'appDebug' }))
           return false
         }
         if (!hasSetBlockStatus.query) {
-          toast.error(t('otherError.queryNoBeEmpty', { ns: 'appDebug' }))
+          toast.error(t($ => $['otherError.queryNoBeEmpty'], { ns: 'appDebug' }))
           return false
         }
       }
@@ -177,12 +177,12 @@ const Debug: FC<IDebug> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
+      logError(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
       return false
     }
     return !hasEmptyInput
@@ -206,7 +206,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
     }
 
@@ -398,7 +398,7 @@ const Debug: FC<IDebug> = ({
     <>
       <div className="shrink-0">
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
+          <div className="system-xl-semibold text-text-primary">{t($ => $['inputs.title'], { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -410,7 +410,7 @@ const Debug: FC<IDebug> = ({
                         disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                       >
                         <RiAddLine className="mr-1 size-3.5" />
-                        {t('modelProvider.addModel', { ns: 'common' })}
+                        {t($ => $['modelProvider.addModel'], { ns: 'common' })}
                         (
                         {multipleModelConfigs.length}
                         /4)
@@ -427,7 +427,7 @@ const Debug: FC<IDebug> = ({
                     <Tooltip>
                       <TooltipTrigger render={<ActionButton onClick={clearConversation}><RefreshCcw01 className="size-4" /></ActionButton>} />
                       <TooltipContent>
-                        {t('operation.refresh', { ns: 'common' })}
+                        {t($ => $['operation.refresh'], { ns: 'common' })}
                       </TooltipContent>
                     </Tooltip>
                   )
@@ -439,7 +439,7 @@ const Debug: FC<IDebug> = ({
                       <Tooltip>
                         <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} disabled={!canTestAndRun} onClick={() => setExpanded(!expanded)}><RiEqualizer2Line className="size-4" /></ActionButton>} />
                         <TooltipContent>
-                          {t('panel.userInputField', { ns: 'workflow' })}
+                          {t($ => $['panel.userInputField'], { ns: 'workflow' })}
                         </TooltipContent>
                       </Tooltip>
                       {expanded && <div className="absolute right-[5px] bottom-[-14px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
@@ -520,8 +520,8 @@ const Debug: FC<IDebug> = ({
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="system-md-semibold text-text-secondary">{t('noModelSelected', { ns: 'appDebug' })}</div>
-                    <div className="system-xs-regular text-text-tertiary">{t('noModelSelectedTip', { ns: 'appDebug' })}</div>
+                    <div className="system-md-semibold text-text-secondary">{t($ => $.noModelSelected, { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-tertiary">{t($ => $.noModelSelectedTip, { ns: 'appDebug' })}</div>
                   </div>
                 </div>
               </div>
@@ -540,7 +540,7 @@ const Debug: FC<IDebug> = ({
               <>
                 {(completionRes || isResponding) && (
                   <>
-                    <div className="mx-4 mt-3"><GroupName name={t('result', { ns: 'appDebug' })} /></div>
+                    <div className="mx-4 mt-3"><GroupName name={t($ => $.result, { ns: 'appDebug' })} /></div>
                     <div className="mx-3 mb-8">
                       <TextGeneration
                         appSourceType={AppSourceType.webApp}
@@ -560,7 +560,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="size-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t($ => $.noResult, { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

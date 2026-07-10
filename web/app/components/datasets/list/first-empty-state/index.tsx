@@ -10,9 +10,9 @@ type EmptyCreateAction = {
   href: string
   icon: ReactNode
   id: string
-  target: string
   title: string
   description: string
+  target: string
 }
 
 type DatasetFirstEmptyStateProps = {
@@ -29,21 +29,21 @@ function DatasetFirstEmptyState({
   const createActions: EmptyCreateAction[] = canCreateDataset
     ? [
         {
-          badge: t('firstEmpty.recommended', { ns: 'dataset' }),
+          badge: t($ => $['firstEmpty.recommended'], { ns: 'dataset' }),
           href: '/datasets/create',
           icon: <span aria-hidden className="i-ri-add-line size-4" />,
           id: 'create',
+          title: t($ => $['firstEmpty.createTitle'], { ns: 'dataset' }),
+          description: t($ => $['firstEmpty.createDescription'], { ns: 'dataset' }),
           target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyCreate,
-          title: t('firstEmpty.createTitle', { ns: 'dataset' }),
-          description: t('firstEmpty.createDescription', { ns: 'dataset' }),
         },
         {
           href: '/datasets/create-from-pipeline',
           icon: <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4" />,
           id: 'pipeline',
+          title: t($ => $['firstEmpty.pipelineTitle'], { ns: 'dataset' }),
+          description: t($ => $['firstEmpty.pipelineDescription'], { ns: 'dataset' }),
           target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyPipeline,
-          title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
-          description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),
         },
       ]
     : []
@@ -52,9 +52,9 @@ function DatasetFirstEmptyState({
         href: '/datasets/connect',
         icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
         id: 'connect',
+        title: t($ => $.connectDataset, { ns: 'dataset' }),
+        description: t($ => $['firstEmpty.connectDescription'], { ns: 'dataset' }),
         target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyConnect,
-        title: t('connectDataset', { ns: 'dataset' }),
-        description: t('firstEmpty.connectDescription', { ns: 'dataset' }),
       }
     : undefined
   const hasActions = createActions.length > 0 || !!connectAction
@@ -80,7 +80,7 @@ function DatasetFirstEmptyState({
                 </div>
               </div>
               <h2 id="datasets-first-empty-title" className="system-sm-regular text-text-tertiary">
-                {t('firstEmpty.title', { ns: 'dataset' })}
+                {t($ => $['firstEmpty.title'], { ns: 'dataset' })}
               </h2>
             </div>
             <div className="flex w-full flex-col gap-2 pb-8">
@@ -103,7 +103,7 @@ function DatasetFirstEmptyState({
               {createActions.length > 0 && connectAction && (
                 <div className="flex items-center gap-2 text-text-tertiary">
                   <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                  <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'dataset' })}</span>
+                  <span className="system-xs-medium-uppercase uppercase">{t($ => $['firstEmpty.or'], { ns: 'dataset' })}</span>
                   <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
                 </div>
               )}

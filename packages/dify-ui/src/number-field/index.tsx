@@ -8,7 +8,7 @@ import { cn } from '../cn'
 import { textControlCompoundFocusClassName } from '../form-control-shared'
 
 export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = BaseNumberField.Root.Props
+export type NumberFieldProps = BaseNumberField.Root.Props
 
 export const numberFieldGroupVariants = cva(
   [

@@ -3,7 +3,7 @@ import type {
   EnvironmentDeployment,
   Release,
 } from '@dify/contracts/enterprise/types.gen'
-import type { TFunction } from 'i18next'
+import type { SelectorParam } from 'i18next'
 import { releaseDeploymentAction } from '../../../shared/domain/release-action'
 import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
 
@@ -23,6 +23,11 @@ export type DeployMenuSection = {
   group: DeployMenuGroup
   rows: DeployMenuRow[]
 }
+
+type DeploymentTranslator = (
+  selector: SelectorParam<'deployments'>,
+  options?: Record<string, unknown>,
+) => string
 
 const GROUP_ORDER: DeployMenuGroup[] = ['deploy', 'rollback', 'unavailable']
 
@@ -59,7 +64,7 @@ function buildDeployMenuRow({
   releaseRows: Release[]
   releaseId: string
   targetRelease: Release
-  t: TFunction<'deployments'>
+  t: DeploymentTranslator
 }): DeployMenuRow {
   const envId = env.id
   const envName = env.displayName
@@ -73,8 +78,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploying',
-      label: t('versions.deployingTo', { name: envName }),
-      disabledReason: t('versions.disabledReason.deploying'),
+      label: t($ => $['versions.deployingTo'], { name: envName }),
+      disabledReason: t($ => $['versions.disabledReason.deploying']),
     }
   }
   if (isCurrent) {
@@ -82,8 +87,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'current',
-      label: t('versions.currentOn', { name: envName }),
-      disabledReason: t('versions.disabledReason.current', { name: envName }),
+      label: t($ => $['versions.currentOn'], { name: envName }),
+      disabledReason: t($ => $['versions.disabledReason.current'], { name: envName }),
     }
   }
 
@@ -99,7 +104,7 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploy',
-      label: t('versions.deployTo', { name: envName }),
+      label: t($ => $['versions.deployTo'], { name: envName }),
     }
   }
   if (action === 'rollback') {
@@ -107,14 +112,14 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'rollback',
-      label: t('versions.rollbackTo', { name: envName }),
+      label: t($ => $['versions.rollbackTo'], { name: envName }),
     }
   }
   return {
     env,
     environmentId: envId,
     state: 'deploy',
-    label: t('versions.deployTo', { name: envName }),
+    label: t($ => $['versions.deployTo'], { name: envName }),
   }
 }
 
@@ -131,7 +136,7 @@ export function buildDeployMenuSections({
   releaseRows: Release[]
   releaseId: string
   targetRelease: Release
-  t: TFunction<'deployments'>
+  t: DeploymentTranslator
 }) {
   const deploymentRows = environmentDeployments.filter(row => !isUndeployedDeploymentRow(row))
   const menuRows = environments.map(env => buildDeployMenuRow({

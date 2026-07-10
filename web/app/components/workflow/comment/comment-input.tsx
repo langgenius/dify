@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { MentionInput } from './mention-input'
 
 type CommentInputProps = {
@@ -170,7 +170,7 @@ export const CommentInput: FC<CommentInputProps> = memo(({
               value={content}
               onChange={setContent}
               onSubmit={handleMentionSubmit}
-              placeholder={t('comments.placeholder.add', { ns: 'workflow' })}
+              placeholder={t($ => $['comments.placeholder.add'], { ns: 'workflow' })}
               autoFocus={autoFocus}
               disabled={disabled}
               className="relative"

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'
-import { langGeniusVersionInfoAtom } from '@/context/app-context-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,
@@ -198,7 +198,7 @@ const EmbeddedContent = ({
   return (
     <>
       <div className="mt-8 mb-4 system-sm-medium text-text-primary">
-        {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
+        {t($ => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
       </div>
       {supportedHiddenInputs.length > 0 && (
         <div className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
@@ -209,10 +209,10 @@ const EmbeddedContent = ({
           >
             <div>
               <div className="system-sm-medium text-text-primary">
-                {t(`${prefixEmbedded}.hiddenInputs.title`, { ns: 'appOverview' })}
+                {t($ => $[`${prefixEmbedded}.hiddenInputs.title`], { ns: 'appOverview' })}
               </div>
               <div className="mt-1 system-xs-regular text-text-tertiary">
-                {t(`${prefixEmbedded}.hiddenInputs.description`, { ns: 'appOverview' })}
+                {t($ => $[`${prefixEmbedded}.hiddenInputs.description`], { ns: 'appOverview' })}
               </div>
             </div>
             {hiddenInputsCollapsed
@@ -237,7 +237,7 @@ const EmbeddedContent = ({
             <button
               type="button"
               key={v}
-              aria-label={t(`${prefixEmbedded}.${v}`, { ns: 'appOverview' }) || v}
+              aria-label={t($ => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' }) || v}
               className={cn(
                 style.option,
                 optionIconClassName[v],
@@ -260,22 +260,22 @@ const EmbeddedContent = ({
             onClick={navigateToChromeUrl}
           >
             <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm leading-tight font-medium text-white">{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
+            <div className="font-['Inter'] text-sm leading-tight font-medium text-white">{t($ => $[`${prefixEmbedded}.chromePlugin`], { ns: 'appOverview' })}</div>
           </button>
         </div>
       )}
       <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
         <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
           <div className="shrink-0 grow system-sm-medium text-text-secondary">
-            {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
+            {t($ => $[`${prefixEmbedded}.${option}`], { ns: 'appOverview' })}
           </div>
           <Tooltip>
             <TooltipTrigger
               render={(
                 <ActionButton
                   aria-label={(copiedOption === option
-                    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+                    ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                    : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
                   onClick={() => void onClickCopy()}
                 >
                   {copiedOption === option && <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />}
@@ -285,8 +285,8 @@ const EmbeddedContent = ({
             />
             <TooltipContent>
               {(copiedOption === option
-                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+                ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -326,7 +326,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, webAppRo
     >
       <DialogContent className={cn('flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!', className)}>
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
+          {t($ => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
         </DialogTitle>
         <DialogCloseButton />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

@@ -14,7 +14,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
@@ -88,9 +89,9 @@ export const useImportDSL = () => {
         if (!app_id)
           return
 
-        const message = t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' })
+        const message = t($ => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'], { ns: 'app' })
         const description = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-          ? t('newApp.appCreateDSLWarning', { ns: 'app' })
+          ? t($ => $['newApp.appCreateDSLWarning'], { ns: 'app' })
           : undefined
 
         if (status === DSLImportStatus.COMPLETED)
@@ -119,12 +120,12 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {
@@ -156,7 +157,7 @@ export const useImportDSL = () => {
 
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.(response)
-        toast.success(t('newApp.appCreated', { ns: 'app' }))
+        toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
@@ -170,12 +171,12 @@ export const useImportDSL = () => {
         }
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {

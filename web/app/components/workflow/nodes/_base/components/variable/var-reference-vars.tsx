@@ -434,7 +434,7 @@ const VarReferenceVars: FC<Props> = ({
                 showLeftIcon
                 showClearIcon
                 value={searchValue}
-                placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
+                placeholder={t($ => $['common.searchVar'], { ns: 'workflow' }) || ''}
                 onChange={e => setInternalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onClear={() => setInternalSearchValue('')}
@@ -489,7 +489,7 @@ const VarReferenceVars: FC<Props> = ({
                     {item.isFlat && !indexedFilteredVars[i + 1]?.isFlat && !!indexedFilteredVars.find(item => !item.isFlat) && (
                       <div className="relative mt-[14px] flex items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
-                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
+                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t($ => $['debug.lastOutput'], { ns: 'workflow' })}</div>
                         <div className="h-0 shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
@@ -498,7 +498,7 @@ const VarReferenceVars: FC<Props> = ({
               }
             </div>
           )
-        : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t('common.noVar', { ns: 'workflow' })}</div>}
+        : <div className="mt-2 pl-3 text-xs leading-[18px] font-medium text-gray-500 uppercase">{t($ => $['common.noVar'], { ns: 'workflow' })}</div>}
       {
         showManageInputField && (
           <ManageInputField

@@ -14,7 +14,8 @@
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/seed.ts",
-    "type-check": "tsgo"
+    "test:unit": "vitest run",
+    "type-check": "tsc"
   },
   "devDependencies": {
     "@cucumber/cucumber": "catalog:",
@@ -23,11 +24,13 @@
     "@playwright/test": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
+    "eventsource-parser": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }

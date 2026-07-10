@@ -6,10 +6,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission, hasPermission } from '@/utils/permission'
@@ -72,7 +70,7 @@ const DatasetCard = ({
   const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
   }
 
   const handleCardClick = (e: MouseEvent) => {

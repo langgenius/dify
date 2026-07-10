@@ -221,7 +221,7 @@ describe('EdgeContextmenu', () => {
       },
     })
 
-    const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
+    const deleteAction = await screen.findByRole('menuitem', { name: /common\.operation\.delete/i })
 
     await user.click(deleteAction)
 
@@ -263,7 +263,7 @@ describe('EdgeContextmenu', () => {
     })
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i }))!.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /common\.operation\.delete/i }))!.toBeInTheDocument()
   })
 
   it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
@@ -276,7 +276,7 @@ describe('EdgeContextmenu', () => {
       clientY: 180,
     })
 
-    await user.click(await screen.findByRole('menuitem', { name: /common:operation\.delete/i }))
+    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.delete/i }))
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()

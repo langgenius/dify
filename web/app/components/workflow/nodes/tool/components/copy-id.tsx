@@ -25,8 +25,8 @@ const CopyFeedbackNew = ({ content }: Props) => {
     setIsCopied(false)
   }, 100)
   const tooltip = (isCopied
-    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
+    ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+    : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
 
   return (
     <div className="inline-flex w-full pb-0.5" onClick={e => e.stopPropagation()} onMouseLeave={onMouseLeave}>

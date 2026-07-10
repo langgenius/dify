@@ -33,14 +33,14 @@ function LatestReleaseSection({ children }: {
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <h3 className="system-sm-semibold text-text-primary">
-          {t('overview.latestReleaseTitle')}
+          {t($ => $['overview.latestReleaseTitle'])}
         </h3>
         {appInstanceId && (
           <Link
             href={`/deployments/${appInstanceId}/releases`}
             className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
           >
-            {t('overview.previousReleases.viewAll')}
+            {t($ => $['overview.previousReleases.viewAll'])}
             <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
           </Link>
         )}
@@ -77,7 +77,7 @@ export function DeploymentOverview() {
   if (isError) {
     return (
       <OverviewLayout>
-        <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
+        <DeploymentStateMessage variant="section">{t($ => $['common.loadFailed'])}</DeploymentStateMessage>
       </OverviewLayout>
     )
   }
@@ -85,7 +85,7 @@ export function DeploymentOverview() {
   if (!overview) {
     return (
       <OverviewLayout>
-        <DeploymentStateMessage variant="section">{t('detail.notFound')}</DeploymentStateMessage>
+        <DeploymentStateMessage variant="section">{t($ => $['detail.notFound'])}</DeploymentStateMessage>
       </OverviewLayout>
     )
   }

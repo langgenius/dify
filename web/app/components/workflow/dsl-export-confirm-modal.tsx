@@ -55,14 +55,14 @@ export const DSLExportConfirmContent = ({
     <AlertDialogContent className="w-120 max-w-120">
       <div className="px-6 pt-6">
         <AlertDialogTitle className="pb-6 title-2xl-semi-bold text-text-primary">
-          {t('env.export.title', { ns: 'workflow' })}
+          {t($ => $['env.export.title'], { ns: 'workflow' })}
         </AlertDialogTitle>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">{t('env.export.name', { ns: 'workflow' })}</td>
-                <td className="h-7 border-b border-divider-regular pl-3">{t('env.export.value', { ns: 'workflow' })}</td>
+                <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">{t($ => $['env.export.name'], { ns: 'workflow' })}</td>
+                <td className="h-7 border-b border-divider-regular pl-3">{t($ => $['env.export.value'], { ns: 'workflow' })}</td>
               </tr>
             </thead>
             <tbody>
@@ -72,7 +72,7 @@ export const DSLExportConfirmContent = ({
                     <div className="flex w-50 items-center gap-1">
                       <span aria-hidden="true" className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600" />
                       <div className="truncate text-text-primary">{env.name}</div>
-                      <div className="shrink-0 text-text-tertiary">{t('env.export.secret', { ns: 'workflow' })}</div>
+                      <div className="shrink-0 text-text-tertiary">{t($ => $['env.export.secret'], { ns: 'workflow' })}</div>
                       <span aria-hidden="true" className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
                     </div>
                   </td>
@@ -97,13 +97,13 @@ export const DSLExportConfirmContent = ({
               isExporting && 'cursor-not-allowed opacity-50',
             )}
           >
-            {t('env.export.checkbox', { ns: 'workflow' })}
+            {t($ => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
       </div>
       <AlertDialogActions>
         <AlertDialogCancelButton disabled={isExporting}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
         <AlertDialogConfirmButton
           tone="default"
@@ -112,10 +112,10 @@ export const DSLExportConfirmContent = ({
           onClick={submit}
         >
           {isExporting
-            ? t('operation.exporting', { ns: 'common' })
+            ? t($ => $['operation.exporting'], { ns: 'common' })
             : exportSecrets
-              ? t('env.export.export', { ns: 'workflow' })
-              : t('env.export.ignore', { ns: 'workflow' })}
+              ? t($ => $['env.export.export'], { ns: 'workflow' })
+              : t($ => $['env.export.ignore'], { ns: 'workflow' })}
         </AlertDialogConfirmButton>
       </AlertDialogActions>
     </AlertDialogContent>

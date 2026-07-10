@@ -52,15 +52,15 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}`)
+        toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
-        toast.success(`${t('batchModal.completed', { ns: 'appAnnotation' })}`)
+        toast.success(`${t($ => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()
       }
     }
     catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+      toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
     }
   }
 
@@ -76,7 +76,7 @@ const BatchModal: FC<IBatchModalProps> = ({
       checkProcess(res.job_id)
     }
     catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+      toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
     }
   }
 
@@ -90,11 +90,11 @@ const BatchModal: FC<IBatchModalProps> = ({
     <Dialog open={isShow}>
       <DialogContent className="w-full max-w-[520px]! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
 
-        <div className="relative pb-1 system-xl-medium text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
+        <div className="relative pb-1 system-xl-medium text-text-primary">{t($ => $['batchModal.title'], { ns: 'appAnnotation' })}</div>
         <button
           type="button"
           className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           onClick={onCancel}
         >
           <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -113,7 +113,7 @@ const BatchModal: FC<IBatchModalProps> = ({
 
         <div className="mt-[28px] flex justify-end pt-6">
           <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
-            {t('batchModal.cancel', { ns: 'appAnnotation' })}
+            {t($ => $['batchModal.cancel'], { ns: 'appAnnotation' })}
           </Button>
           <Button
             variant="primary"
@@ -121,7 +121,7 @@ const BatchModal: FC<IBatchModalProps> = ({
             disabled={isAnnotationFull || !currentCSV}
             loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
           >
-            {t('batchModal.run', { ns: 'appAnnotation' })}
+            {t($ => $['batchModal.run'], { ns: 'appAnnotation' })}
           </Button>
         </div>
       </DialogContent>

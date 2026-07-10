@@ -1,5 +1,6 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import {
   buildSubmitData,
@@ -50,7 +51,9 @@ describe('before-run-form helpers', () => {
   })
 
   it('should report required and uploading file errors', () => {
-    const t = (key: string, options?: Record<string, unknown>) => `${key}:${options?.field ?? ''}`
+    const t = withSelectorKey((key: string, options?: Record<string, unknown>) => (
+      `${key}:${options?.field ?? ''}`
+    ))
 
     expect(getFormErrorMessage([createForm({
       inputs: [createInput({ variable: 'query', label: 'Query', required: true })],

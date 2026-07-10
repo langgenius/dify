@@ -35,6 +35,7 @@ export const contractLoaders = {
     import('./forgot-password/orpc.gen').then(({ forgotPassword }) => ({ forgotPassword })),
   form: () => import('./form/orpc.gen').then(({ form }) => ({ form })),
   info: () => import('./info/orpc.gen').then(({ info }) => ({ info })),
+  init: () => import('./init/orpc.gen').then(({ init }) => ({ init })),
   installedApps: () =>
     import('./installed-apps/orpc.gen').then(({ installedApps }) => ({ installedApps })),
   instructionGenerate: () =>
@@ -48,6 +49,7 @@ export const contractLoaders = {
   notion: () => import('./notion/orpc.gen').then(({ notion }) => ({ notion })),
   oauth: () => import('./oauth/orpc.gen').then(({ oauth }) => ({ oauth })),
   onboarding: () => import('./onboarding/orpc.gen').then(({ onboarding }) => ({ onboarding })),
+  ping: () => import('./ping/orpc.gen').then(({ ping }) => ({ ping })),
   rag: () => import('./rag/orpc.gen').then(({ rag }) => ({ rag })),
   refreshToken: () =>
     import('./refresh-token/orpc.gen').then(({ refreshToken }) => ({ refreshToken })),
@@ -62,6 +64,7 @@ export const contractLoaders = {
     import('./rule-structured-output-generate/orpc.gen').then(
       ({ ruleStructuredOutputGenerate }) => ({ ruleStructuredOutputGenerate }),
     ),
+  setup: () => import('./setup/orpc.gen').then(({ setup }) => ({ setup })),
   snippets: () => import('./snippets/orpc.gen').then(({ snippets }) => ({ snippets })),
   spec: () => import('./spec/orpc.gen').then(({ spec }) => ({ spec })),
   systemFeatures: () =>
@@ -71,6 +74,7 @@ export const contractLoaders = {
   test: () => import('./test/orpc.gen').then(({ test }) => ({ test })),
   trialApps: () => import('./trial-apps/orpc.gen').then(({ trialApps }) => ({ trialApps })),
   trialModels: () => import('./trial-models/orpc.gen').then(({ trialModels }) => ({ trialModels })),
+  version: () => import('./version/orpc.gen').then(({ version }) => ({ version })),
   website: () => import('./website/orpc.gen').then(({ website }) => ({ website })),
   workflow: () => import('./workflow/orpc.gen').then(({ workflow }) => ({ workflow })),
   workflowGenerate: () =>

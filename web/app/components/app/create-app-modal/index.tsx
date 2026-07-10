@@ -20,7 +20,8 @@ import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
@@ -75,11 +76,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       return
 
     if (!appMode) {
-      toast.error(t('newApp.appTypeRequired', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appTypeRequired'], { ns: 'app' }))
       return
     }
     if (!name.trim()) {
-      toast.error(t('newApp.nameNotEmpty', { ns: 'app' }))
+      toast.error(t($ => $['newApp.nameNotEmpty'], { ns: 'app' }))
       return
     }
     if (isCreatingRef.current)
@@ -95,9 +96,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      try {
+        await trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+      }
+      catch {
+        // Analytics should not turn a successful app creation into a failed flow.
+      }
 
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
+      toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
       onSuccess()
       onClose()
       setNeedRefresh('1')
@@ -110,7 +116,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(error instanceof Error ? error.message : t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
     isCreatingRef.current = false
   }, [canCreateApp, currentUserId, name, t, appMode, appIcon, description, onSuccess, onClose, push, workspacePermissionKeys, isRbacEnabled, setNeedRefresh, invalidateAppList])
@@ -130,18 +136,18 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-[139px]" />
             <div className="pt-1 pb-6">
-              <span className="title-2xl-semi-bold text-text-primary">{t('newApp.startFromBlank', { ns: 'app' })}</span>
+              <span className="title-2xl-semi-bold text-text-primary">{t($ => $['newApp.startFromBlank'], { ns: 'app' })}</span>
             </div>
             <div className="mb-2 leading-6">
-              <span className="system-sm-semibold text-text-secondary">{t('newApp.chooseAppType', { ns: 'app' })}</span>
+              <span className="system-sm-semibold text-text-secondary">{t($ => $['newApp.chooseAppType'], { ns: 'app' })}</span>
             </div>
             <div className="flex w-[660px] flex-col gap-4">
               <div>
                 <div className="flex flex-row gap-2">
                   <AppTypeCard
                     active={appMode === AppModeEnum.WORKFLOW}
-                    title={t('types.workflow', { ns: 'app' })}
-                    description={t('newApp.workflowShortDescription', { ns: 'app' })}
+                    title={t($ => $['types.workflow'], { ns: 'app' })}
+                    description={t($ => $['newApp.workflowShortDescription'], { ns: 'app' })}
                     icon={(
                       <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
                         <RiExchange2Fill className="size-4 text-components-avatar-shape-fill-stop-100" />
@@ -153,8 +159,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   />
                   <AppTypeCard
                     active={appMode === AppModeEnum.ADVANCED_CHAT}
-                    title={t('types.advanced', { ns: 'app' })}
-                    description={t('newApp.advancedShortDescription', { ns: 'app' })}
+                    title={t($ => $['types.advanced'], { ns: 'app' })}
+                    description={t($ => $['newApp.advancedShortDescription'], { ns: 'app' })}
                     icon={(
                       <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
                         <BubbleTextMod className="size-4 text-components-avatar-shape-fill-stop-100" />
@@ -173,7 +179,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
-                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
+                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['newApp.forBeginners'], { ns: 'app' })}</span>
                     <RiArrowRightSLine className={`ml-1 size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
@@ -181,8 +187,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   <div className="flex flex-row gap-2">
                     <AppTypeCard
                       active={appMode === AppModeEnum.CHAT}
-                      title={t('types.chatbot', { ns: 'app' })}
-                      description={t('newApp.chatbotShortDescription', { ns: 'app' })}
+                      title={t($ => $['types.chatbot'], { ns: 'app' })}
+                      description={t($ => $['newApp.chatbotShortDescription'], { ns: 'app' })}
                       icon={(
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
                           <ChatBot className="size-4 text-components-avatar-shape-fill-stop-100" />
@@ -194,8 +200,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.AGENT_CHAT}
-                      title={t('types.agent', { ns: 'app' })}
-                      description={t('newApp.agentShortDescription', { ns: 'app' })}
+                      title={t($ => $['types.agent'], { ns: 'app' })}
+                      description={t($ => $['newApp.agentShortDescription'], { ns: 'app' })}
                       icon={(
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
                           <Logic className="size-4 text-components-avatar-shape-fill-stop-100" />
@@ -207,8 +213,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.COMPLETION}
-                      title={t('newApp.completeApp', { ns: 'app' })}
-                      description={t('newApp.completionShortDescription', { ns: 'app' })}
+                      title={t($ => $['newApp.completeApp'], { ns: 'app' })}
+                      description={t($ => $['newApp.completionShortDescription'], { ns: 'app' })}
                       icon={(
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
                           <ListSparkle className="size-4 text-components-avatar-shape-fill-stop-100" />
@@ -225,12 +231,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="system-sm-semibold text-text-secondary">{t('newApp.captionName', { ns: 'app' })}</label>
+                    <label className="system-sm-semibold text-text-secondary">{t($ => $['newApp.captionName'], { ns: 'app' })}</label>
                   </div>
                   <Input
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                    placeholder={t($ => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
                 <AppIcon
@@ -257,17 +263,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="system-sm-semibold text-text-secondary">{t('newApp.captionDescription', { ns: 'app' })}</label>
+                  <label className="system-sm-semibold text-text-secondary">{t($ => $['newApp.captionDescription'], { ns: 'app' })}</label>
                   <span className="ml-1 system-xs-regular text-text-tertiary">
                     (
-                    {t('newApp.optional', { ns: 'app' })}
+                    {t($ => $['newApp.optional'], { ns: 'app' })}
                     )
                   </span>
                 </div>
                 <Textarea
-                  aria-label={t('newApp.captionDescription', { ns: 'app' })}
+                  aria-label={t($ => $['newApp.captionDescription'], { ns: 'app' })}
                   className="resize-none"
-                  placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                  placeholder={t($ => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                   value={description}
                   onValueChange={value => setDescription(value)}
                 />
@@ -280,15 +286,15 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={onCreateFromTemplate}
               >
-                <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
+                <span>{t($ => $['newApp.noIdeaTip'], { ns: 'app' })}</span>
                 <div className="p-px">
                   <RiArrowRightLine className="size-3.5" aria-hidden="true" />
                 </div>
               </button>
               <div className="flex gap-2">
-                <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+                <Button onClick={onClose}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button disabled={!canCreateApp || isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
-                  <span>{t('newApp.Create', { ns: 'app' })}</span>
+                  <span>{t($ => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>
                     {['Mod', 'Enter'].map(key => (
                       <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
@@ -328,7 +334,7 @@ const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaul
   return (
     <CreateAppDialogShell
       show={show}
-      title={t('newApp.startFromBlank', { ns: 'app' })}
+      title={t($ => $['newApp.startFromBlank'], { ns: 'app' })}
       contentClassName="overflow-visible"
       onClose={onClose}
     >
@@ -371,33 +377,33 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
     switch (mode) {
       case AppModeEnum.CHAT:
         return {
-          title: t('types.chatbot', { ns: 'app' }),
-          description: t('newApp.chatbotUserDescription', { ns: 'app' }),
+          title: t($ => $['types.chatbot'], { ns: 'app' }),
+          description: t($ => $['newApp.chatbotUserDescription'], { ns: 'app' }),
         }
       case AppModeEnum.ADVANCED_CHAT:
         return {
-          title: t('types.advanced', { ns: 'app' }),
-          description: t('newApp.advancedUserDescription', { ns: 'app' }),
+          title: t($ => $['types.advanced'], { ns: 'app' }),
+          description: t($ => $['newApp.advancedUserDescription'], { ns: 'app' }),
         }
       case AppModeEnum.AGENT_CHAT:
         return {
-          title: t('types.agent', { ns: 'app' }),
-          description: t('newApp.agentUserDescription', { ns: 'app' }),
+          title: t($ => $['types.agent'], { ns: 'app' }),
+          description: t($ => $['newApp.agentUserDescription'], { ns: 'app' }),
         }
       case AppModeEnum.COMPLETION:
         return {
-          title: t('newApp.completeApp', { ns: 'app' }),
-          description: t('newApp.completionUserDescription', { ns: 'app' }),
+          title: t($ => $['newApp.completeApp'], { ns: 'app' }),
+          description: t($ => $['newApp.completionUserDescription'], { ns: 'app' }),
         }
       case AppModeEnum.WORKFLOW:
         return {
-          title: t('types.workflow', { ns: 'app' }),
-          description: t('newApp.workflowUserDescription', { ns: 'app' }),
+          title: t($ => $['types.workflow'], { ns: 'app' }),
+          description: t($ => $['newApp.workflowUserDescription'], { ns: 'app' }),
         }
       default:
         return {
-          title: t('types.workflow', { ns: 'app' }),
-          description: t('newApp.workflowUserDescription', { ns: 'app' }),
+          title: t($ => $['types.workflow'], { ns: 'app' }),
+          description: t($ => $['newApp.workflowUserDescription'], { ns: 'app' }),
         }
     }
   })()

@@ -1,7 +1,7 @@
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { API_PREFIX } from '@/config'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 
 const useGetIcon = () => {
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)

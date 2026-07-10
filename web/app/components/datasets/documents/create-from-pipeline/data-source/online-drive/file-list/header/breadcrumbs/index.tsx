@@ -84,7 +84,7 @@ const Breadcrumbs = ({
     <div className="flex grow items-center overflow-hidden">
       {showSearchResult && (
         <div className="text-test-secondary px-[5px] system-sm-medium">
-          {t('onlineDrive.breadcrumbs.searchResult', {
+          {t($ => $['onlineDrive.breadcrumbs.searchResult'], {
             ns: 'datasetPipeline',
             searchResultsLength,
             folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
@@ -93,7 +93,7 @@ const Breadcrumbs = ({
       )}
       {!showSearchResult && showBucketListTitle && (
         <div className="text-test-secondary px-[5px] system-sm-medium">
-          {t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
+          {t($ => $['onlineDrive.breadcrumbs.allBuckets'], { ns: 'datasetPipeline' })}
         </div>
       )}
       {!showSearchResult && !showBucketListTitle && (

@@ -87,11 +87,11 @@ const AppInfo: FC<Props> = ({
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
-            {mode === 'advanced-chat' && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'chat' && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'agent-chat' && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'workflow' && <div className="truncate">{t('types.workflow', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'completion' && <div className="truncate">{t('types.completion', { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'advanced-chat' && <div className="truncate">{t($ => $['types.advanced'], { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'chat' && <div className="truncate">{t($ => $['types.chatbot'], { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'agent-chat' && <div className="truncate">{t($ => $['types.agent'], { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'workflow' && <div className="truncate">{t($ => $['types.workflow'], { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'completion' && <div className="truncate">{t($ => $['types.completion'], { ns: 'app' }).toUpperCase()}</div>}
           </div>
         </div>
       </div>
@@ -106,13 +106,13 @@ const AppInfo: FC<Props> = ({
           onClick={onCreate}
         >
           <span className="mr-1 i-ri-add-line size-4 shrink-0" />
-          <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
+          <span className="truncate">{t($ => $['tryApp.createFromSampleApp'], { ns: 'explore' })}</span>
         </Button>
       )}
 
       {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
-          <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
+          <div className={headerClassName}>{t($ => $['tryApp.category'], { ns: 'explore' })}</div>
           <div className="flex flex-wrap gap-1.5">
             {visibleCategories.map(category => (
               <span
@@ -127,7 +127,7 @@ const AppInfo: FC<Props> = ({
       )}
       {requirements.length > 0 && (
         <div className="mt-5 grow overflow-y-auto">
-          <div className={headerClassName}>{t('tryApp.requirements', { ns: 'explore' })}</div>
+          <div className={headerClassName}>{t($ => $['tryApp.requirements'], { ns: 'explore' })}</div>
           <div className="space-y-0.5">
             {requirements.map(item => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>

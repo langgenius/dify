@@ -36,13 +36,13 @@ import {
   useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
+import { useDocLink } from '@/context/i18n'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   currentWorkspaceIdAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceOwnerAtom,
-  langGeniusVersionInfoAtom,
-} from '@/context/app-context-state'
-import { useDocLink } from '@/context/i18n'
+} from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import styles from './help-menu.module.css'

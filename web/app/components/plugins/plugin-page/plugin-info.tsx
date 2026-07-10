@@ -33,13 +33,13 @@ const PlugInfo: FC<Props> = ({
       <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(`${i18nPrefix}.title`, { ns: 'plugin' })}
+          {t($ => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
         </DialogTitle>
 
         <div className="mt-5 space-y-3">
-          {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName="max-w-[190px]" />}
-          {release && <KeyValueItem label={t(`${i18nPrefix}.release`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={release} />}
-          {packageName && <KeyValueItem label={t(`${i18nPrefix}.packageName`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={packageName} />}
+          {repository && <KeyValueItem label={t($ => $[`${i18nPrefix}.repository`], { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName="max-w-[190px]" />}
+          {release && <KeyValueItem label={t($ => $[`${i18nPrefix}.release`], { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={release} />}
+          {packageName && <KeyValueItem label={t($ => $[`${i18nPrefix}.packageName`], { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={packageName} />}
         </div>
       </DialogContent>
     </Dialog>

@@ -177,7 +177,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       >
         <div className="relative px-3 pt-3.5 pb-1">
           <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
-            {t('modelProvider.modelSettings', { ns: 'common' })}
+            {t($ => $['modelProvider.modelSettings'], { ns: 'common' })}
           </div>
           <PopoverClose className="absolute top-2.5 right-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
             <span className="i-ri-close-line size-4 text-text-tertiary" />
@@ -196,7 +196,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             !!parameterRules.length && (
               <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pt-3 pb-4">
                 <div className="flex items-center gap-1">
-                  <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">{t('modelProvider.parameters', { ns: 'common' })}</div>
+                  <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">{t($ => $['modelProvider.parameters'], { ns: 'common' })}</div>
                   {
                     PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                       <PresetsParameter
@@ -243,8 +243,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           >
             {
               debugWithMultipleModel
-                ? t('debugAsSingleModel', { ns: 'appDebug' })
-                : t('debugAsMultipleModel', { ns: 'appDebug' })
+                ? t($ => $.debugAsSingleModel, { ns: 'appDebug' })
+                : t($ => $.debugAsMultipleModel, { ns: 'appDebug' })
             }
             <ArrowNarrowLeft className="size-3 rotate-180" />
           </div>

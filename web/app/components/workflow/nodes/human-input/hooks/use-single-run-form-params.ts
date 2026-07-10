@@ -43,7 +43,7 @@ const useSingleRunFormParams = ({
 
   const forms = useMemo(() => {
     const forms: FormProps[] = [{
-      label: t(`${i18nPrefix}.singleRun.label`, { ns: 'workflow' })!,
+      label: t($ => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflow' })!,
       inputs: generatedInputs,
       values: runInputData,
       onChange: setRunInputData,

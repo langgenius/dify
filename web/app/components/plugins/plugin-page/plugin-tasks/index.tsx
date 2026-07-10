@@ -51,16 +51,16 @@ const PluginTasks = ({
   // Generate tooltip text based on status
   const tip = useMemo(() => {
     if (isInstallingWithError)
-      return t('task.installingWithError', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
+      return t($ => $['task.installingWithError'], { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
     if (isInstallingWithSuccess)
-      return t('task.installingWithSuccess', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength })
+      return t($ => $['task.installingWithSuccess'], { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength })
     if (isInstalling)
-      return t('task.installing', { ns: 'plugin' })
+      return t($ => $['task.installing'], { ns: 'plugin' })
     if (isFailed)
-      return t('task.installedError', { ns: 'plugin', errorLength: errorPluginsLength })
+      return t($ => $['task.installedError'], { ns: 'plugin', errorLength: errorPluginsLength })
     if (isSuccess)
-      return t('task.installSuccess', { ns: 'plugin', successLength: successPluginsLength })
-    return t('task.installed', { ns: 'plugin' })
+      return t($ => $['task.installSuccess'], { ns: 'plugin', successLength: successPluginsLength })
+    return t($ => $['task.installed'], { ns: 'plugin' })
   }, [
     errorPluginsLength,
     isFailed,

@@ -7,7 +7,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 const Home = () => {
   const { t } = useTranslation()
-  useDocumentTitle(t('mainNav.home', { ns: 'common' }))
+  useDocumentTitle(t($ => $['mainNav.home'], { ns: 'common' }))
 
   return <AppList />
 }

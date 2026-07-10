@@ -119,7 +119,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('nodes.assigner.noVarTip', { ns: 'workflow' })}
+        {t($ => $['nodes.assigner.noVarTip'], { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -144,7 +144,7 @@ const VarList: FC<Props> = ({
                   onChange={handleAssignedVarChange(index)}
                   onOpen={handleOpen(index)}
                   filterVar={filterVar}
-                  placeholder={t('nodes.assigner.selectAssignedVariable', { ns: 'workflow' }) as string}
+                  placeholder={t($ => $['nodes.assigner.selectAssignedVariable'], { ns: 'workflow' }) as string}
                   minWidth={352}
                   popupFor="assigned"
                   className="w-full"
@@ -172,7 +172,7 @@ const VarList: FC<Props> = ({
                     onChange={handleToAssignedVarChange(index)}
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
-                    placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
+                    placeholder={t($ => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string}
                     minWidth={352}
                     popupFor="toAssigned"
                     className="w-full"
@@ -190,7 +190,7 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
-                      aria-label={item.variable_selector?.join('.') || t('nodes.assigner.setParameter', { ns: 'workflow' })}
+                      aria-label={item.variable_selector?.join('.') || t($ => $['nodes.assigner.setParameter'], { ns: 'workflow' })}
                       value={item.value as string}
                       onValueChange={value => handleToAssignedVarChange(index)(value)}
                       className="w-full"

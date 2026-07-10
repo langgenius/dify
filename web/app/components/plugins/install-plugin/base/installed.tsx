@@ -65,7 +65,7 @@ const Installed: FC<Props> = ({
   const categoryTarget = !isFailed && installContextCategory && installedCategory !== installContextCategory
     ? categoryTargetMap[installedCategory as PluginCategoryEnum]
     : undefined
-  const categoryName = categoryTarget ? t(categoryTarget.labelKey, { ns: 'common' }) : ''
+  const categoryName = categoryTarget ? t($ => $[categoryTarget.labelKey], { ns: 'common' }) : ''
 
   const handleClose = () => {
     onCancel()
@@ -80,7 +80,7 @@ const Installed: FC<Props> = ({
               ? (
                   <Trans
                     t={t}
-                    i18nKey="installModal.installedSuccessfullyWithPageDesc"
+                    i18nKey={$ => $['installModal.installedSuccessfullyWithPageDesc']}
                     ns="plugin"
                     components={{
                       categoryName: <span className="system-sm-semibold text-text-secondary" />,
@@ -88,7 +88,7 @@ const Installed: FC<Props> = ({
                     values={{ categoryName }}
                   />
                 )
-              : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}
+              : t($ => $[`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`], { ns: 'plugin' })}
         </p>
         {payload && (
           <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
@@ -114,11 +114,11 @@ const Installed: FC<Props> = ({
           {categoryTarget
             ? (
                 <>
-                  <span>{t('installModal.viewDetails', { ns: 'plugin' })}</span>
+                  <span>{t($ => $['installModal.viewDetails'], { ns: 'plugin' })}</span>
                   <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
                 </>
               )
-            : t('operation.close', { ns: 'common' })}
+            : t($ => $['operation.close'], { ns: 'common' })}
         </Button>
       </div>
     </>

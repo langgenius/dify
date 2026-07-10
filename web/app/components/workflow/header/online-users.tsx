@@ -13,7 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { getAvatar } from '@/service/common'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
@@ -60,8 +60,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t('comments.fallback.user', { ns: 'workflow' })
-  const currentUserSuffix = t('members.you', { ns: 'common' })
+  const fallbackUsername = t($ => $['comments.fallback.user'], { ns: 'workflow' })
+  const currentUserSuffix = t($ => $['members.you'], { ns: 'common' })
 
   const renderDisplayName = (
     user: OnlineUser,

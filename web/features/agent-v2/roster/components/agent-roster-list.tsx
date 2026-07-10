@@ -107,7 +107,7 @@ function AgentRosterItem({
   const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const updatedAt = agent.updated_at != null
-    ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
+    ? formatTime(agent.updated_at, t($ => $['roster.dateTimeFormat']))
     : null
   const referenceCount = agent.published_reference_count ?? 0
   const publishedReferences = agent.published_references ?? []
@@ -130,7 +130,7 @@ function AgentRosterItem({
     <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid">
       <div className="flex h-full min-w-0 flex-col">
         <Link
-          href={`/roster/agent/${agent.id}/configure`}
+          href={`/agents/${agent.id}/configure`}
           aria-labelledby={nameId}
           aria-describedby={agent.description ? descriptionId : undefined}
           className="block shrink-0 cursor-pointer touch-manipulation outline-hidden"
@@ -164,7 +164,7 @@ function AgentRosterItem({
             <div className="absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
               <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
               <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t('roster.usageStatus.draft')}
+                {t($ => $['roster.usageStatus.draft'])}
               </div>
             </div>
           )}
@@ -199,23 +199,23 @@ function AgentRosterItem({
       >
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
-            aria-label={t('roster.moreActions', { name: agent.name })}
+            aria-label={t($ => $['roster.moreActions'], { name: agent.name })}
             className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
           >
-            <span className="sr-only">{t('roster.moreActions', { name: agent.name })}</span>
+            <span className="sr-only">{t($ => $['roster.moreActions'], { name: agent.name })}</span>
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span>{t('roster.editInfo')}</span>
+              <span>{t($ => $['roster.editInfo'])}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2"
               onClick={handleDuplicateOpen}
             >
               <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-              <span>{tCommon('operation.duplicate')}</span>
+              <span>{tCommon($ => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -224,7 +224,7 @@ function AgentRosterItem({
               onClick={() => setIsDeleteOpen(true)}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span>{tCommon('operation.delete')}</span>
+              <span>{tCommon($ => $['operation.delete'])}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -263,10 +263,10 @@ export function AgentRosterList({
     <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
-        <AgentRosterPlaceholderState title={t('roster.loadingError')} />
+        <AgentRosterPlaceholderState title={t($ => $['roster.loadingError'])} />
       )}
       {!isPending && !isError && agents.length === 0 && (
-        <AgentRosterPlaceholderState title={isEmptySearch ? t('roster.emptySearch') : t('roster.empty')} />
+        <AgentRosterPlaceholderState title={isEmptySearch ? t($ => $['roster.emptySearch']) : t($ => $['roster.empty'])} />
       )}
       {!isPending && !isError && agents.map(agent => (
         <AgentRosterItem key={agent.id} agent={agent} />
@@ -278,7 +278,7 @@ export function AgentRosterList({
             disabled={isFetchingNextPage}
             onClick={onLoadMore}
           >
-            {t('roster.loadMore')}
+            {t($ => $['roster.loadMore'])}
           </Button>
         </div>
       )}

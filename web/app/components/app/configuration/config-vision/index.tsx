@@ -69,12 +69,12 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">{t($ => $['vision.name'], { ns: 'appDebug' })}</div>
         <Infotip
-          aria-label={t('vision.description', { ns: 'appDebug' })}
+          aria-label={t($ => $['vision.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('vision.description', { ns: 'appDebug' })}
+          {t($ => $['vision.description'], { ns: 'appDebug' })}
         </Infotip>
       </div>
       <div className="flex shrink-0 items-center">
@@ -82,19 +82,19 @@ const ConfigVision: FC = () => {
           ? (
               <>
                 <div className="mr-2 flex items-center gap-0.5">
-                  <div className="system-xs-medium-uppercase text-text-tertiary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
+                  <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}</div>
                   <Infotip
-                    aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
+                    aria-label={t($ => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })}
                     popupClassName="w-[180px]"
                   >
-                    {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                    {t($ => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' }).split('\n').map(item => (
                       <div key={item}>{item}</div>
                     ))}
                   </Infotip>
                 </div>
                 <div className="flex items-center gap-1">
                   <OptionCard
-                    title={t('vision.visionSettings.high', { ns: 'appDebug' })}
+                    title={t($ => $['vision.visionSettings.high'], { ns: 'appDebug' })}
                     selected={file?.image?.detail === Resolution.high}
                     onSelect={noop}
                     className={cn(
@@ -103,7 +103,7 @@ const ConfigVision: FC = () => {
                     )}
                   />
                   <OptionCard
-                    title={t('vision.visionSettings.low', { ns: 'appDebug' })}
+                    title={t($ => $['vision.visionSettings.low'], { ns: 'appDebug' })}
                     selected={file?.image?.detail === Resolution.low}
                     onSelect={noop}
                     className={cn(

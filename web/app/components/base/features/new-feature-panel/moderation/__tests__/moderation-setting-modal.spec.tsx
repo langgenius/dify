@@ -2,6 +2,7 @@ import type { ModerationConfig } from '@/models/debug'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
+import { withSelectorKey } from '@/test/i18n-mock'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
@@ -979,13 +980,13 @@ describe('ModerationSettingModal', () => {
 
   it('should fallback to empty translated strings for optional placeholders and titles', async () => {
     const useTranslationSpy = vi.spyOn(i18n, 'useTranslation').mockReturnValue({
-      t: (key: string) => [
+      t: withSelectorKey((key: string) => [
         'feature.moderation.modal.keywords.placeholder',
         'feature.moderation.modal.content.input',
         'feature.moderation.modal.content.output',
       ].includes(key)
         ? ''
-        : key,
+        : key),
       i18n: { language: 'en-US' },
     } as unknown as ReturnType<typeof i18n.useTranslation>)
 

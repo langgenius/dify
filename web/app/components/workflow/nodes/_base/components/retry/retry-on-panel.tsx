@@ -1,7 +1,7 @@
 import type {
   Node,
 } from '@/app/components/workflow/types'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +18,8 @@ const RetryOnPanel = ({
   const { t } = useTranslation()
   const { handleRetryConfigChange } = useRetryConfig(id)
   const { retry_config } = data
-  const maxRetriesLabel = t('nodes.common.retry.maxRetries', { ns: 'workflow' })
-  const retryIntervalLabel = t('nodes.common.retry.retryInterval', { ns: 'workflow' })
+  const maxRetriesLabel = t($ => $['nodes.common.retry.maxRetries'], { ns: 'workflow' })
+  const retryIntervalLabel = t($ => $['nodes.common.retry.retryInterval'], { ns: 'workflow' })
 
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
@@ -58,7 +58,7 @@ const RetryOnPanel = ({
       <div className="pt-2">
         <div className="flex h-10 items-center justify-between px-4 py-2">
           <div className="flex items-center">
-            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">{t('nodes.common.retry.retryOnFailure', { ns: 'workflow' })}</div>
+            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">{t($ => $['nodes.common.retry.retryOnFailure'], { ns: 'workflow' })}</div>
           </div>
           <Switch
             checked={retry_config?.retry_enabled ?? false}
@@ -68,7 +68,7 @@ const RetryOnPanel = ({
         {
           retry_config?.retry_enabled && (
             <div className="px-4 pb-2">
-              <FieldsetRoot className="mb-1 flex w-full items-center">
+              <Fieldset className="mb-1 flex w-full items-center">
                 <FieldsetLegend className="sr-only">{maxRetriesLabel}</FieldsetLegend>
                 <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{maxRetriesLabel}</div>
                 <Slider
@@ -88,11 +88,11 @@ const RetryOnPanel = ({
                     handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)}
                   min={1}
                   max={10}
-                  unit={t('nodes.common.retry.times', { ns: 'workflow' }) || ''}
+                  unit={t($ => $['nodes.common.retry.times'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </FieldsetRoot>
-              <FieldsetRoot className="flex items-center">
+              </Fieldset>
+              <Fieldset className="flex items-center">
                 <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
                 <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{retryIntervalLabel}</div>
                 <Slider
@@ -112,10 +112,10 @@ const RetryOnPanel = ({
                     handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)}
                   min={100}
                   max={5000}
-                  unit={t('nodes.common.retry.ms', { ns: 'workflow' }) || ''}
+                  unit={t($ => $['nodes.common.retry.ms'], { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
-              </FieldsetRoot>
+              </Fieldset>
             </div>
           )
         }

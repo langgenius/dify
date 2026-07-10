@@ -11,11 +11,14 @@ const { mockTranslate } = vi.hoisted(() => ({
   mockTranslate: vi.fn((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
 }))
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: mockTranslate,
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey(mockTranslate),
+    }),
+  })
+})
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({

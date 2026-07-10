@@ -71,11 +71,11 @@ const AudioBtn = ({
   }
 
   const tooltipContent = {
-    initial: t('play', { ns: 'appApi' }),
-    ended: t('play', { ns: 'appApi' }),
-    paused: t('pause', { ns: 'appApi' }),
-    playing: t('playing', { ns: 'appApi' }),
-    loading: t('loading', { ns: 'appApi' }),
+    initial: t($ => $.play, { ns: 'appApi' }),
+    ended: t($ => $.play, { ns: 'appApi' }),
+    paused: t($ => $.pause, { ns: 'appApi' }),
+    playing: t($ => $.playing, { ns: 'appApi' }),
+    loading: t($ => $.loading, { ns: 'appApi' }),
   }[audioState]
 
   return (

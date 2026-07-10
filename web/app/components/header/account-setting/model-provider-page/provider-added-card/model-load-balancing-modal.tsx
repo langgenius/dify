@@ -108,7 +108,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
         },
       })
       if (res.result === 'success') {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         handleRefreshModel(provider, currentCustomConfigurationModelFixedFields, false)
         onSave?.(provider.provider)
         onClose?.()
@@ -116,11 +116,11 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
       else {
         toast.error((res as {
           error?: string
-        })?.error || t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        })?.error || t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       }
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(error instanceof Error ? error.message : t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
     finally {
       setLoading(false)
@@ -192,8 +192,8 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
             <div className="pb-3 font-semibold">
               <div className="h-[30px]">
                 {draftConfig?.enabled
-                  ? t('modelProvider.auth.configLoadBalancing', { ns: 'common' })
-                  : t('modelProvider.auth.configModel', { ns: 'common' })}
+                  ? t($ => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })
+                  : t($ => $['modelProvider.auth.configModel'], { ns: 'common' })}
               </div>
               {Boolean(model) && (
                 <div className="flex h-5 items-center">
@@ -217,13 +217,13 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
                         <div className="grow">
                           <div className="text-sm text-text-secondary">
                             {providerFormSchemaPredefined
-                              ? t('modelProvider.auth.providerManaged', { ns: 'common' })
-                              : t('modelProvider.auth.specifyModelCredential', { ns: 'common' })}
+                              ? t($ => $['modelProvider.auth.providerManaged'], { ns: 'common' })
+                              : t($ => $['modelProvider.auth.specifyModelCredential'], { ns: 'common' })}
                           </div>
                           <div className="text-xs text-text-tertiary">
                             {providerFormSchemaPredefined
-                              ? t('modelProvider.auth.providerManagedTip', { ns: 'common' })
-                              : t('modelProvider.auth.specifyModelCredentialTip', { ns: 'common' })}
+                              ? t($ => $['modelProvider.auth.providerManagedTip'], { ns: 'common' })
+                              : t($ => $['modelProvider.auth.specifyModelCredentialTip'], { ns: 'common' })}
                           </div>
                         </div>
                         {!providerFormSchemaPredefined && (<SwitchCredentialInLoadBalancing provider={provider} customModelCredential={customModelCredential ?? initialCustomModelCredential} setCustomModelCredential={setCustomModelCredential} model={model} credentials={available_credentials} onUpdate={handleUpdateWhenSwitchCredential} onRemove={handleUpdateWhenSwitchCredential} />)}
@@ -256,12 +256,12 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
                     <div>
                       {!providerFormSchemaPredefined && (
                         <Button onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })} className="text-components-button-destructive-secondary-text">
-                          {t('modelProvider.auth.removeModel', { ns: 'common' })}
+                          {t($ => $['modelProvider.auth.removeModel'], { ns: 'common' })}
                         </Button>
                       )}
                     </div>
                     <div className="space-x-2">
-                      <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
                       <Button
                         variant="primary"
                         onClick={handleSave}
@@ -269,7 +269,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
                           || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
                           || isLoading}
                       >
-                        {t('operation.save', { ns: 'common' })}
+                        {t($ => $['operation.save'], { ns: 'common' })}
                       </Button>
                     </div>
                   </div>
@@ -279,13 +279,13 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t('modelProvider.confirmDelete', { ns: 'common' })}
+                  {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
                 </AlertDialogTitle>
               </div>
               <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
                 <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
-                  {t('operation.confirm', { ns: 'common' })}
+                  {t($ => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>

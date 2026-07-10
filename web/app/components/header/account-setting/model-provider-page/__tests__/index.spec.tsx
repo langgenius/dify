@@ -443,7 +443,7 @@ describe('ModelProviderPage', () => {
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
     expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
-    expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.changeTimezone')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
   })
 

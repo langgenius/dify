@@ -6,16 +6,11 @@ import { useAtomValue } from 'jotai'
 // Libraries
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useSetStepByStepTourAccountState,
-  useStepByStepTourAccountStateValue,
-} from '@/app/components/step-by-step-tour/storage'
+import { useSetStepByStepTourAccountState, useStepByStepTourAccountStateValue } from '@/app/components/step-by-step-tour/storage'
 import { getStepByStepTourGuides, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import {
-  isCurrentWorkspaceOwnerAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -36,7 +31,7 @@ const List = () => {
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
-  useDocumentTitle(t('knowledge', { ns: 'dataset' }))
+  useDocumentTitle(t($ => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -60,10 +55,6 @@ const List = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const datasetListQuery = useDatasetList({
     initialPage: 1,
@@ -78,17 +69,14 @@ const List = () => {
   const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
   const showEmptyDataList = !hasAnyDataset && (canCreateDataset || canConnectExternalDataset) && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
-  const hasKnowledgeWalkthroughPermissions = canCreateDataset && canConnectExternalDataset
-  const activeKnowledgeGuideGroup = hasKnowledgeWalkthroughPermissions
-    ? showEmptyDataList
-      ? 'knowledgeEmpty'
-      : hasAnyDataset
-        ? 'knowledgeWithDatasets'
-        : undefined
-    : undefined
-  const effectiveActiveKnowledgeGuideGroup = stepByStepTourAccountState.activeGuideGroup ?? activeKnowledgeGuideGroup
-  const activeKnowledgeGuides = stepByStepTourAccountState.activeTaskId === 'knowledge' && effectiveActiveKnowledgeGuideGroup
-    ? getStepByStepTourGuides('knowledge', effectiveActiveKnowledgeGuideGroup)
+  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hook is not a React useState call.
+  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  const activeKnowledgeGuideGroup = hasAnyDataset
+    ? 'knowledgeWithDatasets'
+    : showEmptyDataList && canCreateDataset && canConnectExternalDataset ? 'knowledgeEmpty' : undefined
+  const activeKnowledgeGuides = stepByStepTourAccountState.activeTaskId === 'knowledge' && activeKnowledgeGuideGroup
+    ? getStepByStepTourGuides('knowledge', activeKnowledgeGuideGroup)
     : []
   const activeKnowledgeGuide = activeKnowledgeGuides[stepByStepTourAccountState.activeGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu = activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate
@@ -102,9 +90,7 @@ const List = () => {
     if (stepByStepTourAccountState.activeGuideGroup === activeKnowledgeGuideGroup)
       return
 
-    // Sync the active walkthrough branch into the tour storage owner after the
-    // Knowledge list data resolves.
-    // eslint-disable-next-line react/set-state-in-effect
+    // eslint-disable-next-line react/set-state-in-effect -- Sync the resolved Knowledge branch once list data is available.
     setStepByStepTourAccountState({
       ...stepByStepTourAccountState,
       activeGuideGroup: activeKnowledgeGuideGroup,
@@ -172,7 +158,7 @@ const List = () => {
               />
               <Datasets
                 datasetList={datasetListQuery.data}
-                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
+                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t($ => $['filterEmpty.noKnowledge'], { ns: 'dataset' })} /> : undefined}
                 fetchNextPage={datasetListQuery.fetchNextPage}
                 hasNextPage={datasetListQuery.hasNextPage}
                 isFetching={datasetListQuery.isFetching}
@@ -180,8 +166,8 @@ const List = () => {
                 isLoading={datasetListQuery.isLoading}
                 isPlaceholderData={datasetListQuery.isPlaceholderData}
                 onOpenTagManagement={() => setShowTagManagementModal(true)}
-                stepByStepTourActionMenuOpen={activeKnowledgeGuide ? shouldOpenStepByStepTourDatasetCardActionMenu : undefined}
                 stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu}
+                stepByStepTourActionMenuOpen={shouldOpenStepByStepTourDatasetCardActionMenu}
                 stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
               />
             </>

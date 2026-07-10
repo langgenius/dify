@@ -1,6 +1,7 @@
 import type { I18nText } from '@/i18n-config/language'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildProviders,
   formatExternalDataTool,
@@ -8,12 +9,12 @@ import {
   getValidationError,
 } from '../external-data-tool-modal-utils'
 
-const t = (key: string, options?: Record<string, unknown>) => {
+const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
   if (options?.key)
     return `${key}:${options.key as string}`
 
   return key
-}
+})
 
 const i18n = (en: string, zh = en): I18nText =>
   ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText

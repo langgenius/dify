@@ -15,7 +15,7 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
   toggleCollapsed,
 }) => {
   const { t } = useTranslation()
-  const label = isCollapsed ? t('segment.expandChunks', { ns: 'datasetDocuments' }) : t('segment.collapseChunks', { ns: 'datasetDocuments' })
+  const label = isCollapsed ? t($ => $['segment.expandChunks'], { ns: 'datasetDocuments' }) : t($ => $['segment.collapseChunks'], { ns: 'datasetDocuments' })
 
   return (
     <Tooltip>

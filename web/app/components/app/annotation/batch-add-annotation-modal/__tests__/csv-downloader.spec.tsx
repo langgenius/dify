@@ -7,6 +7,10 @@ import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import CSVDownload from '../csv-downloader'
 
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
+}))
+
 const downloaderProps: any[] = []
 
 vi.mock('react-papaparse', () => ({
@@ -17,10 +21,6 @@ vi.mock('react-papaparse', () => ({
     },
     Type: { Link: 'link' },
   })),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
 }))
 
 const renderWithLocale = (locale: Locale) => {

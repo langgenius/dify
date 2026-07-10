@@ -3,10 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Form from '../Form'
 
-// Mock context for i18n doc link
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
+
+// Mock context for i18n doc link
 
 describe('Form', () => {
   const defaultFormSchemas: FormSchema[] = [

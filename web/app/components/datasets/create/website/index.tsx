@@ -61,7 +61,7 @@ const Website: FC<Props> = ({
     <div>
       <div className="mb-4">
         <div className="mb-2 system-md-medium text-text-secondary">
-          {t('stepOne.website.chooseProvider', { ns: 'datasetCreation' })}
+          {t($ => $['stepOne.website.chooseProvider'], { ns: 'datasetCreation' })}
         </div>
         <div className="flex space-x-2">
           {ENABLE_WEBSITE_JINAREADER && (

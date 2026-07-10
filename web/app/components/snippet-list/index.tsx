@@ -8,7 +8,8 @@ import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { currentWorkspaceLoadingAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
@@ -72,7 +73,7 @@ const SnippetList = () => {
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
-  useDocumentTitle(t('tabs.snippets', { ns: 'workflow' }))
+  useDocumentTitle(t($ => $['tabs.snippets'], { ns: 'workflow' }))
 
   const snippetListQuery = useMemo(() => {
     const isPublished = toSnippetPublishedQuery(publishStatus)
@@ -146,11 +147,11 @@ const SnippetList = () => {
               href="/apps"
               className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
-              {t('menus.apps', { ns: 'common' })}
+              {t($ => $['menus.apps'], { ns: 'common' })}
             </Link>
             <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
             <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t('tabs.snippets', { ns: 'workflow' })}
+              {t($ => $['tabs.snippets'], { ns: 'workflow' })}
             </h1>
           </>
         )}
@@ -172,12 +173,12 @@ const SnippetList = () => {
                 className={cn('pl-6.5', keywords && 'pr-6.5')}
                 value={keywords}
                 onChange={e => setKeywords(e.target.value)}
-                placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
+                placeholder={t($ => $['tabs.searchSnippets'], { ns: 'workflow' })}
               />
               {!!keywords && (
                 <button
                   type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
+                  aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                   className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
                   onClick={() => setKeywords('')}
                 >
@@ -206,7 +207,7 @@ const SnippetList = () => {
                   onTagsChange={refetch}
                 />
               ))
-            : <Empty message={t('tabs.noSnippetsFound', { ns: 'workflow' })} />}
+            : <Empty message={t($ => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />}
         {isFetchingNextPage && (
           <SnippetCardSkeleton count={3} />
         )}

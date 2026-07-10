@@ -29,17 +29,17 @@ export function AppTypeFilter({
   const { t } = useTranslation()
 
   const options = useMemo(() => ([
-    { value: 'all', text: t('types.all', { ns: 'app' }), iconClassName: 'i-ri-apps-2-line' },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), iconClassName: 'i-ri-exchange-2-line' },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), iconClassName: 'i-ri-robot-3-line' },
-    { value: AppModeEnum.COMPLETION, text: t('newApp.completeApp', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
+    { value: 'all', text: t($ => $['types.all'], { ns: 'app' }), iconClassName: 'i-ri-apps-2-line' },
+    { value: AppModeEnum.WORKFLOW, text: t($ => $['types.workflow'], { ns: 'app' }), iconClassName: 'i-ri-exchange-2-line' },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t($ => $['types.advanced'], { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
+    { value: AppModeEnum.CHAT, text: t($ => $['types.chatbot'], { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
+    { value: AppModeEnum.AGENT_CHAT, text: t($ => $['types.agent'], { ns: 'app' }), iconClassName: 'i-ri-robot-3-line' },
+    { value: AppModeEnum.COMPLETION, text: t($ => $['newApp.completeApp'], { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
   ]), [t])
 
   const activeOption = options.find(option => option.value === value)
   const isSelected = value !== 'all'
-  const triggerLabel = isSelected ? activeOption?.text : t('studio.filters.types', { ns: 'app' })
+  const triggerLabel = isSelected ? activeOption?.text : t($ => $['studio.filters.types'], { ns: 'app' })
 
   return (
     <DropdownMenu>

@@ -30,11 +30,11 @@ export function AgentDetailLayout({
   }))
   const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
 
-  useDocumentTitle(agentQuery.data?.name ?? t('agentDetail.documentTitle'))
+  useDocumentTitle(agentQuery.data?.name ?? t($ => $['agentDetail.documentTitle']))
 
   useEffect(() => {
     if (shouldRedirectToRoster)
-      router.replace('/roster')
+      router.replace('/agents')
   }, [router, shouldRedirectToRoster])
 
   if (shouldRedirectToRoster)

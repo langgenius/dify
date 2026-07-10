@@ -46,7 +46,7 @@ const ChangeItem = ({
   const renderTrigger = useCallback(() => {
     return (
       <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
-        {t('panel.change', { ns: 'workflow' })}
+        {t($ => $['panel.change'], { ns: 'workflow' })}
       </div>
     )
   }, [t])
@@ -93,7 +93,7 @@ const Operator = ({
     >
       <DropdownMenuTrigger
         render={(
-          <Button className="size-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
+          <Button className="size-6 p-0" aria-label={t($ => $['common.moreActions'], { ns: 'workflow' })}>
             <span aria-hidden className="i-ri-more-fill size-4" />
           </Button>
         )}
@@ -118,7 +118,7 @@ const Operator = ({
                 handleNodeDisconnect(nodeId)
               }}
             >
-              {t('common.disconnect', { ns: 'workflow' })}
+              {t($ => $['common.disconnect'], { ns: 'workflow' })}
             </div>
           </div>
           <div className="p-1">
@@ -129,7 +129,7 @@ const Operator = ({
                 handleNodeDelete(nodeId)
               }}
             >
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
             </div>
           </div>
         </div>

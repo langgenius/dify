@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()
-  const tip = t('detailPanel.toolSelector.unsupportedMCPTool', { ns: 'plugin' })
+  const tip = t($ => $['detailPanel.toolSelector.unsupportedMCPTool'], { ns: 'plugin' })
 
   return (
     <Popover>

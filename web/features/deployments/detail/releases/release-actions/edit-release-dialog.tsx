@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -58,7 +58,7 @@ function EditReleaseForm({
   onSubmit: (values: EditReleaseFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const nameLabel = t('versions.releaseNameLabel')
+  const nameLabel = t($ => $['versions.releaseNameLabel'])
   const initialValues = {
     name: release.displayName,
     description: release.description,
@@ -73,7 +73,7 @@ function EditReleaseForm({
 
   return (
     <Form<EditReleaseFormValues> className="flex flex-col gap-4" onFormSubmit={handleSubmit}>
-      <FieldRoot name="name" className="gap-2">
+      <Field name="name" className="gap-2">
         <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
           {nameLabel}
         </FieldLabel>
@@ -85,12 +85,12 @@ function EditReleaseForm({
           autoComplete="off"
           className="h-8"
         />
-        <FieldError match="valueMissing">{t('versions.releaseNameRequired')}</FieldError>
-      </FieldRoot>
-      <FieldRoot name="description" className="gap-2">
+        <FieldError match="valueMissing">{t($ => $['versions.releaseNameRequired'])}</FieldError>
+      </Field>
+      <Field name="description" className="gap-2">
         <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
-          {t('versions.releaseDescriptionLabel')}
-          <span className="ml-1.5 system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+          {t($ => $['versions.releaseDescriptionLabel'])}
+          <span className="ml-1.5 system-xs-regular text-text-quaternary">{t($ => $['versions.optional'])}</span>
         </FieldLabel>
         <Textarea
           defaultValue={initialValues.description}
@@ -98,7 +98,7 @@ function EditReleaseForm({
           autoComplete="off"
           className="min-h-24"
         />
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end gap-2 pt-2">
         <Button
           type="button"
@@ -106,7 +106,7 @@ function EditReleaseForm({
           disabled={isSaving}
           onClick={onClose}
         >
-          {t('versions.cancelEdit')}
+          {t($ => $['versions.cancelEdit'])}
         </Button>
         <Button
           type="submit"
@@ -114,7 +114,7 @@ function EditReleaseForm({
           disabled={isSaving}
           loading={isSaving}
         >
-          {t('versions.saveEdit')}
+          {t($ => $['versions.saveEdit'])}
         </Button>
       </div>
     </Form>
@@ -154,11 +154,11 @@ export function EditReleaseDialog() {
       {
         onSuccess: (data) => {
           const updatedName = data.release.displayName
-          toast.success(t('versions.editSuccess', { name: updatedName }))
+          toast.success(t($ => $['versions.editSuccess'], { name: updatedName }))
           handleOpenChange(false)
         },
         onError: () => {
-          toast.error(t('versions.editFailed'))
+          toast.error(t($ => $['versions.editFailed']))
         },
       },
     )
@@ -170,10 +170,10 @@ export function EditReleaseDialog() {
         <DialogCloseButton disabled={updateRelease.isPending} />
         <div className="border-b border-divider-subtle px-6 py-5 pr-14">
           <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t('versions.editRelease')}
+            {t($ => $['versions.editRelease'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t('versions.editReleaseDescription')}
+            {t($ => $['versions.editReleaseDescription'])}
           </DialogDescription>
         </div>
         <div className="px-6 py-5">

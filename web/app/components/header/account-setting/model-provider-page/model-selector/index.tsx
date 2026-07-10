@@ -1,4 +1,4 @@
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
 import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -115,7 +115,7 @@ function ModelSelector({
     handleSelect(provider.provider, model)
   }, [handleSelect, modelList])
 
-  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setInputValue(inputValue)
   }, [])
@@ -144,7 +144,7 @@ function ModelSelector({
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('detailPanel.configureModel', { ns: 'plugin' })}
+        aria-label={t($ => $['detailPanel.configureModel'], { ns: 'plugin' })}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
         disabled={readonly}

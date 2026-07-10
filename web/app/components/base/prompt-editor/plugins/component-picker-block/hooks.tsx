@@ -47,12 +47,12 @@ export const usePromptOptions = (
   const promptOptions: PickerBlockMenuOption[] = []
   if (contextBlock?.show) {
     promptOptions.push(new PickerBlockMenuOption({
-      key: t('promptEditor.context.item.title', { ns: 'common' }),
+      key: t($ => $['promptEditor.context.item.title'], { ns: 'common' }),
       group: 'prompt context',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
         return (
           <PromptMenuItem
-            title={t('promptEditor.context.item.title', { ns: 'common' })}
+            title={t($ => $['promptEditor.context.item.title'], { ns: 'common' })}
             icon={<File05 className="h-4 w-4 text-[#6938EF]" />}
             disabled={!contextBlock.selectable}
             isSelected={isSelected}
@@ -72,12 +72,12 @@ export const usePromptOptions = (
   if (queryBlock?.show) {
     promptOptions.push(
       new PickerBlockMenuOption({
-        key: t('promptEditor.query.item.title', { ns: 'common' }),
+        key: t($ => $['promptEditor.query.item.title'], { ns: 'common' }),
         group: 'prompt query',
         render: ({ isSelected, onSelect, onSetHighlight }) => {
           return (
             <PromptMenuItem
-              title={t('promptEditor.query.item.title', { ns: 'common' })}
+              title={t($ => $['promptEditor.query.item.title'], { ns: 'common' })}
               icon={<UserEdit02 className="h-4 w-4 text-[#FD853A]" />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
@@ -97,12 +97,12 @@ export const usePromptOptions = (
 
   if (requestURLBlock?.show) {
     promptOptions.push(new PickerBlockMenuOption({
-      key: t('promptEditor.requestURL.item.title', { ns: 'common' }),
+      key: t($ => $['promptEditor.requestURL.item.title'], { ns: 'common' }),
       group: 'request URL',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
         return (
           <PromptMenuItem
-            title={t('promptEditor.requestURL.item.title', { ns: 'common' })}
+            title={t($ => $['promptEditor.requestURL.item.title'], { ns: 'common' })}
             icon={<RiGlobalLine className="size-4 text-util-colors-violet-violet-600" />}
             disabled={!requestURLBlock.selectable}
             isSelected={isSelected}
@@ -122,12 +122,12 @@ export const usePromptOptions = (
   if (historyBlock?.show) {
     promptOptions.push(
       new PickerBlockMenuOption({
-        key: t('promptEditor.history.item.title', { ns: 'common' }),
+        key: t($ => $['promptEditor.history.item.title'], { ns: 'common' }),
         group: 'prompt history',
         render: ({ isSelected, onSelect, onSetHighlight }) => {
           return (
             <PromptMenuItem
-              title={t('promptEditor.history.item.title', { ns: 'common' })}
+              title={t($ => $['promptEditor.history.item.title'], { ns: 'common' })}
               icon={<MessageClockCircle className="h-4 w-4 text-[#DD2590]" />}
               disabled={!historyBlock.selectable}
               isSelected={isSelected}
@@ -189,12 +189,12 @@ export const useVariableOptions = (
 
   const addOption = useMemo(() => {
     return new PickerBlockMenuOption({
-      key: t('promptEditor.variable.modal.add', { ns: 'common' }),
+      key: t($ => $['promptEditor.variable.modal.add'], { ns: 'common' }),
       group: 'prompt variable',
       render: ({ queryString, isSelected, onSelect, onSetHighlight }) => {
         return (
           <VariableMenuItem
-            title={t('promptEditor.variable.modal.add', { ns: 'common' })}
+            title={t($ => $['promptEditor.variable.modal.add'], { ns: 'common' })}
             icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
             queryString={queryString}
             isSelected={isSelected}
@@ -267,12 +267,12 @@ export const useExternalToolOptions = (
 
   const addOption = useMemo(() => {
     return new PickerBlockMenuOption({
-      key: t('promptEditor.variable.modal.addTool', { ns: 'common' }),
+      key: t($ => $['promptEditor.variable.modal.addTool'], { ns: 'common' }),
       group: 'external tool',
       render: ({ queryString, isSelected, onSelect, onSetHighlight }) => {
         return (
           <VariableMenuItem
-            title={t('promptEditor.variable.modal.addTool', { ns: 'common' })}
+            title={t($ => $['promptEditor.variable.modal.addTool'], { ns: 'common' })}
             icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
             extraElement={<ArrowUpRight className="size-3 text-text-tertiary" />}
             queryString={queryString}

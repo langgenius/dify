@@ -133,7 +133,23 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
 })
@@ -478,8 +494,8 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
-    expect(screen.getByRole('link', { name: /common.menus.roster common.menus.status/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
+    expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
@@ -490,7 +506,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
   it('hides the marketplace entry when marketplace is disabled', () => {
@@ -627,7 +643,7 @@ describe('MainNav', () => {
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
@@ -653,7 +669,7 @@ describe('MainNav', () => {
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
@@ -684,13 +700,13 @@ describe('MainNav', () => {
 
   it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
-    mockPathname = '/roster/agent/agent-1/configure'
+    mockPathname = '/agents/agent-1/configure'
 
     renderMainNav()
 
     expect(screen.queryByTestId('agent-detail-top')).not.toBeInTheDocument()
     expect(screen.queryByTestId('agent-detail-section')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
   it('keeps MainNav on primary navigation when it is mounted on a detail route', () => {
@@ -745,11 +761,11 @@ describe('MainNav', () => {
   })
 
   it('marks roster active on roster routes', () => {
-    mockPathname = '/roster'
+    mockPathname = '/agents'
 
     renderMainNav()
 
-    const rosterLink = screen.getByRole('link', { name: /common.menus.roster/ })
+    const rosterLink = screen.getByRole('link', { name: /Agents/ })
     expect(rosterLink).toHaveClass(activeGradientMaskClassName)
     expect(rosterLink).toHaveAttribute('aria-current', 'page')
   })
@@ -943,9 +959,12 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    expect(await screen.findByText('common.userProfile.contactUs')).toBeInTheDocument()
+    const contactUsItem = await screen.findByRole('menuitem', {
+      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    })
+    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
+    fireEvent.click(contactUsItem)
 
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()

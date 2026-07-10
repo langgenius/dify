@@ -1,5 +1,6 @@
+import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
-import type { ObjectValueItem } from './variable-modal.helpers'
+import type { ChatVariableTranslator, EditorToggleLabelKey, ObjectValueItem } from './variable-modal.helpers'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraftLine, RiInputField } from '@remixicon/react'
@@ -12,6 +13,12 @@ import ArrayValueList from './array-value-list'
 import BoolValue from './bool-value'
 import ObjectValueList from './object-value-list'
 import VariableTypeSelector from './variable-type-select'
+
+const editorToggleLabelSelectors: Record<EditorToggleLabelKey, SelectorParam<'workflow'>> = {
+  'chatVariable.modal.editInForm': $ => $['chatVariable.modal.editInForm'],
+  'chatVariable.modal.editInJSON': $ => $['chatVariable.modal.editInJSON'],
+  'chatVariable.modal.oneByOne': $ => $['chatVariable.modal.oneByOne'],
+}
 
 type SectionTitleProps = {
   children: ReactNode
@@ -88,8 +95,8 @@ type ValueSectionProps = {
   onObjectChange: (value: ObjectValueItem[]) => void
   onValueChange: (value: boolean) => void
   placeholder: ReactNode
-  t: (key: string, options?: Record<string, unknown>) => string
-  toggleLabelKey?: string
+  t: ChatVariableTranslator
+  toggleLabelKey?: EditorToggleLabelKey
   type: ChatVarType
   value: unknown
 }
@@ -113,7 +120,7 @@ export const ValueSection = ({
 }: ValueSectionProps) => (
   <div className="mb-4">
     <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
-      <div>{t('chatVariable.modal.value', { ns: 'workflow' })}</div>
+      <div>{t($ => $['chatVariable.modal.value'], { ns: 'workflow' })}</div>
       {toggleLabelKey && (
         <Button
           variant="ghost"
@@ -122,7 +129,7 @@ export const ValueSection = ({
           onClick={() => onEditorChange(!editInJSON)}
         >
           {editInJSON ? <RiInputField className="mr-1 size-3.5" /> : <RiDraftLine className="mr-1 size-3.5" />}
-          {t(toggleLabelKey, { ns: 'workflow' })}
+          {t(editorToggleLabelSelectors[toggleLabelKey], { ns: 'workflow' })}
         </Button>
       )}
     </div>
@@ -131,13 +138,13 @@ export const ValueSection = ({
         <textarea
           className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           value={(value as string) || ''}
-          placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
           onChange={e => onArrayChange([e.target.value])}
         />
       )}
       {type === ChatVarType.Number && (
         <Input
-          placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.valuePlaceholder'], { ns: 'workflow' }) || ''}
           value={value as number | undefined}
           onChange={(e) => {
             const rawValue = e.target.value

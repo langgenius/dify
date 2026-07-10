@@ -33,7 +33,7 @@ const MemberItem = ({
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
-              {t('form.me', { ns: 'datasetSettings' })}
+              {t($ => $['form.me'], { ns: 'datasetSettings' })}
             </span>
           )}
         </div>

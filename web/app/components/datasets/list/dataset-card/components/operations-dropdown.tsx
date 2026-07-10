@@ -8,11 +8,9 @@ import {
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
-import {
-  datasetRbacEnabledAtom,
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -35,10 +33,12 @@ const OperationsDropdown = ({
   stepByStepTourHighlightPart,
   stepByStepTourOpen,
 }: OperationsDropdownProps) => {
-  const menu = useStepByStepTourControlledDropdown({
+  const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourOpen,
   })
+  const open = operationsMenu.open
+  const setOpen = operationsMenu.onOpenChange
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
@@ -60,12 +60,13 @@ const OperationsDropdown = ({
     <div
       className={cn(
         'absolute top-2 right-2 z-5',
-        menu.open
+        open
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
+      onClick={e => e.stopPropagation()}
     >
-      <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
+      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
@@ -75,20 +76,15 @@ const OperationsDropdown = ({
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
-          onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-          }}
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
+          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
-            disableMotion: menu.controlled,
-            highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
-            interactionMode: menu.controlled ? 'presentation' : 'interactive',
-            popupClassName: 'min-w-[186px]',
+            close: operationsMenu.close,
+            highlightPart: stepByStepTourHighlightPart,
           })}
         >
           <Operations
@@ -100,7 +96,6 @@ const OperationsDropdown = ({
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
             openAccessConfig={openAccessConfig}
-            onClose={menu.close}
           />
         </DropdownMenuContent>
       </DropdownMenu>

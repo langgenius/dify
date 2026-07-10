@@ -225,7 +225,7 @@ const Tabs: FC<TabsProps> = ({
   const normalizedCustomTools = useMemo(() => normalizeToolList(customTools, basePath), [customTools])
   const normalizedWorkflowTools = useMemo(() => normalizeToolList(workflowTools, basePath), [workflowTools])
   const normalizedMcpTools = useMemo(() => normalizeToolList(mcpTools, basePath), [mcpTools])
-  const disabledTip = t('tabs.startDisabledTip', { ns: 'workflow' })
+  const disabledTip = t($ => $['tabs.startDisabledTip'], { ns: 'workflow' })
 
   useEffect(() => {
     workflowStore.setState((state) => {
@@ -259,7 +259,7 @@ const Tabs: FC<TabsProps> = ({
                   onActiveTabChange={onActiveTabChange}
                   disabledTip={tab.disabledTip || disabledTip}
                   disabledTipLinkHref={tab.disabledTipLinkKey === 'startNodesDocs' ? docLink('/use-dify/nodes/trigger/overview') : undefined}
-                  disabledTipLinkLabel={tab.disabledTipLinkKey === 'startNodesDocs' ? t('tabs.startDisabledTipLearnMore', { ns: 'workflow' }) : undefined}
+                  disabledTipLinkLabel={tab.disabledTipLinkKey === 'startNodesDocs' ? t($ => $['tabs.startDisabledTipLearnMore'], { ns: 'workflow' }) : undefined}
                 />
               ))
             }

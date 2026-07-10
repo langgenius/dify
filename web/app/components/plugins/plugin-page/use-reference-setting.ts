@@ -4,13 +4,9 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  currentWorkspaceLoadingAtom,
-  langGeniusVersionInfoAtom,
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-  workspaceRoleFlagsAtom,
-} from '@/context/app-context-state'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { currentWorkspaceLoadingAtom, isCurrentWorkspaceManagerAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
@@ -32,10 +28,8 @@ const useCanSetPluginSettings = () => {
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const {
-    isCurrentWorkspaceManager,
-    isCurrentWorkspaceOwner,
-  } = useAtomValue(workspaceRoleFlagsAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -49,7 +43,7 @@ export const usePluginSettingsAccess = () => {
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } = useMutationPluginPermissionSettings({
     onSuccess: () => {
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     },
   })
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
@@ -104,7 +98,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     currentReferenceSetting: data,
     onSuccess: () => {
       invalidateReferenceSettings()
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     },
   })
 
@@ -132,10 +126,8 @@ export const useCanInstallPluginFromMarketplace = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const marketplaceAccess = systemFeatures.enable_marketplace
   const rbacEnabled = systemFeatures.rbac_enabled
-  const {
-    isCurrentWorkspaceManager,
-    isCurrentWorkspaceOwner,
-  } = useAtomValue(workspaceRoleFlagsAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery

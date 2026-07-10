@@ -26,15 +26,15 @@ const ResolutionPicker: FC<Props> = ({
   }, [onChange])
   return (
     <div className="flex items-center justify-between">
-      <div className="mr-2 text-xs font-medium text-text-secondary uppercase">{t(`${i18nPrefix}.resolution.name`, { ns: 'workflow' })}</div>
+      <div className="mr-2 text-xs font-medium text-text-secondary uppercase">{t($ => $[`${i18nPrefix}.resolution.name`], { ns: 'workflow' })}</div>
       <div className="flex items-center space-x-1">
         <OptionCard
-          title={t(`${i18nPrefix}.resolution.high`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.resolution.high`], { ns: 'workflow' })}
           onSelect={handleOnChange(Resolution.high)}
           selected={value === Resolution.high}
         />
         <OptionCard
-          title={t(`${i18nPrefix}.resolution.low`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.resolution.low`], { ns: 'workflow' })}
           onSelect={handleOnChange(Resolution.low)}
           selected={value === Resolution.low}
         />

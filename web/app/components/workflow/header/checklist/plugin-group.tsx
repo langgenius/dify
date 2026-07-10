@@ -60,7 +60,7 @@ export const ChecklistPluginGroup = memo(({
           <span className="i-ri-download-line size-3.5 text-white" />
         </div>
         <span className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary">
-          {t('nodes.common.pluginsNotInstalled', { ns: 'workflow', count: items.length })}
+          {t($ => $['nodes.common.pluginsNotInstalled'], { ns: 'workflow', count: items.length })}
         </span>
         <PopoverClose
           render={(
@@ -72,7 +72,7 @@ export const ChecklistPluginGroup = memo(({
             />
           )}
         >
-          {t('nodes.agent.pluginInstaller.install', { ns: 'workflow' })}
+          {t($ => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' })}
         </PopoverClose>
       </div>
       <div className="p-1">

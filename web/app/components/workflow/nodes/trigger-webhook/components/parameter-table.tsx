@@ -36,22 +36,22 @@ const ParameterTable: FC<ParameterTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: t('nodes.triggerWebhook.varName', { ns: 'workflow' }),
+      title: t($ => $['nodes.triggerWebhook.varName'], { ns: 'workflow' }),
       type: 'input',
       width: 'flex-1',
-      placeholder: t('nodes.triggerWebhook.varNamePlaceholder', { ns: 'workflow' }),
+      placeholder: t($ => $['nodes.triggerWebhook.varNamePlaceholder'], { ns: 'workflow' }),
     },
     {
       key: 'type',
-      title: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
+      title: t($ => $['nodes.triggerWebhook.varType'], { ns: 'workflow' }),
       type: 'select',
       width: 'w-[120px]',
-      placeholder: t('nodes.triggerWebhook.varType', { ns: 'workflow' }),
+      placeholder: t($ => $['nodes.triggerWebhook.varType'], { ns: 'workflow' }),
       options: typeOptions,
     },
     {
       key: 'required',
-      title: t('nodes.triggerWebhook.required', { ns: 'workflow' }),
+      title: t($ => $['nodes.triggerWebhook.required'], { ns: 'workflow' }),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -101,7 +101,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={placeholder || t('nodes.triggerWebhook.noParameters', { ns: 'workflow' })}
+      placeholder={placeholder || t($ => $['nodes.triggerWebhook.noParameters'], { ns: 'workflow' })}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

@@ -5,6 +5,10 @@ import { Plan } from '@/app/components/billing/type'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 const {
   mockAppContextState,
   mockPush,
@@ -38,17 +42,36 @@ const {
   mockSetShowAccountSettingModal: vi.fn(),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, version?: string }) => {
-      if (options?.version)
-        return `${options.ns}.${key}:${options.version}`
-      return options?.ns ? `${options.ns}.${key}` : key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string, version?: string }) => {
+        if (options?.version)
+          return `${options.ns}.${key}:${options.version}`
+        return options?.ns ? `${options.ns}.${key}` : key
+      }),
+    }),
+  })
+})
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
@@ -71,10 +94,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/service/use-common', async importOriginal => ({

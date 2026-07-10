@@ -54,7 +54,23 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
 })
@@ -84,10 +100,6 @@ vi.mock('@/next/navigation', async (importOriginal) => {
     useRouter: vi.fn(),
   }
 })
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
 
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({

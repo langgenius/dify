@@ -49,7 +49,7 @@ const PluginVersionPicker: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const format = t('dateTimeFormat', { ns: 'appLog' }).split(' ')[0]
+  const format = t($ => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
   const { data: res } = useVersionListOfPlugin(pluginID)
@@ -87,7 +87,7 @@ const PluginVersionPicker: FC<Props> = ({
         popupClassName="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-          {t('detailPanel.switchVersion', { ns: 'plugin' })}
+          {t($ => $['detailPanel.switchVersion'], { ns: 'plugin' })}
         </div>
         <div className="relative max-h-[224px] overflow-y-auto">
           {res?.data.versions.map(version => (

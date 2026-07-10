@@ -83,7 +83,7 @@ export function AgentOrchestratePanel({
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const orchestrateLabel = t('agentDetail.configure.title')
+  const orchestrateLabel = t($ => $['agentDetail.configure.title'])
   const orchestrateBottomAction = bottomAction ?? (showPublishBar
     ? (
         <AgentConfigurePublishBar

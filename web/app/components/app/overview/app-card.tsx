@@ -14,8 +14,9 @@ import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -112,8 +113,8 @@ function AppCard({
 
   const isApp = cardState.isApp
   const basicName = isApp
-    ? t('overview.appInfo.title', { ns: 'appOverview' })
-    : t('overview.apiInfo.title', { ns: 'appOverview' })
+    ? t($ => $['overview.appInfo.title'], { ns: 'appOverview' })
+    : t($ => $['overview.apiInfo.title'], { ns: 'appOverview' })
 
   const isAppAccessSet = useMemo(
     () => isAppAccessConfigured(appDetail, appAccessSubjects),
@@ -249,14 +250,14 @@ function AppCard({
     ? (
         <>
           <div className="mb-1 text-xs font-normal text-text-secondary">
-            {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+            {t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
           </div>
           <button
             type="button"
             className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
             onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
           >
-            {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+            {t($ => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
           </button>
         </>
       )
@@ -304,16 +305,16 @@ function AppCard({
               hideType
               type={
                 isApp
-                  ? t('overview.appInfo.explanation', { ns: 'appOverview' })
-                  : t('overview.apiInfo.explanation', { ns: 'appOverview' })
+                  ? t($ => $['overview.appInfo.explanation'], { ns: 'appOverview' })
+                  : t($ => $['overview.apiInfo.explanation'], { ns: 'appOverview' })
               }
             />
             <div className="flex shrink-0 items-center gap-1">
               <StatusDot status={cardState.runningStatus ? 'success' : 'warning'} />
               <div className={`${cardState.runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {cardState.runningStatus
-                  ? t('overview.status.running', { ns: 'appOverview' })
-                  : t('overview.status.disable', { ns: 'appOverview' })}
+                  ? t($ => $['overview.status.running'], { ns: 'appOverview' })
+                  : t($ => $['overview.status.disable'], { ns: 'appOverview' })}
               </div>
             </div>
             {cardState.toggleDisabled && statusPopoverContent
@@ -322,7 +323,7 @@ function AppCard({
                     <PopoverTrigger
                       openOnHover
                       nativeButton={false}
-                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
                       render={(
                         <div>
                           <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
@@ -375,7 +376,7 @@ function AppCard({
               operations={operations}
               launchConfigAction={hiddenLaunchVariables.length > 0
                 ? {
-                    label: t('operation.config', { ns: 'common' }),
+                    label: t($ => $['operation.config'], { ns: 'common' }),
                     disabled: triggerModeDisabled || !cardState.runningStatus,
                     onClick: handleOpenWorkflowLaunchDialog,
                   }

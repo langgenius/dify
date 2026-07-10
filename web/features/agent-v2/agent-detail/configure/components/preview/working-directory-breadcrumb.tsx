@@ -143,7 +143,7 @@ export function AgentWorkingDirectoryBreadcrumb({
 }) {
   const { t } = useTranslation('agentV2')
   const items = getBreadcrumbItems({
-    homeLabel: t('agentDetail.configure.workingDirectory.home'),
+    homeLabel: t($ => $['agentDetail.configure.workingDirectory.home']),
     path,
   })
   const { hiddenItems, visibleItems } = getVisibleBreadcrumbItems(items)
@@ -155,7 +155,7 @@ export function AgentWorkingDirectoryBreadcrumb({
   return (
     <div className="mb-1 flex w-full shrink-0 flex-col border-y-[0.5px] border-divider-regular px-2.5">
       <nav
-        aria-label={t('agentDetail.configure.workingDirectory.breadcrumbLabel')}
+        aria-label={t($ => $['agentDetail.configure.workingDirectory.breadcrumbLabel'])}
         className="flex min-w-0 items-center gap-0.5 py-1"
       >
         {visibleItems.map((item, index) => {

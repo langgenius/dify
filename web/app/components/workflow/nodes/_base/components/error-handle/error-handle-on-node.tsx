@@ -32,7 +32,7 @@ const ErrorHandleOnNode = ({
       )}
       >
         <div className="system-xs-medium-uppercase text-text-tertiary">
-          {t('common.onFailure', { ns: 'workflow' })}
+          {t($ => $['common.onFailure'], { ns: 'workflow' })}
         </div>
         <div className={cn(
           'system-xs-medium text-text-secondary',
@@ -41,12 +41,12 @@ const ErrorHandleOnNode = ({
         >
           {
             error_strategy === ErrorHandleTypeEnum.defaultValue && (
-              t('nodes.common.errorHandle.defaultValue.output', { ns: 'workflow' })
+              t($ => $['nodes.common.errorHandle.defaultValue.output'], { ns: 'workflow' })
             )
           }
           {
             error_strategy === ErrorHandleTypeEnum.failBranch && (
-              t('nodes.common.errorHandle.failBranch.title', { ns: 'workflow' })
+              t($ => $['nodes.common.errorHandle.failBranch.title'], { ns: 'workflow' })
             )
           }
         </div>

@@ -45,13 +45,13 @@ export function SearchInput({
         ref={inputRef}
         type="search"
         name="query"
-        aria-label={ariaLabel ?? t('operation.search', { ns: 'common' })}
+        aria-label={ariaLabel ?? t($ => $['operation.search'], { ns: 'common' })}
         className={cn(
           'ps-7',
           !!inputValue && 'pe-7',
           '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
         )}
-        placeholder={placeholder ?? t('operation.search', { ns: 'common' })}
+        placeholder={placeholder ?? t($ => $['operation.search'], { ns: 'common' })}
         value={inputValue}
         onValueChange={(nextValue) => {
           if (isComposingRef.current) {
@@ -91,7 +91,7 @@ export function SearchInput({
       {!!inputValue && (
         <button
           type="button"
-          aria-label={t('operation.clear', { ns: 'common' })}
+          aria-label={t($ => $['operation.clear'], { ns: 'common' })}
           className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={handleClear}
         >

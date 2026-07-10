@@ -1,5 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import type { ComponentProps } from 'react'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -9,7 +9,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
@@ -18,12 +18,12 @@ import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
 import { TagTrigger } from './tag-trigger'
 
-const TAG_COMBOBOX_FILTER: NonNullable<ComboboxRootProps<TagComboboxItem, true>['filter']> = (tag, query) => tag.name.includes(query)
+const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (tag, query) => tag.name.includes(query)
 const tagToString = (tag: TagComboboxItem) => tag.name
 const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 
 type TagSelectorRootProps = Omit<
-  ComboboxRootProps<TagComboboxItem, true>,
+  ComboboxProps<TagComboboxItem, true>,
   | 'items'
   | 'multiple'
   | 'value'
@@ -100,8 +100,8 @@ export const TagSelector = ({
     })
   }, [tagList, value])
   const emptyTriggerLabel = canBindOrUnbindTags
-    ? t('tag.addTag', { ns: 'common' })
-    : t('tag.noTag', { ns: 'common' })
+    ? t($ => $['tag.addTag'], { ns: 'common' })
+    : t($ => $['tag.noTag'], { ns: 'common' })
   const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
@@ -152,12 +152,12 @@ export const TagSelector = ({
       type,
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }), {
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }), {
           id: toastId,
         })
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }), {
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }), {
           id: toastId,
         })
       },
@@ -189,11 +189,11 @@ export const TagSelector = ({
       },
     }, {
       onSuccess: () => {
-        toast.success(t('tag.created', { ns: 'common' }))
+        toast.success(t($ => $['tag.created'], { ns: 'common' }))
         setInputValue('')
       },
       onError: () => {
-        toast.error(t('tag.failed', { ns: 'common' }))
+        toast.error(t($ => $['tag.failed'], { ns: 'common' }))
       },
     })
   }, [canManageTags, createTag, isCreatingTag, t, type])

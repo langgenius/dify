@@ -756,16 +756,17 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
-    it('should render footer notice with tooltip when provided', async () => {
+    it('should render footer notice with an accessible infotip', async () => {
       const user = userEvent.setup({ delay: null })
       const footerNotice = 'Agent runs in a Linux sandbox.'
       const footerNoticeTooltip = 'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
+      const accessibleName = `common.operation.learnMore: ${footerNotice}`
       render(<ChatInputArea visionConfig={mockVisionConfig} footerNotice={footerNotice} footerNoticeTooltip={footerNoticeTooltip} />)
 
       expect(screen.getByText(footerNotice)).toBeInTheDocument()
       expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
 
-      await user.hover(screen.getByRole('button', { name: footerNoticeTooltip }))
+      await user.click(screen.getByRole('button', { name: accessibleName }))
 
       expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
     })

@@ -6,7 +6,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function MarketplaceLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
-  useDocumentTitle(t('mainNav.marketplace', { ns: 'common' }))
+  useDocumentTitle(t($ => $['mainNav.marketplace'], { ns: 'common' }))
 
   return children
 }

@@ -106,7 +106,7 @@ export function useAgentConfigureSync({
     catch {
       // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
       if (!silent) {
-        toast.error(tCommon('api.actionFailed'))
+        toast.error(tCommon($ => $['api.actionFailed']))
         throw new Error('Failed to save agent composer draft.')
       }
 
@@ -209,12 +209,6 @@ export function useAgentConfigureSync({
   }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
-    return () => {
-      debouncedSaveDraft.flush?.()
-    }
-  }, [debouncedSaveDraft])
-
-  useEffect(() => {
     const saveDraftWhenPageHidden = () => {
       if (document.visibilityState === 'hidden')
         saveDirtyDraftOnPageClose()
@@ -232,6 +226,12 @@ export function useAgentConfigureSync({
     }
   }, [saveDirtyDraftOnPageClose])
 
+  useEffect(() => {
+    return () => {
+      saveDirtyDraftOnPageClose()
+    }
+  }, [saveDirtyDraftOnPageClose])
+
   const publishDraft = useCallback(async () => {
     if (publishInFlightRef.current)
       return
@@ -243,13 +243,13 @@ export function useAgentConfigureSync({
       currentModel: currentModelRef.current,
     })
     if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
-      toast.error(tCommon('modelProvider.selectModel'))
+      toast.error(tCommon($ => $['modelProvider.selectModel']))
       return
     }
 
     const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
     if (!knowledgeValidation.isValid) {
-      toast.error(getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ?? tCommon('api.actionFailed'))
+      toast.error(getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ?? tCommon($ => $['api.actionFailed']))
       return
     }
 
@@ -293,7 +293,7 @@ export function useAgentConfigureSync({
       const publishedDraft = draft
       setOriginalDraft(publishedDraft)
       setPublishedDraft(publishedDraft)
-      toast.success(tCommon('api.actionSuccess'))
+      toast.success(tCommon($ => $['api.actionSuccess']))
     }
     finally {
       publishInFlightRef.current = false

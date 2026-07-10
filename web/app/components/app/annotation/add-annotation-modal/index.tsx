@@ -42,10 +42,10 @@ const AddAnnotationModal: FC<Props> = ({
 
   const isValid = (payload: AnnotationItemBasic) => {
     if (!payload.question)
-      return t('errorMessage.queryRequired', { ns: 'appAnnotation' })
+      return t($ => $['errorMessage.queryRequired'], { ns: 'appAnnotation' })
 
     if (!payload.answer)
-      return t('errorMessage.answerRequired', { ns: 'appAnnotation' })
+      return t($ => $['errorMessage.answerRequired'], { ns: 'appAnnotation' })
 
     return true
   }
@@ -99,10 +99,10 @@ const AddAnnotationModal: FC<Props> = ({
                 <div className="shrink-0 border-b border-divider-subtle py-4">
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {t('addModal.title', { ns: 'appAnnotation' })}
+                      {t($ => $['addModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -130,11 +130,11 @@ const AddAnnotationModal: FC<Props> = ({
                   <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                     <label className="flex items-center space-x-2">
                       <Checkbox checked={isCreateNext} onCheckedChange={setIsCreateNext} />
-                      <span>{t('addModal.createNext', { ns: 'appAnnotation' })}</span>
+                      <span>{t($ => $['addModal.createNext'], { ns: 'appAnnotation' })}</span>
                     </label>
                     <div className="mt-2 flex space-x-2">
-                      <Button className="h-7 text-xs" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                      <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('operation.add', { ns: 'common' })}</Button>
+                      <Button className="h-7 text-xs" onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+                      <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t($ => $['operation.add'], { ns: 'common' })}</Button>
                     </div>
                   </div>
                 </div>

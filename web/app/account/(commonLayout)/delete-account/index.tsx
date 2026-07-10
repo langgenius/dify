@@ -43,7 +43,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
         backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t('account.delete', { ns: 'common' })}
+          {t($ => $['account.delete'], { ns: 'common' })}
         </DialogTitle>
         {!showVerifyEmail && <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />}
         {showVerifyEmail && (

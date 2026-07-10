@@ -15,7 +15,7 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
@@ -159,14 +159,14 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <button
               type="button"
               className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs hover:bg-components-button-secondary-bg-hover"
-              aria-label={t('modelProvider.showModels', { ns: 'common' })}
+              aria-label={t($ => $['modelProvider.showModels'], { ns: 'common' })}
               onClick={handleOpenModelList}
             >
               <span className="truncate">
                 {
                   hasModelList
-                    ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
-                    : t('modelProvider.showModels', { ns: 'common' })
+                    ? t($ => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
+                    : t($ => $['modelProvider.showModels'], { ns: 'common' })
                 }
               </span>
               {!loading && <span aria-hidden className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0" />}
@@ -176,7 +176,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           {!showModelProvider && notConfigured && (
             <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-background-default-subtle px-2">
               <span aria-hidden className="mr-1 i-ri-information-2-fill size-4 shrink-0 text-text-accent" />
-              <span className="truncate system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
+              <span className="truncate system-xs-medium text-text-secondary">{t($ => $['modelProvider.configureTip'], { ns: 'common' })}</span>
             </div>
           )}
           {showCredential && (
@@ -253,13 +253,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               <button
                 type="button"
                 className="flex h-6 items-center rounded-lg border-none bg-transparent pr-1.5 pl-1 text-left hover:bg-components-button-ghost-bg-hover"
-                aria-label={t('modelProvider.showModels', { ns: 'common' })}
+                aria-label={t($ => $['modelProvider.showModels'], { ns: 'common' })}
                 onClick={handleOpenModelList}
               >
                 {
                   hasModelList
-                    ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
-                    : t('modelProvider.showModels', { ns: 'common' })
+                    ? t($ => $['modelProvider.modelsNum'], { ns: 'common', num: modelList.length })
+                    : t($ => $['modelProvider.showModels'], { ns: 'common' })
                 }
                 {!loading && <div className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />}
                 {
@@ -272,7 +272,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {!showModelProvider && notConfigured && (
               <div className="flex h-6 items-center pr-1.5 pl-1">
                 <div className="mr-1 i-ri-information-2-fill size-4 text-text-accent" />
-                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
+                <span className="system-xs-medium text-text-secondary">{t($ => $['modelProvider.configureTip'], { ns: 'common' })}</span>
               </div>
             )}
             {

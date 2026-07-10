@@ -41,7 +41,7 @@ export function EnvironmentFilter({ className }: {
   const activeFilter = selectedOption.value
 
   function optionText(option: DeploymentsListEnvironmentFilterOption) {
-    return option.kind === 'all' ? t('filter.allEnvs') : option.displayName ?? option.value ?? ''
+    return option.kind === 'all' ? t($ => $['filter.allEnvs']) : option.displayName ?? option.value ?? ''
   }
 
   return (

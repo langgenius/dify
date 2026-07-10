@@ -24,7 +24,7 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
@@ -102,7 +102,7 @@ const SnippetMainContent = ({
       return false
 
     if (!hasSnippetDraftNodes(syncedDraftPayload)) {
-      toast.error(t('emptyGraphSaveError'))
+      toast.error(t($ => $.emptyGraphSaveError))
       return false
     }
 

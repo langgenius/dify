@@ -17,7 +17,7 @@ function VersionMetadata({
 
   return (
     <p className="truncate system-xs-regular text-text-tertiary">
-      {version.created_at != null && formatTime(version.created_at, t('roster.dateTimeFormat'))}
+      {version.created_at != null && formatTime(version.created_at, t($ => $['roster.dateTimeFormat']))}
       {version.created_at != null && version.created_by && ' · '}
       {version.created_by}
     </p>
@@ -42,7 +42,7 @@ export function VersionItem({
   const { t } = useTranslation('agentV2')
   const { t: tWorkflow } = useTranslation('workflow')
   const isActive = version.id === activeVersionId
-  const label = version.version_note || t('agentDetail.versionHistory.versionName', { version: version.version })
+  const label = version.version_note || t($ => $['agentDetail.versionHistory.versionName'], { version: version.version })
 
   return (
     <button
@@ -62,7 +62,7 @@ export function VersionItem({
           </p>
           {isLatest && (
             <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-accent-secondary">
-              {tWorkflow('versionHistory.latest')}
+              {tWorkflow($ => $['versionHistory.latest'])}
             </span>
           )}
         </div>

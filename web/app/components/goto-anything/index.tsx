@@ -161,7 +161,7 @@ const GotoAnythingDialog: FC<Props> = ({
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
               searchMode={searchMode}
-              placeholder={t('gotoAnything.searchPlaceholder', { ns: 'app' })}
+              placeholder={t($ => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
             />
 
             <Command.List className="h-[240px] overflow-y-auto">

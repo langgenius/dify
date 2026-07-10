@@ -76,7 +76,7 @@ const ConditionNumber = ({
               const v = e.target.value
               onChange(v ? Number(e.target.value) : undefined)
             }}
-            placeholder={t('nodes.knowledgeRetrieval.metadata.panel.placeholder', { ns: 'workflow' })}
+            placeholder={t($ => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], { ns: 'workflow' })}
             type="number"
           />
         )

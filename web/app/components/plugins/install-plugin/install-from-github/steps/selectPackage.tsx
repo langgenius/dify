@@ -2,7 +2,7 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldRoot } from '@langgenius/dify-ui/field'
+import { Field } from '@langgenius/dify-ui/field'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,7 +69,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+        onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     }
     finally {
       setIsUploading(false)
@@ -78,7 +78,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
 
   return (
     <>
-      <FieldRoot name="version" className="gap-4 self-stretch">
+      <Field name="version" className="gap-4 self-stretch">
         <Select
           value={selectedVersionOption?.value ?? null}
           onValueChange={(value) => {
@@ -90,12 +90,12 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectVersion`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">
-                {selectedVersionOption?.name ?? t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ?? ''}
+                {selectedVersionOption?.name ?? t($ => $[`${i18nPrefix}.selectVersionPlaceholder`], { ns: 'plugin' }) ?? ''}
               </span>
               {!!(updatePayload?.originalPackageInfo.version && selectedVersionOption && selectedVersionOption.value !== updatePayload.originalPackageInfo.version) && (
                 <Badge>
@@ -120,8 +120,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
-      <FieldRoot name="package" className="gap-4 self-stretch">
+      </Field>
+      <Field name="package" className="gap-4 self-stretch">
         <Select
           value={selectedPackageOption?.value ?? null}
           readOnly={!selectedVersion}
@@ -134,10 +134,10 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectPackage`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
-            {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
+            {selectedPackageOption?.name ?? t($ => $[`${i18nPrefix}.selectPackagePlaceholder`], { ns: 'plugin' }) ?? ''}
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
             {packages.map(item => (
@@ -148,7 +148,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
+      </Field>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit
           && (
@@ -158,7 +158,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onClick={onBack}
               disabled={isUploading}
             >
-              {t('installModal.back', { ns: 'plugin' })}
+              {t($ => $['installModal.back'], { ns: 'plugin' })}
             </Button>
           )}
         <Button
@@ -167,7 +167,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
-          {t('installModal.next', { ns: 'plugin' })}
+          {t($ => $['installModal.next'], { ns: 'plugin' })}
         </Button>
       </div>
     </>

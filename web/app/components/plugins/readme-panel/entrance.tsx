@@ -51,7 +51,7 @@ export const ReadmeEntrance = ({
           <span aria-hidden="true" className="i-ri-book-read-line size-3" />
         </div>
         <span className="text-xs/4 font-normal">
-          {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
+          {!showShortTip ? t($ => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' }) : t($ => $['readmeInfo.title'], { ns: 'plugin' })}
         </span>
       </button>
     </div>

@@ -62,7 +62,27 @@ vi.mock('@/app/components/step-by-step-tour/storage', () => ({
 
 // Mock app context
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)

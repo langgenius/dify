@@ -3,6 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ExternalAPIPanel from '../index'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 // Mock external contexts (only mock context providers, not base components)
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
 const mockMutateExternalKnowledgeApis = vi.fn()
@@ -21,10 +25,6 @@ vi.mock('@/context/external-knowledge-api-context', () => ({
     mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
     isLoading: mockIsLoading,
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies

@@ -10,9 +10,11 @@ import { useTranslation } from 'react-i18next'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom, userProfileEmailAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -50,8 +52,8 @@ const MembersPage = () => {
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
-    ? t('members.roles', { ns: 'common' })
-    : t('members.role', { ns: 'common' })
+    ? t($ => $['members.roles'], { ns: 'common' })
+    : t($ => $['members.role'], { ns: 'common' })
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -73,7 +75,7 @@ const MembersPage = () => {
       roleIds,
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         refetch()
       },
     })
@@ -102,7 +104,7 @@ const MembersPage = () => {
                       render={(
                         <button
                           type="button"
-                          aria-label={t('account.editWorkspaceInfo', { ns: 'common' })}
+                          aria-label={t($ => $['account.editWorkspaceInfo'], { ns: 'common' })}
                           className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
@@ -116,7 +118,7 @@ const MembersPage = () => {
                       )}
                     />
                     <TooltipContent>
-                      {t('account.editWorkspaceInfo', { ns: 'common' })}
+                      {t($ => $['account.editWorkspaceInfo'], { ns: 'common' })}
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -127,19 +129,19 @@ const MembersPage = () => {
                 ? (
                     <div className="flex space-x-1">
                       <div>
-                        {t('plansCommon.member', { ns: 'billing' })}
+                        {t($ => $['plansCommon.member'], { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                       <div className="">{accounts.length}</div>
                       <div>/</div>
-                      <div>{plan.total.teamMembers === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) : plan.total.teamMembers}</div>
+                      <div>{plan.total.teamMembers === NUM_INFINITE ? t($ => $['plansCommon.unlimited'], { ns: 'billing' }) : plan.total.teamMembers}</div>
                     </div>
                   )
                 : (
                     <div className="flex space-x-1">
                       <div>{accounts.length}</div>
                       <div>
-                        {t('plansCommon.memberAfter', { ns: 'billing' })}
+                        {t($ => $['plansCommon.memberAfter'], { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                     </div>
@@ -156,8 +158,8 @@ const MembersPage = () => {
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
-            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t($ => $['members.name'], { ns: 'common' })}</div>
+            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t($ => $['members.lastActive'], { ns: 'common' })}</div>
             <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">{roleColumnLabel}</div>
           </div>
           <div className="relative min-w-120">

@@ -174,57 +174,57 @@ const Description = ({
     return (
       <>
         <h1 className="mb-2 shrink-0 text-center title-4xl-semi-bold text-text-primary">
-          {t('marketplace.empower')}
+          {t($ => $['marketplace.empower'])}
         </h1>
         <h2 className="flex shrink-0 items-center justify-center text-center body-md-regular text-text-tertiary">
           {
             isZhHans && (
               <>
-                <span className="mr-1">{tCommon('operation.in')}</span>
-                {t('marketplace.difyMarketplace')}
-                {t('marketplace.discover')}
+                <span className="mr-1">{tCommon($ => $['operation.in'])}</span>
+                {t($ => $['marketplace.difyMarketplace'])}
+                {t($ => $['marketplace.discover'])}
               </>
             )
           }
           {
             !isZhHans && (
               <>
-                {t('marketplace.discover')}
+                {t($ => $['marketplace.discover'])}
               </>
             )
           }
           <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.models')}
+            {t($ => $['category.models'])}
           </span>
           ,
           <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.tools')}
+            {t($ => $['category.tools'])}
           </span>
           ,
           <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.datasources')}
+            {t($ => $['category.datasources'])}
           </span>
           ,
           <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.triggers')}
+            {t($ => $['category.triggers'])}
           </span>
           ,
           <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.agents')}
+            {t($ => $['category.agents'])}
           </span>
           ,
           <span className="relative z-1 mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.extensions')}
+            {t($ => $['category.extensions'])}
           </span>
-          {t('marketplace.and')}
+          {t($ => $['marketplace.and'])}
           <span className="relative z-1 mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-            {t('category.bundles')}
+            {t($ => $['category.bundles'])}
           </span>
           {
             !isZhHans && (
               <>
-                <span className="mr-1">{tCommon('operation.in')}</span>
-                {t('marketplace.difyMarketplace')}
+                <span className="mr-1">{tCommon($ => $['operation.in'])}</span>
+                {t($ => $['marketplace.difyMarketplace'])}
               </>
             )
           }
@@ -240,7 +240,7 @@ const Description = ({
           <div className="flex shrink-0 items-center gap-1.5">
             <DifyLogo alt="" className="h-6 w-[52px]" />
             <span className="max-w-0 overflow-hidden title-3xl-semi-bold whitespace-nowrap text-text-primary opacity-0 transition-all duration-200 md:max-w-[150px] md:opacity-100">
-              {tCommon('mainNav.marketplace')}
+              {tCommon($ => $['mainNav.marketplace'])}
             </span>
           </div>
         </div>
@@ -249,7 +249,7 @@ const Description = ({
           inputClassName="h-9 w-full rounded-[10px]"
           inputElementClassName="text-[14px] leading-5 font-normal"
           searchIconClassName="size-4"
-          placeholder={tCommon('placeholder.search')}
+          placeholder={tCommon($ => $['placeholder.search'])}
           showTags={false}
           usedInMarketplace={false}
         />
@@ -298,10 +298,10 @@ const Description = ({
         >
           <div ref={titleContentRef}>
             <h1 className="mb-2 shrink-0 text-[30px] leading-9 font-semibold text-text-primary-on-surface">
-              {t('marketplace.pluginsHeroTitle')}
+              {t($ => $['marketplace.pluginsHeroTitle'])}
             </h1>
             <h2 className="shrink-0 body-md-medium text-text-secondary-on-surface">
-              {t('marketplace.pluginsHeroSubtitle')}
+              {t($ => $['marketplace.pluginsHeroSubtitle'])}
             </h2>
           </div>
         </motion.div>

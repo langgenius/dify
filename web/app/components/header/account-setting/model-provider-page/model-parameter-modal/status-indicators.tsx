@@ -1,3 +1,4 @@
+import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiErrorWarningFill } from '@remixicon/react'
@@ -5,13 +6,18 @@ import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/compo
 import Link from '@/next/link'
 import { useInstalledPluginList } from '@/service/use-plugins'
 
+export type WorkflowTranslate = (
+  selector: SelectorParam<'workflow'>,
+  options: { ns: 'workflow' },
+) => string
+
 type StatusIndicatorsProps = {
   needsConfiguration: boolean
   modelProvider: boolean
   inModelList: boolean
   disabled: boolean
   pluginInfo: any
-  t: any
+  t: WorkflowTranslate
 }
 
 type StatusPopoverProps = {
@@ -72,8 +78,8 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           {inModelList
             ? (
                 <StatusPopover
-                  ariaLabel={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
-                  content={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
+                  ariaLabel={t($ => $['nodes.agent.modelSelectorTooltips.deprecated'], { ns: 'workflow' })}
+                  content={t($ => $['nodes.agent.modelSelectorTooltips.deprecated'], { ns: 'workflow' })}
                 >
                   <RiErrorWarningFill className="size-4 text-text-destructive" />
                 </StatusPopover>
@@ -81,11 +87,11 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
             : !pluginInfo
                 ? (
                     <StatusPopover
-                      ariaLabel={t('nodes.agent.modelNotSupport.title', { ns: 'workflow' })}
+                      ariaLabel={t($ => $['nodes.agent.modelNotSupport.title'], { ns: 'workflow' })}
                       content={renderTooltipContent(
-                        t('nodes.agent.modelNotSupport.title', { ns: 'workflow' }),
-                        t('nodes.agent.modelNotSupport.desc', { ns: 'workflow' }),
-                        t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
+                        t($ => $['nodes.agent.modelNotSupport.title'], { ns: 'workflow' }),
+                        t($ => $['nodes.agent.modelNotSupport.desc'], { ns: 'workflow' }),
+                        t($ => $['nodes.agent.linkToPlugin'], { ns: 'workflow' }),
                         '/plugins',
                       )}
                     >
@@ -95,8 +101,8 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                 : (
                     <SwitchPluginVersion
                       tooltip={renderTooltipContent(
-                        t('nodes.agent.modelNotSupport.title', { ns: 'workflow' }),
-                        t('nodes.agent.modelNotSupport.descForVersionSwitch', { ns: 'workflow' }),
+                        t($ => $['nodes.agent.modelNotSupport.title'], { ns: 'workflow' }),
+                        t($ => $['nodes.agent.modelNotSupport.descForVersionSwitch'], { ns: 'workflow' }),
                       )}
                       uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''}
                     />
@@ -105,11 +111,11 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
       )}
       {!modelProvider && !pluginInfo && (
         <StatusPopover
-          ariaLabel={t('nodes.agent.modelNotInMarketplace.title', { ns: 'workflow' })}
+          ariaLabel={t($ => $['nodes.agent.modelNotInMarketplace.title'], { ns: 'workflow' })}
           content={renderTooltipContent(
-            t('nodes.agent.modelNotInMarketplace.title', { ns: 'workflow' }),
-            t('nodes.agent.modelNotInMarketplace.desc', { ns: 'workflow' }),
-            t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
+            t($ => $['nodes.agent.modelNotInMarketplace.title'], { ns: 'workflow' }),
+            t($ => $['nodes.agent.modelNotInMarketplace.desc'], { ns: 'workflow' }),
+            t($ => $['nodes.agent.linkToPlugin'], { ns: 'workflow' }),
             '/plugins',
           )}
         >

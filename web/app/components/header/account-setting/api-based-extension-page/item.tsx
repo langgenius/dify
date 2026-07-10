@@ -60,30 +60,30 @@ export function Item({
           onClick={handleOpenApiBasedExtensionModal}
         >
           <span className="mr-1 i-ri-edit-line size-4" aria-hidden="true" />
-          {t('operation.edit', { ns: 'common' })}
+          {t($ => $['operation.edit'], { ns: 'common' })}
         </Button>
         <Button
           disabled={!canManage}
           onClick={() => canManage && setShowDeleteConfirm(true)}
         >
           <span className="mr-1 i-ri-delete-bin-line size-4" aria-hidden="true" />
-          {t('operation.delete', { ns: 'common' })}
+          {t($ => $['operation.delete'], { ns: 'common' })}
         </Button>
       </div>
       <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {`${t('operation.delete', { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
+              {`${t($ => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={!canManage || deleteApiBasedExtensionMutation.isPending}
               onClick={handleDeleteApiBasedExtension}
             >
-              {t('operation.delete', { ns: 'common' }) || ''}
+              {t($ => $['operation.delete'], { ns: 'common' }) || ''}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

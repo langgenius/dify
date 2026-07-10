@@ -88,7 +88,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
           open && 'bg-components-button-ghost-bg-hover',
         )}
       >
-        <span className="px-0.5">{t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}</span>
+        <span className="px-0.5">{t($ => $['nodes.llm.jsonSchema.import'], { ns: 'workflow' })}</span>
       </PopoverTrigger>
       <PopoverContent
         placement="bottom-end"
@@ -101,14 +101,14 @@ const JsonImporter: FC<JsonImporterProps> = ({
           <div className="relative px-3 pt-3.5 pb-1">
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="absolute right-2.5 bottom-0 flex size-8 items-center justify-center border-none bg-transparent p-0"
               onClick={onClose}
             >
               <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
             </button>
             <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
-              {t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}
+              {t($ => $['nodes.llm.jsonSchema.import'], { ns: 'workflow' })}
             </div>
           </div>
           {/* Content */}
@@ -125,10 +125,10 @@ const JsonImporter: FC<JsonImporterProps> = ({
           {/* Footer */}
           <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
             <Button variant="secondary" onClick={onClose}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button variant="primary" onClick={handleSubmit}>
-              {t('operation.submit', { ns: 'common' })}
+              {t($ => $['operation.submit'], { ns: 'common' })}
             </Button>
           </div>
         </div>

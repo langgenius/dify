@@ -6,8 +6,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { Plan } from '@/app/components/billing/type'
-import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateCurrentWorkspace } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -44,7 +45,7 @@ const useWebAppBrand = () => {
     if (!file)
       return
     if (file.size > MAX_LOGO_FILE_SIZE) {
-      toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }))
+      toast.error(t($ => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 5 }))
       return
     }
     imageUpload({
@@ -55,7 +56,7 @@ const useWebAppBrand = () => {
         setFileId(res.id)
       },
       onErrorCallback: (error) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+        const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
         toast.error(errorMessage)
         setUploadProgress(-1)
       },

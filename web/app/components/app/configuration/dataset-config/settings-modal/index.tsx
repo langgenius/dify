@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import type { RetrievalTranslate } from './retrieval-section'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
@@ -51,6 +52,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
+  const translateRetrieval: RetrievalTranslate = (selector, options) => t(selector, options)
   const docLink = useDocLink()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
@@ -95,7 +97,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (loading)
       return
     if (!localeCurrentDataset.name?.trim()) {
-      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
+      toast.error(t($ => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
     if (
@@ -105,7 +107,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+      toast.error(t($ => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
     try {
@@ -145,7 +147,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         })
       }
       await updateDatasetSetting(requestParams)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
@@ -153,7 +155,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       })
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
     finally {
       setLoading(false)
@@ -194,7 +196,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="flex flex-col text-base font-semibold text-text-primary">
-          <div className="leading-6">{t('title', { ns: 'datasetSettings' })}</div>
+          <div className="leading-6">{t($ => $.title, { ns: 'datasetSettings' })}</div>
         </div>
         <div className="flex items-center">
           <div
@@ -209,32 +211,32 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.name', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t($ => $['form.name'], { ns: 'datasetSettings' })}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
             className="block h-9"
-            placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
+            placeholder={t($ => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t($ => $['form.desc'], { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <Textarea
-              aria-label={t('form.desc', { ns: 'datasetSettings' })}
+              aria-label={t($ => $['form.desc'], { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
               onValueChange={value => handleValueChange('description', value)}
               className="resize-none"
-              placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+              placeholder={t($ => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             />
           </div>
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t($ => $['form.permissions'], { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <PermissionSelector
@@ -250,7 +252,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t($ => $['form.indexMethod'], { ns: 'datasetSettings' })}</div>
             </div>
             <div className="grow">
               <IndexMethod
@@ -267,7 +269,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="system-sm-semibold text-text-secondary">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t($ => $['form.embeddingModel'], { ns: 'datasetSettings' })}</div>
             </div>
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
@@ -281,13 +283,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 />
               </div>
               <div className="mt-2 w-full text-xs/6 text-text-tertiary">
-                {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
+                {t($ => $['form.embeddingModelTip'], { ns: 'datasetSettings' })}
                 <button
                   type="button"
                   className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                 >
-                  {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
+                  {t($ => $['form.embeddingModelTipLink'], { ns: 'datasetSettings' })}
                 </button>
               </div>
             </div>
@@ -301,7 +303,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t as any}
+                t={translateRetrieval}
                 topK={topK}
                 scoreThreshold={scoreThreshold}
                 scoreThresholdEnabled={scoreThresholdEnabled}
@@ -314,7 +316,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal={false}
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t as any}
+                t={translateRetrieval}
                 indexMethod={indexMethod}
                 retrievalConfig={retrievalConfig}
                 showMultiModalTip={showMultiModalTip}
@@ -325,7 +327,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       </div>
       <RetrievalChangeTip
         visible={isRetrievalChanged && !isHideChangedTip}
-        message={t('datasetConfig.retrieveChangeTip', { ns: 'appDebug' })}
+        message={t($ => $['datasetConfig.retrieveChangeTip'], { ns: 'appDebug' })}
         onDismiss={() => setIsHideChangedTip(true)}
       />
 
@@ -336,14 +338,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
           onClick={onCancel}
           className="mr-2"
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           disabled={loading}
           onClick={handleSave}
         >
-          {t('operation.save', { ns: 'common' })}
+          {t($ => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
     </div>

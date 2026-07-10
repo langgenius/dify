@@ -6,7 +6,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/app-context-state'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
@@ -29,7 +29,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      toast.info(t('account.deleteSuccessTip', { ns: 'common' }))
+      toast.info(t($ => $['account.deleteSuccessTip'], { ns: 'common' }))
     }
     catch (error) { console.error(error) }
   }, [router, t])
@@ -60,21 +60,21 @@ export default function FeedBack(props: DeleteAccountProps) {
         backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t('account.feedbackTitle', { ns: 'common' })}
+          {t($ => $['account.feedbackTitle'], { ns: 'common' })}
         </DialogTitle>
-        <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+        <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">{t($ => $['account.feedbackLabel'], { ns: 'common' })}</label>
         <Textarea
-          aria-label={t('account.feedbackLabel', { ns: 'common' }) as string}
+          aria-label={t($ => $['account.feedbackLabel'], { ns: 'common' }) as string}
           rows={6}
           value={userFeedback}
-          placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
+          placeholder={t($ => $['account.feedbackPlaceholder'], { ns: 'common' }) as string}
           onValueChange={(value) => {
             setUserFeedback(value)
           }}
         />
         <div className="mt-3 flex w-full flex-col gap-2">
-          <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
-          <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
+          <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t($ => $['operation.submit'], { ns: 'common' })}</Button>
+          <Button className="w-full" onClick={handleSkip}>{t($ => $['operation.skip'], { ns: 'common' })}</Button>
         </div>
       </DialogContent>
     </Dialog>

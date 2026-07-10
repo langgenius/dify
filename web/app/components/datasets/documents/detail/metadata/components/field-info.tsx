@@ -53,7 +53,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
           }}
         >
           <SelectTrigger className={cn(s.select, s.selectWrapper)}>
-            {selectedOption?.name ?? `${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
+            {selectedOption?.name ?? `${t($ => $['metadata.placeholder.select'], { ns: 'datasetDocuments' })}${label}`}
           </SelectTrigger>
           <SelectContent>
             {selectOptions.map(option => (
@@ -73,7 +73,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
           onChange={e => onUpdate?.(e.target.value)}
           value={value}
           className={s.textArea}
-          placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+          placeholder={`${t($ => $['metadata.placeholder.add'], { ns: 'datasetDocuments' })}${label}`}
         />
       )
     }
@@ -83,7 +83,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
         onChange={e => onUpdate?.(e.target.value)}
         value={value}
         defaultValue={defaultValue}
-        placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+        placeholder={`${t($ => $['metadata.placeholder.add'], { ns: 'datasetDocuments' })}${label}`}
       />
     )
   }

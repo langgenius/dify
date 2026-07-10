@@ -82,20 +82,20 @@ const TryApp: FC<Props> = ({
                     disabled={app ? !isTrialApp : false}
                     className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                   >
-                    <span className="system-md-semibold-uppercase">{t('tryApp.tabHeader.try', { ns: 'explore' })}</span>
+                    <span className="system-md-semibold-uppercase">{t($ => $['tryApp.tabHeader.try'], { ns: 'explore' })}</span>
                   </TabsTab>
                 )}
                 <TabsTab
                   value={TypeEnum.DETAIL}
                   className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                 >
-                  <span className="system-md-semibold-uppercase">{t('tryApp.tabHeader.detail', { ns: 'explore' })}</span>
+                  <span className="system-md-semibold-uppercase">{t($ => $['tryApp.tabHeader.detail'], { ns: 'explore' })}</span>
                 </TabsTab>
               </TabsList>
               <Button
                 size="large"
                 variant="tertiary"
-                aria-label={t('common.operation.close')}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
                 className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
                 onClick={onClose}
               >

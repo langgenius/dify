@@ -9,11 +9,9 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
-import {
-  userProfileIdAtom,
-  workspacePermissionKeysAtom,
-} from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
@@ -150,21 +148,21 @@ const DocumentList = ({
                     <Checkbox
                       className="mr-2 shrink-0"
                       parent
-                      aria-label={t('operation.selectAll', { ns: 'common' })}
+                      aria-label={t($ => $['operation.selectAll'], { ns: 'common' })}
                     />
                   )}
                   #
                 </div>
               </td>
               <td>
-                {t('list.table.header.fileName', { ns: 'datasetDocuments' })}
+                {t($ => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}
               </td>
-              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
-              <td className="w-24">{t('list.table.header.words', { ns: 'datasetDocuments' })}</td>
+              <td className="w-[130px]">{t($ => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}</td>
+              <td className="w-24">{t($ => $['list.table.header.words'], { ns: 'datasetDocuments' })}</td>
               <td className="w-44">
                 <SortHeader
                   field="hit_count"
-                  label={t('list.table.header.hitCount', { ns: 'datasetDocuments' })}
+                  label={t($ => $['list.table.header.hitCount'], { ns: 'datasetDocuments' })}
                   currentSortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
@@ -173,14 +171,14 @@ const DocumentList = ({
               <td className="w-44">
                 <SortHeader
                   field="created_at"
-                  label={t('list.table.header.uploadTime', { ns: 'datasetDocuments' })}
+                  label={t($ => $['list.table.header.uploadTime'], { ns: 'datasetDocuments' })}
                   currentSortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
                 />
               </td>
-              <td className="w-40">{t('list.table.header.status', { ns: 'datasetDocuments' })}</td>
-              <td className="w-20">{t('list.table.header.action', { ns: 'datasetDocuments' })}</td>
+              <td className="w-40">{t($ => $['list.table.header.status'], { ns: 'datasetDocuments' })}</td>
+              <td className="w-20">{t($ => $['list.table.header.action'], { ns: 'datasetDocuments' })}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
@@ -226,18 +224,18 @@ const DocumentList = ({
           totalPages={totalPages}
           onPageChange={page => pagination.onChange(page - 1)}
           labels={{
-            previous: t('pagination.previous', { ns: 'common' }),
-            next: t('pagination.next', { ns: 'common' }),
-            editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-            pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+            previous: t($ => $['pagination.previous'], { ns: 'common' }),
+            next: t($ => $['pagination.next'], { ns: 'common' }),
+            editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+            pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
           }}
           pageSize={pagination.onLimitChange
             ? {
                 value: pageSize,
                 options: [10, 25, 50],
                 onValueChange: pagination.onLimitChange,
-                label: t('pagination.perPage', { ns: 'common' }),
-                ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                label: t($ => $['pagination.perPage'], { ns: 'common' }),
+                ariaLabel: t($ => $['pagination.perPage'], { ns: 'common' }),
               }
             : undefined}
         />

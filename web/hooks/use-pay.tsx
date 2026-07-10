@@ -29,7 +29,7 @@ const useAnthropicCheckPay = () => {
     if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
+        title: paymentResult === 'succeeded' ? t($ => $['actionMsg.paySucceeded'], { ns: 'common' }) : t($ => $['actionMsg.payCancelled'], { ns: 'common' }),
       })
     }
   }, [providerName, paymentResult, t])
@@ -48,7 +48,7 @@ const useBillingPay = () => {
     if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
+        title: paymentResult === 'succeeded' ? t($ => $['actionMsg.paySucceeded'], { ns: 'common' }) : t($ => $['actionMsg.payCancelled'], { ns: 'common' }),
       })
     }
   }, [paymentType, paymentResult, t])
@@ -126,8 +126,8 @@ export const CheckModal = () => {
             onClick={handleCancelShowPayStatusModal}
           >
             {confirmInfo.type === 'info'
-              ? t('operation.ok', { ns: 'common' })
-              : t('operation.confirm', { ns: 'common' })}
+              ? t($ => $['operation.ok'], { ns: 'common' })
+              : t($ => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

@@ -53,26 +53,26 @@ const MetadataDocument: FC<Props> = ({
         ? (
             <div className="pl-2">
               <InfoGroup
-                title={t('metadata.metadata', { ns: 'dataset' })}
+                title={t($ => $['metadata.metadata'], { ns: 'dataset' })}
                 uppercaseTitle={false}
-                titleTooltip={t(`${i18nPrefix}.metadataToolTip`, { ns: 'dataset' })}
+                titleTooltip={t($ => $[`${i18nPrefix}.metadataToolTip`], { ns: 'dataset' })}
                 list={isEdit ? tempList : list}
                 dataSetId={datasetId}
                 headerRight={embeddingAvailable && canEdit && (isEdit
                   ? (
                       <div className="flex space-x-1">
                         <Button variant="ghost" size="small" onClick={handleCancel}>
-                          <div>{t('operation.cancel', { ns: 'common' })}</div>
+                          <div>{t($ => $['operation.cancel'], { ns: 'common' })}</div>
                         </Button>
                         <Button variant="primary" size="small" onClick={handleSave}>
-                          <div>{t('operation.save', { ns: 'common' })}</div>
+                          <div>{t($ => $['operation.save'], { ns: 'common' })}</div>
                         </Button>
                       </div>
                     )
                   : (
                       <Button variant="ghost" size="small" onClick={startToEdit}>
                         <span className="mr-1 i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
-                        <div>{t('operation.edit', { ns: 'common' })}</div>
+                        <div>{t($ => $['operation.edit'], { ns: 'common' })}</div>
                       </Button>
                     ))}
                 isEdit={isEdit}
@@ -108,13 +108,13 @@ const MetadataDocument: FC<Props> = ({
       {/* Old Metadata */}
       <InfoGroup
         className="pl-2"
-        title={t(`${i18nPrefix}.documentInformation`, { ns: 'dataset' })}
+        title={t($ => $[`${i18nPrefix}.documentInformation`], { ns: 'dataset' })}
         list={originInfo}
         dataSetId={datasetId}
       />
       <InfoGroup
         className="pl-2"
-        title={t(`${i18nPrefix}.technicalParameters`, { ns: 'dataset' })}
+        title={t($ => $[`${i18nPrefix}.technicalParameters`], { ns: 'dataset' })}
         list={technicalParameters}
         dataSetId={datasetId}
       />

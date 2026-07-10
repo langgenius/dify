@@ -2,6 +2,7 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TFunction } from 'i18next'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { Item } from '../item'
 
 const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
@@ -190,17 +191,17 @@ describe('Item Component', () => {
 
       useTranslationSpy.mockReturnValue({
         ...originalValue,
-        t: vi.fn().mockImplementation((key: string) => {
+        t: withSelectorKey((key: string) => {
           if (key === 'operation.delete')
             return ''
-          return key
-        }) as unknown as TFunction,
+          return `common.${key}`
+        }, 'common') as unknown as TFunction,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
       const allButtons = screen.getAllByRole('button')
-      const editBtn = screen.getByText('operation.edit')
+      const editBtn = screen.getByText('common.operation.edit')
       const deleteBtn = allButtons.find(btn => btn !== editBtn)
       if (deleteBtn)
         fireEvent.click(deleteBtn)

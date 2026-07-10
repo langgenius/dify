@@ -7,6 +7,7 @@ import {
   setAgentApiAccess,
 } from '../../agent-v2/support/access-point'
 import { agentBuilderExpectedTokens, agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
+import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
 async function enableAgentApiAccessWithKey(world: DifyWorld) {
@@ -151,7 +152,7 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const apiReferenceLink = page.getByRole('link', { name: 'API Reference' })
 
   await expect(apiReferenceLink).toBeVisible()
-  await expect(apiReferenceLink).toHaveAttribute('href', /\/use-dify\/publish\/developing-with-apis/)
+  await expect(apiReferenceLink).toHaveAttribute('href', /\/api-reference\/guides\/get-started/)
   await expect(apiReferenceLink).toHaveAttribute('target', '_blank')
 
   const [apiReferencePage] = await Promise.all([
@@ -167,39 +168,47 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   if (!apiReferencePage)
     throw new Error('No Agent v2 API Reference page was opened.')
 
-  await expect(apiReferencePage).toHaveURL(/developing-with-apis/)
+  await expect(apiReferencePage).toHaveURL(/\/api-reference\/guides\/get-started/)
   await apiReferencePage.close()
   this.agentBuilder.accessPoint.apiReferencePage = undefined
 })
 
-When('I send the Agent v2 Backend service API minimal request', async function (this: DifyWorld) {
-  const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
-  const apiKey = this.agentBuilder.accessPoint.generatedApiKey
-  if (!serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
-  if (!apiKey)
-    throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
+When(
+  'I send the Agent v2 Backend service API minimal request',
+  { timeout: SERVICE_API_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
+    const apiKey = this.agentBuilder.accessPoint.generatedApiKey
+    if (!serviceApiBaseURL)
+      throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+    if (!apiKey)
+      throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
 
-  this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
-    apiKey,
-    serviceApiBaseURL,
-  })
-})
+    this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
+      apiKey,
+      serviceApiBaseURL,
+    })
+  },
+)
 
-When('I send the Agent v2 Backend service API knowledge request', async function (this: DifyWorld) {
-  const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
-  const apiKey = this.agentBuilder.accessPoint.generatedApiKey
-  if (!serviceApiBaseURL)
-    throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
-  if (!apiKey)
-    throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
+When(
+  'I send the Agent v2 Backend service API knowledge request',
+  { timeout: SERVICE_API_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
+    const apiKey = this.agentBuilder.accessPoint.generatedApiKey
+    if (!serviceApiBaseURL)
+      throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
+    if (!apiKey)
+      throw new Error('No Agent v2 API key found. Create a Backend service API key first.')
 
-  this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
-    apiKey,
-    query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
-    serviceApiBaseURL,
-  })
-})
+    this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
+      apiKey,
+      query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
+      serviceApiBaseURL,
+    })
+  },
+)
 
 const stringifyServiceApiBody = (body: unknown) => {
   try {

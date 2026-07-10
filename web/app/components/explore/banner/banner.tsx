@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { BannerItem } from './banner-item'
 
@@ -106,10 +106,10 @@ function Banner({
     >
       <div className="flex w-full flex-col gap-1">
         <p className="truncate title-3xl-semi-bold text-text-primary">
-          {t('banner.greeting', { name: userName, ns: 'explore' })}
+          {t($ => $['banner.greeting'], { name: userName, ns: 'explore' })}
         </p>
         <p className="truncate body-sm-regular text-text-secondary">
-          {t('banner.tagline', { ns: 'explore' })}
+          {t($ => $['banner.tagline'], { ns: 'explore' })}
         </p>
       </div>
 

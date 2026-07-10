@@ -247,7 +247,7 @@ const Chat: FC<ChatProps> = ({
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
-                    <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+                    <span className="text-xs font-normal">{t($ => $['operation.stopResponding'], { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
               )

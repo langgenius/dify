@@ -301,7 +301,7 @@ describe('ConfigurationView', () => {
     fireEvent.click(badge)
 
     expect(await screen.findByText('appDebug.legacyAgentBadge.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link', { name: /appDebug\.legacyAgentBadge\.action/ })).toHaveAttribute('rel', 'noopener noreferrer')
   })

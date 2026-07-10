@@ -36,7 +36,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -261,6 +261,7 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   id: thought.id,
   tool: thought.tool ?? '',
   thought: thought.thought ?? '',
+  answer: thought.answer ?? '',
   tool_input: thought.tool_input ?? '',
   message_id: thought.message_id,
   conversation_id: conversationId,
@@ -752,8 +753,8 @@ function AgentPreviewChatSession({
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
-  const sandboxNotice = t('agentDetail.configure.preview.sandboxNotice')
-  const sandboxNoticeTooltip = t('agentDetail.configure.preview.sandboxNoticeTooltip')
+  const sandboxNotice = t($ => $['agentDetail.configure.preview.sandboxNotice'])
+  const sandboxNoticeTooltip = t($ => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">

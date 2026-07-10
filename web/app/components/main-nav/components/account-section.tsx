@@ -4,7 +4,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 
 type AccountSectionProps = {
   compact?: boolean

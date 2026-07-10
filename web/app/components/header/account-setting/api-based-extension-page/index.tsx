@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
@@ -30,7 +30,7 @@ function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <div key={index} className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
           <SkeletonContainer className="h-16">
@@ -110,7 +110,7 @@ export function ApiBasedExtensionPage({
         onClick={handleOpenApiBasedExtensionModal}
       >
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
-        {t('apiBasedExtension.add', { ns: 'common' })}
+        {t($ => $['apiBasedExtension.add'], { ns: 'common' })}
       </Button>
     </div>
   )
@@ -130,7 +130,7 @@ export function ApiBasedExtensionPage({
       {
         !isLoading && hasApiBasedExtensions && hasSearchKeywords && !filteredApiBasedExtensions.length && (
           <div className="py-10 text-center system-sm-regular text-text-tertiary">
-            {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
+            {t($ => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
           </div>
         )
       }

@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Plan } from '@/app/components/billing/type'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { disableModel, enableModel } from '@/service/common'
@@ -109,7 +109,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
                 <Popover>
                   <PopoverTrigger nativeButton={false} openOnHover render={<span><Switch checked={false} disabled size="md" /></span>} />
                   <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
-                    {t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}
+                    {t($ => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
                   </PopoverContent>
                 </Popover>
               )

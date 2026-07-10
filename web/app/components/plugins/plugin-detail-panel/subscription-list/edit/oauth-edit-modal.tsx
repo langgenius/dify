@@ -94,12 +94,12 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
       },
       {
         onSuccess: () => {
-          toast.success(t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }))
+          toast.success(t($ => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }))
           refetch?.()
           onClose()
         },
         onError: (error: unknown) => {
-          toast.error(getErrorMessage(error, t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })))
+          toast.error(getErrorMessage(error, t($ => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })))
         },
       },
     )
@@ -108,21 +108,21 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
   const formSchemas: FormSchema[] = useMemo(() => [
     {
       name: 'subscription_name',
-      label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
+      label: t($ => $['modal.form.subscriptionName.label'], { ns: 'pluginTrigger' }),
+      placeholder: t($ => $['modal.form.subscriptionName.placeholder'], { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: true,
       default: subscription.name,
     },
     {
       name: 'callback_url',
-      label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
+      label: t($ => $['modal.form.callbackUrl.label'], { ns: 'pluginTrigger' }),
+      placeholder: t($ => $['modal.form.callbackUrl.placeholder'], { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: false,
       default: subscription.endpoint || '',
       disabled: true,
-      tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
+      tooltip: t($ => $['modal.form.callbackUrl.tooltip'], { ns: 'pluginTrigger' }),
       showCopy: true,
     },
     ...parametersSchema.map((schema: ParametersSchema) => {
@@ -147,8 +147,8 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
     }),
   ], [t, subscription.name, subscription.endpoint, subscription.parameters, subscription.id, parametersSchema, detail?.plugin_id, detail?.provider])
 
-  const title = t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })
-  const confirmButtonText = isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
+  const title = t($ => $['subscription.list.item.actions.edit.title'], { ns: 'pluginTrigger' })
+  const confirmButtonText = isUpdating ? t($ => $['operation.saving'], { ns: 'common' }) : t($ => $['operation.save'], { ns: 'common' })
 
   return (
     <Dialog
@@ -188,7 +188,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
                 onClick={onClose}
                 disabled={isUpdating}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 className="ml-2"

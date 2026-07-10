@@ -59,9 +59,9 @@ const StartBlocks = ({
     const normalizedSearch = searchText.toLowerCase()
     const getDisplayName = (blockType: BlockEnum) => {
       if (blockType === BlockEnumValues.TriggerWebhook)
-        return t('customWebhook', { ns: 'workflow' })
+        return t($ => $.customWebhook, { ns: 'workflow' })
 
-      return t(`blocks.${blockType}`, { ns: 'workflow' })
+      return t($ => $[`blocks.${blockType}`], { ns: 'workflow' })
     }
 
     return START_BLOCKS.filter((block) => {
@@ -94,8 +94,8 @@ const StartBlocks = ({
     const isUserInput = block.type === BlockEnumValues.Start
     const isUserInputDisabled = isUserInput && showUserInputDisabled
     const isRowDisabled = disabled || (isUserInput && showUserInputAdded) || isUserInputDisabled
-    const label = t(`blocks.${block.type}`, { ns: 'workflow' })
-    const disabledReason = t('nodes.startPlaceholder.userInputConflictTip', { ns: 'workflow' })
+    const label = t($ => $[`blocks.${block.type}`], { ns: 'workflow' })
+    const disabledReason = t($ => $['nodes.startPlaceholder.userInputConflictTip'], { ns: 'workflow' })
     const row = (
       <BlockSelectorRow
         aria-disabled={isRowDisabled}
@@ -117,16 +117,16 @@ const StartBlocks = ({
             <span className="truncate system-sm-medium">{label}</span>
             {isUserInput && showUserInputAdded && (
               <span className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
-                {t('operation.added', { ns: 'common' })}
+                {t($ => $['operation.added'], { ns: 'common' })}
               </span>
             )}
             {isUserInput && showMostCommonBadge && !showUserInputAdded && (
               <span className="ml-2 shrink-0 rounded-[5px] border border-divider-deep px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t('blocks.mostCommon', { ns: 'workflow' })}
+                {t($ => $['blocks.mostCommon'], { ns: 'workflow' })}
               </span>
             )}
             {isUserInput && !showMostCommonBadge && !showUserInputAdded && !showUserInputDisabled && (
-              <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+              <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t($ => $['blocks.originalStartNode'], { ns: 'workflow' })}</span>
             )}
           </div>
         </div>
@@ -201,8 +201,8 @@ function StartBlockPreviewCard({
 
   const { block } = payload
   const description = block.type === BlockEnumValues.Start
-    ? t('nodes.start.userInputTipDescription', { ns: 'workflow' })
-    : t(`blocksAbout.${block.type}`, { ns: 'workflow' })
+    ? t($ => $['nodes.start.userInputTipDescription'], { ns: 'workflow' })
+    : t($ => $[`blocksAbout.${block.type}`], { ns: 'workflow' })
   const showDifyTeamAuthor = [
     BlockEnumValues.Start,
     BlockEnumValues.TriggerWebhook,
@@ -218,16 +218,16 @@ function StartBlockPreviewCard({
           type={block.type}
         />
         <div className="mb-1 system-md-medium text-text-primary">
-          {t(`blocks.${block.type}`, { ns: 'workflow' })}
+          {t($ => $[`blocks.${block.type}`], { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular wrap-break-word text-text-secondary">
           {description}
         </div>
         {showDifyTeamAuthor && (
           <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t('author', { ns: 'tools' })}
+            {t($ => $.author, { ns: 'tools' })}
             {' '}
-            {t('difyTeam', { ns: 'workflow' })}
+            {t($ => $.difyTeam, { ns: 'workflow' })}
           </div>
         )}
       </div>

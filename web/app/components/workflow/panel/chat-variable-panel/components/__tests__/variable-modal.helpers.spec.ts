@@ -1,3 +1,4 @@
+import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import {
   buildObjectValueItems,
@@ -117,7 +118,7 @@ describe('variable-modal helpers', () => {
 
   it('should validate variable names and notify when invalid', () => {
     const notify = vi.fn()
-    const t = (key: string) => key
+    const t = withSelectorKey((key: string) => key)
 
     expect(validateVariableName({
       name: 'valid_name',

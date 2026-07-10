@@ -86,7 +86,7 @@ export const useLink = () => {
   const noteEditorStore = useNoteEditorStore()
   const handleSaveLink = useCallback((url: string) => {
     if (url && !urlRegExp.test(url)) {
-      toast.error(t('nodes.note.editor.invalidUrl', { ns: 'workflow' }))
+      toast.error(t($ => $['nodes.note.editor.invalidUrl'], { ns: 'workflow' }))
       return
     }
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, escape(url))

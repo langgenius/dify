@@ -19,7 +19,8 @@ import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -72,19 +73,19 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
-        {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
+        {t($ => $['overview.disableTooltip.triggerMode'], { ns: 'appOverview', feature: featureName })}
       </div>
     </div>
   ), [t])
 
   const disableWebAppTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t($ => $['overview.appInfo.title'], { ns: 'appOverview' }))
     : null
   const disableApiTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('overview.apiInfo.title', { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t($ => $['overview.apiInfo.title'], { ns: 'appOverview' }))
     : null
   const disableMcpTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
+    ? buildTriggerModeMessage(t($ => $['mcp.server.title'], { ns: 'tools' }))
     : null
 
   const setNeedRefresh = useSetNeedRefreshAppList()
@@ -119,7 +120,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }
     }
 
-    toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
+    toast(t($ => $[`actionMsg.${message}`], { ns: 'common' }) as string, { type })
   }
 
   // Listen for collaborative app state updates from other clients

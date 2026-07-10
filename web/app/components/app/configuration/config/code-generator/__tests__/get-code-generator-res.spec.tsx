@@ -14,13 +14,6 @@ let mockDefaultModel: {
 } | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -165,9 +158,9 @@ describe('GetCodeGeneratorResModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('codegen.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
-    expect(mockToastError).toHaveBeenCalledWith('errorMsg.fieldRequired')
+    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/))
     expect(mockGenerateRule).not.toHaveBeenCalled()
     expect(screen.getByText('code-result-placeholder')).toBeInTheDocument()
   })
@@ -192,7 +185,7 @@ describe('GetCodeGeneratorResModal', () => {
 
     fireEvent.click(screen.getByText('set-code-instruction'))
     fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText('codegen.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateRule).toHaveBeenCalledWith(expect.objectContaining({
@@ -212,10 +205,10 @@ describe('GetCodeGeneratorResModal', () => {
     fireEvent.click(screen.getByText('apply-code-result'))
 
     await waitFor(() => {
-      expect(screen.getByText('codegen.overwriteConfirmTitle')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)codegen\.overwriteConfirmTitle(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     expect(mockOnFinished).toHaveBeenCalledWith(expect.objectContaining({
       modified: 'print("hello")',
@@ -243,7 +236,7 @@ describe('GetCodeGeneratorResModal', () => {
 
     fireEvent.click(screen.getByText('set-code-instruction'))
     fireEvent.click(screen.getByText('set-code-output'))
-    fireEvent.click(screen.getByText('codegen.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
@@ -252,7 +245,7 @@ describe('GetCodeGeneratorResModal', () => {
     fireEvent.click(screen.getByText('apply-code-result'))
     const dialog = await screen.findByRole('alertdialog')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -280,7 +273,7 @@ describe('GetCodeGeneratorResModal', () => {
     )
 
     fireEvent.click(screen.getByText('set-code-instruction'))
-    fireEvent.click(screen.getByText('codegen.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith('generation failed')

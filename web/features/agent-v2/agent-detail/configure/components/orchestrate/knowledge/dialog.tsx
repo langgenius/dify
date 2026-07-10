@@ -236,7 +236,7 @@ export function AgentKnowledgeRetrievalDialog({
   const docLink = useDocLink()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const getValidationMessage = useKnowledgeValidationMessage()
-  const fallbackName = t('agentDetail.configure.knowledgeRetrieval.retrievalOne')
+  const fallbackName = t($ => $['agentDetail.configure.knowledgeRetrieval.retrievalOne'])
   const hydrationKey = open ? (item?.id ?? initialName ?? 'new') : null
   const [dialogState, setDialogState] = useState(() => createDialogState(item, initialName, fallbackName, hydrationKey ?? 'new'))
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -439,7 +439,7 @@ export function AgentKnowledgeRetrievalDialog({
         className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0"
       >
         <DialogTitle className="sr-only">
-          {t('agentDetail.configure.knowledgeRetrieval.dialog.title')}
+          {t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.title'])}
         </DialogTitle>
         <div className="flex items-center gap-2 px-4 pt-3">
           <KnowledgeRetrievalDialogIcon />
@@ -447,7 +447,7 @@ export function AgentKnowledgeRetrievalDialog({
             ? (
                 <Input
                   ref={nameInputRef}
-                  aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel')}
+                  aria-label={t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'])}
                   aria-invalid={nameError ? true : undefined}
                   className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
                   value={name}
@@ -485,7 +485,7 @@ export function AgentKnowledgeRetrievalDialog({
         <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
           <div className="flex flex-col gap-1 px-4 py-2">
             <DialogFormLabel id={queryModeLabelId}>
-              {t('agentDetail.configure.knowledgeRetrieval.dialog.query.label')}
+              {t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
             </DialogFormLabel>
             <RadioGroup<KnowledgeRetrievalQueryMode>
               aria-labelledby={queryModeLabelId}
@@ -506,7 +506,7 @@ export function AgentKnowledgeRetrievalDialog({
                   render={<button type="button" className={optionCardClassName} />}
                 >
                   <span className="min-w-0 truncate">
-                    {t(`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`)}
+                    {t($ => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
                   </span>
                 </RadioItem>
               ))}
@@ -516,10 +516,10 @@ export function AgentKnowledgeRetrievalDialog({
                   <>
                     <div className="pt-1">
                       <Textarea
-                        aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel')}
+                        aria-label={t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'])}
                         aria-invalid={queryError ? true : undefined}
                         className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
-                        placeholder={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')}
+                        placeholder={t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder'])}
                         value={customQuery}
                         onValueChange={(nextQuery) => {
                           patchDialogState({ customQuery: nextQuery })
@@ -528,7 +528,7 @@ export function AgentKnowledgeRetrievalDialog({
                       />
                     </div>
                     <p className="system-xs-regular text-text-tertiary">
-                      {t('agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')}
+                      {t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'])}
                     </p>
                     {queryError && (
                       <p role="alert" className="system-xs-regular text-text-destructive">
@@ -539,14 +539,14 @@ export function AgentKnowledgeRetrievalDialog({
                 )
               : (
                   <p className="pt-1 system-xs-regular text-text-tertiary">
-                    {t('agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')}
+                    {t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription'])}
                   </p>
                 )}
           </div>
 
           <div className="px-4 py-2">
             <Field
-              title={t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label')}
+              title={t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
               required
               operations={(
                 <div className="flex items-center space-x-1">
@@ -736,7 +736,7 @@ export function AgentKnowledgeRetrievalDialog({
           >
             <span aria-hidden className="i-ri-book-read-line size-3 shrink-0" />
             <span className="min-w-0 truncate">
-              {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
+              {t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
             </span>
           </a>
         </div>

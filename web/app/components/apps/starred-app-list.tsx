@@ -37,7 +37,7 @@ export function StarredAppList({
 
   return (
     <>
-      <SectionDivider label={t('studio.starred', { ns: 'app' })} />
+      <SectionDivider label={t($ => $['studio.starred'], { ns: 'app' })} />
       <div className={APP_LIST_GRID_CLASS_NAME}>
         {apps.map((app, index) => (
           <StarredAppCard
@@ -49,7 +49,7 @@ export function StarredAppList({
           />
         ))}
       </div>
-      <SectionDivider label={t('studio.allApps', { ns: 'app' })} />
+      <SectionDivider label={t($ => $['studio.allApps'], { ns: 'app' })} />
     </>
   )
 }

@@ -16,7 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -129,7 +129,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setOpen(false)
 
       const allModelTypes = [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts]
@@ -139,11 +139,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   }
 
   const renderModelLabel = (labelKey: SystemModelLabelKey, tipKey: SystemModelTipKey) => {
-    const tipText = t(tipKey, { ns: 'common' })
+    const tipText = t($ => $[tipKey], { ns: 'common' })
 
     return (
       <div className="flex min-h-6 items-center text-[13px] font-medium text-text-secondary">
-        {t(labelKey, { ns: 'common' })}
+        {t($ => $[labelKey], { ns: 'common' })}
         <Infotip
           aria-label={tipText}
           className="ml-0.5 text-text-tertiary"
@@ -167,7 +167,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         {isLoading
           ? <span className="mr-0.5 i-ri-loader-2-line size-3.5 animate-spin" />
           : <span className="mr-0.5 i-ri-brain-2-line size-3.5" />}
-        {t('modelProvider.systemModelSettings', { ns: 'common' })}
+        {t($ => $['modelProvider.systemModelSettings'], { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
@@ -177,10 +177,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <DialogCloseButton className="top-5 right-5" />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.systemModelSettingsTitle', { ns: 'common' })}
+              {t($ => $['modelProvider.systemModelSettingsTitle'], { ns: 'common' })}
             </DialogTitle>
             <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t('modelProvider.systemModelSettingsDesc', { ns: 'common' })}
+              {t($ => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })}
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
@@ -262,7 +262,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               className="min-w-[72px]"
               onClick={() => setOpen(false)}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               className="min-w-[72px]"
@@ -270,7 +270,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               onClick={handleSave}
               disabled={!canManageSystemDefaultModel}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </DialogContent>

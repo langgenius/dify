@@ -22,7 +22,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const triggerLabel = value.length === 0
-    ? t('typeSelector.all', { ns: 'app' })
+    ? t($ => $['typeSelector.all'], { ns: 'app' })
     : value.map(type => getAppTypeLabel(type, t)).join(', ')
 
   return (
@@ -43,7 +43,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         {value.length > 0 && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
+            aria-label={t($ => $['operation.clear'], { ns: 'common' })}
             className="group absolute top-1/2 right-2 size-4 -translate-y-1/2"
             onClick={() => onChange([])}
           >
@@ -137,7 +137,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
       )}
       >
         <RiFilter3Line className="size-4 text-text-tertiary" />
-        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
+        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">{t($ => $['typeSelector.all'], { ns: 'app' })}</div>
         <RiArrowDownSLine className="size-4 text-text-tertiary" />
       </div>
     )
@@ -201,15 +201,15 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
 
 function getAppTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
   if (type === AppModeEnum.CHAT)
-    return t('typeSelector.chatbot', { ns: 'app' })
+    return t($ => $['typeSelector.chatbot'], { ns: 'app' })
   if (type === AppModeEnum.AGENT_CHAT)
-    return t('typeSelector.agent', { ns: 'app' })
+    return t($ => $['typeSelector.agent'], { ns: 'app' })
   if (type === AppModeEnum.COMPLETION)
-    return t('typeSelector.completion', { ns: 'app' })
+    return t($ => $['typeSelector.completion'], { ns: 'app' })
   if (type === AppModeEnum.ADVANCED_CHAT)
-    return t('typeSelector.advanced', { ns: 'app' })
+    return t($ => $['typeSelector.advanced'], { ns: 'app' })
   if (type === AppModeEnum.WORKFLOW)
-    return t('typeSelector.workflow', { ns: 'app' })
+    return t($ => $['typeSelector.workflow'], { ns: 'app' })
 
   return ''
 }

@@ -1,8 +1,8 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
@@ -141,7 +141,7 @@ const BaseField = ({
       help,
     ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
     if (!results[1])
-      results[1] = t('placeholder.input', { ns: 'common' })
+      results[1] = t($ => $['placeholder.input'], { ns: 'common' })
     return results
   }, [label, placeholder, tooltip, description, help, renderI18nObject, t])
 
@@ -209,11 +209,11 @@ const BaseField = ({
     onChange?.(field.name, value)
   }, [field, onChange])
   const dynamicPlaceholder = isDynamicOptionsLoading
-    ? t('dynamicSelect.loading', { ns: 'common' })
+    ? t($ => $['dynamicSelect.loading'], { ns: 'common' })
     : translatedPlaceholder
   const dynamicNoticeTitle = dynamicOptionsError
-    ? t('dynamicSelect.error', { ns: 'common' })
-    : (!dynamicOptions.length ? t('dynamicSelect.noData', { ns: 'common' }) : null)
+    ? t($ => $['dynamicSelect.error'], { ns: 'common' })
+    : (!dynamicOptions.length ? t($ => $['dynamicSelect.noData'], { ns: 'common' }) : null)
   const dynamicNoticeClassName = dynamicOptionsError ? 'text-text-destructive-secondary' : undefined
 
   return (
@@ -264,7 +264,7 @@ const BaseField = ({
                     <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
                       <SelectValue placeholder={translatedPlaceholder}>
                         {(selectedValue: string[]) => selectedValue.length
-                          ? t('dynamicSelect.selected', { ns: 'common', count: selectedValue.length })
+                          ? t($ => $['dynamicSelect.selected'], { ns: 'common', count: selectedValue.length })
                           : translatedPlaceholder}
                       </SelectValue>
                     </SelectTrigger>
@@ -330,7 +330,7 @@ const BaseField = ({
                     <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
                       <SelectValue placeholder={dynamicPlaceholder}>
                         {(selectedValue: string[]) => selectedValue.length
-                          ? t('dynamicSelect.selected', { ns: 'common', count: selectedValue.length })
+                          ? t($ => $['dynamicSelect.selected'], { ns: 'common', count: selectedValue.length })
                           : dynamicPlaceholder}
                       </SelectValue>
                     </SelectTrigger>
@@ -391,8 +391,8 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.radio && (
-              <FieldRoot name={name} className="contents">
-                <FieldsetRoot
+              <Field name={name} className="contents">
+                <Fieldset
                   render={(
                     <RadioGroup
                       value={stringValue}
@@ -436,14 +436,14 @@ const BaseField = ({
                       </FieldItem>
                     ))
                   }
-                </FieldsetRoot>
-              </FieldRoot>
+                </Fieldset>
+              </Field>
             )
           }
           {
             formItemType === FormTypeEnum.boolean && (
-              <FieldRoot name={name} className="contents">
-                <FieldsetRoot
+              <Field name={name} className="contents">
+                <Fieldset
                   render={(
                     <RadioGroup<boolean>
                       className="w-fit gap-3"
@@ -465,8 +465,8 @@ const BaseField = ({
                       False
                     </FieldLabel>
                   </FieldItem>
-                </FieldsetRoot>
-              </FieldRoot>
+                </Fieldset>
+              </Field>
             )
           }
           {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (

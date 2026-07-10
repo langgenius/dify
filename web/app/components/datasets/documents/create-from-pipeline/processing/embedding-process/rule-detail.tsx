@@ -29,11 +29,11 @@ const RuleDetail = ({
           ? value
 
           : sourceData.mode === ProcessMode.general
-            ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
+            ? (t($ => $['embedding.custom'], { ns: 'datasetDocuments' }) as string)
 
-            : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('parentMode.paragraph', { ns: 'dataset' })
-              : t('parentMode.fullDoc', { ns: 'dataset' })}`
+            : `${t($ => $['embedding.hierarchical'], { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
+              ? t($ => $['parentMode.paragraph'], { ns: 'dataset' })
+              : t($ => $['parentMode.fullDoc'], { ns: 'dataset' })}`
         break
     }
     return value
@@ -42,12 +42,12 @@ const RuleDetail = ({
   return (
     <div className="flex flex-col gap-1" data-testid="rule-detail">
       <FieldInfo
-        label={t('embedding.mode', { ns: 'datasetDocuments' })}
+        label={t($ => $['embedding.mode'], { ns: 'datasetDocuments' })}
         displayedValue={getValue('mode')}
       />
       <FieldInfo
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
-        displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
+        label={t($ => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
+        displayedValue={t($ => $[`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`], { ns: 'datasetCreation' }) as string}
         valueIcon={(
           <img
             className="size-4"
@@ -61,8 +61,8 @@ const RuleDetail = ({
         )}
       />
       <FieldInfo
-        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
-        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
+        label={t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        displayedValue={t($ => $[`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`], { ns: 'dataset' })}
         valueIcon={(
           <img
             className="size-4"

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Props as FormProps } from './form'
+import type { BeforeRunFormTranslator } from './helpers'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { NodeRunningStatus } from '@/app/components/workflow/types'
@@ -62,6 +63,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   handleAfterHumanInputStepRun,
 }) => {
   const { t } = useTranslation()
+  const translateFormError: BeforeRunFormTranslator = (selector, options) => t(selector, options)
 
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
@@ -69,7 +71,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const isFileLoaded = isFilesLoaded(forms)
 
   const handleRunOrGenerateForm = () => {
-    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, t)
+    const errMsg = getFormErrorMessage(forms, existVarValuesInForms, translateFormError)
     if (errMsg) {
       toast.error(errMsg)
       return
@@ -77,7 +79,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
+      toast.error(t($ => $['errorMsg.invalidJson'], { ns: 'workflow', field: parseErrorJsonField }))
       return
     }
 
@@ -140,12 +142,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
+                <div>{t($ => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
               </Button>
             )}
             {isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t('nodes.humanInput.singleRun.button', { ns: 'workflow' })}</div>
+                <div>{t($ => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
               </Button>
             )}
           </div>

@@ -6,7 +6,8 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
@@ -86,7 +87,7 @@ const DatasetList: FC<Props> = ({
           })
         : (
             <div className="cursor-default rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary select-none">
-              {t('datasetConfig.knowledgeTip', { ns: 'appDebug' })}
+              {t($ => $['datasetConfig.knowledgeTip'], { ns: 'appDebug' })}
             </div>
           )}
 

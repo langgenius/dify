@@ -46,7 +46,7 @@ const HeaderInHistory = ({
           onClick={handleGoBackToEdit}
         >
           <ArrowNarrowLeft className="mr-1 size-4" />
-          {t('common.goBackToEdit', { ns: 'workflow' })}
+          {t($ => $['common.goBackToEdit'], { ns: 'workflow' })}
         </Button>
       </div>
     </>

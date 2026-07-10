@@ -99,19 +99,19 @@ function CreateSnippetDialog({
 
           <div className="px-6 pt-6 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {title || t('snippet.createDialogTitle', { ns: 'workflow' })}
+              {title || t($ => $['snippet.createDialogTitle'], { ns: 'workflow' })}
             </DialogTitle>
           </div>
 
           <div className="space-y-4 px-6 py-2">
             <div>
               <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t('snippet.nameLabel', { ns: 'workflow' })}
+                {t($ => $['snippet.nameLabel'], { ns: 'workflow' })}
               </div>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
+                placeholder={t($ => $['snippet.namePlaceholder'], { ns: 'workflow' }) || ''}
                 disabled={isSubmitting}
                 autoFocus
               />
@@ -119,13 +119,13 @@ function CreateSnippetDialog({
 
             <div>
               <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-                {t('snippet.descriptionLabel', { ns: 'workflow' })}
+                {t($ => $['snippet.descriptionLabel'], { ns: 'workflow' })}
               </div>
               <Textarea
                 className="resize-none"
                 value={description}
                 onValueChange={value => setDescription(value)}
-                placeholder={t('snippet.descriptionPlaceholder', { ns: 'workflow' }) || ''}
+                placeholder={t($ => $['snippet.descriptionPlaceholder'], { ns: 'workflow' }) || ''}
                 disabled={isSubmitting}
               />
             </div>
@@ -133,7 +133,7 @@ function CreateSnippetDialog({
 
           <div className="flex items-center justify-end gap-2 px-6 pb-6">
             <Button disabled={isSubmitting} onClick={handleClose}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               variant="primary"
@@ -141,7 +141,7 @@ function CreateSnippetDialog({
               loading={isSubmitting}
               onClick={handleConfirm}
             >
-              {confirmText || t('snippet.confirm', { ns: 'workflow' })}
+              {confirmText || t($ => $['snippet.confirm'], { ns: 'workflow' })}
             </Button>
           </div>
         </DialogContent>

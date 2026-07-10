@@ -25,20 +25,20 @@ export function useIntegrationNav(section: IntegrationSection) {
   const { t } = useTranslation()
   const providerItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'provider',
-    label: t('settings.provider', { ns: 'common' }),
+    label: t($ => $['settings.provider'], { ns: 'common' }),
     icon: 'i-ri-brain-2-line',
     stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
   }), [t])
   const dataSourceItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'data-source',
-    label: t('settings.dataSource', { ns: 'common' }),
+    label: t($ => $['settings.dataSource'], { ns: 'common' }),
     icon: 'i-ri-database-2-line',
     iconClassName: 'size-4',
     stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
   }), [t])
   const customEndpointItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'custom-endpoint',
-    label: t('settings.customEndpoint', { ns: 'common' }),
+    label: t($ => $['settings.customEndpoint'], { ns: 'common' }),
     icon: 'i-custom-vender-integrations-api-extension',
     iconClassName: 'h-[13px] w-3.5',
   }), [t])
@@ -46,7 +46,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     const items: IntegrationSidebarNavItemData[] = [
       {
         section: 'builtin',
-        label: t('toolsPage.toolPlugin', { ns: 'common' }),
+        label: t($ => $['toolsPage.toolPlugin'], { ns: 'common' }),
         icon: 'i-custom-vender-integrations-tools',
         iconClassName: 'h-[14px] w-[12.5px]',
         className: 'pl-8',
@@ -65,14 +65,14 @@ export function useIntegrationNav(section: IntegrationSection) {
       },
       {
         section: 'workflow-tool',
-        label: t('common.workflowAsTool', { ns: 'workflow' }),
+        label: t($ => $['common.workflowAsTool'], { ns: 'workflow' }),
         icon: 'i-custom-vender-integrations-workflow-as-tool',
         iconClassName: 'size-4',
         className: 'pl-8',
       },
       {
         section: 'custom-tool',
-        label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
+        label: t($ => $['settings.swaggerAPIAsTool'], { ns: 'common' }),
         icon: 'i-custom-vender-integrations-custom-tool',
         iconClassName: 'h-[14.5px] w-[12.5px]',
         className: 'pl-8',
@@ -84,20 +84,20 @@ export function useIntegrationNav(section: IntegrationSection) {
   const secondaryItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
     {
       section: 'trigger',
-      label: t('categorySingle.trigger', { ns: 'plugin' }),
+      label: t($ => $['categorySingle.trigger'], { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-trigger',
       iconClassName: 'h-[13.5px] w-[13.5px]',
       stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
     },
     {
       section: 'agent-strategy',
-      label: t('categorySingle.agent', { ns: 'plugin' }),
+      label: t($ => $['categorySingle.agent'], { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-agent-strategy',
       iconClassName: 'h-[14.5px] w-[15.5px]',
     },
     {
       section: 'extension',
-      label: t('categorySingle.extension', { ns: 'plugin' }),
+      label: t($ => $['categorySingle.extension'], { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-extension',
       iconClassName: 'h-[13.5px] w-3',
     },
@@ -107,48 +107,48 @@ export function useIntegrationNav(section: IntegrationSection) {
     switch (section) {
       case 'builtin':
         return {
-          title: t('toolsPage.toolPlugin', { ns: 'common' }),
-          description: t('toolsPage.description', { ns: 'common' }),
+          title: t($ => $['toolsPage.toolPlugin'], { ns: 'common' }),
+          description: t($ => $['toolsPage.description'], { ns: 'common' }),
         }
       case 'mcp':
         return {
           title: 'MCP',
-          description: t('mcpPage.description', { ns: 'common' }),
+          description: t($ => $['mcpPage.description'], { ns: 'common' }),
         }
       case 'custom-tool':
         return {
-          title: t('settings.swaggerAPIAsTool', { ns: 'common' }),
-          description: t('swaggerAPIAsToolPage.description', { ns: 'common' }),
+          title: t($ => $['settings.swaggerAPIAsTool'], { ns: 'common' }),
+          description: t($ => $['swaggerAPIAsToolPage.description'], { ns: 'common' }),
         }
       case 'workflow-tool':
         return {
-          title: t('common.workflowAsTool', { ns: 'workflow' }),
-          description: t('workflowAsToolPage.description', { ns: 'common' }),
+          title: t($ => $['common.workflowAsTool'], { ns: 'workflow' }),
+          description: t($ => $['workflowAsToolPage.description'], { ns: 'common' }),
         }
       case 'custom-endpoint':
         return {
-          title: t('settings.customEndpoint', { ns: 'common' }),
-          description: t('apiBasedExtensionPage.description', { ns: 'common' }),
+          title: t($ => $['settings.customEndpoint'], { ns: 'common' }),
+          description: t($ => $['apiBasedExtensionPage.description'], { ns: 'common' }),
         }
       case 'data-source':
         return {
-          title: t('settings.dataSource', { ns: 'common' }),
-          description: t('dataSourcePage.description', { ns: 'common' }),
+          title: t($ => $['settings.dataSource'], { ns: 'common' }),
+          description: t($ => $['dataSourcePage.description'], { ns: 'common' }),
         }
       case 'trigger':
         return {
-          title: t('categorySingle.trigger', { ns: 'plugin' }),
-          description: t('triggerPage.description', { ns: 'common' }),
+          title: t($ => $['categorySingle.trigger'], { ns: 'plugin' }),
+          description: t($ => $['triggerPage.description'], { ns: 'common' }),
         }
       case 'extension':
         return {
-          title: t('categorySingle.extension', { ns: 'plugin' }),
-          description: t('extensionPage.description', { ns: 'common' }),
+          title: t($ => $['categorySingle.extension'], { ns: 'plugin' }),
+          description: t($ => $['extensionPage.description'], { ns: 'common' }),
         }
       case 'agent-strategy':
         return {
-          title: t('categorySingle.agent', { ns: 'plugin' }),
-          description: t('agentStrategyPage.description', { ns: 'common' }),
+          title: t($ => $['categorySingle.agent'], { ns: 'plugin' }),
+          description: t($ => $['agentStrategyPage.description'], { ns: 'common' }),
         }
       default:
         return null

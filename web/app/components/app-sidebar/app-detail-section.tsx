@@ -22,7 +22,8 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
@@ -100,7 +101,7 @@ const AppDetailSection = ({
     return [
       ...(appACLCapabilities.canAccessLayout
         ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
+            name: t($ => $['appMenus.promptEng'], { ns: 'common' }),
             href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
             icon: RiTerminalWindowLine,
             selectedIcon: RiTerminalWindowFill,
@@ -108,14 +109,14 @@ const AppDetailSection = ({
         : []
       ),
       {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
+        name: t($ => $['appMenus.apiAccess'], { ns: 'common' }),
         href: `/app/${appId}/develop`,
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
       ...(appACLCapabilities.canAccessLogAndAnnotation
         ? [{
-            name: t('appMenus.logs', { ns: 'common' }),
+            name: t($ => $['appMenus.logs'], { ns: 'common' }),
             href: `/app/${appId}/logs`,
             icon: RiFileList3Line,
             selectedIcon: RiFileList3Fill,
@@ -124,7 +125,7 @@ const AppDetailSection = ({
       ),
       ...(appACLCapabilities.canAccessLogAndAnnotation && supportsAnnotations
         ? [{
-            name: t('appMenus.annotations', { ns: 'common' }),
+            name: t($ => $['appMenus.annotations'], { ns: 'common' }),
             href: `/app/${appId}/annotations`,
             icon: AnnotationNavIcon,
             selectedIcon: AnnotationNavIcon,
@@ -133,7 +134,7 @@ const AppDetailSection = ({
       ),
       ...(appACLCapabilities.canMonitor
         ? [{
-            name: t('appMenus.overview', { ns: 'common' }),
+            name: t($ => $['appMenus.overview'], { ns: 'common' }),
             href: `/app/${appId}/overview`,
             icon: RiDashboard2Line,
             selectedIcon: RiDashboard2Fill,
@@ -142,7 +143,7 @@ const AppDetailSection = ({
       ),
       ...(appACLCapabilities.canAccessConfig
         ? [{
-            name: t('settings.resourceAccess', { ns: 'common' }),
+            name: t($ => $['settings.resourceAccess'], { ns: 'common' }),
             href: `/app/${appId}/access-config`,
             icon: RiLock2Line,
             selectedIcon: RiLock2Fill,

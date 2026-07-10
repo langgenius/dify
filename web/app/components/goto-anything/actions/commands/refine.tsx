@@ -67,8 +67,8 @@ export const refineCommand: SlashCommandHandler = {
     const i18n = getI18n()
     return [{
       id: 'refine-current',
-      title: i18n.t('gotoAnything.actions.refineTitle', { ns: 'app', lng: locale }),
-      description: i18n.t('gotoAnything.actions.refineDesc', { ns: 'app', lng: locale }),
+      title: i18n.t($ => $['gotoAnything.actions.refineTitle'], { ns: 'app', lng: locale }),
+      description: i18n.t($ => $['gotoAnything.actions.refineDesc'], { ns: 'app', lng: locale }),
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

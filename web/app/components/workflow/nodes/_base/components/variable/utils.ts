@@ -1,3 +1,4 @@
+import type { SelectorParam, TFunction } from 'i18next'
 import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
@@ -72,6 +73,22 @@ import {
   Type,
 } from '../../../llm/types'
 import { VarType as ToolVarType } from '../../../tool/types'
+
+type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
+  selector: Selector,
+  options: { ns: 'workflow' } & Record<string, unknown>,
+) => ReturnType<TFunction>
+
+const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
+  t: WorkflowTranslate,
+  selector: Selector,
+): string => {
+  const result = t(selector, { ns: 'workflow' })
+  if (typeof result !== 'string')
+    throw new TypeError('Expected workflow translation selector to return a string')
+
+  return result
+}
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -1210,7 +1227,7 @@ export const toNodeAvailableVars = ({
   schemaTypeDefinitions,
 }: {
   parentNode?: Node | null
-  t?: any
+  t?: WorkflowTranslate
   // to get those nodes output vars
   beforeNodes: Node[]
   isChatMode: boolean
@@ -1261,7 +1278,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('nodes.iteration.currentIteration', { ns: 'workflow' }),
+      title: translateWorkflowString(t!, $ => $['nodes.iteration.currentIteration']),
       vars: [
         {
           variable: 'item',

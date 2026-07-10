@@ -18,8 +18,8 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
 import { useModalContext } from '@/context/modal-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -103,7 +103,7 @@ function WorkspaceCardTrigger({
   open: boolean
   name: string
   status: ReactNode
-  credits: string
+  credits: number
   showCloudBilling: boolean
   showPlanAction: boolean
   planActionLabel: string
@@ -111,13 +111,14 @@ function WorkspaceCardTrigger({
   onPlanClick: () => void
 }) {
   const { t } = useTranslation()
-  const creditsUnit = t('mainNav.workspace.creditsUnit', { ns: 'common' })
+  const creditsUnit = t($ => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
+  const formattedCredits = formatCredits(credits)
   const showStatus = status !== undefined && status !== null
 
   return (
     <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
       <PopoverTrigger
-        aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
+        aria-label={t($ => $['mainNav.workspace.openMenu'], { ns: 'common' })}
         title={name}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
@@ -139,10 +140,10 @@ function WorkspaceCardTrigger({
           <Link
             href={creditsHref}
             className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-            aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
+            aria-label={t($ => $['mainNav.workspace.credits'], { ns: 'common', count: credits })}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <WorkspaceCreditsLabel credits={credits} unit={creditsUnit} />
+            <WorkspaceCreditsLabel credits={formattedCredits} unit={creditsUnit} />
           </Link>
           {showPlanAction && (
             <button
@@ -247,11 +248,10 @@ export function WorkspaceCard() {
     )
   }
 
-  const formattedCredits = formatCredits(currentWorkspace.credits)
   const workspacePlan = currentWorkspaceInList.plan
   const isFreePlan = workspacePlan === Plan.sandbox
   const showPlanAction = showCloudBilling
-  const planActionLabel = t(isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain', { ns: 'billing' })
+  const planActionLabel = t($ => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'], { ns: 'billing' })
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const renderWorkspaceStatus = () => enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
 
@@ -261,11 +261,11 @@ export function WorkspaceCard() {
         return
 
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }
 
@@ -276,7 +276,7 @@ export function WorkspaceCard() {
           open={open}
           name={currentWorkspace.name}
           status={renderWorkspaceStatus()}
-          credits={formattedCredits}
+          credits={currentWorkspace.credits}
           showCloudBilling={showCloudBilling}
           showPlanAction={showPlanAction}
           planActionLabel={planActionLabel}
@@ -293,8 +293,8 @@ export function WorkspaceCard() {
             name={currentWorkspace.name}
             status={renderWorkspaceStatus()}
             showInviteMembers={showInviteMembers}
-            settingsLabel={t('mainNav.workspace.settings', { ns: 'common' })}
-            inviteMembersLabel={t('mainNav.workspace.inviteMembers', { ns: 'common' })}
+            settingsLabel={t($ => $['mainNav.workspace.settings'], { ns: 'common' })}
+            inviteMembersLabel={t($ => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
               setShowAccountSettingModal({

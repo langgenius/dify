@@ -825,7 +825,7 @@ export const useChat = (
     setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
     }
 
@@ -984,10 +984,9 @@ export const useChat = (
               return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
 
             const historyAgentThoughts = getHistoryAgentThoughts(newResponseItem)
-            const hasHistoryAgentThoughtAnswer = historyAgentThoughts.some(thought => thought.answer?.trim())
             const lastHistoryAgentThought = historyAgentThoughts.at(-1)
             const historyAnswer = newResponseItem.answer || ''
-            const isUseAgentThought = (lastHistoryAgentThought?.thought === historyAnswer) || (options.isNewAgent && hasHistoryAgentThoughtAnswer)
+            const isUseAgentThought = !options.isNewAgent && lastHistoryAgentThought?.thought === historyAnswer
             const messageLog = Array.isArray(newResponseItem.message) ? newResponseItem.message : []
             const answerTokens = newResponseItem.answer_tokens ?? 0
             const messageTokens = newResponseItem.message_tokens ?? 0

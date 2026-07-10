@@ -211,7 +211,7 @@ describe('DataSourcePage Component', () => {
       expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
       expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
-      expect(screen.getByText('dataSourcePage.notSetUpTitle')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
     })

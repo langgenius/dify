@@ -94,7 +94,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary" data-testid="modal-title">
-          {t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
+          {t($ => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
         <DialogCloseButton
           className="top-5 right-5 size-8 rounded-lg [&>span]:size-5"
@@ -137,7 +137,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
             disabled={isDisabled}
             onClick={onClose}
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             className="ml-2"

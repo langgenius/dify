@@ -75,7 +75,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const [mentionPosition, setMentionPosition] = useState(0)
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
-  const resolvedPlaceholder = placeholder ?? t('comments.placeholder.add', { ns: 'workflow' })
+  const resolvedPlaceholder = placeholder ?? t($ => $['comments.placeholder.add'], { ns: 'workflow' })
   const BASE_PADDING = 4
   const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
   const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(() => !isEditing)
@@ -600,7 +600,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
               className="flex items-center gap-2"
             >
               <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 variant="primary"
@@ -610,7 +610,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
                 className="gap-1"
               >
                 {loading && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
-                <span>{t('operation.save', { ns: 'common' })}</span>
+                <span>{t($ => $['operation.save'], { ns: 'common' })}</span>
                 {!loading && (
                   <EnterKey className="size-4" />
                 )}

@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
@@ -51,7 +51,7 @@ const ServiceApi = ({
                     apiBaseUrl ? 'success' : 'warning'
                   }
                 />
-                <div className="px-0.5 system-xs-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
+                <div className="px-0.5 system-xs-medium">{t($ => $['serviceApi.title'], { ns: 'dataset' })}</div>
               </div>
             </button>
           )}

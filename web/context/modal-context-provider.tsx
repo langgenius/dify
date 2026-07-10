@@ -21,8 +21,8 @@ import {
   isWorkspaceSettingTab,
 } from '@/app/components/header/account-setting/constants'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import {
   useAccountSettingModal,
   usePricingModal,

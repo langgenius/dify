@@ -42,7 +42,7 @@ const SearchInput: FC<SearchInputProps> = ({
         <Input
           ref={inputRef}
           value={value}
-          placeholder={placeholder || t('gotoAnything.searchPlaceholder', { ns: 'app' })}
+          placeholder={placeholder || t($ => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           className="flex-1 border-0! bg-transparent! shadow-none!"

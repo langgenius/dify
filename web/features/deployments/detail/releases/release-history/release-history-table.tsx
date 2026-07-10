@@ -32,7 +32,7 @@ export function ReleaseHistoryTable() {
   if (hasError) {
     return (
       <DeploymentStateMessage variant="list">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </DeploymentStateMessage>
     )
   }
@@ -40,7 +40,7 @@ export function ReleaseHistoryTable() {
   if (!releaseHistory) {
     return (
       <DeploymentStateMessage variant="list">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </DeploymentStateMessage>
     )
   }
@@ -57,8 +57,8 @@ export function ReleaseHistoryTable() {
     return (
       <DeploymentEmptyState
         icon="i-ri-stack-line"
-        title={t('versions.emptyTitle')}
-        description={t('versions.emptyDescription')}
+        title={t($ => $['versions.emptyTitle'])}
+        description={t($ => $['versions.emptyDescription'])}
       />
     )
   }

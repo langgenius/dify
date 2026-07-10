@@ -51,14 +51,14 @@ const Operation: FC<Props> = ({
         popupClassName="min-w-[120px]"
       >
         <DropdownMenuItem className="system-md-regular" onClick={togglePin}>
-          <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
+          <span className="grow">{isPinned ? t($ => $['sidebar.action.unpin'], { ns: 'explore' }) : t($ => $['sidebar.action.pin'], { ns: 'explore' })}</span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => onRenameConversation && deferAction(onRenameConversation)}
           >
-            <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
+            <span className="grow">{t($ => $['sidebar.action.rename'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
         {isShowDelete && (
@@ -67,7 +67,7 @@ const Operation: FC<Props> = ({
             className="system-md-regular"
             onClick={() => deferAction(onDelete)}
           >
-            <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
+            <span className="grow">{t($ => $['sidebar.action.delete'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

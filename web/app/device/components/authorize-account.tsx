@@ -69,9 +69,9 @@ const AuthorizeAccount: FC<Props> = ({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t('authorize.title')}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.title'])}</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          {t('authorize.accountSubtitle')}
+          {t($ => $['authorize.accountSubtitle'])}
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
@@ -91,7 +91,7 @@ const AuthorizeAccount: FC<Props> = ({
       </div>
       {defaultWorkspace && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          {t('authorize.workspace')}
+          {t($ => $['authorize.workspace'])}
           {' '}
           <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
         </div>
@@ -104,7 +104,7 @@ const AuthorizeAccount: FC<Props> = ({
           onClick={approve}
           disabled={busy}
         >
-          {t('authorize.approve')}
+          {t($ => $['authorize.approve'])}
         </Button>
         <Button
           variant="secondary"
@@ -113,7 +113,7 @@ const AuthorizeAccount: FC<Props> = ({
           onClick={deny}
           disabled={busy}
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </Button>
       </div>
     </div>

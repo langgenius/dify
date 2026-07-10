@@ -10,7 +10,8 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -45,9 +46,9 @@ export function StarredAppCard({
 
     const timeText = formatTime({
       date: timestamp * 1000,
-      dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+      dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
     })
-    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
+    return `${t($ => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.created_at, app.updated_at, t])
   const href = getRedirectionPath(app, {
     currentUserId,
@@ -62,7 +63,7 @@ export function StarredAppCard({
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
   )
   const showPreviewOnlyAccessWarning = useCallback(() => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
   }, [t])
   const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ')

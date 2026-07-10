@@ -44,7 +44,7 @@ export function AgentWorkflowReferencesDropdown({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        aria-label={t('roster.references.trigger', { name: agentName, count: referenceCount })}
+        aria-label={t($ => $['roster.references.trigger'], { name: agentName, count: referenceCount })}
         className="relative flex h-4 shrink-0 cursor-pointer items-center gap-1 rounded-md outline-hidden before:pointer-events-none before:absolute before:-inset-x-1 before:-inset-y-0.5 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover"
       >
         <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
@@ -52,7 +52,7 @@ export function AgentWorkflowReferencesDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[264px] p-1">
         <div className="flex h-7.5 items-center px-2 system-xs-medium text-text-tertiary">
-          {t('roster.references.label', { name: agentName })}
+          {t($ => $['roster.references.label'], { name: agentName })}
         </div>
         {publishedReferences.map(reference => (
           <DropdownMenuLinkItem

@@ -38,42 +38,42 @@ const PluginTypeSwitch = ({
   }> = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: isHero ? t('marketplace.allPlugins', { ns: 'plugin' }) : t('category.all', { ns: 'plugin' }),
+      text: isHero ? t($ => $['marketplace.allPlugins'], { ns: 'plugin' }) : t($ => $['category.all'], { ns: 'plugin' }),
       icon: isHero ? <PluginIcon className={iconClassName} /> : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('category.models', { ns: 'plugin' }),
+      text: t($ => $['category.models'], { ns: 'plugin' }),
       icon: <RiBrain2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('category.tools', { ns: 'plugin' }),
+      text: t($ => $['category.tools'], { ns: 'plugin' }),
       icon: <RiHammerLine className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t('category.datasources', { ns: 'plugin' }),
+      text: t($ => $['category.datasources'], { ns: 'plugin' }),
       icon: <RiDatabase2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('category.agents', { ns: 'plugin' }),
+      text: t($ => $['category.agents'], { ns: 'plugin' }),
       icon: <RiSpeakAiLine className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      text: t('category.triggers', { ns: 'plugin' }),
+      text: t($ => $['category.triggers'], { ns: 'plugin' }),
       icon: <TriggerIcon className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('category.extensions', { ns: 'plugin' }),
+      text: t($ => $['category.extensions'], { ns: 'plugin' }),
       icon: <RiPuzzle2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('category.bundles', { ns: 'plugin' }),
+      text: t($ => $['category.bundles'], { ns: 'plugin' }),
       icon: <RiArchive2Line className={iconClassName} />,
     },
   ]

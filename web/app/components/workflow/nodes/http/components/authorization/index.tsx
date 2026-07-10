@@ -124,16 +124,16 @@ const Authorization: FC<Props> = ({
     >
       <DialogContent className="border-none text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(`${i18nPrefix}.authorization`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.authorization`], { ns: 'workflow' })}
         </DialogTitle>
 
         <div>
           <div className="space-y-2">
-            <Field title={t(`${i18nPrefix}.authorizationType`, { ns: 'workflow' })}>
+            <Field title={t($ => $[`${i18nPrefix}.authorizationType`], { ns: 'workflow' })}>
               <RadioGroup
                 options={[
-                  { value: AuthorizationType.none, label: t(`${i18nPrefix}.no-auth`, { ns: 'workflow' }) },
-                  { value: AuthorizationType.apiKey, label: t(`${i18nPrefix}.api-key`, { ns: 'workflow' }) },
+                  { value: AuthorizationType.none, label: t($ => $[`${i18nPrefix}.no-auth`], { ns: 'workflow' }) },
+                  { value: AuthorizationType.apiKey, label: t($ => $[`${i18nPrefix}.api-key`], { ns: 'workflow' }) },
                 ]}
                 value={tempPayload.type}
                 onChange={handleAuthTypeChange}
@@ -142,19 +142,19 @@ const Authorization: FC<Props> = ({
 
             {tempPayload.type === AuthorizationType.apiKey && (
               <>
-                <Field title={t(`${i18nPrefix}.auth-type`, { ns: 'workflow' })}>
+                <Field title={t($ => $[`${i18nPrefix}.auth-type`], { ns: 'workflow' })}>
                   <RadioGroup
                     options={[
-                      { value: APIType.basic, label: t(`${i18nPrefix}.basic`, { ns: 'workflow' }) },
-                      { value: APIType.bearer, label: t(`${i18nPrefix}.bearer`, { ns: 'workflow' }) },
-                      { value: APIType.custom, label: t(`${i18nPrefix}.custom`, { ns: 'workflow' }) },
+                      { value: APIType.basic, label: t($ => $[`${i18nPrefix}.basic`], { ns: 'workflow' }) },
+                      { value: APIType.bearer, label: t($ => $[`${i18nPrefix}.bearer`], { ns: 'workflow' }) },
+                      { value: APIType.custom, label: t($ => $[`${i18nPrefix}.custom`], { ns: 'workflow' }) },
                     ]}
                     value={tempPayload.config?.type || APIType.basic}
                     onChange={handleAuthAPITypeChange}
                   />
                 </Field>
                 {tempPayload.config?.type === APIType.custom && (
-                  <Field title={t(`${i18nPrefix}.header`, { ns: 'workflow' })} isRequired>
+                  <Field title={t($ => $[`${i18nPrefix}.header`], { ns: 'workflow' })} isRequired>
                     <BaseInput
                       value={tempPayload.config?.header || ''}
                       onChange={handleAPIKeyOrHeaderChange('header')}
@@ -162,7 +162,7 @@ const Authorization: FC<Props> = ({
                   </Field>
                 )}
 
-                <Field title={t(`${i18nPrefix}.api-key-title`, { ns: 'workflow' })} isRequired>
+                <Field title={t($ => $[`${i18nPrefix}.api-key-title`], { ns: 'workflow' })} isRequired>
                   <div className="flex">
                     <Input
                       instanceId="http-api-key"
@@ -181,8 +181,8 @@ const Authorization: FC<Props> = ({
             )}
           </div>
           <div className="mt-6 flex justify-end space-x-2">
-            <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-            <Button variant="primary" onClick={handleConfirm}>{t('operation.save', { ns: 'common' })}</Button>
+            <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handleConfirm}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
           </div>
         </div>
       </DialogContent>
