@@ -223,7 +223,7 @@ jobs:
                - Match the existing terminology and register used by each locale.
                - Prefer one Edit per file when stable, but prioritize correctness over batching.
             6. Verify only the edited files.
-               - Run `vp run dify-web#lint:fix --quiet -- <relative edited i18n file paths under web/>`
+               - Run `vp fmt <repo-relative edited paths such as web/i18n/...>`
                - Run `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - If verification fails, fix the remaining problems before continuing.
             7. Stop after the scoped locale files are updated and verification passes.
@@ -322,7 +322,7 @@ jobs:
             '## Verification',
             '',
             `- \`vp run dify-web#i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
-            `- \`vp run dify-web#lint:fix --quiet -- <edited i18n files under web/>\``,
+            `- \`vp fmt <repo-relative edited paths such as web/i18n/...>\``,
             '',
             '## Notes',
             '',

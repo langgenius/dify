@@ -804,9 +804,6 @@
     "react/set-state-in-effect": {
       "count": 6
     },
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -1105,9 +1102,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/agent-content.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -5562,11 +5556,6 @@
   },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/generated-result.tsx": {
-    "style/multiline-ternary": {
       "count": 2
     }
   },
