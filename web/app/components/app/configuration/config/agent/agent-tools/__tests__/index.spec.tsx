@@ -454,6 +454,33 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
+  it('should update only the selected tool credential when tools share a provider', async () => {
+    const { getModelConfig } = renderAgentTools([
+      createAgentTool({
+        credential_id: 'credential-search',
+        notAuthor: true,
+      }),
+      createAgentTool({
+        credential_id: 'credential-translate',
+        notAuthor: true,
+        tool_label: 'Translate Tool',
+        tool_name: 'translate',
+      }),
+    ])
+    const authorizationButtons = screen.getAllByRole('button', { name: /tools.notAuthorized/ })
+    await userEvent.click(authorizationButtons[1])
+    settingPanelCredentialId = 'credential-updated'
+    await userEvent.click(screen.getByRole('button', { name: 'auth-from-panel' }))
+
+    await waitFor(() => {
+      const tools = getModelConfig().agentConfig.tools as AgentTool[]
+      expect(tools.map(tool => tool.credential_id)).toEqual([
+        'credential-search',
+        'credential-updated',
+      ])
+    })
+  })
+
   it('should reinstate deleted tools after plugin install success event', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
