@@ -15,22 +15,22 @@ const SortDropdown = () => {
     {
       value: 'install_count',
       order: 'DESC',
-      text: t('marketplace.sortOption.mostPopular', { ns: 'plugin' }),
+      text: t($ => $['marketplace.sortOption.mostPopular'], { ns: 'plugin' }),
     },
     {
       value: 'version_updated_at',
       order: 'DESC',
-      text: t('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' }),
+      text: t($ => $['marketplace.sortOption.recentlyUpdated'], { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'DESC',
-      text: t('marketplace.sortOption.newlyReleased', { ns: 'plugin' }),
+      text: t($ => $['marketplace.sortOption.newlyReleased'], { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'ASC',
-      text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
+      text: t($ => $['marketplace.sortOption.firstReleased'], { ns: 'plugin' }),
     },
   ]
   const [sort, handleSortChange] = useMarketplaceSort()
@@ -44,7 +44,7 @@ const SortDropdown = () => {
     >
       <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
         <span className="mr-1 system-sm-regular text-text-secondary">
-          {t('marketplace.sortBy', { ns: 'plugin' })}
+          {t($ => $['marketplace.sortBy'], { ns: 'plugin' })}
         </span>
         <span className="mr-1 system-sm-medium text-text-primary">
           {selectedOption.text}

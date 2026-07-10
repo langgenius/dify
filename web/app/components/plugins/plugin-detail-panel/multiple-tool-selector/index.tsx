@@ -133,7 +133,7 @@ const MultipleToolSelector = ({
           <>
             <div className="flex items-center gap-1 system-xs-medium text-text-tertiary">
               <span>{`${enabledCount}/${value.length}`}</span>
-              <span>{t('agent.tools.enabled', { ns: 'appDebug' })}</span>
+              <span>{t($ => $['agent.tools.enabled'], { ns: 'appDebug' })}</span>
             </div>
             <Divider type="vertical" className="mr-1 ml-3 h-3" />
           </>
@@ -154,7 +154,7 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           {value.length === 0 && (
-            <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.empty', { ns: 'plugin' })}</div>
+            <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t($ => $['detailPanel.toolSelector.empty'], { ns: 'plugin' })}</div>
           )}
           {value.length > 0 && value.map((item, index) => (
             <div className="mb-1" key={index}>

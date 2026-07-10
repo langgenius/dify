@@ -113,7 +113,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     }
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
 
-  const tipText = t('modelProvider.card.tip', {
+  const tipText = t($ => $['modelProvider.card.tip'], {
     ns: 'common',
     modelNames: trialModels.map(key => modelNameMap[key as keyof typeof modelNameMap]).filter(Boolean).join(', '),
   })
@@ -137,22 +137,22 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="mb-0.5 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t('modelProvider.quotaLabel', { ns: 'common' })}
+          {t($ => $['modelProvider.quotaLabel'], { ns: 'common' })}
           <QuotaInfotip tipText={tipText} />
         </div>
         <div className="flex h-6 items-center justify-between">
           <div className="flex items-center gap-1">
             {credits > 0
               ? <span className="mr-0.5 system-xl-semibold text-text-secondary">{formatNumber(credits)}</span>
-              : <span className="mr-0.5 system-xl-semibold text-text-destructive">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
+              : <span className="mr-0.5 system-xl-semibold text-text-destructive">{t($ => $['modelProvider.card.quotaExhausted'], { ns: 'common' })}</span>}
             <div className="flex h-[18px] items-start gap-1 pt-0.5 system-xs-regular text-text-tertiary">
-              <span>{t('modelProvider.credits', { ns: 'common' })}</span>
+              <span>{t($ => $['modelProvider.credits'], { ns: 'common' })}</span>
               {nextCreditResetDate
                 ? (
                     <>
                       <span className="text-text-quaternary">·</span>
                       <span>
-                        {t('modelProvider.resetDate', {
+                        {t($ => $['modelProvider.resetDate'], {
                           ns: 'common',
                           date: formatTime(nextCreditResetDate, 'YYYY-MM-DD'),
                           interpolation: { escapeValue: false },
@@ -174,7 +174,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                   return 'modelProvider.card.modelAPI'
                 return 'modelProvider.card.modelSupported'
               }
-              const tooltipText = t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })
+              const tooltipText = t($ => $[getTooltipKey()], { modelName: modelNameMap[key], ns: 'common' })
               return (
                 <Tooltip key={key}>
                   <TooltipTrigger

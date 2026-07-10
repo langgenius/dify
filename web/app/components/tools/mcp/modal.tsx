@@ -91,18 +91,18 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
   const isHovering = useHover(appIconRef)
 
   const authMethods = [
-    { text: t('mcp.modal.authentication', { ns: 'tools' }), value: MCPAuthMethod.authentication },
-    { text: t('mcp.modal.headers', { ns: 'tools' }), value: MCPAuthMethod.headers },
-    { text: t('mcp.modal.configurations', { ns: 'tools' }), value: MCPAuthMethod.configurations },
+    { text: t($ => $['mcp.modal.authentication'], { ns: 'tools' }), value: MCPAuthMethod.authentication },
+    { text: t($ => $['mcp.modal.headers'], { ns: 'tools' }), value: MCPAuthMethod.headers },
+    { text: t($ => $['mcp.modal.configurations'], { ns: 'tools' }), value: MCPAuthMethod.configurations },
   ]
 
   const submit = async () => {
     if (!isValidUrl(state.url)) {
-      toast.error(t('mcp.modal.invalidServerUrl', { ns: 'tools' }))
+      toast.error(t($ => $['mcp.modal.invalidServerUrl'], { ns: 'tools' }))
       return
     }
     if (!isValidServerID(state.serverIdentifier.trim())) {
-      toast.error(t('mcp.modal.invalidServerIdentifier', { ns: 'tools' }))
+      toast.error(t($ => $['mcp.modal.invalidServerIdentifier'], { ns: 'tools' }))
       return
     }
     const formattedHeaders = state.headers.reduce((acc, item) => {
@@ -146,31 +146,31 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
     <>
       <button
         type="button"
-        aria-label={t('operation.close', { ns: 'common' })}
+        aria-label={t($ => $['operation.close'], { ns: 'common' })}
         className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onHide}
       >
         <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
       </button>
       <div className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
-        {!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}
+        {!isCreate ? t($ => $['mcp.modal.editTitle'], { ns: 'tools' }) : t($ => $['mcp.modal.title'], { ns: 'tools' })}
       </div>
 
       <div className="space-y-5 py-3">
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverUrl', { ns: 'tools' })}</span>
+            <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.serverUrl'], { ns: 'tools' })}</span>
           </div>
           <Input
             value={state.url}
             onChange={e => actions.setUrl(e.target.value)}
             onBlur={e => actions.handleUrlBlur(e.target.value.trim())}
-            placeholder={t('mcp.modal.serverUrlPlaceholder', { ns: 'tools' })}
+            placeholder={t($ => $['mcp.modal.serverUrlPlaceholder'], { ns: 'tools' })}
           />
           {originalServerUrl && originalServerUrl !== state.url && (
             <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverUrlWarning', { ns: 'tools' })}</span>
+              <span className="body-xs-regular text-text-warning">{t($ => $['mcp.modal.serverUrlWarning'], { ns: 'tools' })}</span>
             </div>
           )}
         </div>
@@ -179,12 +179,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         <div className="flex space-x-3">
           <div className="grow pb-1">
             <div className="mb-1 flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.name', { ns: 'tools' })}</span>
+              <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.name'], { ns: 'tools' })}</span>
             </div>
             <Input
               value={state.name}
               onChange={e => actions.setName(e.target.value)}
-              placeholder={t('mcp.modal.namePlaceholder', { ns: 'tools' })}
+              placeholder={t($ => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
             />
           </div>
           <div className="pt-2" ref={appIconRef}>
@@ -213,17 +213,17 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         {/* Server Identifier */}
         <div>
           <div className="flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
+            <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.serverIdentifier'], { ns: 'tools' })}</span>
           </div>
-          <div className="mb-1 body-xs-regular text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
+          <div className="mb-1 body-xs-regular text-text-tertiary">{t($ => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}</div>
           <Input
             value={state.serverIdentifier}
             onChange={e => actions.setServerIdentifier(e.target.value)}
-            placeholder={t('mcp.modal.serverIdentifierPlaceholder', { ns: 'tools' })}
+            placeholder={t($ => $['mcp.modal.serverIdentifierPlaceholder'], { ns: 'tools' })}
           />
           {originalServerID && originalServerID !== state.serverIdentifier && (
             <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
+              <span className="body-xs-regular text-text-warning">{t($ => $['mcp.modal.serverIdentifierWarning'], { ns: 'tools' })}</span>
             </div>
           )}
         </div>
@@ -241,11 +241,11 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
                 id="mcp-forward-user-identity-label"
                 className="system-sm-medium text-text-secondary"
               >
-                {t('mcp.modal.forwardUserIdentity', { ns: 'tools' })}
+                {t($ => $['mcp.modal.forwardUserIdentity'], { ns: 'tools' })}
               </span>
             </div>
             <div className="body-xs-regular text-text-tertiary">
-              {t('mcp.modal.forwardUserIdentityTip', { ns: 'tools' })}
+              {t($ => $['mcp.modal.forwardUserIdentityTip'], { ns: 'tools' })}
             </div>
           </div>
         )}
@@ -258,7 +258,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
             if (nextAuthMethod)
               actions.setAuthMethod(nextAuthMethod)
           }}
-          aria-label={t('mcp.modal.authentication', { ns: 'tools' })}
+          aria-label={t($ => $['mcp.modal.authentication'], { ns: 'tools' })}
           className="w-full"
         >
           {authMethods.map(option => (
@@ -303,9 +303,9 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
       {/* Actions */}
       <div className="flex flex-row-reverse pt-5">
         <Button disabled={isSubmitDisabled} className="ml-2" variant="primary" onClick={submit}>
-          {data ? t('mcp.modal.save', { ns: 'tools' }) : t('mcp.modal.confirm', { ns: 'tools' })}
+          {data ? t($ => $['mcp.modal.save'], { ns: 'tools' }) : t($ => $['mcp.modal.confirm'], { ns: 'tools' })}
         </Button>
-        <Button onClick={onHide}>{t('mcp.modal.cancel', { ns: 'tools' })}</Button>
+        <Button onClick={onHide}>{t($ => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
       </div>
 
       {state.showAppIconPicker && (

@@ -187,13 +187,6 @@ vi.mock('@/next/link', () => ({
     className?: string
   }) => <a href={href} className={className}>{children}</a>,
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
   const PopoverContext = React.createContext({
@@ -318,7 +311,7 @@ describe('AgentStrategySelector', () => {
     expect(screen.getByTestId('plugin-list')).toHaveTextContent(':market-agent')
 
     await user.type(
-      screen.getByRole('textbox', { name: 'nodes.agent.strategy.searchPlaceholder' }),
+      screen.getByRole('textbox', { name: /(?:^|\.)nodes\.agent\.strategy\.searchPlaceholder(?=$|:)/ }),
       'alp',
     )
 
@@ -382,8 +375,8 @@ describe('AgentStrategySelector', () => {
       />,
     )
 
-    expect(screen.getByText('nodes.agent.pluginNotInstalled')).toBeInTheDocument()
-    expect(screen.getByText('nodes.agent.pluginNotInstalledDesc')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalled(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)nodes\.agent\.pluginNotInstalledDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('renders install and switch-version actions for marketplace strategies', async () => {

@@ -30,7 +30,6 @@ def _mint_account_token(
 ) -> MintResult:
     """Mint a real, persisted ``dfoa_`` access token for ``account``."""
     return mint_oauth_token(
-        db_session,
         redis_client,
         subject_email=account.email,
         subject_issuer=None,
@@ -39,6 +38,7 @@ def _mint_account_token(
         device_label=device_label,
         prefix=PREFIX_OAUTH_ACCOUNT,
         ttl_days=14,
+        session=db_session,
     )
 
 

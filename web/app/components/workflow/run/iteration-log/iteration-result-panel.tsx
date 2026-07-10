@@ -83,7 +83,7 @@ const IterationResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 size-4" />
-        <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
+        <div className="system-sm-medium">{t($ => $[`${i18nPrefix}.back`], { ns: 'workflow' })}</div>
       </div>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
@@ -102,7 +102,7 @@ const IterationResultPanel: FC<Props> = ({
                   <Iteration className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
-                  {t(`${i18nPrefix}.iteration`, { ns: 'workflow' })}
+                  {t($ => $[`${i18nPrefix}.iteration`], { ns: 'workflow' })}
                   {' '}
                   {index + 1}
                 </span>

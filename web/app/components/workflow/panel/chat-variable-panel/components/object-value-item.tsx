@@ -37,7 +37,7 @@ const ObjectValueItem: FC<Props> = ({
   const handleKeyChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!/^\w+$/.test(e.target.value)) {
-        toast.error(t('chatVariable.modal.objectKeyPatternError', { ns: 'workflow' }))
+        toast.error(t($ => $['chatVariable.modal.objectKeyPatternError'], { ns: 'workflow' }))
         return
       }
 
@@ -53,7 +53,7 @@ const ObjectValueItem: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index].type = type
         if (type === ChatVarType.Number)
-          draft[index].value = isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
+          draft[index].value = Number.isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
         else
           draft[index].value = draft[index].value ? String(draft[index].value) : undefined
       })
@@ -64,7 +64,7 @@ const ObjectValueItem: FC<Props> = ({
   const handleValueChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const newList = produce(list, (draft: any[]) => {
-        draft[index].value = draft[index].type === ChatVarType.String ? e.target.value : isNaN(Number(e.target.value)) ? undefined : Number(e.target.value)
+        draft[index].value = draft[index].type === ChatVarType.String ? e.target.value : Number.isNaN(Number(e.target.value)) ? undefined : Number(e.target.value)
       })
       onChange(newList)
     }
@@ -98,7 +98,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="w-[120px] border-r border-gray-200">
         <input
           className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.objectKey'], { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
         />
@@ -117,7 +117,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="relative w-[230px]">
         <input
           className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
+          placeholder={t($ => $['chatVariable.modal.objectValue'], { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
           onFocus={() => handleFocusChange()}

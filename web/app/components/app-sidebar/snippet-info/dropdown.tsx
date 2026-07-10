@@ -19,11 +19,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { canCreateAndModifySnippets, canManageSnippets } from '@/app/components/snippets/utils/permission'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
 
@@ -36,7 +37,7 @@ type SnippetInfoDropdownProps = {
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const { t } = useTranslation('snippet')
   const { replace } = useRouter()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [open, setOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
@@ -49,7 +50,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
 
   const initialValue = React.useMemo(() => ({
     name: snippet.name,
-    description: snippet.description,
+    description: snippet.description ?? undefined,
   }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = React.useCallback(() => {
@@ -58,7 +59,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   }, [])
 
   const handleExportSnippet = React.useCallback(async () => {
-    if (!canManageSnippet)
+    if (!canCreateAndModifySnippet)
       return
 
     setOpen(false)
@@ -68,9 +69,9 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     }
     catch {
-      toast.error(t('exportFailed'))
+      toast.error(t($ => $.exportFailed))
     }
-  }, [canManageSnippet, exportSnippetMutation, snippet.id, snippet.name, t])
+  }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
   const handleEditSnippet = React.useCallback(async ({ name, description }: {
     name: string
@@ -80,15 +81,15 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
       body: {
         name,
-        description: description || undefined,
+        description,
       },
     }, {
       onSuccess: () => {
-        toast.success(t('editDone'))
+        toast.success(t($ => $.editDone))
         setIsEditDialogOpen(false)
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('editFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $.editFailed))
       },
     })
   }, [snippet.id, t, updateSnippetMutation])
@@ -98,12 +99,12 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
     }, {
       onSuccess: () => {
-        toast.success(t('deleted'))
+        toast.success(t($ => $.deleted))
         setIsDeleteDialogOpen(false)
         replace('/snippets')
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('deleteFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $.deleteFailed))
       },
     })
   }, [deleteSnippetMutation, replace, snippet.id, t])
@@ -125,18 +126,20 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           popupClassName="w-[180px] p-1"
         >
           {canCreateAndModifySnippet && (
-            <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span className="grow">{t('menu.editInfo')}</span>
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
+                <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+                <span className="grow">{t($ => $['menu.editInfo'])}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
+                <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
+                <span className="grow">{t($ => $['menu.exportSnippet'])}</span>
+              </DropdownMenuItem>
+            </>
           )}
           {canManageSnippet && (
             <>
-              <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
-                <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
-                <span className="grow">{t('menu.exportSnippet')}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1! bg-divider-subtle" />
+              {canCreateAndModifySnippet && <DropdownMenuSeparator className="my-1! bg-divider-subtle" />}
               <DropdownMenuItem
                 className="mx-0 gap-2"
                 variant="destructive"
@@ -146,7 +149,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
                 }}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                <span className="grow">{t('menu.deleteSnippet')}</span>
+                <span className="grow">{t($ => $['menu.deleteSnippet'])}</span>
               </DropdownMenuItem>
             </>
           )}
@@ -157,8 +160,8 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
           initialValue={initialValue}
-          title={t('editDialogTitle')}
-          confirmText={t('operation.save', { ns: 'common' })}
+          title={t($ => $.editDialogTitle)}
+          confirmText={t($ => $['operation.save'], { ns: 'common' })}
           isSubmitting={updateSnippetMutation.isPending}
           onClose={() => setIsEditDialogOpen(false)}
           onConfirm={handleEditSnippet}
@@ -169,21 +172,21 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t('deleteConfirmTitle')}
+              {t($ => $.deleteConfirmTitle)}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t('deleteConfirmContent')}
+              {t($ => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-0">
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={deleteSnippetMutation.isPending}
               onClick={handleDeleteSnippet}
             >
-              {t('menu.deleteSnippet')}
+              {t($ => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

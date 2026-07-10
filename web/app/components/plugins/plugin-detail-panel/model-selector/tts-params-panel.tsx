@@ -38,7 +38,7 @@ const TTSParamsPanel = ({
     <>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          {t($ => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
         </div>
         <Select
           value={language}
@@ -51,7 +51,7 @@ const TTSParamsPanel = ({
           <SelectTrigger
             className="w-full"
             data-testid="tts-language-select-trigger"
-            aria-label={t('voice.voiceSettings.language', { ns: 'appDebug' })}
+            aria-label={t($ => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
           >
             <SelectValue />
           </SelectTrigger>
@@ -67,7 +67,7 @@ const TTSParamsPanel = ({
       </div>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+          {t($ => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
         </div>
         <Select
           value={voice}
@@ -80,7 +80,7 @@ const TTSParamsPanel = ({
           <SelectTrigger
             className="w-full"
             data-testid="tts-voice-select-trigger"
-            aria-label={t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+            aria-label={t($ => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
           >
             <SelectValue />
           </SelectTrigger>

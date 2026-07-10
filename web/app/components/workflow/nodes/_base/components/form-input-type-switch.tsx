@@ -15,8 +15,8 @@ const FormInputTypeSwitch: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const variableLabel = t('nodes.common.typeSwitch.variable', { ns: 'workflow' })
-  const inputLabel = t('nodes.common.typeSwitch.input', { ns: 'workflow' })
+  const variableLabel = t($ => $['nodes.common.typeSwitch.variable'], { ns: 'workflow' })
+  const inputLabel = t($ => $['nodes.common.typeSwitch.input'], { ns: 'workflow' })
 
   return (
     <div className="inline-flex h-8 shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">

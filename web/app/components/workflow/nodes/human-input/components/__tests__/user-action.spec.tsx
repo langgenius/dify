@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import UserActionItem from '../user-action'
 
@@ -71,7 +72,7 @@ describe('UserActionItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 

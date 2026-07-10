@@ -39,15 +39,6 @@ type KnowledgeBaseValidationPayload = Pick<KnowledgeBaseNodeType, 'chunk_structu
   retrieval_model?: Pick<KnowledgeBaseNodeType['retrieval_model'], 'search_method' | 'reranking_enable' | 'reranking_model'>
 }
 
-const EMBEDDING_ISSUE_CODES = new Set<KnowledgeBaseValidationIssueCode>([
-  KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured,
-  KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired,
-  KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable,
-  KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted,
-  KnowledgeBaseValidationIssueCode.embeddingModelDisabled,
-  KnowledgeBaseValidationIssueCode.embeddingModelIncompatible,
-])
-
 const resolveIssue = (code: KnowledgeBaseValidationIssueCode): KnowledgeBaseValidationIssue => ({
   code,
 })
@@ -152,37 +143,30 @@ export const getKnowledgeBaseValidationMessage = (
 
   switch (issue.code) {
     case KnowledgeBaseValidationIssueCode.chunkStructureRequired:
-      return t('nodes.knowledgeBase.chunkIsRequired', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.chunkIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.chunksVariableRequired:
-      return t('nodes.knowledgeBase.chunksVariableIsRequired', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.chunksVariableIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.indexMethodRequired:
-      return t('nodes.knowledgeBase.indexMethodIsRequired', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.indexMethodIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured:
-      return t('nodes.knowledgeBase.embeddingModelNotConfigured', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.embeddingModelNotConfigured'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired:
-      return t('modelProvider.selector.configureRequired', { ns: 'common' })
+      return t($ => $['modelProvider.selector.configureRequired'], { ns: 'common' })
     case KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable:
-      return t('modelProvider.selector.apiKeyUnavailable', { ns: 'common' })
+      return t($ => $['modelProvider.selector.apiKeyUnavailable'], { ns: 'common' })
     case KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted:
-      return t('modelProvider.selector.creditsExhausted', { ns: 'common' })
+      return t($ => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })
     case KnowledgeBaseValidationIssueCode.embeddingModelDisabled:
-      return t('modelProvider.selector.disabled', { ns: 'common' })
+      return t($ => $['modelProvider.selector.disabled'], { ns: 'common' })
     case KnowledgeBaseValidationIssueCode.embeddingModelIncompatible:
-      return t('modelProvider.selector.incompatible', { ns: 'common' })
+      return t($ => $['modelProvider.selector.incompatible'], { ns: 'common' })
     case KnowledgeBaseValidationIssueCode.retrievalSettingRequired:
-      return t('nodes.knowledgeBase.retrievalSettingIsRequired', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.retrievalSettingIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.rerankingModelRequired:
-      return t('nodes.knowledgeBase.rerankingModelIsRequired', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.rerankingModelIsRequired'], { ns: 'workflow' })
     case KnowledgeBaseValidationIssueCode.rerankingModelInvalid:
-      return t('nodes.knowledgeBase.rerankingModelIsInvalid', { ns: 'workflow' })
+      return t($ => $['nodes.knowledgeBase.rerankingModelIsInvalid'], { ns: 'workflow' })
     default:
       return ''
   }
-}
-
-export const isKnowledgeBaseEmbeddingIssue = (issue: KnowledgeBaseValidationIssue | null | undefined) => {
-  if (!issue)
-    return false
-
-  return EMBEDDING_ISSUE_CODES.has(issue.code)
 }

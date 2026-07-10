@@ -6,11 +6,6 @@ import type {
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiMicLine,
-  RiSendPlane2Fill,
-} from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -22,6 +17,9 @@ type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
+  sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  disabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
 }
@@ -32,6 +30,9 @@ const Operation: FC<OperationProps> = ({
   speechToTextConfig,
   onShowVoiceInput,
   onSend,
+  sendButtonLabel,
+  sendButtonLoading,
+  disabled,
   theme,
 }) => {
   const { t } = useTranslation()
@@ -46,26 +47,31 @@ const Operation: FC<OperationProps> = ({
         className="flex items-center pl-1"
         ref={ref}
       >
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center gap-1">
           {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton
                 size="l"
-                aria-label={t('voiceInput.start', { ns: 'common' })}
+                aria-label={t($ => $['voiceInput.start'], { ns: 'common' })}
                 disabled={readonly}
                 onClick={onShowVoiceInput}
               >
-                <RiMicLine className="size-5" aria-hidden="true" />
+                <span className="i-ri-mic-line size-5" aria-hidden="true" />
               </ActionButton>
             )
           }
         </div>
         <Button
-          aria-label={t('operation.send', { ns: 'common' })}
-          className="ml-3 w-8 px-0"
+          aria-label={sendButtonLabel ? undefined : t($ => $['operation.send'], { ns: 'common' })}
+          className={cn(
+            'ml-3 focus-visible:ring-inset',
+            sendButtonLabel ? 'px-3' : 'w-8 px-0',
+          )}
           variant="primary"
-          onClick={readonly ? noop : onSend}
+          disabled={readonly || disabled}
+          loading={sendButtonLoading}
+          onClick={onSend}
           style={
             theme
               ? {
@@ -74,7 +80,7 @@ const Operation: FC<OperationProps> = ({
               : {}
           }
         >
-          <RiSendPlane2Fill className="size-4" aria-hidden="true" />
+          {sendButtonLabel || <span className="i-ri-send-plane-2-fill size-4" aria-hidden="true" />}
         </Button>
       </div>
     </div>

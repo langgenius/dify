@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button } from '../button'
 import {
+  Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldRoot,
 } from '../field'
 import { Form } from '../form'
 import { Input } from './index'
@@ -16,7 +16,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'A standalone text input primitive built on Base UI Input. Use it for labelled text boxes outside FieldControl, and keep FieldControl for full FieldRoot form composition.',
+        component: 'A standalone text input primitive built on Base UI Input. Use it for labelled text boxes outside FieldControl, and keep FieldControl for full Field form composition.',
       },
     },
   },
@@ -74,7 +74,7 @@ export const States: Story = {
         <Input id="filled-state" name="filledState" defaultValue="Customer knowledge base" autoComplete="off" />
       </div>
       <div className="grid gap-1">
-        <FieldRoot name="repositoryUrl" invalid>
+        <Field name="repositoryUrl" invalid>
           <FieldLabel>Invalid</FieldLabel>
           <Input
             id="invalid-state"
@@ -85,7 +85,7 @@ export const States: Story = {
             spellCheck={false}
           />
           <FieldError match>Enter a full URL including https://.</FieldError>
-        </FieldRoot>
+        </Field>
       </div>
       <div className="grid gap-1">
         <label className="text-text-secondary system-sm-medium" htmlFor="disabled-state">Disabled</label>
@@ -102,20 +102,20 @@ export const States: Story = {
 export const WithField: Story = {
   render: () => (
     <Form aria-label="Account form" className="grid w-80 gap-4" onFormSubmit={() => undefined}>
-      <FieldRoot name="email">
+      <Field name="email">
         <FieldLabel>Email</FieldLabel>
         <Input type="email" inputMode="email" required autoComplete="email" placeholder="name@example.com…" spellCheck={false} />
         <FieldDescription>Used for account notifications.</FieldDescription>
         <FieldError match="valueMissing">Email is required.</FieldError>
         <FieldError match="typeMismatch">Enter a valid email address.</FieldError>
-      </FieldRoot>
-      <FieldRoot name="repositoryUrl">
+      </Field>
+      <Field name="repositoryUrl">
         <FieldLabel>Repository URL</FieldLabel>
         <Input type="url" inputMode="url" required autoComplete="off" placeholder="https://github.com/langgenius/dify…" spellCheck={false} />
         <FieldDescription>Use the full GitHub repository URL.</FieldDescription>
         <FieldError match="valueMissing">Repository URL is required.</FieldError>
         <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">Save Settings</Button>
       </div>

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { Field, StructuredOutput } from '../llm/types'
 import type { PluginTriggerNodeType } from './types'
@@ -234,7 +235,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     // event_type: '',
     config: {},
   },
-  checkValid(payload: PluginTriggerNodeType, t: any, moreDataForCheckValid: {
+  checkValid(payload: PluginTriggerNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: {
     triggerInputsSchema?: Array<{
       variable: string
       label: string
@@ -245,7 +246,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     let errorMessage = ''
 
     if (!payload.subscription_id)
-      errorMessage = t('nodes.triggerPlugin.subscriptionRequired', { ns: 'workflow' })
+      errorMessage = t($ => $['nodes.triggerPlugin.subscriptionRequired'], { ns: 'workflow' })
 
     const {
       triggerInputsSchema = [],
@@ -260,7 +261,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         const rawParam = payload.event_parameters?.[field.variable]
           ?? (payload.config as Record<string, any> | undefined)?.[field.variable]
         if (!rawParam) {
-          errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
+          errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: field.label })
           return
         }
 
@@ -271,7 +272,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         const { type, value } = targetParam
         if (type === VarKindType.variable) {
           if (!value || (Array.isArray(value) && value.length === 0))
-            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
+            errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: field.label })
         }
         else {
           if (
@@ -280,7 +281,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
             || value === ''
             || (Array.isArray(value) && value.length === 0)
           ) {
-            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
+            errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: field.label })
           }
         }
       })

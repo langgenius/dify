@@ -16,7 +16,7 @@ export function ModeBadge({ mode, className }: {
     : 'border-util-colors-blue-blue-200 bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700'
   return (
     <span className={cn(baseBadge, style, className)}>
-      {t(`mode.${mode}`)}
+      {t($ => $[`mode.${mode}`])}
     </span>
   )
 }

@@ -6,12 +6,6 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['workspace.role.manage'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
-
 vi.mock('@/service/access-control/use-workspace-roles', () => ({
   useCopyWorkspaceRole: () => ({
     mutateAsync: vi.fn(),

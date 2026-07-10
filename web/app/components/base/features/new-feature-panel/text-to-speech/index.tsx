@@ -54,7 +54,7 @@ const TextToSpeech = ({
           <TextToAudio className="size-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.textToSpeech.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.textToSpeech.title'], { ns: 'appDebug' })}
       value={!!features.text2speech?.enabled}
       onChange={state => handleChange(FeatureEnum.text2speech, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -63,25 +63,25 @@ const TextToSpeech = ({
     >
       <>
         {!features.text2speech?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.textToSpeech.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t($ => $['feature.textToSpeech.description'], { ns: 'appDebug' })}</div>
         )}
         {!!features.text2speech?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('voice.voiceSettings.language', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['voice.voiceSettings.language'], { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{languageInfo?.name || '-'}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('voice.voiceSettings.voice', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{features.text2speech?.voice || t('voice.defaultDisplay', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}</div>
+                  <div className="system-xs-regular text-text-secondary">{features.text2speech?.voice || t($ => $['voice.defaultDisplay'], { ns: 'appDebug' })}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}</div>
-                  <div className="system-xs-regular text-text-secondary">{features.text2speech?.autoPlay === TtsAutoPlay.enabled ? t('voice.voiceSettings.autoPlayEnabled', { ns: 'appDebug' }) : t('voice.voiceSettings.autoPlayDisabled', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['voice.voiceSettings.autoPlay'], { ns: 'appDebug' })}</div>
+                  <div className="system-xs-regular text-text-secondary">{features.text2speech?.autoPlay === TtsAutoPlay.enabled ? t($ => $['voice.voiceSettings.autoPlayEnabled'], { ns: 'appDebug' }) : t($ => $['voice.voiceSettings.autoPlayDisabled'], { ns: 'appDebug' })}</div>
                 </div>
               </div>
             )}
@@ -89,7 +89,7 @@ const TextToSpeech = ({
               <VoiceSettings open={modalOpen && !disabled} onOpen={setModalOpen} onChange={onChange}>
                 <Button className="w-full" disabled={disabled}>
                   <RiEqualizer2Line className="mr-1 size-4" />
-                  {t('voice.voiceSettings.title', { ns: 'appDebug' })}
+                  {t($ => $['voice.voiceSettings.title'], { ns: 'appDebug' })}
                 </Button>
               </VoiceSettings>
             )}

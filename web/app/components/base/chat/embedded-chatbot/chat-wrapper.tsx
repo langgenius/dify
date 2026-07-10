@@ -8,7 +8,9 @@ import type {
 } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -32,6 +34,7 @@ import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
 
 const ChatWrapper = () => {
+  const { t } = useTranslation()
   const {
     appData,
     appParams,
@@ -81,6 +84,9 @@ const ChatWrapper = () => {
       opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
   }, [appParams, currentConversationItem?.introduction])
+  const timezone = appSourceType === AppSourceType.webApp
+    ? new Intl.DateTimeFormat().resolvedOptions().timeZone
+    : undefined
   const {
     chatList,
     handleSend,
@@ -98,6 +104,8 @@ const ChatWrapper = () => {
     taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
+    undefined,
+    { timezone },
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
@@ -177,7 +185,17 @@ const ChatWrapper = () => {
     }
   }, [])
 
+  const [hasSent, setHasSent] = useState(false)
+  const [prevConversationId, setPrevConversationId] = useState(currentConversationId)
+  if (prevConversationId !== currentConversationId) {
+    setPrevConversationId(currentConversationId)
+    if (!currentConversationId)
+      setHasSent(false)
+  }
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+    if (!currentConversationId)
+      setHasSent(true)
     const data: any = {
       query: message,
       files,
@@ -219,6 +237,75 @@ const ChatWrapper = () => {
 
   const isTryApp = appSourceType === AppSourceType.tryApp
   const [collapsed, setCollapsed] = useState(!!currentConversationId && !isTryApp) // try app always use the new chat
+  const [descExpanded, setDescExpanded] = useState(false)
+
+  const description = appData?.site.description
+  const [showDescToggle, setShowDescToggle] = useState(false)
+  const descRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = descRef.current
+    if (!el)
+      return
+    if (el.offsetWidth > 0) {
+      setShowDescToggle(el.scrollHeight > el.clientHeight)
+      return
+    }
+    const observer = new ResizeObserver((entries) => {
+      if (!entries[0] || entries[0].contentRect.width === 0)
+        return
+      setShowDescToggle(el.scrollHeight > el.clientHeight)
+      observer.disconnect()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [description])
+
+  const descriptionNode = useMemo(() => {
+    if (!description || currentConversationId || hasSent)
+      return null
+    return (
+      <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
+        <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
+          <div className={cn('p-6', isMobile && 'p-4')}>
+            <div
+              ref={descRef}
+              className={cn(
+                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                !descExpanded && 'line-clamp-3',
+                descExpanded && 'max-h-32 overflow-y-auto',
+              )}
+            >
+              {description}
+              {!descExpanded && showDescToggle && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+              )}
+            </div>
+            {showDescToggle && (
+              <button
+                type="button"
+                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                onClick={() => setDescExpanded(v => !v)}
+              >
+                {descExpanded
+                  ? (
+                      <>
+                        <RiArrowUpSLine className="size-3" />
+                        {t($ => $['chat.collapse'], { ns: 'share' })}
+                      </>
+                    )
+                  : (
+                      <>
+                        <RiArrowDownSLine className="size-3" />
+                        {t($ => $['chat.expand'], { ns: 'share' })}
+                      </>
+                    )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }, [description, isMobile, currentConversationId, hasSent, descExpanded, showDescToggle, t])
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length)
@@ -318,6 +405,7 @@ const ChatWrapper = () => {
       onHumanInputFormSubmit={handleSubmitHumanInputForm}
       chatNode={(
         <>
+          {descriptionNode}
           {chatNode}
           {welcome}
         </>

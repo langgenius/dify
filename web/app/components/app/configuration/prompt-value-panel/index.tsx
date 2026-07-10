@@ -121,12 +121,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
           >
-            <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
+            <div className="system-md-semibold-uppercase text-text-secondary">{t($ => $['inputs.userInputField'], { ns: 'appDebug' })}</div>
             {userInputFieldCollapse && <RiArrowRightSLine className="size-4 text-text-secondary" aria-hidden="true" />}
             {!userInputFieldCollapse && <RiArrowDownSLine className="size-4 text-text-secondary" aria-hidden="true" />}
           </button>
           {!userInputFieldCollapse && (
-            <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">{t($ => $['inputs.completionVarTip'], { ns: 'appDebug' })}</div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
@@ -140,7 +140,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   {type !== 'checkbox' && (
                     <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
                       <div className="truncate">{name || key}</div>
-                      {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                      {!required && <span className="system-xs-regular text-text-tertiary">{t($ => $['panel.optional'], { ns: 'workflow' })}</span>}
                     </div>
                   )}
                   <div className="grow">
@@ -165,17 +165,17 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       />
                     )}
                     {type === 'select' && (
-                      <Select
-                        value={inputs[key] ? String(inputs[key]) : null}
+                      <Select<string>
+                        value={typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null}
                         disabled={debugInputReadonly}
                         onValueChange={(nextValue) => {
-                          if (!nextValue)
+                          if (nextValue == null || nextValue === '')
                             return
                           handleInputValueChange(key, nextValue)
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                          {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t($ => $['placeholder.select'], { ns: 'common' })}
                         </SelectTrigger>
                         <SelectContent>
                           {(options || []).map(option => (
@@ -213,7 +213,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 justify-between xl:flex">
-                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">{t($ => $['imageUploader.imageUpload'], { ns: 'common' })}</div>
                 <div className="grow">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -232,7 +232,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" disabled={debugInputReadonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
+            <Button className="w-[72px]" disabled={debugInputReadonly} onClick={onClear}>{t($ => $['operation.clear'], { ns: 'common' })}</Button>
             {canNotRun && (
               <Tooltip>
                 <TooltipTrigger
@@ -244,12 +244,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       className="w-[96px]"
                     >
                       <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
-                      {t('inputs.run', { ns: 'appDebug' })}
+                      {t($ => $['inputs.run'], { ns: 'appDebug' })}
                     </Button>
                   )}
                 />
                 <TooltipContent>
-                  {t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}
+                  {t($ => $['otherError.promptNoBeEmpty'], { ns: 'appDebug' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -261,7 +261,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 className="w-[96px]"
               >
                 <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
-                {t('inputs.run', { ns: 'appDebug' })}
+                {t($ => $['inputs.run'], { ns: 'appDebug' })}
               </Button>
             )}
           </div>

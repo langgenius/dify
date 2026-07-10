@@ -5,9 +5,6 @@ import { DataSourceType } from '@/models/datasets'
 import DocumentsHeader from '../documents-header'
 
 // Mock the context hooks
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 // Mock child components that require API calls
 vi.mock('@/app/components/datasets/common/document-status-with-action/auto-disabled-document', () => ({

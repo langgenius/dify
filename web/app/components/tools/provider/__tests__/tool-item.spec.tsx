@@ -3,11 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ToolItem from '../tool-item'
 
-// Mock useLocale hook
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 // Mock getLanguage - returns key format used in TypeWithI18N (en_US, not en-US)
 vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',

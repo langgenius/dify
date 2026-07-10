@@ -1,7 +1,7 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSnippetDetailStore } from '@/app/components/snippets/store'
+import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import {
   useIsChatMode,
   useWorkflow,
@@ -51,7 +51,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
   filterVar: () => true,
 }) => {
   const { t } = useTranslation()
-  const snippetInputFields = useSnippetDetailStore(s => s.fields)
+  const snippetInputFields = useSnippetDraftStore(s => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
@@ -67,7 +67,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
     const snippetInputFieldAvailability = appendSnippetInputFieldVars({
       availableNodes,
       fields: snippetInputFields,
-      title: t('panelTitle', { ns: 'snippet' }),
+      title: t($ => $.panelTitle, { ns: 'snippet' }),
     })
 
     const {
@@ -97,7 +97,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
 
 export const useGetNodesAvailableVarList = () => {
   const { t } = useTranslation()
-  const snippetInputFields = useSnippetDetailStore(s => s.fields)
+  const snippetInputFields = useSnippetDraftStore(s => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
@@ -122,7 +122,7 @@ export const useGetNodesAvailableVarList = () => {
       const snippetInputFieldAvailability = appendSnippetInputFieldVars({
         availableNodes,
         fields: snippetInputFields,
-        title: t('panelTitle', { ns: 'snippet' }),
+        title: t($ => $.panelTitle, { ns: 'snippet' }),
       })
 
       const {

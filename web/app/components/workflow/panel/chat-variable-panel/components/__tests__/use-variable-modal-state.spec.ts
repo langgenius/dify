@@ -1,5 +1,6 @@
 import type { ChangeEvent } from 'react'
 import { act, renderHook } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import { useVariableModalState } from '../use-variable-modal-state'
 
@@ -7,13 +8,15 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
+const t = withSelectorKey((key: string) => key)
+
 const createOptions = (overrides: Partial<Parameters<typeof useVariableModalState>[0]> = {}) => ({
   chatVar: undefined,
   conversationVariables: [],
   notify: vi.fn(),
   onClose: vi.fn(),
   onSave: vi.fn(),
-  t: (key: string) => key,
+  t,
   ...overrides,
 })
 

@@ -1,11 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { GuideStep } from '@/features/deployments/create-guide/state'
+import type { GuideStep } from '@/features/deployments/create-guide/state/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 
 const GUIDE_PROGRESS_STEPS: GuideStep[] = ['source', 'release', 'target']
 
@@ -18,16 +18,16 @@ function GuideStepIntro({ activeStep }: {
   let description: string
 
   if (activeStep === 'source') {
-    title = t('createGuide.source.title')
-    description = t('createGuide.method.description')
+    title = t($ => $['createGuide.source.title'])
+    description = t($ => $['createGuide.method.description'])
   }
   else if (activeStep === 'release') {
-    title = t('createGuide.release.title')
-    description = t('createGuide.release.description')
+    title = t($ => $['createGuide.release.title'])
+    description = t($ => $['createGuide.release.description'])
   }
   else if (activeStep === 'target') {
-    title = t('createGuide.target.title')
-    description = t('createGuide.target.description')
+    title = t($ => $['createGuide.target.title'])
+    description = t($ => $['createGuide.target.description'])
   }
   else {
     return null
@@ -52,7 +52,7 @@ function GuideProgress({ activeStep }: {
       {GUIDE_PROGRESS_STEPS.map((step, index) => {
         const isActive = step === activeStep
         const isComplete = index < activeIndex
-        const label = t(`createGuide.steps.${step}`)
+        const label = t($ => $[`createGuide.steps.${step}`])
 
         return (
           <TitleTooltip key={step} content={label}>
@@ -96,11 +96,11 @@ function GuideProgressSummary({ activeStep }: {
 
   let activeStepLabel: string
   if (activeStep === 'source')
-    activeStepLabel = t('createGuide.steps.source')
+    activeStepLabel = t($ => $['createGuide.steps.source'])
   else if (activeStep === 'release')
-    activeStepLabel = t('createGuide.steps.release')
+    activeStepLabel = t($ => $['createGuide.steps.release'])
   else if (activeStep === 'target')
-    activeStepLabel = t('createGuide.steps.target')
+    activeStepLabel = t($ => $['createGuide.steps.target'])
   else
     return null
 
@@ -167,7 +167,6 @@ export function GuideCard({ children, actions, contentScrollable = true }: {
               slotClassNames={{
                 viewport: 'overscroll-contain',
                 content: 'min-h-full pt-0.5 pb-6',
-                scrollbar: 'data-[orientation=vertical]:-me-5 data-[orientation=vertical]:my-1',
               }}
             >
               {children}
@@ -193,12 +192,12 @@ export function GuideFrame({ activeStep, children }: {
     <div className="relative flex h-full min-h-0 overflow-hidden bg-background-default-subtle">
       <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-hidden">
         <section
-          aria-label={t('createGuide.title')}
+          aria-label={t($ => $['createGuide.title'])}
           className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
         >
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
-            <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
+            <h1 className="title-2xl-semi-bold text-text-primary">{t($ => $['createGuide.title'])}</h1>
             <div className="hidden w-[184px] shrink-0 min-[1120px]:block">
               <GuideProgressSummary activeStep={activeStep} />
             </div>

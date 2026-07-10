@@ -59,10 +59,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
 
   const buttonTextMap = useMemo(() => {
     return {
-      [SupportedCreationMethods.OAUTH]: t('subscription.createButton.oauth', { ns: 'pluginTrigger' }),
-      [SupportedCreationMethods.APIKEY]: t('subscription.createButton.apiKey', { ns: 'pluginTrigger' }),
-      [SupportedCreationMethods.MANUAL]: t('subscription.createButton.manual', { ns: 'pluginTrigger' }),
-      [DEFAULT_METHOD]: t('subscription.empty.button', { ns: 'pluginTrigger' }),
+      [SupportedCreationMethods.OAUTH]: t($ => $['subscription.createButton.oauth'], { ns: 'pluginTrigger' }),
+      [SupportedCreationMethods.APIKEY]: t($ => $['subscription.createButton.apiKey'], { ns: 'pluginTrigger' }),
+      [SupportedCreationMethods.MANUAL]: t($ => $['subscription.createButton.manual'], { ns: 'pluginTrigger' }),
+      [DEFAULT_METHOD]: t($ => $['subscription.empty.button'], { ns: 'pluginTrigger' }),
     }
   }, [t])
 
@@ -89,12 +89,12 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     return [
       {
         value: SupportedCreationMethods.OAUTH,
-        label: t('subscription.addType.options.oauth.title', { ns: 'pluginTrigger' }),
+        label: t($ => $['subscription.addType.options.oauth.title'], { ns: 'pluginTrigger' }),
         tag: !showCustomBadge
           ? null
           : (
               <Badge className="mr-0.5 ml-1">
-                {t('auth.custom', { ns: 'plugin' })}
+                {t($ => $['auth.custom'], { ns: 'plugin' })}
               </Badge>
             ),
         extra: (
@@ -102,7 +102,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
             <TooltipTrigger
               render={(
                 <ActionButton
-                  aria-label={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+                  aria-label={t($ => $['subscription.addType.options.oauth.clientSettings'], { ns: 'pluginTrigger' })}
                   onClick={onClickClientSettings}
                 >
                   <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
@@ -110,7 +110,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               )}
             />
             <TooltipContent>
-              {t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+              {t($ => $['subscription.addType.options.oauth.clientSettings'], { ns: 'pluginTrigger' })}
             </TooltipContent>
           </Tooltip>
         ),
@@ -118,19 +118,18 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       },
       {
         value: SupportedCreationMethods.APIKEY,
-        label: t('subscription.addType.options.apikey.title', { ns: 'pluginTrigger' }),
+        label: t($ => $['subscription.addType.options.apikey.title'], { ns: 'pluginTrigger' }),
         show: supportedMethods.includes(SupportedCreationMethods.APIKEY),
       },
       {
         value: SupportedCreationMethods.MANUAL,
-        label: t('subscription.addType.options.manual.description', { ns: 'pluginTrigger' }),
+        label: t($ => $['subscription.addType.options.manual.description'], { ns: 'pluginTrigger' }),
         extra: (
           <Infotip
-            aria-label={t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+            aria-label={t($ => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
             className="size-3.5"
-            iconClassName="h-full w-full"
           >
-            {t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+            {t($ => $['subscription.addType.options.manual.tip'], { ns: 'pluginTrigger' })}
           </Infotip>
         ),
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
@@ -158,7 +157,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
           onSuccess: (response) => {
             openOAuthPopup(response.authorization_url, (callbackData) => {
               if (callbackData) {
-                toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
+                toast.success(t($ => $['modal.oauth.authorization.authSuccess'], { ns: 'pluginTrigger' }))
                 showCreateModal({
                   type: SupportedCreationMethods.OAUTH,
                   builder: response.subscription_builder,
@@ -167,7 +166,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
             })
           },
           onError: () => {
-            toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
+            toast.error(t($ => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }))
           },
         })
       }
@@ -236,7 +235,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                       <Badge
                         className="mr-0.5 ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface"
                       >
-                        {t('auth.custom', { ns: 'plugin' })}
+                        {t($ => $['auth.custom'], { ns: 'plugin' })}
                       </Badge>
                     )}
                   </div>
@@ -253,7 +252,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                             )}
                           />
                           <TooltipContent>
-                            {t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+                            {t($ => $['subscription.addType.options.oauth.clientSettings'], { ns: 'pluginTrigger' })}
                           </TooltipContent>
                         </Tooltip>
                       </div>
@@ -279,7 +278,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                     )}
                   />
                   <TooltipContent>
-                    {subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
+                    {subscriptionCount >= MAX_COUNT ? t($ => $['subscription.maxCount'], { ns: 'pluginTrigger', num: MAX_COUNT }) : t($ => $[`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`], { ns: 'pluginTrigger' })}
                   </TooltipContent>
                 </Tooltip>
               )}

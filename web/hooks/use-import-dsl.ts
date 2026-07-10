@@ -4,6 +4,8 @@ import type {
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useRef,
@@ -12,6 +14,9 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
@@ -42,6 +47,10 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
   const invalidateAppList = useInvalidateAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
   const setNeedRefresh = useSetNeedRefreshAppList()
@@ -78,9 +87,9 @@ export const useImportDSL = () => {
         if (!app_id)
           return
 
-        const message = t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' })
+        const message = t($ => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'], { ns: 'app' })
         const description = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-          ? t('newApp.appCreateDSLWarning', { ns: 'app' })
+          ? t($ => $['newApp.appCreateDSLWarning'], { ns: 'app' })
           : undefined
 
         if (status === DSLImportStatus.COMPLETED)
@@ -91,7 +100,12 @@ export const useImportDSL = () => {
         setNeedRefresh('1')
         invalidateAppList()
         await handleCheckPluginDependencies(app_id)
-        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          currentUserId,
+          resourceMaintainer: currentUserId,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -102,18 +116,18 @@ export const useImportDSL = () => {
         onPending?.(response)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, handleCheckPluginDependencies, push, setNeedRefresh, invalidateAppList])
+  }, [isFetching, t, handleCheckPluginDependencies, isRbacEnabled, push, setNeedRefresh, invalidateAppList, currentUserId, workspacePermissionKeys])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -138,25 +152,30 @@ export const useImportDSL = () => {
 
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.(response)
-        toast.success(t('newApp.appCreated', { ns: 'app' }))
+        toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
-        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          currentUserId,
+          resourceMaintainer: currentUserId,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
         onFailed?.()
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       onFailed?.()
     }
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push, invalidateAppList])
+  }, [isFetching, t, handleCheckPluginDependencies, isRbacEnabled, setNeedRefresh, push, invalidateAppList, currentUserId, workspacePermissionKeys])
 
   return {
     handleImportDSL,

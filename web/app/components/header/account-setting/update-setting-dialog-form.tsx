@@ -4,7 +4,7 @@ import type { AutoUpdateConfig } from '@/app/components/plugins/reference-settin
 import type { dayjsToTimeOfDay } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
@@ -53,7 +53,7 @@ function SettingTimeZone({
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       onClick={() => {
         onRequestClose()
-        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })
+        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
       }}
     >
       {children}
@@ -82,11 +82,11 @@ const UpdateSettingDialogForm = ({
   const getStrategyDescription = (strategy: AUTO_UPDATE_STRATEGY) => {
     switch (strategy) {
       case AUTO_UPDATE_STRATEGY.disabled:
-        return t('autoUpdate.strategy.disabled.description', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.disabled.description'], { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.fixOnly:
-        return t('autoUpdate.strategy.fixOnly.description', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.fixOnly.description'], { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.latest:
-        return t('autoUpdate.strategy.latest.description', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.latest.description'], { ns: 'plugin' })
       default:
         return ''
     }
@@ -98,10 +98,10 @@ const UpdateSettingDialogForm = ({
       <div className="flex w-full flex-col items-start gap-1">
         <div className="flex w-full flex-col items-start gap-1">
           <div className={updateSettingFormLabelClassName}>
-            {t('autoUpdate.autoUpdate', { ns: 'plugin' })}
+            {t($ => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}
           </div>
           <RadioGroup<AUTO_UPDATE_STRATEGY>
-            aria-label={t('autoUpdate.autoUpdate', { ns: 'plugin' })}
+            aria-label={t($ => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}
             className="flex w-full gap-2"
             value={autoUpgrade.strategy_setting}
             onValueChange={strategy_setting => onAutoUpgradeChange({ strategy_setting })}
@@ -129,11 +129,11 @@ const UpdateSettingDialogForm = ({
           <div className="flex w-full flex-col items-start gap-1">
             <div className="flex w-full items-center gap-2">
               <div className={cn(updateSettingFormLabelClassName, 'min-w-0 flex-1')}>
-                {t('autoUpdate.updateTime', { ns: 'plugin' })}
+                {t($ => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
                 <Trans
-                  i18nKey="autoUpdate.changeTimezone"
+                  i18nKey={$ => $['autoUpdate.changeTimezone']}
                   ns="plugin"
                   components={{
                     setTimezone: <SettingTimeZone onRequestClose={onRequestClose} />,
@@ -148,7 +148,7 @@ const UpdateSettingDialogForm = ({
               onClear={() => onAutoUpgradeChange({
                 upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(0, timezone),
               })}
-              title={t('autoUpdate.updateTime', { ns: 'plugin' })}
+              title={t($ => $['autoUpdate.updateTime'], { ns: 'plugin' })}
               minuteFilter={minuteFilter}
               renderTrigger={renderTimePickerTrigger}
               placement="bottom-start"
@@ -157,10 +157,10 @@ const UpdateSettingDialogForm = ({
           <div className="flex w-full flex-col items-start gap-2">
             <div className="flex h-[60px] w-full flex-col items-start gap-1">
               <div className={updateSettingFormLabelClassName}>
-                {t('autoUpdate.scope', { ns: 'plugin' })}
+                {t($ => $['autoUpdate.scope'], { ns: 'plugin' })}
               </div>
               <RadioGroup<AUTO_UPDATE_MODE>
-                aria-label={t('autoUpdate.scope', { ns: 'plugin' })}
+                aria-label={t($ => $['autoUpdate.scope'], { ns: 'plugin' })}
                 className="flex w-full gap-2"
                 value={autoUpgrade.upgrade_mode}
                 onValueChange={upgrade_mode => onAutoUpgradeChange({ upgrade_mode })}

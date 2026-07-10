@@ -5,6 +5,8 @@ from collections.abc import Generator, Mapping, Sequence
 from mimetypes import guess_extension
 from typing import TYPE_CHECKING, Any, Union
 
+from sqlalchemy.orm import sessionmaker
+
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -423,7 +425,9 @@ class AppRunner:
             _logger.exception("Failed to save image file")
             return
 
-        # Create MessageFile record
+        # Create MessageFile record.
+        # Use an independent session so this side-effect write does not
+        # commit or close the caller's request-scoped session.
         message_file = MessageFile(
             message_id=message_id,
             type=FileType.IMAGE,
@@ -437,9 +441,8 @@ class AppRunner:
             created_by=user_id,
         )
 
-        db.session.add(message_file)
-        db.session.commit()
-        db.session.refresh(message_file)
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            session.add(message_file)
 
         # Publish QueueMessageFileEvent
         queue_manager.publish(

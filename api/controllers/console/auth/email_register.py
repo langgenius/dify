@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -100,7 +101,7 @@ class EmailRegisterSendEmailApi(Resource):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        account = AccountService.get_account_by_email_with_case_fallback(args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -175,7 +176,7 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
         if account:
             raise EmailAlreadyInUseError()
@@ -186,7 +187,7 @@ class EmailRegisterResetApi(Resource):
             timezone=args.timezone,
             language=args.language,
         )
-        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -205,6 +206,7 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
+                session=db.session(),
             )
         except AccountRegisterError:
             raise AccountInFreezeError()

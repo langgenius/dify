@@ -3,7 +3,18 @@ import type { Platform } from '@/sys'
 import { promises as fsp } from 'node:fs'
 import { dirname } from 'node:path'
 import { AsyncEntry } from '@napi-rs/keyring'
-import yaml from 'js-yaml'
+import {
+  binaryTag,
+  CORE_SCHEMA,
+  dump,
+  loadAll,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+  YAMLException,
+} from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '@/sys'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
@@ -11,6 +22,7 @@ import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
 const LOCK_STALE_MS = 30_000
+const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(binaryTag, mergeTag, omapTag, pairsTag, setTag, timestampTag)
 
 function lockAsync(path: string, opts: LockOptions): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -202,7 +214,7 @@ export class YamlStore extends FileBasedStore {
   async setTyped<T>(data: T): Promise<void> {
     await this.withLock(async () => {
       await this.load()
-      this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+      this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
       await this.flush()
     })
   }
@@ -220,7 +232,7 @@ export class YamlStore extends FileBasedStore {
       current = current[part] as Record<string, unknown>
     }
     current[lastKey] = value
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 
   doUnset<T>(key: Key<T>): void {
@@ -239,7 +251,7 @@ export class YamlStore extends FileBasedStore {
     if (!(lastKey in current))
       return
     delete current[lastKey]
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 }
 
@@ -247,10 +259,13 @@ function loadYaml(raw: string | undefined, file_path: string): Record<string, un
   if (raw === undefined)
     return null
   try {
-    return (yaml.load(raw) ?? {}) as Record<string, unknown>
+    const documents = loadAll(raw, { schema: YAML_LOAD_SCHEMA })
+    if (documents.length > 1)
+      throw new YAMLException('expected a single document in the stream, but found more')
+    return (documents[0] ?? {}) as Record<string, unknown>
   }
   catch (err) {
-    if (err instanceof yaml.YAMLException)
+    if (err instanceof YAMLException)
       throw new BadYamlFormatError(file_path, raw, err)
     throw err
   }

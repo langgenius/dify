@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Site
 from models.account import Account
@@ -40,6 +41,7 @@ class AppSiteUpdatePayload(BaseModel):
     customize_domain: str | None = Field(default=None)
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
+    input_placeholder: str | None = Field(default=None)
     custom_disclaimer: str | None = Field(default=None)
     customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
     prompt_public: bool | None = Field(default=None)
@@ -66,6 +68,7 @@ class AppSiteResponse(ResponseModel):
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     customize_token_strategy: str
     prompt_public: bool
@@ -110,6 +113,7 @@ class AppSite(Resource):
             "customize_domain",
             "copyright",
             "privacy_policy",
+            "input_placeholder",
             "custom_disclaimer",
             "customize_token_strategy",
             "prompt_public",
@@ -124,7 +128,7 @@ class AppSite(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppSiteResponse, site)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
@@ -153,4 +157,4 @@ class AppSiteAccessTokenReset(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppSiteResponse, site)

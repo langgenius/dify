@@ -108,7 +108,7 @@ const ClassList: FC<Props> = ({
           className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={handleCollapse}
         >
-          {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.class`], { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
@@ -124,7 +124,7 @@ const ClassList: FC<Props> = ({
       </div>
       {shouldShowRenameHint && (
         <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
-          {t(`${i18nPrefix}.renameHint`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
         </div>
       )}
 
@@ -189,7 +189,7 @@ const ClassList: FC<Props> = ({
         <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t(`${i18nPrefix}.addClass`, { ns: 'workflow' })}
+            text={t($ => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
           />
         </div>
       )}

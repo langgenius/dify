@@ -32,16 +32,16 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
   const { t } = useTranslation()
 
   const segmentationRuleMap = {
-    mode: t('embedding.mode', { ns: 'datasetDocuments' }),
-    segmentLength: t('embedding.segmentLength', { ns: 'datasetDocuments' }),
-    textCleaning: t('embedding.textCleaning', { ns: 'datasetDocuments' }),
+    mode: t($ => $['embedding.mode'], { ns: 'datasetDocuments' }),
+    segmentLength: t($ => $['embedding.segmentLength'], { ns: 'datasetDocuments' }),
+    textCleaning: t($ => $['embedding.textCleaning'], { ns: 'datasetDocuments' }),
   }
 
   const getRuleName = useCallback((key: string) => {
     const ruleNameMap: Record<string, string> = {
-      remove_extra_spaces: t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' }),
-      remove_urls_emails: t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' }),
-      remove_stopwords: t('stepTwo.removeStopwords', { ns: 'datasetCreation' }),
+      remove_extra_spaces: t($ => $['stepTwo.removeExtraSpaces'], { ns: 'datasetCreation' }),
+      remove_urls_emails: t($ => $['stepTwo.removeUrlEmails'], { ns: 'datasetCreation' }),
+      remove_stopwords: t($ => $['stepTwo.removeStopwords'], { ns: 'datasetCreation' }),
     }
     return ruleNameMap[key]
   }, [t])
@@ -64,15 +64,15 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
 
     const fieldValueMap: Record<string, string | number> = {
       mode: isGeneralMode
-        ? t('embedding.custom', { ns: 'datasetDocuments' })
-        : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${
+        ? t($ => $['embedding.custom'], { ns: 'datasetDocuments' })
+        : `${t($ => $['embedding.hierarchical'], { ns: 'datasetDocuments' })} · ${
           sourceData?.rules?.parent_mode === 'paragraph'
-            ? t('parentMode.paragraph', { ns: 'dataset' })
-            : t('parentMode.fullDoc', { ns: 'dataset' })
+            ? t($ => $['parentMode.paragraph'], { ns: 'dataset' })
+            : t($ => $['parentMode.fullDoc'], { ns: 'dataset' })
         }`,
       segmentLength: isGeneralMode
         ? maxTokens
-        : `${t('embedding.parentMaxTokens', { ns: 'datasetDocuments' })} ${maxTokens}; ${t('embedding.childMaxTokens', { ns: 'datasetDocuments' })} ${childMaxTokens}`,
+        : `${t($ => $['embedding.parentMaxTokens'], { ns: 'datasetDocuments' })} ${maxTokens}; ${t($ => $['embedding.childMaxTokens'], { ns: 'datasetDocuments' })} ${childMaxTokens}`,
       textCleaning: sourceData?.rules?.pre_processing_rules
         ?.filter(rule => rule.enabled)
         .map(rule => getRuleName(rule.id))
@@ -97,8 +97,8 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
       </div>
       <Divider type="horizontal" className="bg-divider-subtle" />
       <FieldInfo
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
-        displayedValue={t(`stepTwo.${isEconomical ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
+        label={t($ => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
+        displayedValue={t($ => $[`stepTwo.${isEconomical ? 'economical' : 'qualified'}`], { ns: 'datasetCreation' }) as string}
         valueIcon={(
           <img
             className="size-4"
@@ -108,8 +108,8 @@ const RuleDetail: FC<RuleDetailProps> = React.memo(({
         )}
       />
       <FieldInfo
-        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
-        displayedValue={t(`retrieval.${isEconomical ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
+        label={t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        displayedValue={t($ => $[`retrieval.${isEconomical ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`], { ns: 'dataset' })}
         valueIcon={(
           <img
             className="size-4"

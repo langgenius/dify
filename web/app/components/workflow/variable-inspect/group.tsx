@@ -46,9 +46,9 @@ const Group = ({
   const isChatVar = varType === VarInInspectType.conversation
   const isSystem = varType === VarInInspectType.system
   const groupTitle = nodeData?.title
-    || (isEnv && t('debug.variableInspect.envNode', { ns: 'workflow' }))
-    || (isChatVar && t('debug.variableInspect.chatNode', { ns: 'workflow' }))
-    || (isSystem && t('debug.variableInspect.systemNode', { ns: 'workflow' }))
+    || (isEnv && t($ => $['debug.variableInspect.envNode'], { ns: 'workflow' }))
+    || (isChatVar && t($ => $['debug.variableInspect.chatNode'], { ns: 'workflow' }))
+    || (isSystem && t($ => $['debug.variableInspect.systemNode'], { ns: 'workflow' }))
     || ''
 
   const visibleVarList = isEnv ? varList : varList.filter(v => v.visible)
@@ -141,25 +141,25 @@ const Group = ({
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <ActionButton aria-label={t('debug.variableInspect.view', { ns: 'workflow' })} onClick={handleView}>
+                  <ActionButton aria-label={t($ => $['debug.variableInspect.view'], { ns: 'workflow' })} onClick={handleView}>
                     <RiFileList3Line className="size-4" aria-hidden />
                   </ActionButton>
                 )}
               />
               <TooltipContent>
-                {t('debug.variableInspect.view', { ns: 'workflow' })}
+                {t($ => $['debug.variableInspect.view'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <ActionButton aria-label={t('debug.variableInspect.clearNode', { ns: 'workflow' })} onClick={handleClear}>
+                  <ActionButton aria-label={t($ => $['debug.variableInspect.clearNode'], { ns: 'workflow' })} onClick={handleClear}>
                     <RiDeleteBinLine className="size-4" aria-hidden />
                   </ActionButton>
                 )}
               />
               <TooltipContent>
-                {t('debug.variableInspect.clearNode', { ns: 'workflow' })}
+                {t($ => $['debug.variableInspect.clearNode'], { ns: 'workflow' })}
               </TooltipContent>
             </Tooltip>
           </div>

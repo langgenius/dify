@@ -31,7 +31,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
     <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
       <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
         <span className="text-xs font-medium tracking-wide text-text-tertiary uppercase">
-          {t('develop.toc', { ns: 'appApi' })}
+          {t($ => $['develop.toc'], { ns: 'appApi' })}
         </span>
         <button
           type="button"
@@ -50,7 +50,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
         {toc.length === 0
           ? (
               <div className="px-2 py-8 text-center text-xs text-text-quaternary">
-                {t('develop.noContent', { ns: 'appApi' })}
+                {t($ => $['develop.noContent'], { ns: 'appApi' })}
               </div>
             )
           : (

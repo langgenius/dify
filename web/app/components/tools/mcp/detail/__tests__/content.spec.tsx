@@ -107,14 +107,36 @@ vi.mock('../tool-item', () => ({
   ),
 }))
 
-// Mutable workspace permission state
-let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
 
 // Mock the app context
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 // Mock the plugins service
@@ -195,7 +217,7 @@ describe('MCPDetailContent', () => {
     mockIsFetching = false
     mockIsUpdating = false
     mockIsAuthorizing = false
-    mockWorkspacePermissionKeys = ['mcp.manage']
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -231,13 +253,13 @@ describe('MCPDetailContent', () => {
       expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
     })
 
-    it('should not render detail when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should render read-only detail when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
 
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
-      expect(screen.queryByText('Test MCP Server')).not.toBeInTheDocument()
+      expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
     })
   })
 
@@ -465,15 +487,15 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should not render authorize action when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should disable authorize action when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
       const detail = createMockDetail({ is_team_authorization: false })
       render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      expect(screen.queryByText('tools.mcp.authorize')).not.toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.authorize').closest('button')).toBeDisabled()
     })
   })
 
@@ -755,8 +777,8 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should not render OAuth authorization action when user lacks mcp.manage', async () => {
-      mockWorkspacePermissionKeys = []
+    it('should not run OAuth authorization when user lacks mcp.manage', async () => {
+      mockAppContextState.workspacePermissionKeys = []
       mockAuthorizeMcp.mockResolvedValue({ authorization_url: 'https://oauth.example.com' })
       const detail = createMockDetail({ is_team_authorization: false })
 
@@ -765,7 +787,9 @@ describe('MCPDetailContent', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.queryByText('tools.mcp.authorize')).not.toBeInTheDocument()
+      const authorizeButton = screen.getByText('tools.mcp.authorize').closest('button')!
+      expect(authorizeButton).toBeDisabled()
+      fireEvent.click(authorizeButton)
       expect(mockAuthorizeMcp).not.toHaveBeenCalled()
     })
   })
@@ -797,15 +821,15 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should not render authorized button when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should disable authorized button when user lacks mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
       const detail = createMockDetail({ is_team_authorization: true })
       render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      expect(screen.queryByText('tools.auth.authorized')).not.toBeInTheDocument()
+      expect(screen.getByText('tools.auth.authorized').closest('button')).toBeDisabled()
     })
   })
 

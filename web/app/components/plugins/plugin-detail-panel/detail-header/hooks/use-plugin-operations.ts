@@ -14,7 +14,7 @@ import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
 import { PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   detail: PluginDetail
   modalStates: ModalStates
@@ -33,7 +33,7 @@ type UsePluginOperationsReturn = {
 }
 
 export const usePluginOperations = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   detail,
   modalStates,
@@ -118,7 +118,7 @@ export const usePluginOperations = ({
   }, [handlePluginUpdated, modalStates])
 
   const handleDelete = useCallback(async () => {
-    if (!canManagePlugin)
+    if (!canDeletePlugin)
       return
 
     modalStates.showDeleting()
@@ -127,14 +127,14 @@ export const usePluginOperations = ({
 
     if (res.success) {
       modalStates.hideDeleteConfirm()
-      toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
+      toast.success(t($ => $['action.deleteSuccess'], { ns: 'plugin' }))
       handlePluginUpdated(true)
       refreshPluginList({ category })
 
       trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
   }, [
-    canManagePlugin,
+    canDeletePlugin,
     id,
     category,
     plugin_id,

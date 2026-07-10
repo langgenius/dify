@@ -1,45 +1,46 @@
 // Translate a DeviceFlowError (or any thrown value) into user-facing copy.
 // Centralised so account/SSO branches surface the same words for the same
-// failure mode and so a new server error code can be wired up here once.
+// failure mode and so a new server error code can be wired up here once —
+// this maps a server code to an i18n key, then the key to translated copy.
 
+import type { TFunction } from 'i18next'
+import type deviceFlowResources from '@/i18n/en-US/device-flow.json'
 import { DeviceFlowError } from '@/service/device-flow'
 
-const APPROVE_COPY: Record<string, string> = {
-  rate_limited: 'Too many attempts. Wait a moment and try again.',
-  no_session: 'Your session has expired. Run difyctl auth login again to start over.',
-  invalid_session: 'Your session has expired. Run difyctl auth login again to start over.',
-  session_already_consumed: 'This session was already used. Run difyctl auth login again.',
-  csrf_mismatch: 'Could not verify the request. Refresh the page and try again.',
-  forbidden: 'Could not verify the request. Refresh the page and try again.',
-  expired_or_unknown: 'This code is no longer valid.',
-  not_found: 'This code is no longer valid.',
-  user_code_mismatch: 'This code does not match the active session. Run difyctl auth login again.',
-  user_code_not_pending: 'This code was already approved or denied.',
-  already_resolved: 'This code was already approved or denied.',
-  state_lost: 'The flow expired before approval completed. Run difyctl auth login again.',
-  approve_in_progress: 'An approval is already in progress for this code.',
-  conflict: 'This code is no longer in a state we can approve.',
-  server_error: 'Something went wrong on our side. Try again in a moment.',
+type DeviceFlowKey = keyof typeof deviceFlowResources
+
+const APPROVE_KEY: Record<string, DeviceFlowKey> = {
+  rate_limited: 'approveError.rateLimited',
+  no_session: 'approveError.sessionExpired',
+  invalid_session: 'approveError.sessionExpired',
+  session_already_consumed: 'approveError.sessionConsumed',
+  csrf_mismatch: 'approveError.verifyFailed',
+  forbidden: 'approveError.verifyFailed',
+  expired_or_unknown: 'approveError.codeInvalid',
+  not_found: 'approveError.codeInvalid',
+  user_code_mismatch: 'approveError.codeMismatch',
+  user_code_not_pending: 'approveError.codeResolved',
+  already_resolved: 'approveError.codeResolved',
+  state_lost: 'approveError.flowExpired',
+  approve_in_progress: 'approveError.inProgress',
+  conflict: 'approveError.conflict',
+  server_error: 'approveError.serverError',
 }
 
-const DEFAULT_MESSAGE = 'Could not complete the request. Please try again.'
-
-export function approveErrorCopy(err: unknown): string {
+export function approveErrorCopy(err: unknown, t: TFunction<'deviceFlow'>): string {
   if (err instanceof DeviceFlowError)
-    return APPROVE_COPY[err.code] ?? DEFAULT_MESSAGE
-  return DEFAULT_MESSAGE
+    return t($ => $[APPROVE_KEY[err.code] ?? 'approveError.default'])
+  return t($ => $['approveError.default'])
 }
 
 // SSO-branch failures arrive as a `sso_error` query param set by the backend
 // (oauth_device_sso sso-complete) when it redirects back to /device.
-const SSO_ERROR_COPY: Record<string, string> = {
-  email_belongs_to_dify_account: 'This identity is linked to a Dify account. Use “Sign in with Dify account” instead.',
+const SSO_ERROR_KEY: Record<string, DeviceFlowKey> = {
+  email_belongs_to_dify_account: 'ssoError.emailBelongsToDifyAccount',
 }
 
-const DEFAULT_SSO_ERROR_MESSAGE = 'Single sign-on could not be completed. Try again.'
-
-export function ssoErrorCopy(code: string): string {
-  return SSO_ERROR_COPY[code] ?? DEFAULT_SSO_ERROR_MESSAGE
+export function ssoErrorCopy(code: string, t: TFunction<'deviceFlow'>): string {
+  return t($ => $[SSO_ERROR_KEY[code] ?? 'ssoError.default'])
 }
 
 export type LookupOutcome = 'expired' | 'rate_limited' | 'failed'

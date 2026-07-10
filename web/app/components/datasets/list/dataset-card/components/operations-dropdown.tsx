@@ -5,8 +5,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -26,13 +29,15 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset.maintainer,
     workspacePermissionKeys,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig
@@ -55,9 +60,9 @@ const OperationsDropdown = ({
         <DropdownMenuTrigger
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
-            'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg ring-2 shadow-shadow-shadow-5 ring-components-button-secondary-bg ring-inset',
+            'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg inset-ring-2 shadow-shadow-shadow-5 inset-ring-components-button-secondary-bg',
             'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
-            'focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+            'focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden',
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"

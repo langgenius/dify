@@ -87,7 +87,7 @@ const ConversationOpener = ({
           <LoveMessage className="size-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.conversationOpener.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
       value={!!opening?.enabled}
       onChange={state => handleChange(FeatureEnum.opening, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -96,19 +96,19 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t($ => $['feature.conversationOpener.description'], { ns: 'appDebug' })}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
               <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                {opening.opening_statement || t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
+                {opening.opening_statement || t($ => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
               </div>
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
                 <RiEditLine className="mr-1 size-4" />
-                {t('openingStatement.writeOpener', { ns: 'appDebug' })}
+                {t($ => $['openingStatement.writeOpener'], { ns: 'appDebug' })}
               </Button>
             )}
           </>

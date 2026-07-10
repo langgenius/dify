@@ -101,7 +101,7 @@ const DatasetItem: FC<Props> = ({
           {
             editable && (
               <ActionButton
-                aria-label={t('operation.edit', { ns: 'common' })}
+                aria-label={t($ => $['operation.edit'], { ns: 'common' })}
                 onClick={(e) => {
                   e.stopPropagation()
                   showSettingsModal()
@@ -112,7 +112,7 @@ const DatasetItem: FC<Props> = ({
             )
           }
           <ActionButton
-            aria-label={t('operation.remove', { ns: 'common' })}
+            aria-label={t($ => $['operation.remove'], { ns: 'common' })}
             onClick={handleRemove}
             state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
@@ -139,7 +139,7 @@ const DatasetItem: FC<Props> = ({
         payload.provider === 'external' && (
           <Badge
             className="shrink-0 group-hover/dataset-item:hidden"
-            text={t('externalTag', { ns: 'dataset' })}
+            text={t($ => $.externalTag, { ns: 'dataset' })}
           />
         )
       }

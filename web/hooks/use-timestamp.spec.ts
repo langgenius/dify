@@ -1,25 +1,26 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(() => ({
-    userProfile: {
-      id: '8b18e24b-1ac8-4262-aa5c-e9aa95c76846',
-      name: 'test',
-      avatar: null,
-      avatar_url: null,
-      email: 'test@dify.ai',
-      is_password_set: false,
-      interface_language: 'zh-Hans',
-      interface_theme: 'light',
-      timezone: 'Asia/Shanghai',
-      last_login_at: 1744188761,
-      last_login_ip: '127.0.0.1',
-      created_at: 1728444483,
+const createEmptyQueryWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  })),
-}))
+  })
+
+  function EmptyQueryWrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children)
+  }
+
+  return { queryClient, wrapper: EmptyQueryWrapper }
+}
 
 describe('useTimestamp', () => {
   describe('formatTime', () => {
@@ -62,5 +63,15 @@ describe('useTimestamp', () => {
       expect(result.current.formatDate(dateString, 'HH:mm'))
         .toBe('20:00')
     })
+  })
+
+  it('should not request account profile when timezone is provided', () => {
+    const { queryClient, wrapper } = createEmptyQueryWrapper()
+
+    const { result } = renderHook(() => useTimestamp({ timezone: 'UTC' }), { wrapper })
+
+    expect(result.current.formatTime(1704132000, 'YYYY-MM-DD HH:mm')).toBe('2024-01-01 18:00')
+    expect(queryClient.isFetching({ queryKey: userProfileQueryOptions().queryKey })).toBe(0)
+    expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)?.fetchStatus).toBe('idle')
   })
 })

@@ -109,8 +109,8 @@ const InstallForm = () => {
       : (
           <>
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
-              <h2 className="text-[32px] font-bold text-text-primary">{t('setAdminAccount', { ns: 'login' })}</h2>
-              <p className="mt-1 text-sm text-text-secondary">{t('setAdminAccountDesc', { ns: 'login' })}</p>
+              <h2 className="text-[32px] font-bold text-text-primary">{t($ => $.setAdminAccount, { ns: 'login' })}</h2>
+              <p className="mt-1 text-sm text-text-secondary">{t($ => $.setAdminAccountDesc, { ns: 'login' })}</p>
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
               <div className="relative">
@@ -126,7 +126,7 @@ const InstallForm = () => {
                   >
                     <div className="mb-5">
                       <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('email', { ns: 'login' })}
+                        {t($ => $.email, { ns: 'login' })}
                       </label>
                       <div className="mt-1">
                         <form.AppField name="email">
@@ -136,13 +136,13 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+                              placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
                         {emailErrors && emailErrors.length > 0 && (
                           <span className="text-sm text-red-400">
-                            {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
+                            {t($ => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
                           </span>
                         )}
                       </div>
@@ -150,7 +150,7 @@ const InstallForm = () => {
 
                     <div className="mb-5">
                       <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('name', { ns: 'login' })}
+                        {t($ => $.name, { ns: 'login' })}
                       </label>
                       <div className="relative mt-1">
                         <form.AppField name="name">
@@ -160,21 +160,21 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
+                              placeholder={t($ => $.namePlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
                       </div>
                       {nameErrors && nameErrors.length > 0 && (
                         <span className="text-sm text-red-400">
-                          {t(`${nameErrors[0]}` as 'error.nameEmpty', { ns: 'login' })}
+                          {t($ => $[`${nameErrors[0]}` as 'error.nameEmpty'], { ns: 'login' })}
                         </span>
                       )}
                     </div>
 
                     <div className="mb-5">
                       <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                        {t('password', { ns: 'login' })}
+                        {t($ => $.password, { ns: 'login' })}
                       </label>
                       <div className="relative mt-1">
                         <form.AppField name="password">
@@ -185,7 +185,7 @@ const InstallForm = () => {
                               value={field.state.value}
                               onChange={e => field.handleChange(e.target.value)}
                               onBlur={field.handleBlur}
-                              placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+                              placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
                             />
                           )}
                         </form.AppField>
@@ -205,19 +205,19 @@ const InstallForm = () => {
                         'text-sm! text-red-400': passwordErrors && passwordErrors.length > 0,
                       })}
                       >
-                        {t('error.passwordInvalid', { ns: 'login' })}
+                        {t($ => $['error.passwordInvalid'], { ns: 'login' })}
                       </div>
                     </div>
 
                     <div>
                       <Button variant="primary" type="submit" disabled={isSubmitting} loading={isSubmitting} className="w-full">
-                        {t('installBtn', { ns: 'login' })}
+                        {t($ => $.installBtn, { ns: 'login' })}
                       </Button>
                     </div>
                   </form>
                 </formContext.Provider>
                 <div className="mt-2 block w-full text-xs text-text-secondary">
-                  {t('license.tip', { ns: 'login' })}
+                  {t($ => $['license.tip'], { ns: 'login' })}
                 &nbsp;
                   <Link
                     className="text-text-accent"
@@ -225,7 +225,7 @@ const InstallForm = () => {
                     rel="noopener noreferrer"
                     href={LICENSE_LINK}
                   >
-                    {t('license.link', { ns: 'login' })}
+                    {t($ => $['license.link'], { ns: 'login' })}
                   </Link>
                 </div>
               </div>

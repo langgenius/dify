@@ -3,9 +3,11 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useLearnDifyAppList } from '@/service/use-explore'
 import LearnDifyItem from './item'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from './storage'
@@ -74,7 +76,7 @@ const LearnDifyContent = ({
   }
 
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
-  const sectionTitle = title ?? t('learnDify.title', { ns: 'explore' })
+  const sectionTitle = title ?? t($ => $['learnDify.title'], { ns: 'explore' })
 
   if (isLoading)
     return loadingFallback
@@ -100,7 +102,7 @@ const LearnDifyContent = ({
             </h2>
             {showDescription && (
               <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-                {t('learnDify.description', { ns: 'explore' })}
+                {t($ => $['learnDify.description'], { ns: 'explore' })}
               </p>
             )}
           </div>
@@ -108,14 +110,14 @@ const LearnDifyContent = ({
             <button
               type="button"
               className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
-              aria-label={t('learnDify.hide', { ns: 'explore' })}
+              aria-label={t($ => $['learnDify.hide'], { ns: 'explore' })}
               onClick={handleHide}
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
           {visibleItems.map(item => (
             <LearnDifyItem
               key={item.app_id}
@@ -142,6 +144,11 @@ const DismissibleLearnDify = (props: LearnDifyProps) => {
 }
 
 const LearnDify = (props: LearnDifyProps) => {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+
+  if (!systemFeatures.enable_learn_app)
+    return null
+
   if (props.dismissible === false)
     return <LearnDifyContent {...props} />
 

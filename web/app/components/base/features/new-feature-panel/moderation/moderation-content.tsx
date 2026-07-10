@@ -40,7 +40,10 @@ const ModerationContent: FC<ModerationContentProps> = ({
   }
 
   return (
-    <div className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs">
+    <section
+      aria-label={title}
+      className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+    >
       <div className="flex min-h-10 items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1 system-sm-medium text-text-secondary">{title}</div>
         <div className="flex min-w-0 shrink-0 items-center justify-end">
@@ -52,6 +55,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
           <Switch
             checked={config.enabled}
             onCheckedChange={v => handleConfigChange('enabled', v)}
+            aria-label={title}
           />
         </div>
       </div>
@@ -60,20 +64,20 @@ const ModerationContent: FC<ModerationContentProps> = ({
           <div className="px-3 pt-0.5 pb-3">
             <div className="flex h-8 items-center justify-between gap-2">
               <span className="system-2xs-medium-uppercase text-text-secondary">
-                {t('feature.moderation.modal.content.preset', { ns: 'appDebug' })}
+                {t($ => $['feature.moderation.modal.content.preset'], { ns: 'appDebug' })}
               </span>
               <span className="flex shrink-0 items-center gap-0.5 rounded bg-background-section px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                 <span className="i-ri-markdown-line size-3" aria-hidden />
-                {t('feature.moderation.modal.content.supportMarkdown', { ns: 'appDebug' })}
+                {t($ => $['feature.moderation.modal.content.supportMarkdown'], { ns: 'appDebug' })}
               </span>
             </div>
             {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
             <div className="relative h-20">
               <Textarea
-                aria-label={t('feature.moderation.modal.content.preset', { ns: 'appDebug' }) as string}
+                aria-label={t($ => $['feature.moderation.modal.content.preset'], { ns: 'appDebug' }) as string}
                 value={presetResponse}
                 className="size-full resize-none pb-8"
-                placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
+                placeholder={t($ => $['feature.moderation.modal.content.placeholder'], { ns: 'appDebug' }) || ''}
                 onValueChange={handlePresetResponseChange}
               />
               <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
@@ -85,7 +89,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
           </div>
         )
       }
-    </div>
+    </section>
   )
 }
 

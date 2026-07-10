@@ -14,7 +14,7 @@ import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import yaml from 'js-yaml'
+import { dump } from 'js-yaml'
 
 /** Path to the dev entry point — no build required. */
 export const BIN = resolve(__dirname, '../../../bin/dev.js')
@@ -214,7 +214,7 @@ async function writeFileToken(configDir: string, host: string, email: string, be
     version: 1,
     tokens: { [host]: { [email]: bearer } },
   }
-  await writeFile(join(configDir, 'tokens.yml'), yaml.dump(doc, { lineWidth: -1, noRefs: true }), { mode: 0o600 })
+  await writeFile(join(configDir, 'tokens.yml'), dump(doc, { lineWidth: -1, noRefs: true }), { mode: 0o600 })
 }
 
 /**

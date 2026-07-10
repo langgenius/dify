@@ -1,3 +1,6 @@
+import type {
+  useNodesSyncDraft,
+} from './use-nodes-sync-draft'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   useCallback,
@@ -13,7 +16,6 @@ import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
 import {
-  useNodesSyncDraft,
   useNodesSyncDraftByCanEdit,
 } from './use-nodes-sync-draft'
 
@@ -45,7 +47,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      toast.error(t('exportFailed', { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
     finally {
       setExporting(false)
@@ -70,7 +72,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } as any)
     }
     catch {
-      toast.error(t('exportFailed', { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }, [appDetail, eventEmitter, handleExportDSL, t])
 
@@ -82,12 +84,6 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
 export const useDSLByCanEdit = (canEdit: boolean) => {
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return useDSLBase(doSyncWorkflowDraft)
-}
-
-export const useDSL = () => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   return useDSLBase(doSyncWorkflowDraft)
 }

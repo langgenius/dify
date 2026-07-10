@@ -61,7 +61,7 @@ const FloatRightContainer = ({
                       )}
                       {showClose && (
                         <DrawerCloseButton
-                          aria-label={t('operation.close', { ns: 'common' })}
+                          aria-label={t($ => $['operation.close'], { ns: 'common' })}
                           className="size-6 rounded-md"
                         />
                       )}

@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { TitleTooltip } from '../../components/title-tooltip'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
 import { ModeBadge } from './status-badge'
 
 export function Field({ label, hint, children }: {
@@ -55,13 +55,13 @@ export function DeploymentSelect({ value, onChange, options, ariaLabel, placehol
       disabled={options.length === 0}
     >
       <SelectTrigger
-        aria-label={ariaLabel ?? placeholder ?? t('deployDrawer.defaultSelect')}
+        aria-label={ariaLabel ?? placeholder ?? t($ => $['deployDrawer.defaultSelect'])}
         className={cn(
           'h-8 min-w-0 px-2 text-left system-sm-medium',
           !selectedOption && 'text-text-quaternary',
         )}
       >
-        {selectedOption?.label ?? placeholder ?? t('deployDrawer.defaultSelect')}
+        {selectedOption?.label ?? placeholder ?? t($ => $['deployDrawer.defaultSelect'])}
       </SelectTrigger>
       <SelectContent popupClassName="w-(--anchor-width)">
         {options.map(opt => opt.value
@@ -87,7 +87,7 @@ function EnvironmentHealthDot({ status }: {
   status: EnvironmentStatus
 }) {
   const { t } = useTranslation('deployments')
-  const label = t(`health.${status}`)
+  const label = t($ => $[`health.${status}`])
   const isReady = status === EnvironmentStatusEnum.ENVIRONMENT_STATUS_READY
 
   return (
@@ -118,7 +118,7 @@ function EnvironmentHealthDot({ status }: {
 
 export function EnvironmentRow({ env }: { env: Environment }) {
   const { t } = useTranslation('deployments')
-  const summary = env.description.trim() || t(`backend.${env.backend}`)
+  const summary = env.description.trim() || t($ => $[`backend.${env.backend}`])
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">

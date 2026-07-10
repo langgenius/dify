@@ -23,8 +23,11 @@ from controllers.service_api.app.error import (
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import dump_response
 from models.model import App, EndUser
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -100,7 +103,7 @@ class AudioApi(Resource):
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.id)
 
-            return response
+            return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
@@ -163,6 +166,7 @@ class TextApi(Resource):
             500: "Internal server error",
         }
     )
+    # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
@@ -176,11 +180,22 @@ class TextApi(Resource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
-            response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    end_user_id=end_user.id,
+                )
+            return AudioService.transcript_tts(
+                app_model=app_model,
+                session=db.session(),
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_ref=message_ref,
             )
-
-            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()

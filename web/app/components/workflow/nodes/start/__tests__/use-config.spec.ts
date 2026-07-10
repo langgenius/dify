@@ -2,6 +2,7 @@ import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import useConfig from '../use-config'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -79,7 +80,7 @@ describe('start/use-config', () => {
     currentInputs = createPayload()
 
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockUseWorkflow.mockReturnValue({

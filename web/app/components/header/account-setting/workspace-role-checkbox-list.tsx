@@ -4,8 +4,7 @@ import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +23,14 @@ type WorkspaceRoleCheckboxListProps = {
 
 const PAGE_SIZE = 20
 const EMPTY_DISABLED_ROLE_IDS: string[] = []
+const LEGACY_ROLE_DESCRIPTION_KEY_MAP = {
+  admin: 'members.adminTip',
+  editor: 'members.editorTip',
+  normal: 'members.normalTip',
+  dataset_operator: 'members.datasetOperatorTip',
+} as const
+
+type LegacyRoleKey = keyof typeof LEGACY_ROLE_DESCRIPTION_KEY_MAP
 
 const createSelectedRolePlaceholder = (id: string): Role => ({
   id,
@@ -36,6 +43,20 @@ const createSelectedRolePlaceholder = (id: string): Role => ({
   permission_keys: [],
   role_tag: '',
 })
+
+const normalizeLegacyRoleKey = (value: string) => value.trim().toLowerCase()
+
+const isLegacyRoleKey = (value: string): value is LegacyRoleKey =>
+  Object.prototype.hasOwnProperty.call(LEGACY_ROLE_DESCRIPTION_KEY_MAP, value)
+
+const getLegacyRoleDescriptionKey = (role: Role) => {
+  const candidateKeys = [
+    normalizeLegacyRoleKey(role.name),
+    normalizeLegacyRoleKey(role.id),
+  ]
+
+  return candidateKeys.find(isLegacyRoleKey)
+}
 
 const WorkspaceRoleCheckboxList = ({
   selectedRoleIds,
@@ -138,16 +159,34 @@ const WorkspaceRoleCheckboxList = ({
     onSelectedRolesChange([role])
   }, [disabledRoleIdSet, onSelectedRolesChange, roleById])
 
-  const renderRoleText = (role: Role) => (
-    <div className="min-w-0 flex-1">
-      <div className="system-sm-semibold text-text-secondary">
-        {role.name}
+  const getRoleDescription = (role: Role) => {
+    if (role.description)
+      return role.description
+
+    const legacyRoleDescriptionKey = allowMultipleRoles
+      ? undefined
+      : getLegacyRoleDescriptionKey(role)
+
+    if (legacyRoleDescriptionKey)
+      return t($ => $[LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey]], { ns: 'common' })
+
+    return t($ => $['role.noDescription'], { ns: 'permission' })
+  }
+
+  const renderRoleText = (role: Role) => {
+    const description = getRoleDescription(role)
+
+    return (
+      <div className="min-w-0 flex-1">
+        <div className="system-sm-semibold text-text-secondary">
+          {role.name}
+        </div>
+        <div className="mt-0.5 system-xs-regular text-text-tertiary">
+          {description}
+        </div>
       </div>
-      <div className="mt-0.5 system-xs-regular text-text-tertiary">
-        {role.description || t('role.noDescription', { ns: 'permission' })}
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <>
@@ -160,14 +199,14 @@ const WorkspaceRoleCheckboxList = ({
           <Input
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            placeholder={t('role.searchPlaceholder', { ns: 'permission' })}
+            placeholder={t($ => $['role.searchPlaceholder'], { ns: 'permission' })}
             className="pr-8 pl-8"
           />
           {keyword && (
             <button
               type="button"
               className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-components-input-border-active"
-              aria-label={t('operation.clear', { ns: 'common' })}
+              aria-label={t($ => $['operation.clear'], { ns: 'common' })}
               onClick={() => setKeyword('')}
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -184,13 +223,13 @@ const WorkspaceRoleCheckboxList = ({
         {rolesLoading
           ? (
               <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                {t('role.loading', { ns: 'permission' })}
+                {t($ => $['role.loading'], { ns: 'permission' })}
               </div>
             )
           : filteredRoles.length === 0
             ? (
                 <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                  {t('role.noMatchingRoles', { ns: 'permission' })}
+                  {t($ => $['role.noMatchingRoles'], { ns: 'permission' })}
                 </div>
               )
             : (
@@ -248,14 +287,15 @@ const WorkspaceRoleCheckboxList = ({
 
                             return (
                               <li key={role.id}>
-                                <RadioRoot
+                                <RadioItem
                                   value={role.id}
                                   disabled={disabled}
-                                  variant="unstyled"
+                                  nativeButton
                                   render={(
-                                    <div
+                                    <button
+                                      type="button"
                                       className={cn(
-                                        'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                                        'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                                         checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
                                         disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                                       )}
@@ -264,7 +304,7 @@ const WorkspaceRoleCheckboxList = ({
                                 >
                                   <RadioControl className="pointer-events-none mt-0.5" />
                                   {renderRoleText(role)}
-                                </RadioRoot>
+                                </RadioItem>
                               </li>
                             )
                           })}

@@ -7,7 +7,6 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
 import { defaultPlan, NUM_INFINITE } from '@/app/components/billing/config'
-import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
 import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -33,9 +32,31 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppCtx,
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -233,7 +254,20 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when subscription management permission is granted', () => {
+    it('should show billing button when manager has subscription management permission', () => {
+      setupProviderContext({ type: Plan.sandbox })
+      setupAppContext({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
+
+      render(<Billing />)
+
+      expect(screen.getByText(/viewBillingTitle/i)).toBeInTheDocument()
+      expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
+    })
+
+    it('should hide billing button when subscription management permission is granted without manager role', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupAppContext({
         isCurrentWorkspaceManager: false,
@@ -242,8 +276,7 @@ describe('Billing Page + Plan Integration', () => {
 
       render(<Billing />)
 
-      expect(screen.getByText(/viewBillingTitle/i)).toBeInTheDocument()
-      expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
+      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
     })
 
     it('should hide billing button when subscription management permission is missing', () => {
@@ -696,83 +729,7 @@ describe('Capacity Full Components Integration', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. Header Billing Button Integration
-// Tests HeaderBillingBtn behavior for different plan states
-// ═══════════════════════════════════════════════════════════════════════════
-describe('Header Billing Button Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupAppContext()
-  })
-
-  it('should render UpgradeBtn (premium badge) for sandbox plan', () => {
-    setupProviderContext({ type: Plan.sandbox })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
-  })
-
-  it('should render "pro" badge for professional plan', () => {
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('pro')).toBeInTheDocument()
-    expect(screen.queryByText(/upgradeBtn/i)).not.toBeInTheDocument()
-  })
-
-  it('should render "team" badge for team plan', () => {
-    setupProviderContext({ type: Plan.team })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('team')).toBeInTheDocument()
-  })
-
-  it('should return null when billing is disabled', () => {
-    setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should return null when plan is not fetched yet', () => {
-    setupProviderContext({ type: Plan.sandbox }, { isFetchedPlan: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should call onClick when clicking pro/team badge in non-display-only mode', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not call onClick when isDisplayOnly is true', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} isDisplayOnly />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).not.toHaveBeenCalled()
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 6. PriorityLabel Integration
+// 5. PriorityLabel Integration
 // Tests priority badge display for different plan types
 // ═══════════════════════════════════════════════════════════════════════════
 describe('PriorityLabel Integration', () => {

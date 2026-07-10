@@ -15,11 +15,15 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -67,13 +71,16 @@ const DropDown = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
     || datasetACLCapabilities.canAccessConfig
@@ -110,7 +117,7 @@ const DropDown = ({
       downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      toast.error(t('exportFailed', { ns: 'app' }))
+      toast.error(t($ => $.exportFailed, { ns: 'app' }))
     }
   }, [dataset, exportPipelineConfig, t])
 
@@ -118,7 +125,7 @@ const DropDown = ({
     setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
-      setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
+      setConfirmMessage(isUsedByApp ? t($ => $.datasetUsedByApp, { ns: 'dataset' })! : t($ => $.deleteDatasetConfirmContent, { ns: 'dataset' })!)
       setShowConfirmDelete(true)
     }
     catch (e: unknown) {
@@ -134,7 +141,7 @@ const DropDown = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      toast(t('datasetDeleted', { ns: 'dataset' }), { type: 'success' })
+      toast(t($ => $.datasetDeleted, { ns: 'dataset' }), { type: 'success' })
       invalidDatasetList()
       replace('/datasets')
     }
@@ -154,7 +161,7 @@ const DropDown = ({
       <DropdownMenuTrigger
         render={(
           <ActionButton
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t($ => $['operation.more'], { ns: 'common' })}
             size={expand ? 'l' : 'm'}
             className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
           />
@@ -190,7 +197,7 @@ const DropDown = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+              {t($ => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {confirmMessage}
@@ -198,10 +205,10 @@ const DropDown = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

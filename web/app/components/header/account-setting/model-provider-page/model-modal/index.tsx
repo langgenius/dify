@@ -41,9 +41,8 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { hasPermission } from '@/utils/permission'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -107,9 +106,7 @@ const ModelModal: FC<ModelModalProps> = ({
     available_credentials,
   } = credentialData as any
 
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation()
   const language = useLanguage()
   const {
@@ -135,7 +132,8 @@ const ModelModal: FC<ModelModalProps> = ({
       return
     }
 
-    if (!canManageCredential)
+    const canSubmitCredentialForm = credential ? canManageCredential : canCreateCredential
+    if (!canSubmitCredentialForm)
       return
 
     let modelNameAndTypeIsCheckValidated = true
@@ -149,17 +147,22 @@ const ModelModal: FC<ModelModalProps> = ({
       modelNameAndTypeValues = formResult.values
     }
 
-    if (mode === ModelModalModeEnum.configModelCredential && model) {
-      modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      }
-    }
+    if (
+      mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    ) {
+      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
+        ? {
+            model: currentCustomConfigurationModelFixedFields.__model_name,
+            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+          }
+        : undefined)
+      if (!modelContext)
+        return
 
-    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential && model) {
       modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
+        __model_name: modelContext.model,
+        __model_type: modelContext.model_type,
       }
     }
     const {
@@ -180,7 +183,13 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type) {
+    const shouldSaveModelCredential = mode === ModelModalModeEnum.configCustomModel
+      || mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    if (shouldSaveModelCredential) {
+      if (!__model_name || !__model_type)
+        return
+
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
@@ -197,18 +206,18 @@ const ModelModal: FC<ModelModalProps> = ({
       })
     }
     onSave(values)
-  }, [mode, selectedCredential, model, canUseCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential?.credential_id])
+  }, [mode, selectedCredential, model, currentCustomConfigurationModelFixedFields, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
 
   const modalTitle = useMemo(() => {
-    let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
+    let label = t($ => $['modelProvider.auth.apiKeyModal.title'], { ns: 'common' })
 
     if (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.addCustomModelToModelList)
-      label = t('modelProvider.auth.addModel', { ns: 'common' })
+      label = t($ => $['modelProvider.auth.addModel'], { ns: 'common' })
     if (mode === ModelModalModeEnum.configModelCredential) {
       if (credential)
-        label = t('modelProvider.auth.editModelCredential', { ns: 'common' })
+        label = t($ => $['modelProvider.auth.editModelCredential'], { ns: 'common' })
       else
-        label = t('modelProvider.auth.addModelCredential', { ns: 'common' })
+        label = t($ => $['modelProvider.auth.addModelCredential'], { ns: 'common' })
     }
 
     return (
@@ -222,7 +231,7 @@ const ModelModal: FC<ModelModalProps> = ({
     if (providerFormSchemaPredefined) {
       return (
         <div className="mt-1 system-xs-regular text-text-tertiary">
-          {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
+          {t($ => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'common' })}
         </div>
       )
     }
@@ -272,12 +281,12 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [mode, selectedCredential])
   const saveButtonText = useMemo(() => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList || mode === ModelModalModeEnum.configCustomModel)
-      return t('operation.add', { ns: 'common' })
-    return t('operation.save', { ns: 'common' })
+      return t($ => $['operation.add'], { ns: 'common' })
+    return t($ => $['operation.save'], { ns: 'common' })
   }, [mode, t])
   const canSaveCredentialChange = mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential.addNewCredential
     ? canUseCredential
-    : canManageCredential
+    : credential ? canManageCredential : canCreateCredential
 
   const handleDeleteCredential = useCallback(() => {
     handleConfirmDelete()
@@ -339,14 +348,14 @@ const ModelModal: FC<ModelModalProps> = ({
                 onSelect={setSelectedCredential}
                 selectedCredential={selectedCredential}
                 disabled={isLoading}
-                notAllowAddNewCredential={notAllowCustomCredential || !canManageCredential}
+                notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
               />
             )
           }
           {
             showCredentialLabel && (
               <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-                {t('modelProvider.auth.modelCredential', { ns: 'common' })}
+                {t($ => $['modelProvider.auth.modelCredential'], { ns: 'common' })}
                 <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
               </div>
             )
@@ -402,14 +411,14 @@ const ModelModal: FC<ModelModalProps> = ({
                   tone="destructive"
                   onClick={() => openConfirmDelete(credential, model)}
                 >
-                  {t('operation.remove', { ns: 'common' })}
+                  {t($ => $['operation.remove'], { ns: 'common' })}
                 </Button>
               )
             }
             <Button
               onClick={onCancel}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button
               variant="primary"
@@ -425,7 +434,7 @@ const ModelModal: FC<ModelModalProps> = ({
             <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
                 <Lock01 className="mr-1 size-3 text-text-tertiary" />
-                {t('modelProvider.encrypted.front', { ns: 'common' })}
+                {t($ => $['modelProvider.encrypted.front'], { ns: 'common' })}
                 <a
                   className="mx-1 text-text-accent"
                   target="_blank"
@@ -434,7 +443,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 >
                   PKCS1_OAEP
                 </a>
-                {t('modelProvider.encrypted.back', { ns: 'common' })}
+                {t($ => $['modelProvider.encrypted.back'], { ns: 'common' })}
               </div>
             </div>
           )
@@ -444,16 +453,16 @@ const ModelModal: FC<ModelModalProps> = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 p-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={doingAction}
               onClick={handleDeleteCredential}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

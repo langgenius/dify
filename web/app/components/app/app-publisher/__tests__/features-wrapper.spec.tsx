@@ -31,13 +31,6 @@ const mockFeatures = {
     number_limits: 3,
   },
 }
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/app/components/app/app-publisher', () => ({
   AppPublisher: (props: Record<string, any>) => {
     mockAppPublisherProps.current = props
@@ -117,7 +110,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     )
 
     fireEvent.click(screen.getByText('restore-through-wrapper'))
-    fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     await waitFor(() => {
       expect(publishedConfig.modelConfig.resetAppConfig).toHaveBeenCalledTimes(1)
@@ -148,7 +141,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     fireEvent.click(screen.getByText('restore-through-wrapper'))
     const dialog = screen.getByRole('alertdialog')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

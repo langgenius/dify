@@ -37,7 +37,7 @@ const SettingTimeZone: FC<{
     <button
       type="button"
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
     >
       {children}
     </button>
@@ -70,9 +70,9 @@ const AutoUpdateSetting: FC<Props> = ({
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
       case AUTO_UPDATE_STRATEGY.fixOnly:
-        return t(`${i18nPrefix}.strategy.fixOnly.selectedDescription`, { ns: 'plugin' })
+        return t($ => $[`${i18nPrefix}.strategy.fixOnly.selectedDescription`], { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.latest:
-        return t(`${i18nPrefix}.strategy.latest.selectedDescription`, { ns: 'plugin' })
+        return t($ => $[`${i18nPrefix}.strategy.latest.selectedDescription`], { ns: 'plugin' })
       default:
         return ''
     }
@@ -91,15 +91,15 @@ const AutoUpdateSetting: FC<Props> = ({
   const scopeOptions = useMemo(() => [
     {
       value: AUTO_UPDATE_MODE.update_all,
-      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.update_all}`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.update_all}`], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_MODE.exclude,
-      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.exclude}`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.exclude}`], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_MODE.partial,
-      label: t(`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.partial}`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.upgradeMode.${AUTO_UPDATE_MODE.partial}`], { ns: 'plugin' }),
     },
   ], [t])
 
@@ -149,33 +149,33 @@ const AutoUpdateSetting: FC<Props> = ({
   return (
     <div className="self-stretch px-6">
       <div className="my-3 flex items-center">
-        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}</div>
+        <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $[`${i18nPrefix}.updateSettings`], { ns: 'plugin' })}</div>
         <div className="ml-2 h-px grow bg-divider-subtle"></div>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label label={t(`${i18nPrefix}.automaticUpdates`, { ns: 'plugin' })} description={strategyDescription} />
+          <Label label={t($ => $[`${i18nPrefix}.automaticUpdates`], { ns: 'plugin' })} description={strategyDescription} />
           <StrategyPicker value={strategy_setting} onChange={handleChange('strategy_setting')} />
         </div>
         {strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
           <>
             <div className="flex items-center justify-between">
-              <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
+              <Label label={t($ => $[`${i18nPrefix}.updateTime`], { ns: 'plugin' })} />
               <div className="flex flex-col items-end">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}
                   onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
                   onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
-                  title={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })}
+                  title={t($ => $[`${i18nPrefix}.updateTime`], { ns: 'plugin' })}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
                   placement="bottom-end"
                 />
                 <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                   <Trans
-                    i18nKey={`${i18nPrefix}.changeTimezone`}
+                    i18nKey={$ => $[`${i18nPrefix}.changeTimezone`]}
                     ns="plugin"
                     components={{
                       setTimezone: <SettingTimeZone />,
@@ -185,9 +185,9 @@ const AutoUpdateSetting: FC<Props> = ({
               </div>
             </div>
             <div>
-              <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })} />
+              <Label label={t($ => $[`${i18nPrefix}.specifyPluginsToUpdate`], { ns: 'plugin' })} />
               <SegmentedControl<AUTO_UPDATE_MODE>
-                aria-label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })}
+                aria-label={t($ => $[`${i18nPrefix}.specifyPluginsToUpdate`], { ns: 'plugin' })}
                 className="mt-1 flex w-full"
                 value={[upgrade_mode]}
                 onValueChange={(nextValue) => {

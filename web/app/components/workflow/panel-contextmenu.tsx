@@ -9,6 +9,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FlowType } from '@/types/common'
 import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
   useDSL,
@@ -18,6 +19,7 @@ import {
   useWorkflowStartRun,
 } from './hooks'
 import { useHooksStore } from './hooks-store'
+import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
@@ -48,6 +50,7 @@ export function PanelContextmenu({
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
   const accessControl = useHooksStore(s => s.accessControl)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const isChatMode = useIsChatMode()
   const workflowOperationReadOnly = !!(
     workflowRunningData?.result.status === WorkflowRunningStatus.Running
@@ -57,6 +60,7 @@ export function PanelContextmenu({
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
   const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
+  const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
   const renderAddBlockTrigger = useCallback(() => {
     return (
@@ -69,7 +73,7 @@ export function PanelContextmenu({
           'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
         )}
       >
-        {t('common.addBlock', { ns: 'workflow' })}
+        {t($ => $['common.addBlock'], { ns: 'workflow' })}
       </ContextMenuItem>
     )
   }, [t])
@@ -97,6 +101,7 @@ export function PanelContextmenu({
             renderTrigger={renderAddBlockTrigger}
             renderTriggerAsButtonRoot
             onClose={onClose}
+            isolateKeyboardEvents
             offset={{
               mainAxis: -36,
               crossAxis: -4,
@@ -112,7 +117,7 @@ export function PanelContextmenu({
               onClose()
             }}
           >
-            {t('nodes.note.addNote', { ns: 'workflow' })}
+            {t($ => $['nodes.note.addNote'], { ns: 'workflow' })}
           </ContextMenuItem>
         )}
         {canCommentWorkflow && isCommentModeAvailable && (
@@ -131,7 +136,7 @@ export function PanelContextmenu({
               onClose()
             }}
           >
-            {t('comments.actions.addComment', { ns: 'workflow' })}
+            {t($ => $['comments.actions.addComment'], { ns: 'workflow' })}
           </ContextMenuItem>
         )}
         {accessControl.canRun && (
@@ -139,7 +144,7 @@ export function PanelContextmenu({
             className="justify-between gap-4 px-3 text-text-secondary"
             onClick={handleRunAction}
           >
-            {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
+            {isChatMode ? t($ => $['common.debugAndPreview'], { ns: 'workflow' }) : t($ => $['common.run'], { ns: 'workflow' })}
             {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
           </ContextMenuItem>
         )}
@@ -161,7 +166,7 @@ export function PanelContextmenu({
                 }
               }}
             >
-              {t('common.pasteHere', { ns: 'workflow' })}
+              {t($ => $['common.pasteHere'], { ns: 'workflow' })}
               <ShortcutKbd shortcut="workflow.paste" />
             </ContextMenuItem>
           </ContextMenuGroup>
@@ -175,14 +180,16 @@ export function PanelContextmenu({
               className="justify-between gap-4 px-3 text-text-secondary"
               onClick={() => exportCheck?.()}
             >
-              {t('export', { ns: 'app' })}
+              {t($ => $.export, { ns: 'app' })}
             </ContextMenuItem>
-            <ContextMenuItem
-              className="justify-between gap-4 px-3 text-text-secondary"
-              onClick={() => setShowImportDSLModal(true)}
-            >
-              {t('importApp', { ns: 'app' })}
-            </ContextMenuItem>
+            {!shouldHideImportApp && (
+              <ContextMenuItem
+                className="justify-between gap-4 px-3 text-text-secondary"
+                onClick={() => setShowImportDSLModal(true)}
+              >
+                {t($ => $.importApp, { ns: 'app' })}
+              </ContextMenuItem>
+            )}
           </ContextMenuGroup>
         </>
       )}

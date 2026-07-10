@@ -42,7 +42,7 @@ export function AppTrigger({
           )
         : (
             <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
-              {t('appSelector.placeholder', { ns: 'app' })}
+              {t($ => $['appSelector.placeholder'], { ns: 'app' })}
             </span>
           )}
       <span

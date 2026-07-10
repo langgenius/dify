@@ -5,13 +5,6 @@ import ChatUserInput from '../chat-user-input'
 
 const mockSetInputs = vi.fn()
 const mockUseContext = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('use-context-selector', () => ({
   useContext: () => mockUseContext(),
   createContext: vi.fn(() => ({})),
@@ -270,7 +263,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByText('panel.optional')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)panel\.optional(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should not show optional label for required fields', () => {
@@ -281,7 +274,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.queryByText('panel.optional')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)panel\.optional(?=$|:)/)).not.toBeInTheDocument()
     })
 
     it('should use key as label when name is not provided', () => {

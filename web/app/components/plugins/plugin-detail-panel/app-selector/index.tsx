@@ -14,7 +14,7 @@ import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-sel
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { consoleQuery } from '@/service/client'
-import { useAppDetail } from '@/service/use-apps'
+import { normalizeAppPagination, useAppDetail } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -58,7 +58,7 @@ export function AppSelector({
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
+    ...consoleQuery.apps.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...appListQuery,
@@ -68,6 +68,10 @@ export function AppSelector({
       getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
       initialPageParam: 1,
       placeholderData: keepPreviousData,
+    }),
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
     }),
   })
 
@@ -122,7 +126,7 @@ export function AppSelector({
       onOpenChange={setIsShow}
     >
       <PopoverTrigger
-        aria-label={t('appSelector.label', { ns: 'app' })}
+        aria-label={t($ => $['appSelector.label'], { ns: 'app' })}
         disabled={disabled}
         render={<button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />}
       >
@@ -138,7 +142,7 @@ export function AppSelector({
       >
         <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
+            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t($ => $['appSelector.label'], { ns: 'app' })}</div>
             <AppPicker
               placement="bottom"
               offset={offset}

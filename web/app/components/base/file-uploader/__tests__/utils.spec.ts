@@ -1,6 +1,8 @@
+import type { TFunction } from 'i18next'
 import type { FileEntity } from '../types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { upload } from '@/service/base'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '../../prompt-editor/constants'
 import { FileAppearanceTypeEnum } from '../types'
@@ -9,7 +11,6 @@ import {
   fileUpload,
   getFileAppearanceType,
   getFileExtension,
-  getFileNameFromUrl,
   getFilesInLogs,
   getFileUploadErrorMessage,
   getProcessedFiles,
@@ -29,7 +30,7 @@ describe('file-uploader utils', () => {
   })
 
   describe('getFileUploadErrorMessage', () => {
-    const createMockT = () => vi.fn().mockImplementation((key: string) => key) as unknown as import('i18next').TFunction
+    const createMockT = () => withSelectorKey((key: string, _options?: Record<string, unknown>) => key) as unknown as TFunction
 
     it('should return forbidden message when error code is forbidden', () => {
       const error = { response: { code: 'forbidden', message: 'Access denied' } }
@@ -624,18 +625,6 @@ describe('file-uploader utils', () => {
       expect(result[0]!.supportFileType).toBe('image') // correct, no change
       expect(result[1]!.supportFileType).toBe('image') // corrected from document to image
       expect(result[2]!.supportFileType).toBe('document') // conflict, no change
-    })
-  })
-
-  describe('getFileNameFromUrl', () => {
-    it('should extract filename from URL', () => {
-      expect(getFileNameFromUrl('http://example.com/path/file.txt'))
-        .toBe('file.txt')
-    })
-
-    it('should return empty string for URL ending with slash', () => {
-      expect(getFileNameFromUrl('http://example.com/path/'))
-        .toBe('')
     })
   })
 

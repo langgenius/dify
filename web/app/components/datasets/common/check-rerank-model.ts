@@ -1,5 +1,4 @@
 import type {
-  DefaultModelResponse,
   Model,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
@@ -43,31 +42,4 @@ export const isReRankModelSelected = ({
   }
 
   return true
-}
-
-export const ensureRerankModelSelected = ({
-  rerankDefaultModel,
-  indexMethod,
-  retrievalConfig,
-}: {
-  rerankDefaultModel: DefaultModelResponse
-  retrievalConfig: RetrievalConfig
-  indexMethod?: string
-}) => {
-  const rerankModel = retrievalConfig.reranking_model?.reranking_model_name ? retrievalConfig.reranking_model : undefined
-  if (
-    indexMethod === 'high_quality'
-    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
-    && !rerankModel
-    && rerankDefaultModel
-  ) {
-    return {
-      ...retrievalConfig,
-      reranking_model: {
-        reranking_provider_name: rerankDefaultModel.provider.provider,
-        reranking_model_name: rerankDefaultModel.model,
-      },
-    }
-  }
-  return retrievalConfig
 }

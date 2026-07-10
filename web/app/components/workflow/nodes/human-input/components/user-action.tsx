@@ -47,14 +47,14 @@ const UserActionItem: FC<UserActionItemProps> = ({
       .join('')
 
     if (sanitized !== withUnderscores) {
-      toast.error(t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }))
+      toast.error(t($ => $[`${i18nPrefix}.userActions.actionIdFormatTip`], { ns: 'workflow' }))
       return
     }
 
     // Limit to 20 characters
     if (sanitized.length > ACTION_ID_MAX_LENGTH) {
       sanitized = sanitized.slice(0, ACTION_ID_MAX_LENGTH)
-      toast.error(t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }))
+      toast.error(t($ => $[`${i18nPrefix}.userActions.actionIdTooLong`], { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }))
     }
 
     if (sanitized)
@@ -65,7 +65,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
     let value = e.target.value
     if (value.length > ACTION_VALUE_MAX_LENGTH) {
       value = value.slice(0, ACTION_VALUE_MAX_LENGTH)
-      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: ACTION_VALUE_MAX_LENGTH }))
+      toast.error(t($ => $[`${i18nPrefix}.userActions.buttonTextTooLong`], { ns: 'workflow', maxLength: ACTION_VALUE_MAX_LENGTH }))
     }
     onChange({ ...data, title: value })
   }
@@ -76,7 +76,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
         <Input
           wrapperClassName="w-[120px]"
           value={data.id}
-          placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`, { ns: 'workflow' })}
+          placeholder={t($ => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], { ns: 'workflow' })}
           onChange={handleIDChange}
           disabled={readonly}
         />
@@ -84,7 +84,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
       <div className="grow">
         <Input
           value={data.title}
-          placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`, { ns: 'workflow' })}
+          placeholder={t($ => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], { ns: 'workflow' })}
           onChange={handleTextChange}
           disabled={readonly}
         />

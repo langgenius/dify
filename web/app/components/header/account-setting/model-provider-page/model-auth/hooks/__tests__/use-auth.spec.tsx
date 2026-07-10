@@ -168,8 +168,6 @@ describe('useAuth', () => {
 
     expect(mockDeleteProviderCredential).toHaveBeenCalledWith({
       credential_id: 'cred-1',
-      model: 'gpt-4',
-      model_type: ModelTypeEnum.textGeneration,
     })
     expect(mockDeleteModelService).not.toHaveBeenCalled()
     expect(onRemove).toHaveBeenCalledWith('cred-1')

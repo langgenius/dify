@@ -28,10 +28,10 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
 
   return (
     <div className="flex items-center space-x-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-[5px]">
-      <TipPopup title={t('common.undo', { ns: 'workflow' })!} shortcut="workflow.undo">
+      <TipPopup title={t($ => $['common.undo'], { ns: 'workflow' })!} shortcut="workflow.undo">
         <button
           type="button"
-          aria-label={t('common.undo', { ns: 'workflow' })!}
+          aria-label={t($ => $['common.undo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
           disabled={nodesReadOnly || buttonsDisabled.undo}
           className={
@@ -43,10 +43,10 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           <span className="i-ri-arrow-go-back-line size-4" />
         </button>
       </TipPopup>
-      <TipPopup title={t('common.redo', { ns: 'workflow' })!} shortcut="workflow.redo">
+      <TipPopup title={t($ => $['common.redo'], { ns: 'workflow' })!} shortcut="workflow.redo">
         <button
           type="button"
-          aria-label={t('common.redo', { ns: 'workflow' })!}
+          aria-label={t($ => $['common.redo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
           disabled={nodesReadOnly || buttonsDisabled.redo}
           className={

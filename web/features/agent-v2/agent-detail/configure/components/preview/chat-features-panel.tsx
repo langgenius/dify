@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulAppFeaturesConfig, FileTransferMethod, FileType } from '@dify/contracts/api/console/agent/types.gen'
 import type { Features } from '@/app/components/base/features/types'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,6 +37,41 @@ const defaultFeatureState: Features = {
   annotationReply: { enabled: false },
 }
 
+const agentFileTypes = new Set<string>(['audio', 'custom', 'document', 'image', 'video'])
+const agentFileTransferMethods = new Set<string>(['datasource_file', 'local_file', 'remote_url', 'tool_file'])
+
+function isAgentFileType(value: string): value is FileType {
+  return agentFileTypes.has(value)
+}
+
+function isAgentFileTransferMethod(value: string): value is FileTransferMethod {
+  return agentFileTransferMethods.has(value)
+}
+
+function toAgentFileTransferMethods(values?: readonly string[]): FileTransferMethod[] | undefined {
+  return values?.filter(isAgentFileTransferMethod)
+}
+
+function toAgentFileUploadFeatureConfig(file: Features['file']): AgentSoulAppFeaturesConfig['file_upload'] {
+  if (!file)
+    return undefined
+
+  const { allowed_file_types, allowed_file_upload_methods } = file
+  const fileUpload: Record<string, unknown> = { ...file }
+  delete fileUpload.allowed_file_types
+  delete fileUpload.allowed_file_upload_methods
+
+  return {
+    ...fileUpload,
+    ...(allowed_file_types
+      ? { allowed_file_types: allowed_file_types.filter(isAgentFileType) }
+      : {}),
+    ...(allowed_file_upload_methods
+      ? { allowed_file_upload_methods: toAgentFileTransferMethods(allowed_file_upload_methods) }
+      : {}),
+  }
+}
+
 function toPanelFeatures(appFeatures?: AgentSoulAppFeaturesConfig): Features {
   return {
     ...defaultFeatureState,
@@ -65,7 +100,7 @@ function toAppFeatures(features: Features, appFeatures?: AgentSoulAppFeaturesCon
     speech_to_text: features.speech2text,
     retriever_resource: features.citation,
     sensitive_word_avoidance: features.moderation as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
-    file_upload: features.file,
+    file_upload: toAgentFileUploadFeatureConfig(features.file),
     annotation_reply: features.annotationReply,
   }
 }
@@ -80,12 +115,15 @@ function AgentChatFeaturesPanelContent({
   const featuresStore = useFeaturesStore()
   const setAppFeatures = useSetAppFeatures()
   const handleChange = useCallback(() => {
+    if (disabled)
+      return
+
     const features = featuresStore?.getState().features
     if (!features)
       return
 
     setAppFeatures(currentAppFeatures => toAppFeatures(features, currentAppFeatures ?? appFeatures))
-  }, [appFeatures, featuresStore, setAppFeatures])
+  }, [appFeatures, disabled, featuresStore, setAppFeatures])
 
   return (
     <NewFeaturePanel
@@ -96,8 +134,8 @@ function AgentChatFeaturesPanelContent({
       showModeration={false}
       showAnnotationReply={false}
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"
-      title={t('agentDetail.configure.chatFeatures.title')}
-      description={t('agentDetail.configure.chatFeatures.description')}
+      title={t($ => $['agentDetail.configure.chatFeatures.title'])}
+      description={t($ => $['agentDetail.configure.chatFeatures.description'])}
       onChange={handleChange}
       onClose={onClose}
     />

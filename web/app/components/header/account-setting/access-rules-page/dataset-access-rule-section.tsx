@@ -97,7 +97,7 @@ const DatasetAccessRuleSection = ({
         resourceType: 'dataset',
       }, {
         onSuccess: () => {
-          toast.success(t('accessRule.created', { ns: 'permission' }))
+          toast.success(t($ => $['accessRule.created'], { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
@@ -111,7 +111,7 @@ const DatasetAccessRuleSection = ({
         resourceType: 'dataset',
       }, {
         onSuccess: () => {
-          toast.success(t('accessRule.updated', { ns: 'permission' }))
+          toast.success(t($ => $['accessRule.updated'], { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
@@ -121,7 +121,7 @@ const DatasetAccessRuleSection = ({
   return (
     <>
       <AccessRuleSection
-        title={t('accessRule.datasetTitle', { ns: 'permission' })}
+        title={t($ => $['accessRule.datasetTitle'], { ns: 'permission' })}
         rules={datasetAccessRules}
         totalCount={totalCount}
         isLoadingRules={isLoading}

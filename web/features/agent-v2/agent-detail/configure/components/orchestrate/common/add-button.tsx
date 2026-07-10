@@ -30,7 +30,7 @@ export function ConfigureSectionAddButton({
       className={cn('shrink-0 gap-1 px-2', className)}
     >
       <span aria-hidden className="i-ri-add-line size-3.5" />
-      <span>{t('operation.add')}</span>
+      <span>{t($ => $['operation.add'])}</span>
     </Button>
   )
 }

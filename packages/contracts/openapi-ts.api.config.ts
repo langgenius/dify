@@ -10,13 +10,21 @@ type SwaggerSchema = JsonObject & {
   $ref?: string
 }
 
+type OpenApiMediaType = JsonObject & {
+  schema?: SwaggerSchema
+}
+
+type OpenApiResponse = JsonObject & {
+  content?: Record<string, OpenApiMediaType>
+}
+
 type OpenApiComponents = JsonObject & {
   schemas?: Record<string, SwaggerSchema>
 }
 
 type SwaggerOperation = JsonObject & {
   operationId?: string
-  responses?: Record<string, unknown>
+  responses?: Record<string, OpenApiResponse>
 }
 
 type SwaggerDocument = JsonObject & {
@@ -52,6 +60,10 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
+const fastOpenApiConsolePathPrefix = '/console/api'
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
@@ -92,11 +104,11 @@ const segmentWords = (segment: string) => {
   return toWords(segment)
 }
 
+// Split on `:` too so custom methods nest as their own node (apps.byAppId.run), not apps.appIdRun.
+const routeNamingSegments = (routePath: string) => routePath.split(/[/:]/).filter(Boolean)
+
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routeNamingSegments(routePath).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
@@ -104,10 +116,7 @@ const operationId = (method: string, routePath: string) => {
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = operation.path
-    .split('/')
-    .filter(Boolean)
-    .map(segment => toCamelCase(segmentWords(segment)))
+  const segments = routeNamingSegments(operation.path).map(segment => toCamelCase(segmentWords(segment)))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
@@ -182,6 +191,53 @@ const addOperationIds = (document: SwaggerDocument) => {
   }
 }
 
+const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
+  // This runs before contract filtering. Flask-RESTX often emits plain success responses
+  // without a body schema; give those routes an opaque output so they stay in oRPC.
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation))
+        continue
+
+      const swaggerOperation = operation as SwaggerOperation
+      for (const [status, response] of Object.entries(swaggerOperation.responses ?? {})) {
+        // Ignore non-2xx or 204 or those w/o a response field
+        if (!/^2\d\d$/.test(status) || status === '204' || !isObject(response))
+          continue
+
+        const content = response.content
+        if (!isObject(content) || Object.keys(content).length === 0) {
+          // No response specification, fill a dummy opaque resp
+          response.content = {
+            'application/json': {
+              schema: {
+                additionalProperties: true,
+                type: 'object',
+              },
+            },
+          }
+          continue
+        }
+
+        for (const [mediaType, media] of Object.entries(content)) {
+          if (mediaType !== 'application/json' && mediaType !== 'text/event-stream')
+            continue
+          if (!isObject(media) || isObject(media.schema))
+            continue
+
+          // JSON/SSE media without a schema traps heyapi. Patch only that media entry so
+          // sibling binary media keeps heyapi's Blob | File inference.
+          // Still a dummy opaque resp
+          media.schema = {
+            additionalProperties: true,
+            type: 'object',
+          }
+        }
+      }
+    }
+  }
+}
+
 const hasSuccessResponse = (operation: SwaggerOperation) => {
   return Object.entries(operation.responses ?? {}).some(([status, response]) => {
     if (!/^2\d\d$/.test(status))
@@ -215,8 +271,36 @@ const filterContractOperations = (document: SwaggerDocument) => {
 }
 
 const normalizeApiSwagger = (document: SwaggerDocument) => {
+  normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+
+  return document
+}
+
+const mergeFastOpenApiConsoleSwagger = (document: SwaggerDocument) => {
+  const fastOpenApiDocument = readApiSwagger(fastOpenApiConsoleSpecFilename)
+  const targetPaths = document.paths ??= {}
+
+  for (const [routePath, pathItem] of Object.entries(fastOpenApiDocument.paths ?? {})) {
+    const contractPath = routePath.startsWith(fastOpenApiConsolePathPrefix)
+      ? routePath.slice(fastOpenApiConsolePathPrefix.length) || '/'
+      : routePath
+
+    if (targetPaths[contractPath])
+      throw new Error(`Duplicate console API path after FastOpenAPI merge: ${contractPath}`)
+
+    targetPaths[contractPath] = pathItem
+  }
+
+  const targetSchemas = getDocumentSchemas(document)
+  const sourceSchemas = getDocumentSchemas(fastOpenApiDocument)
+  for (const [schemaName, schema] of Object.entries(sourceSchemas)) {
+    if (targetSchemas[schemaName])
+      throw new Error(`Duplicate console API schema after FastOpenAPI merge: ${schemaName}`)
+
+    targetSchemas[schemaName] = schema
+  }
 
   return document
 }
@@ -286,16 +370,13 @@ const consoleContractEntryContent = (segments: string[]) => {
     }
   })
 
-  const imports = contracts
-    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+  const contractEntries = contracts
+    .map(contract => `  ${contract.name}: () => import('./${contract.importPath}/orpc.gen').then(({ ${contract.name} }) => ({ ${contract.name} })),`)
     .join('\n')
-  const contractEntries = contracts.map(contract => `  ${contract.name},`).join('\n')
 
   return `// This file is auto-generated by @hey-api/openapi-ts
 
-${imports}
-
-export const contract = {
+export const contractLoaders = {
 ${contractEntries}
 }
 `
@@ -307,6 +388,44 @@ const writeConsoleContractEntry = (segments: string[]) => {
   fs.writeFileSync(entryPath, consoleContractEntryContent(segments))
 }
 
+const consoleRouterContractContent = (segments: string[]) => {
+  const contracts = segments.map((segment) => {
+    return {
+      importPath: toKebabCase(segment),
+      name: toCamelCase(segmentWords(segment)),
+    }
+  })
+
+  const imports = contracts
+    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .join('\n')
+
+  const communityContractEntries = contracts
+    .map(contract => `  ${contract.name},`)
+    .join('\n')
+
+  return `// This file is auto-generated by packages/contracts/openapi-ts.api.config.ts
+
+${imports}
+import { contract as enterpriseContract } from '../../enterprise/orpc.gen'
+
+const communityContract = {
+${communityContractEntries}
+}
+
+export const consoleRouterContract = {
+  enterprise: enterpriseContract,
+  ...communityContract,
+}
+`
+}
+
+const writeConsoleRouterContract = (segments: string[]) => {
+  const routerPath = path.resolve(currentDir, 'generated/api/console/router.gen.ts')
+  fs.mkdirSync(path.dirname(routerPath), { recursive: true })
+  fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
+}
+
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
     clean: false,
@@ -314,7 +433,10 @@ const createConsoleContractEntryJob = (document: SwaggerDocument, segments: stri
     outputPath: 'generated/api/console',
     plugins: [],
     source: {
-      callback: () => writeConsoleContractEntry(segments),
+      callback: () => {
+        writeConsoleContractEntry(segments)
+        writeConsoleRouterContract(segments)
+      },
       enabled: true,
       path: null,
       serialize: () => '',
@@ -342,7 +464,11 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(
+    spec.name === 'console'
+      ? mergeFastOpenApiConsoleSwagger(readApiSwagger(spec.filename))
+      : readApiSwagger(spec.filename),
+  )
 
   if (spec.name === 'console')
     return splitConsoleDocument(document)
@@ -380,10 +506,20 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       'name': 'zod',
       '~resolvers': {
         string: (ctx) => {
-          if (ctx.schema.format !== 'binary')
-            return undefined
+          if (ctx.schema.format === 'binary')
+            return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
 
-          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+          if (ctx.schema.pattern === pydanticDecimalStringPattern) {
+            // the pydantic generated regex will emit error like
+            // regexp/no-useless-assertions, so patch the regex here
+            return $(ctx.symbols.z)
+              .attr('string')
+              .call()
+              .attr('regex')
+              .call($.regexp(codegenSafeDecimalStringPattern))
+          }
+
+          return undefined
         },
       },
     },

@@ -31,7 +31,7 @@ const Item = ({
   const isBucket = type === 'bucket'
   const isFolder = type === 'folder'
 
-  const disabledTip = t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' })
+  const disabledTip = t($ => $['onlineDrive.notSupportedFileType'], { ns: 'datasetPipeline' })
 
   const handleCheckboxSelect = useCallback(() => {
     onSelect(file)

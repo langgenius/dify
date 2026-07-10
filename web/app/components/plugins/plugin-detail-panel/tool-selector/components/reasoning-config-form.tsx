@@ -156,8 +156,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
       language,
       schema,
     })
+    const selectValue = typeof varInput?.value === 'string' ? varInput.value : null
     const selectedOption = isSelect && options
-      ? pickerProps.selectItems.find(item => item.value === (varInput?.value as string | number | undefined)) ?? null
+      ? pickerProps.selectItems.find(item => item.value === selectValue) ?? null
       : null
 
     return (
@@ -177,7 +178,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   render={(
                     <button
                       type="button"
-                      aria-label={t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                      aria-label={t($ => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
                       className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                       onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                     >
@@ -186,14 +187,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   )}
                 />
                 <TooltipContent className="system-xs-medium text-text-secondary">
-                  {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                  {t($ => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
                 </TooltipContent>
               </Tooltip>
             )}
 
           </div>
           <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
-            <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
+            <span className="system-xs-medium text-text-secondary">{t($ => $['detailPanel.toolSelector.auto'], { ns: 'plugin' })}</span>
             <Switch
               size="xs"
               checked={!!auto}
@@ -230,13 +231,20 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && options && (
-              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type)(value)}>
+              <Select<string>
+                value={selectedOption?.value ?? null}
+                onValueChange={(value) => {
+                  if (value == null || value === '')
+                    return
+                  handleValueChange(variable, type)(value)
+                }}
+              >
                 <SelectTrigger className="h-8 grow">
                   {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
                 </SelectTrigger>
                 <SelectContent>
                   {pickerProps.selectItems.map(item => (
-                    <SelectItem key={item.value} value={String(item.value)}>
+                    <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>
@@ -299,7 +307,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             rel="noopener noreferrer"
             className="inline-flex items-center text-xs text-text-accent"
           >
-            {t('howToGet', { ns: 'tools' })}
+            {t($ => $.howToGet, { ns: 'tools' })}
             <RiArrowRightUpLine className="ml-1 size-3" />
           </a>
         )}

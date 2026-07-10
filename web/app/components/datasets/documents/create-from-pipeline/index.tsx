@@ -5,12 +5,14 @@ import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
@@ -40,9 +42,9 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
   const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
@@ -223,7 +225,7 @@ const CreateFormPipeline = () => {
         <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
+            title={t($ => $['addDocuments.title'], { ns: 'datasetPipeline' })}
             currentStep={currentStep}
           />
           <div className="grow overflow-y-auto">
@@ -302,8 +304,8 @@ const CreateFormPipeline = () => {
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+          title={t($ => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t($ => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
         />
       )}
     </div>

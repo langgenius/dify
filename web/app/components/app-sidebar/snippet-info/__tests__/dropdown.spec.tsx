@@ -15,12 +15,39 @@ const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
 let mockDropdownOpen = false
 let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys
+    },
+  },
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -192,7 +219,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
-      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.deleteSnippet')).not.toBeInTheDocument()
 
       unmount()
@@ -201,7 +228,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
-      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
       expect(screen.getByText('snippet.menu.deleteSnippet')).toBeInTheDocument()
     })
   })
@@ -222,6 +249,8 @@ describe('SnippetInfoDropdown', () => {
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      if (!mockSnippet.description)
+        throw new Error('mockSnippet.description is required for this test')
       expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))
@@ -244,7 +273,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Export Snippet', () => {
     it('should export and download the snippet yaml', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockResolvedValue('yaml: content')
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -264,7 +293,7 @@ describe('SnippetInfoDropdown', () => {
 
     it('should show an error toast when export fails', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)

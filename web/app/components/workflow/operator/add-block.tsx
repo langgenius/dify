@@ -1,10 +1,10 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type {
+  Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill } from '@remixicon/react'
-import { produce } from 'immer'
 import {
   memo,
   useCallback,
@@ -12,7 +12,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useReactFlow,
   useStoreApi,
 } from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
@@ -28,12 +27,7 @@ import {
   usePanelInteractions,
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
-import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
-import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowHistory, WorkflowHistoryEvent } from '../hooks/use-workflow-history'
-import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
-import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
-import { useStore, useWorkflowStore } from '../store'
+import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
@@ -46,25 +40,21 @@ type AddBlockProps = {
   renderTriggerAsButtonRoot?: boolean
   offset?: OffsetOptions
   onClose?: () => void
+  isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
   renderTriggerAsButtonRoot,
   offset,
   onClose,
+  isolateKeyboardEvents,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
-  const mousePosition = useStore(s => s.mousePosition)
-  const collaborativeWorkflow = useCollaborativeWorkflow()
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { saveStateToHistory } = useWorkflowHistory()
-  const { createInlineAgentBinding } = useCreateInlineAgentBinding()
   const [open, setOpen] = useState(false)
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
@@ -89,7 +79,7 @@ const AddBlock = ({
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
-        ...(defaultValue as any),
+        ...(defaultValue as Node['data']),
         title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...pluginDefaultValue,
         _isCandidate: true,
@@ -99,61 +89,15 @@ const AddBlock = ({
         y: 0,
       },
     })
-    if (isAgentV2NodeData(newNode.data) && needsInlineAgentBindingCreation(newNode.data)) {
-      const { nodes, setNodes } = collaborativeWorkflow.getState()
-      const { screenToFlowPosition } = reactflow
-      const position = screenToFlowPosition({
-        x: mousePosition.pageX,
-        y: mousePosition.pageY,
-      })
-      const nodeToInsert = {
-        ...newNode,
-        data: {
-          ...newNode.data,
-          _isCandidate: false,
-          _isTempNode: true,
-          selected: true,
-        },
-        position,
-      }
-      setNodes(produce(nodes, (draft) => {
-        draft.forEach((node) => {
-          node.data.selected = false
-        })
-        draft.push(nodeToInsert)
-      }))
-      workflowStore.setState({
-        candidateNode: undefined,
-      })
-      saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
-      createInlineAgentBinding(newNode.id, {
-        onSuccess: (binding) => {
-          const { nodes, setNodes } = collaborativeWorkflow.getState()
-          setNodes(produce(nodes, (draft) => {
-            const node = draft.find(node => node.id === newNode.id)
-            if (node) {
-              if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-                node.data.agent_binding = binding
-              node.data._openInlineAgentPanel = true
-              delete node.data._isTempNode
-            }
-          }))
-          workflowStore.getState().setOpenInlineAgentPanelNodeId(newNode.id)
-          handleSyncWorkflowDraft(true, true)
-        },
-      })
-      setOpen(false)
-      return
-    }
     workflowStore.setState({
       candidateNode: newNode,
     })
-  }, [collaborativeWorkflow, createInlineAgentBinding, handleSyncWorkflowDraft, mousePosition.pageX, mousePosition.pageY, reactflow, saveStateToHistory, store, workflowStore, nodesMetaDataMap])
+  }, [store, workflowStore, nodesMetaDataMap])
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
       <TipPopup
-        title={t('common.addBlock', { ns: 'workflow' })}
+        title={t($ => $['common.addBlock'], { ns: 'workflow' })}
       >
         <div className={cn(
           'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -183,6 +127,7 @@ const AddBlock = ({
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
+      isolateKeyboardEvents={isolateKeyboardEvents}
     />
   )
 }

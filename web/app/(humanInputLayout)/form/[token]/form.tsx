@@ -53,8 +53,8 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-checkbox-circle-fill text-text-success"
-        title={t('humanInput.thanks', { ns: 'share' })}
-        subtitle={t('humanInput.recorded', { ns: 'share' })}
+        title={t($ => $['humanInput.thanks'], { ns: 'share' })}
+        subtitle={t($ => $['humanInput.recorded'], { ns: 'share' })}
         submissionID={token}
         removeWebappBrand={removeWebappBrand}
         replaceWebappLogo={replaceWebappLogo}
@@ -66,8 +66,8 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-information-2-fill text-text-accent"
-        title={t('humanInput.sorry', { ns: 'share' })}
-        subtitle={t('humanInput.expired', { ns: 'share' })}
+        title={t($ => $['humanInput.sorry'], { ns: 'share' })}
+        subtitle={t($ => $['humanInput.expired'], { ns: 'share' })}
         submissionID={token}
       />
     )
@@ -77,8 +77,8 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-information-2-fill text-text-accent"
-        title={t('humanInput.sorry', { ns: 'share' })}
-        subtitle={t('humanInput.completed', { ns: 'share' })}
+        title={t($ => $['humanInput.sorry'], { ns: 'share' })}
+        subtitle={t($ => $['humanInput.completed'], { ns: 'share' })}
         submissionID={token}
       />
     )
@@ -88,7 +88,7 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-error-warning-fill text-text-destructive"
-        title={t('humanInput.rateLimitExceeded', { ns: 'share' })}
+        title={t($ => $['humanInput.rateLimitExceeded'], { ns: 'share' })}
       />
     )
   }
@@ -97,7 +97,7 @@ const FormContent = () => {
     return (
       <FormStatusCard
         iconClassName="i-ri-error-warning-fill text-text-destructive"
-        title={t('humanInput.formNotFound', { ns: 'share' })}
+        title={t($ => $['humanInput.formNotFound'], { ns: 'share' })}
       />
     )
   }

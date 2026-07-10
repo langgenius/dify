@@ -74,11 +74,11 @@ export const getDisabledFunctionTooltip = ({
   noAccessPermission: boolean
 }) => {
   if (!publishedAt)
-    return t('notPublishedYet', { ns: 'app' })
+    return t($ => $.notPublishedYet, { ns: 'app' })
   if (missingStartNode)
-    return t('noUserInputNode', { ns: 'app' })
+    return t($ => $.noUserInputNode, { ns: 'app' })
   if (noAccessPermission)
-    return t('noAccessPermission', { ns: 'app' })
+    return t($ => $.noAccessPermission, { ns: 'app' })
 
   return undefined
 }

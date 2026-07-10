@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import ButtonStyleDropdown from '../button-style-dropdown'
 
@@ -29,7 +30,7 @@ describe('ButtonStyleDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
   })
 

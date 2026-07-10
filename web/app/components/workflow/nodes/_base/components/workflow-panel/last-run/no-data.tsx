@@ -19,7 +19,7 @@ const NoData: FC<Props> = ({
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <ClockPlay className="size-8 text-text-quaternary" />
-      <div className="my-2 system-xs-regular text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
+      <div className="my-2 system-xs-regular text-text-tertiary">{t($ => $['debug.noData.description'], { ns: 'workflow' })}</div>
       {canSingleRun && (
         <Button
           className="flex"
@@ -27,7 +27,7 @@ const NoData: FC<Props> = ({
           onClick={onSingleRun}
         >
           <RiPlayLine className="mr-1 size-3.5" />
-          <div>{t('debug.noData.runThisNode', { ns: 'workflow' })}</div>
+          <div>{t($ => $['debug.noData.runThisNode'], { ns: 'workflow' })}</div>
         </Button>
       )}
     </div>

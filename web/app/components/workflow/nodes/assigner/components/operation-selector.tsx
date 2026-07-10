@@ -61,7 +61,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             className={`truncate overflow-hidden system-sm-regular text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
           >
-            {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
+            {selectedItem && isOperationItem(selectedItem) ? t($ => $[`nodes.assigner.operations.${selectedItem.name}`], { ns: 'workflow' }) : t($ => $['nodes.assigner.operations.title'], { ns: 'workflow' })}
           </span>
         </div>
         <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4 text-text-quaternary group-data-popup-open:text-text-secondary', disabled && 'text-components-input-text-placeholder')} />
@@ -73,7 +73,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         popupClassName={cn('w-[140px]', popupClassName)}
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{t('nodes.assigner.operations.title', { ns: 'workflow' })}</DropdownMenuLabel>
+          <DropdownMenuLabel>{t($ => $['nodes.assigner.operations.title'], { ns: 'workflow' })}</DropdownMenuLabel>
           {items.map(item => (
             !isOperationItem(item)
               ? (
@@ -86,7 +86,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                     onClick={() => onSelect(item)}
                   >
                     <div className="flex min-h-5 grow items-center gap-1 px-1">
-                      <span className="flex grow system-sm-medium text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
+                      <span className="flex grow system-sm-medium text-text-secondary">{t($ => $[`nodes.assigner.operations.${item.name}`], { ns: 'workflow' })}</span>
                     </div>
                     {item.value === value && (
                       <div className="flex items-center justify-center">

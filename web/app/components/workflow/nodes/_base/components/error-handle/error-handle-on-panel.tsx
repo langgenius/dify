@@ -56,12 +56,12 @@ const ErrorHandle = ({
         <CollapseHeader>
           <CollapseTrigger>
             <CollapseTitle>
-              {t('nodes.common.errorHandle.title', { ns: 'workflow' })}
+              {t($ => $['nodes.common.errorHandle.title'], { ns: 'workflow' })}
             </CollapseTitle>
             {!!error_strategy && <CollapseIndicator />}
           </CollapseTrigger>
-          <Infotip aria-label={t('nodes.common.errorHandle.tip', { ns: 'workflow' })}>
-            {t('nodes.common.errorHandle.tip', { ns: 'workflow' })}
+          <Infotip aria-label={t($ => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}>
+            {t($ => $['nodes.common.errorHandle.tip'], { ns: 'workflow' })}
           </Infotip>
           <CollapseActions>
             <div className="pr-4">

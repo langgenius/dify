@@ -48,10 +48,10 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
 
   const handleCopyRedirectUri = () => {
     navigator.clipboard.writeText(oauthConfig?.redirect_uri || '')
-    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+    toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
   }
 
-  const title = t('modal.oauth.title', { ns: 'pluginTrigger' })
+  const title = t($ => $['modal.oauth.title'], { ns: 'pluginTrigger' })
 
   return (
     <Dialog
@@ -72,7 +72,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             <div className="mb-2 system-sm-medium text-text-secondary">
-              {t('subscription.addType.options.oauth.clientTitle', { ns: 'pluginTrigger' })}
+              {t($ => $['subscription.addType.options.oauth.clientTitle'], { ns: 'pluginTrigger' })}
             </div>
 
             {oauthConfig?.system_configured && (
@@ -80,7 +80,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
                 {CLIENT_TYPE_OPTIONS.map(option => (
                   <OptionCard
                     key={option}
-                    title={t(`subscription.addType.options.oauth.${option}`, { ns: 'pluginTrigger' })}
+                    title={t($ => $[`subscription.addType.options.oauth.${option}`], { ns: 'pluginTrigger' })}
                     onSelect={() => setClientType(option)}
                     selected={clientType === option}
                     className="flex-1"
@@ -96,7 +96,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
                 </div>
                 <div className="min-w-0 flex-1 text-text-secondary">
                   <div className="system-sm-regular leading-4 whitespace-pre-wrap">
-                    {t('modal.oauthRedirectInfo', { ns: 'pluginTrigger' })}
+                    {t($ => $['modal.oauthRedirectInfo'], { ns: 'pluginTrigger' })}
                   </div>
                   <div className="my-1.5 system-sm-medium leading-4 break-all">
                     {oauthConfig?.redirect_uri}
@@ -107,7 +107,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
                     onClick={handleCopyRedirectUri}
                   >
                     <span aria-hidden="true" className="mr-1 i-ri-clipboard-line h-[14px] w-[14px]" />
-                    {t('operation.copy', { ns: 'common' })}
+                    {t($ => $['operation.copy'], { ns: 'common' })}
                   </Button>
                 </div>
               </div>
@@ -130,7 +130,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
                   className="text-components-button-destructive-secondary-text"
                   onClick={handleRemove}
                 >
-                  {t('operation.remove', { ns: 'common' })}
+                  {t($ => $['operation.remove'], { ns: 'common' })}
                 </Button>
               )}
             </div>
@@ -140,14 +140,14 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
                 variant="secondary"
                 onClick={closeModal}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <div className="mx-3 h-4 w-px bg-divider-regular"></div>
               <Button
                 data-testid="modal-cancel"
                 onClick={() => handleSave(false)}
               >
-                {t('auth.saveOnly', { ns: 'plugin' })}
+                {t($ => $['auth.saveOnly'], { ns: 'plugin' })}
               </Button>
               <Button
                 data-testid="modal-confirm"

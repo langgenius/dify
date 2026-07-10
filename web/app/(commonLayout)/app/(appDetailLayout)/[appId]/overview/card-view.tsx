@@ -7,6 +7,7 @@ import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
@@ -18,8 +19,10 @@ import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
+  fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
@@ -40,8 +43,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const appDetail = useAppStore(state => state.appDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
@@ -69,31 +73,33 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
-        {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
+        {t($ => $['overview.disableTooltip.triggerMode'], { ns: 'appOverview', feature: featureName })}
       </div>
     </div>
   ), [t])
 
   const disableWebAppTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t($ => $['overview.appInfo.title'], { ns: 'appOverview' }))
     : null
   const disableApiTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('overview.apiInfo.title', { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t($ => $['overview.apiInfo.title'], { ns: 'appOverview' }))
     : null
   const disableMcpTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
+    ? buildTriggerModeMessage(t($ => $['mcp.server.title'], { ns: 'tools' }))
     : null
 
   const setNeedRefresh = useSetNeedRefreshAppList()
 
   const updateAppDetail = useCallback(async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appId] })
+      const res = await fetchAppDetail({ url: '/apps', id: appId })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appId, queryClient])
+  }, [appId, queryClient, setAppDetail])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
@@ -114,7 +120,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }
     }
 
-    toast(t(`actionMsg.${message}`, { ns: 'common' }) as string, { type })
+    toast(t($ => $[`actionMsg.${message}`], { ns: 'common' }) as string, { type })
   }
 
   // Listen for collaborative app state updates from other clients

@@ -139,7 +139,7 @@ const ConditionNumberInput = ({
                   !value && (
                     <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
                       <Variable02 className="mr-1 size-4 shrink-0" />
-                      <div className="w-0 grow truncate">{t('nodes.ifElse.selectVariable', { ns: 'workflow' })}</div>
+                      <div className="w-0 grow truncate">{t($ => $['nodes.ifElse.selectVariable'], { ns: 'workflow' })}</div>
                     </div>
                   )
                 }
@@ -167,7 +167,7 @@ const ConditionNumberInput = ({
                 type="number"
                 value={value}
                 onChange={e => onValueChange(e.target.value)}
-                placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
+                placeholder={t($ => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
                 onFocus={setFocus}
                 onBlur={setBlur}
               />

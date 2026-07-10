@@ -1,17 +1,18 @@
 import type { ComponentProps } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../declarations'
+import type { ModelSelectorModelPredicate } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
 import ModelIcon from '../model-icon'
@@ -30,6 +31,8 @@ type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['
 type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
   previewCardHandle: PreviewCardHandle
   onPreviewCardClose: () => void
   onHide: () => void
@@ -37,6 +40,8 @@ type PopupItemProps = {
 function PopupItem({
   defaultModel,
   model,
+  modelPredicate,
+  modelSuggestionPredicate,
   previewCardHandle,
   onPreviewCardClose,
   onHide,
@@ -45,16 +50,16 @@ function PopupItem({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
+  const suggestionTip = t($ => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find(provider => provider.provider === model.provider)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
-  const canManageCredentials = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential
   const handleOpenModelModal = () => {
-    if (!canManageCredentials)
+    if (!canCreateCredential)
       return
 
     if (!currentProvider)
@@ -110,7 +115,7 @@ function PopupItem({
         </button>
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
-            disabled={!canUseCredentials}
+            disabled={!canOpenCredentialDropdown}
             render={(
               <button type="button" className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
@@ -119,13 +124,13 @@ function PopupItem({
                         ? (
                             <>
                               <CreditsCoin className="size-3" />
-                              <span className="ml-1 truncate">{t('modelProvider.selector.aiCredits', { ns: 'common' })}</span>
+                              <span className="ml-1 truncate">{t($ => $['modelProvider.selector.aiCredits'], { ns: 'common' })}</span>
                             </>
                           )
                         : (
                             <>
                               <span className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
-                              <span className="ml-1 truncate text-text-warning">{t('modelProvider.selector.creditsExhausted', { ns: 'common' })}</span>
+                              <span className="ml-1 truncate text-text-warning">{t($ => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}</span>
                             </>
                           )
                     )
@@ -139,10 +144,10 @@ function PopupItem({
                     : (
                         <>
                           <StatusDot size="small" status="disabled" />
-                          <span className="ml-1 truncate text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
+                          <span className="ml-1 truncate text-text-tertiary">{t($ => $['modelProvider.selector.configureRequired'], { ns: 'common' })}</span>
                         </>
                       )}
-                {canUseCredentials && <span className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary" />}
+                {canOpenCredentialDropdown && <span className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary" />}
               </button>
             )}
           />
@@ -158,6 +163,8 @@ function PopupItem({
         </Popover>
       </div>
       {!collapsed && model.models.map((modelItem) => {
+        const isModelCompatible = modelPredicate?.(model, modelItem) ?? true
+        const isModelSuggested = modelSuggestionPredicate?.(model, modelItem) ?? false
         const rowClassName = cn(
           'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
           modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt',
@@ -171,10 +178,30 @@ function PopupItem({
                 modelName={modelItem.model}
               />
               <ModelName
-                className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                className={cn(
+                  'system-sm-medium text-text-secondary',
+                  !isModelCompatible && 'text-text-quaternary',
+                  modelItem.status !== ModelStatusEnum.active && 'opacity-60',
+                )}
                 modelItem={modelItem}
                 nameClassName={modelItem.deprecated ? 'line-through' : undefined}
-              />
+              >
+                {isModelSuggested && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <span
+                          aria-label={suggestionTip}
+                          className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
+                        />
+                      )}
+                    />
+                    <TooltipContent placement="top">
+                      {suggestionTip}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </ModelName>
             </div>
             {
               defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
@@ -193,13 +220,13 @@ function PopupItem({
                 onPointerDown={onPreviewCardClose}
               >
                 {rowContent}
-                {canManageCredentials && (
+                {canCreateCredential && (
                   <button
                     type="button"
                     className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
                     onClick={handleOpenModelModal}
                   >
-                    {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
+                    {t($ => $['operation.add'], { ns: 'common' }).toLocaleUpperCase()}
                   </button>
                 )}
               </div>

@@ -7,29 +7,10 @@ import { CollectionType } from '@/app/components/tools/types'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockInvalidateInstalledPluginList = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     getTagLabel: (name: string) => name,
   }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
-    langGeniusVersionInfo: { current_version: '1.0.0' },
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
-    }),
 }))
 
 vi.mock('@/service/use-tools', () => ({

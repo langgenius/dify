@@ -18,10 +18,11 @@ import { useLocale } from '@/context/i18n'
 
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
-// Mock the i18n context
 vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(() => 'en-US'),
 }))
+
+// Mock the i18n context
 
 describe('useFormatTimeFromNow', () => {
   beforeEach(() => {

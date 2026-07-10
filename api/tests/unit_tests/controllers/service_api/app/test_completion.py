@@ -31,10 +31,12 @@ from controllers.service_api.app.completion import (
     CompletionStopApi,
 )
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     ConversationCompletedError,
     NotChatAppError,
 )
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
@@ -250,7 +252,12 @@ class TestAppGenerateService:
         mock_generate.return_value = expected
 
         result = AppGenerateService.generate(
-            app_model=Mock(spec=App), user=Mock(spec=EndUser), args={"query": "Hi"}, invoke_from=Mock(), streaming=False
+            app_model=Mock(spec=App),
+            user=Mock(spec=EndUser),
+            args={"query": "Hi"},
+            invoke_from=Mock(),
+            session=Mock(),
+            streaming=False,
         )
 
         assert result == expected
@@ -262,7 +269,12 @@ class TestAppGenerateService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -272,7 +284,12 @@ class TestAppGenerateService:
 
         with pytest.raises(QuotaExceededError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -282,7 +299,12 @@ class TestAppGenerateService:
 
         with pytest.raises(InvokeError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
 
@@ -319,7 +341,7 @@ class TestCompletionControllerLogic:
                 mock_compact.return_value = {"text": "compacted"}
 
                 api = CompletionApi()
-                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+                response = unwrap(api.post)(api, Mock(), mock_app_model, mock_end_user)
 
                 assert response == {"text": "compacted"}
                 mock_generate_service.generate.assert_called_once()
@@ -335,7 +357,7 @@ class TestCompletionControllerLogic:
 
         with app.test_request_context():
             with pytest.raises(AppUnavailableError):
-                CompletionApi().post.__wrapped__(CompletionApi(), mock_app_model, mock_end_user)
+                unwrap(CompletionApi().post)(CompletionApi(), Mock(), mock_app_model, mock_end_user)
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
@@ -356,7 +378,7 @@ class TestCompletionControllerLogic:
                 mock_compact.return_value = {"text": "compacted"}
 
                 api = ChatApi()
-                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
+                response = unwrap(api.post)(api, Mock(), mock_app_model, mock_end_user)
                 assert response == {"text": "compacted"}
 
     @patch("controllers.service_api.app.completion.service_api_ns")
@@ -370,7 +392,7 @@ class TestCompletionControllerLogic:
 
         with app.test_request_context():
             with pytest.raises(NotChatAppError):
-                ChatApi().post.__wrapped__(ChatApi(), mock_app_model, mock_end_user)
+                unwrap(ChatApi().post)(ChatApi(), Mock(), mock_app_model, mock_end_user)
 
     @patch("controllers.service_api.app.completion.AppTaskService")
     def test_completion_stop_api_success(self, mock_task_service, app: Flask):
@@ -427,7 +449,7 @@ class TestCompletionApiController:
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
             with pytest.raises(AppUnavailableError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
     def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -443,7 +465,7 @@ class TestCompletionApiController:
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
 
 class TestCompletionStopApiController:
@@ -482,7 +504,7 @@ class TestChatApiController:
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
     def test_workflow_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -498,7 +520,7 @@ class TestChatApiController:
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -514,7 +536,23 @@ class TestChatApiController:
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
+
+    def test_agent_not_published_error_mapped(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AgentAppNotPublishedError("Agent has not been published")),
+        )
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.AGENT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
+            with pytest.raises(AgentNotPublishedError):
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
 
 class TestChatStopApiController:

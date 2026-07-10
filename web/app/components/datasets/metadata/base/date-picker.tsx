@@ -42,8 +42,8 @@ const WrappedDatePicker = ({
     handleClickTrigger,
   }: TriggerProps) => {
     const hasValue = Boolean(value)
-    const triggerText = value ? formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : t('metadata.chooseTime', { ns: 'dataset' })
-    const clearLabel = t('operation.clear', { ns: 'common' })
+    const triggerText = value ? formatTimestamp(value, t($ => $['metadata.dateTimeFormat'], { ns: 'datasetDocuments' })) : t($ => $['metadata.chooseTime'], { ns: 'dataset' })
+    const clearLabel = t($ => $['operation.clear'], { ns: 'common' })
 
     return (
       <div className={cn('group flex items-center rounded-md bg-components-input-bg-normal', className)}>

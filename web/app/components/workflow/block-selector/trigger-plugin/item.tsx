@@ -71,10 +71,10 @@ const TriggerPluginItem: FC<Props> = ({
       return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('tabs.customTool', { ns: 'workflow' })
+      return t($ => $['tabs.customTool'], { ns: 'workflow' })
 
     if (payload.type === CollectionType.workflow)
-      return t('tabs.workflowTool', { ns: 'workflow' })
+      return t($ => $['tabs.workflowTool'], { ns: 'workflow' })
 
     return payload.author || ''
   }, [payload.author, payload.type, t])
@@ -162,7 +162,7 @@ const TriggerPluginItem: FC<Props> = ({
         {!notShowProvider && hasAction && !isFold && (
           <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
             <ScrollAreaViewport
-              aria-label={t('tabs.allTriggers', { ns: 'workflow' })}
+              aria-label={t($ => $['tabs.allTriggers'], { ns: 'workflow' })}
               className="max-h-[240px] overscroll-contain"
               role="region"
             >
@@ -180,7 +180,7 @@ const TriggerPluginItem: FC<Props> = ({
                 ))}
               </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+            <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
           </ScrollAreaRoot>

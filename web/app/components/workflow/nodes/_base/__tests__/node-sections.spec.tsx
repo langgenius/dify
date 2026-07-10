@@ -1,13 +1,13 @@
-import type { TFunction } from 'i18next'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { NodeBody, NodeDescription, NodeHeaderMeta } from '../node-sections'
+
+const t = withSelectorKey((key: string) => key)
 
 describe('node sections', () => {
   it('should render loop and loading metadata in the header section', () => {
-    const t = ((key: string) => key) as unknown as TFunction
-
     render(
       <NodeHeaderMeta
         data={{
@@ -41,7 +41,6 @@ describe('node sections', () => {
   })
 
   it('should render iteration parallel metadata and running progress', async () => {
-    const t = ((key: string) => key) as unknown as TFunction
     const user = userEvent.setup()
 
     render(
@@ -68,7 +67,6 @@ describe('node sections', () => {
   })
 
   it('should render failed, exception, success and paused status icons', () => {
-    const t = ((key: string) => key) as unknown as TFunction
     const { rerender } = render(
       <NodeHeaderMeta
         data={{ type: BlockEnum.Tool, _runningStatus: NodeRunningStatus.Failed } as never}
@@ -116,7 +114,6 @@ describe('node sections', () => {
   })
 
   it('should render success icon when inspect vars exist without running status and hide description for non-description nodes', () => {
-    const t = ((key: string) => key) as unknown as TFunction
     const { rerender } = render(
       <NodeHeaderMeta
         data={{ type: BlockEnum.Tool } as never}

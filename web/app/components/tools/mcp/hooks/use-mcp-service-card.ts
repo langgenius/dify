@@ -2,9 +2,11 @@
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
@@ -36,8 +38,8 @@ export const useMCPServiceCardState = (
   const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
   const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const canManageMCP = useMemo(
     () => getAppACLCapabilities(appInfo.permission_keys, {

@@ -1,5 +1,6 @@
 'use client'
 
+import type { SelectorParam } from 'i18next'
 import type { FC, ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,7 @@ import { PluginSource } from '../../../types'
 
 type SourceConfig = {
   icon: ReactNode
-  tipKey: string
+  tipSelector: SelectorParam<'plugin'>
 }
 
 type PluginSourceBadgeProps = {
@@ -19,19 +20,19 @@ type PluginSourceBadgeProps = {
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
     icon: <BoxSparkleFill className="size-3.5 text-text-tertiary hover:text-text-accent" />,
-    tipKey: 'detailPanel.categoryTip.marketplace',
+    tipSelector: $ => $['detailPanel.categoryTip.marketplace'],
   },
   [PluginSource.github]: {
     icon: <Github className="size-3.5 text-text-secondary hover:text-text-primary" />,
-    tipKey: 'detailPanel.categoryTip.github',
+    tipSelector: $ => $['detailPanel.categoryTip.github'],
   },
   [PluginSource.local]: {
     icon: <span aria-hidden className="i-ri-hard-drive-3-line size-3.5 text-text-tertiary" />,
-    tipKey: 'detailPanel.categoryTip.local',
+    tipSelector: $ => $['detailPanel.categoryTip.local'],
   },
   [PluginSource.debugging]: {
     icon: <span aria-hidden className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning" />,
-    tipKey: 'detailPanel.categoryTip.debugging',
+    tipSelector: $ => $['detailPanel.categoryTip.debugging'],
   },
 }
 
@@ -41,7 +42,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const config = SOURCE_CONFIG_MAP[source]
   if (!config)
     return null
-  const tip = t(config.tipKey as never, { ns: 'plugin' })
+  const tip = t(config.tipSelector, { ns: 'plugin' })
 
   return (
     <>

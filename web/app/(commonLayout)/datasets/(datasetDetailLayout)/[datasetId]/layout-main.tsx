@@ -2,12 +2,16 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
@@ -56,20 +60,20 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const {
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
-    userProfile,
-    workspacePermissionKeys,
-  } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: datasetRes?.maintainer,
     workspacePermissionKeys,
-  }), [datasetRes?.maintainer, datasetRes?.permission_keys, userProfile?.id, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, currentUserId, workspacePermissionKeys])
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
   const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath
@@ -83,7 +87,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       || (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall)
     )
 
-  useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
+  useDocumentTitle(datasetRes?.name || t($ => $['menus.datasets'], { ns: 'common' }))
 
   useEffect(() => {
     if (shouldRedirect)
@@ -97,38 +101,37 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     router.replace(getDatasetRedirectionPath(datasetRes, datasetACLCapabilities))
   }, [datasetACLCapabilities, datasetRes, router, shouldRedirectUnauthorizedRoute])
 
-  if (!datasetRes && !error)
-    return <Loading type="app" />
-
-  if (shouldRedirect)
-    return <Loading type="app" />
-
-  if (isCheckingRouteAccess || shouldRedirectUnauthorizedRoute)
-    return <Loading type="app" />
-
   const isPipelinePage = pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
+  const shouldShowLoading = (!datasetRes && !error) || shouldRedirect || isCheckingRouteAccess || shouldRedirectUnauthorizedRoute
+  const content = shouldShowLoading
+    ? <Loading type="app" />
+    : (
+        <div
+          className={cn(
+            'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+            !isPipelinePage && 'pt-1 pr-1 pb-1',
+          )}
+        >
+          <DatasetDetailContext.Provider value={{
+            indexingTechnique: datasetRes?.indexing_technique,
+            dataset: datasetRes,
+            mutateDatasetRes,
+          }}
+          >
+            <div className={cn(
+              'min-w-0 grow overflow-hidden bg-components-panel-bg',
+              !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+            )}
+            >
+              {children}
+            </div>
+          </DatasetDetailContext.Provider>
+        </div>
+      )
 
   return (
-    <div
-      className={cn(
-        'relative flex h-0 grow overflow-hidden',
-        !isPipelinePage && 'pt-1 pr-1 pb-1',
-      )}
-    >
-      <DatasetDetailContext.Provider value={{
-        indexingTechnique: datasetRes?.indexing_technique,
-        dataset: datasetRes,
-        mutateDatasetRes,
-      }}
-      >
-        <div className={cn(
-          'grow overflow-hidden bg-components-panel-bg',
-          !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
-        )}
-        >
-          {children}
-        </div>
-      </DatasetDetailContext.Provider>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {content}
     </div>
   )
 }

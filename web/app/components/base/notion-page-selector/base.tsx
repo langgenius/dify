@@ -145,9 +145,9 @@ const NotionPageSelector = ({
     <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
-        title={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
-        buttonText={t('dataSource.notion.selector.configure', { ns: 'common' })}
-        docTitle={t('dataSource.notion.selector.docs', { ns: 'common' })}
+        title={t($ => $['dataSource.notion.selector.headerTitle'], { ns: 'common' })}
+        buttonText={t($ => $['dataSource.notion.selector.configure'], { ns: 'common' })}
+        docTitle={t($ => $['dataSource.notion.selector.docs'], { ns: 'common' })}
         docLink="https://www.notion.so/docs"
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">

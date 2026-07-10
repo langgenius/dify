@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListSortBy } from '@/contract/console/apps'
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,9 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 
 type AppSortFilterProps = {
   value: AppListSortBy
@@ -30,19 +33,19 @@ export function AppSortFilter({
   const { t } = useTranslation()
 
   const options = useMemo(() => ([
-    { value: 'last_modified', text: t('studio.sort.lastModified', { ns: 'app' }) },
-    { value: 'recently_created', text: t('studio.sort.recentlyCreated', { ns: 'app' }) },
-    { value: 'earliest_created', text: t('studio.sort.earliestCreated', { ns: 'app' }) },
+    { value: 'last_modified', text: t($ => $['studio.sort.lastModified'], { ns: 'app' }) },
+    { value: 'recently_created', text: t($ => $['studio.sort.recentlyCreated'], { ns: 'app' }) },
+    { value: 'earliest_created', text: t($ => $['studio.sort.earliestCreated'], { ns: 'app' }) },
   ] satisfies Array<{ value: AppListSortBy, text: string }>), [t])
 
   const activeOption = options.find(option => option.value === value) ?? options[0]!
-  const sortByLabel = t('studio.sort.sortBy', { ns: 'app' })
+  const sortByLabel = t($ => $['studio.sort.sortBy'], { ns: 'app' })
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`${sortByLabel} ${activeOption.text}`}
-        className="flex h-8 cursor-pointer items-center rounded-lg border-none bg-components-input-bg-normal py-1 pr-2.5 pl-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+        className="flex h-8 cursor-pointer items-center rounded-lg border-none bg-components-input-bg-normal py-1 pr-2.5 pl-2 text-left whitespace-nowrap outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
       >
         <span className="flex items-center gap-1 p-1 text-[13px] leading-4 whitespace-nowrap">
           <span className="font-normal text-text-tertiary">{sortByLabel}</span>

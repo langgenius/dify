@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/contract/console/workflow-comment'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
@@ -19,21 +19,22 @@ const mentionStoreState = vi.hoisted(() => ({
     mentionStoreState.mentionableUsersCache[appId] = users
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    workflowComments: {
-      mentionUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            mentionUsers: {
+              get: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+            },
+          },
+        },
+      },
     },
   },
 }))
@@ -98,7 +99,7 @@ describe('MentionInput', () => {
 
     await waitFor(() => {
       expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
+        params: { app_id: 'app-1' },
       })
     })
 

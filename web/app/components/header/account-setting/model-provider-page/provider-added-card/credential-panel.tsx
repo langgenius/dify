@@ -105,7 +105,7 @@ function TextLabel({ variant }: { variant: CardVariant }) {
   return (
     <>
       <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
-        {t(labelKey, { ns: 'common' })}
+        {t($ => $[labelKey], { ns: 'common' })}
       </span>
       {variant === 'credits-fallback' && (
         <Warning className="size-3 shrink-0 text-text-warning" />

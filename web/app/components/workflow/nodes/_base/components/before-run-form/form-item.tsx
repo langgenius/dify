@@ -131,13 +131,13 @@ const FormItem: FC<Props> = ({
           {payload.hide === true
             ? (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('panel.optional_and_hidden', { ns: 'workflow' })}
+                  {t($ => $['panel.optional_and_hidden'], { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
                   <span className="system-xs-regular text-text-tertiary">
-                    {t('panel.optional', { ns: 'workflow' })}
+                    {t($ => $['panel.optional'], { ns: 'workflow' })}
                   </span>
                 )
               )}
@@ -190,7 +190,7 @@ const FormItem: FC<Props> = ({
               }}
             >
               <SelectTrigger className="w-full">
-                {String(value || payload.default || t('placeholder.select', { ns: 'common' }))}
+                {String(value || payload.default || t($ => $['placeholder.select'], { ns: 'common' }))}
               </SelectTrigger>
               <SelectContent>
                 {(payload.options || []).map(option => (
@@ -343,7 +343,7 @@ const FormItem: FC<Props> = ({
                   value={item}
                   title={(
                     <span>
-                      {t('variableConfig.content', { ns: 'appDebug' })}
+                      {t($ => $['variableConfig.content'], { ns: 'appDebug' })}
                       {' '}
                       {index + 1}
                       {' '}

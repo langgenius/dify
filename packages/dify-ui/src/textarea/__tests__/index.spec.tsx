@@ -1,10 +1,10 @@
 import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
+  Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldRoot,
 } from '../../field'
 import { Form } from '../../form'
 import { Textarea } from '../index'
@@ -20,22 +20,21 @@ const setTextareaValue = (element: HTMLElement | SVGElement, value: string) => {
 describe('Textarea', () => {
   it('should render a labelled textarea through Base UI Field.Control', async () => {
     const screen = await render(
-      <FieldRoot name="description">
+      <Field name="description">
         <FieldLabel>Description</FieldLabel>
         <Textarea defaultValue="A workspace for support automation." />
         <FieldDescription>Shown to workspace members.</FieldDescription>
-      </FieldRoot>,
+      </Field>,
     )
 
     const textarea = screen.getByRole('textbox', { name: 'Description' })
 
     await expect.element(textarea).toHaveValue('A workspace for support automation.')
     await expect.element(textarea).toHaveAccessibleDescription('Shown to workspace members.')
-    await expect.element(textarea).toHaveClass('min-h-20', 'overflow-auto', 'rounded-lg', 'system-sm-regular')
     expect(asHTMLElement(textarea.element()).tagName).toBe('TEXTAREA')
   })
 
-  it('should apply size variants and custom classes', async () => {
+  it('should apply custom classes', async () => {
     const screen = await render(
       <label>
         Prompt
@@ -43,13 +42,7 @@ describe('Textarea', () => {
       </label>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass(
-      'rounded-[10px]',
-      'px-4',
-      'py-2',
-      'system-md-regular',
-      'resize-none',
-    )
+    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass('resize-none')
   })
 
   it('should call onValueChange and stay controlled until value changes', async () => {
@@ -80,12 +73,12 @@ describe('Textarea', () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="summary">
+        <Field name="summary">
           <FieldLabel>Summary</FieldLabel>
           <Textarea required minLength={10} />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -101,12 +94,12 @@ describe('Textarea', () => {
 
     await screen.rerender(
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="summary">
+        <Field name="summary">
           <FieldLabel>Summary</FieldLabel>
           <Textarea key="valid-summary" required minLength={10} defaultValue="Long enough summary" />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -136,7 +129,7 @@ describe('Textarea', () => {
     })
     const screen = await render(
       <Form aria-label="profile form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="profileSummary">
+        <Field name="profileSummary">
           <FieldLabel>Profile summary</FieldLabel>
           <Textarea
             id="profile-summary"
@@ -148,11 +141,11 @@ describe('Textarea', () => {
             maxLength={80}
             onBlur={onBlur}
           />
-        </FieldRoot>
-        <FieldRoot disabled>
+        </Field>
+        <Field disabled>
           <FieldLabel>Disabled note</FieldLabel>
           <Textarea name="disabledNote" defaultValue="Disabled value" />
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )

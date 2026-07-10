@@ -19,12 +19,14 @@ type Props = {
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
+  showLearnDify: boolean
 }
 
 function FirstEmptyState({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
+  showLearnDify,
 }: Props) {
   const { t } = useTranslation()
 
@@ -32,22 +34,22 @@ function FirstEmptyState({
     {
       id: 'template',
       icon: <span aria-hidden className="i-ri-function-add-line size-4" />,
-      title: t('newApp.startFromTemplate', { ns: 'app' }),
-      description: t('firstEmpty.templateDescription', { ns: 'app' }),
+      title: t($ => $['newApp.startFromTemplate'], { ns: 'app' }),
+      description: t($ => $['firstEmpty.templateDescription'], { ns: 'app' }),
       onClick: onCreateTemplate,
     },
     {
       id: 'blank',
       icon: <span aria-hidden className="i-ri-add-box-line size-4" />,
-      title: t('newApp.startFromBlank', { ns: 'app' }),
-      description: t('firstEmpty.blankDescription', { ns: 'app' }),
+      title: t($ => $['newApp.startFromBlank'], { ns: 'app' }),
+      description: t($ => $['firstEmpty.blankDescription'], { ns: 'app' }),
       onClick: onCreateBlank,
     },
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t('importDSL', { ns: 'app' }),
-      description: t('firstEmpty.importDescription', { ns: 'app' }),
+      title: t($ => $.importDSL, { ns: 'app' }),
+      description: t($ => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
     },
   ]
@@ -55,7 +57,7 @@ function FirstEmptyState({
   return (
     <div className="flex grow flex-col overflow-hidden">
       <div className="relative min-h-[430px] flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
           {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
           ))}
@@ -70,7 +72,7 @@ function FirstEmptyState({
                 </div>
               </div>
               <h2 id="apps-first-empty-title" className="system-sm-regular text-text-tertiary">
-                {t('firstEmpty.title', { ns: 'app' })}
+                {t($ => $['firstEmpty.title'], { ns: 'app' })}
               </h2>
             </div>
             <div className="flex w-full flex-col gap-2">
@@ -88,7 +90,7 @@ function FirstEmptyState({
               </div>
               <div className="flex items-center gap-2 text-text-tertiary">
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'app' })}</span>
+                <span className="system-xs-medium-uppercase uppercase">{t($ => $['firstEmpty.or'], { ns: 'app' })}</span>
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
               </div>
               <FirstEmptyActionCard
@@ -102,13 +104,15 @@ function FirstEmptyState({
           </div>
         </section>
       </div>
-      <LearnDify
-        className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
-        dismissible={false}
-        itemLimit={4}
-        showDescription
-        title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
-      />
+      {showLearnDify && (
+        <LearnDify
+          className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
+          dismissible={false}
+          itemLimit={4}
+          showDescription
+          title={t($ => $['firstEmpty.learnDifyTitle'], { ns: 'app' })}
+        />
+      )}
     </div>
   )
 }

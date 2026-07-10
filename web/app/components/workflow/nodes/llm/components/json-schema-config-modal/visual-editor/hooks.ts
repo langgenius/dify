@@ -67,7 +67,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.object) {
         const properties = schema.properties || {}
         if (properties[newName]) {
-          toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
+          toast.error(t($ => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }))
           emit('restorePropertyName')
           return
         }
@@ -91,7 +91,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         const properties = schema.items.properties || {}
         if (properties[newName]) {
-          toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
+          toast.error(t($ => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }))
           emit('restorePropertyName')
           return
         }
@@ -263,7 +263,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.properties
           if (properties[newName]) {
-            toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
+            toast.error(t($ => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }))
             samePropertyNameError = true
           }
 
@@ -352,7 +352,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.items.properties || {}
           if (properties[newName]) {
-            toast.error(t('nodes.llm.jsonSchema.fieldNameAlreadyExists', { ns: 'workflow' }))
+            toast.error(t($ => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }))
             samePropertyNameError = true
           }
 

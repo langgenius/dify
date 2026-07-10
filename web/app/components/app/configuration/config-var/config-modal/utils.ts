@@ -1,6 +1,8 @@
 import type { Item as SelectItem } from './type-select'
+import type { SelectorTranslate } from '@/app/components/app/configuration/utils'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { getStringSelectorTranslate } from '@/app/components/app/configuration/utils'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 
@@ -8,13 +10,11 @@ export const TEXT_MAX_LENGTH = 256
 export const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
 export const CHECKBOX_DEFAULT_FALSE_VALUE = 'false'
 
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type ValidateConfigModalPayloadOptions = {
   tempPayload: InputVar
   payload?: InputVar
   checkVariableName: (value: string, canBeEmpty?: boolean) => boolean
-  t: Translate
+  t: SelectorTranslate<'appDebug' | 'workflow'>
 }
 
 type ValidateConfigModalPayloadResult = {
@@ -33,10 +33,6 @@ export const getCheckboxDefaultSelectValue = (value: InputVar['default'] | boole
     return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
   return CHECKBOX_DEFAULT_FALSE_VALUE
 }
-
-export const parseCheckboxSelectValue = (value: string) =>
-  value === CHECKBOX_DEFAULT_TRUE_VALUE
-
 export const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   if (inputVar.type === InputVarType.select && inputVar.default === '')
     return { ...inputVar, default: undefined }
@@ -104,41 +100,42 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
 export const buildSelectOptions = ({
   isBasicApp,
   supportFile,
-  t,
+  t: rawTranslate,
 }: {
   isBasicApp: boolean
   supportFile?: boolean
-  t: Translate
+  t: SelectorTranslate<'appDebug' | 'workflow'>
 }): SelectItem[] => {
+  const t = getStringSelectorTranslate(rawTranslate)
   return [
     {
-      name: t('variableConfig.text-input', { ns: 'appDebug' }),
+      name: t($ => $['variableConfig.text-input'], { ns: 'appDebug' }),
       value: InputVarType.textInput,
     },
     {
-      name: t('variableConfig.paragraph', { ns: 'appDebug' }),
+      name: t($ => $['variableConfig.paragraph'], { ns: 'appDebug' }),
       value: InputVarType.paragraph,
     },
     {
-      name: t('variableConfig.select', { ns: 'appDebug' }),
+      name: t($ => $['variableConfig.select'], { ns: 'appDebug' }),
       value: InputVarType.select,
     },
     {
-      name: t('variableConfig.number', { ns: 'appDebug' }),
+      name: t($ => $['variableConfig.number'], { ns: 'appDebug' }),
       value: InputVarType.number,
     },
     {
-      name: t('variableConfig.checkbox', { ns: 'appDebug' }),
+      name: t($ => $['variableConfig.checkbox'], { ns: 'appDebug' }),
       value: InputVarType.checkbox,
     },
     ...(supportFile
       ? [
           {
-            name: t('variableConfig.single-file', { ns: 'appDebug' }),
+            name: t($ => $['variableConfig.single-file'], { ns: 'appDebug' }),
             value: InputVarType.singleFile,
           },
           {
-            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+            name: t($ => $['variableConfig.multi-files'], { ns: 'appDebug' }),
             value: InputVarType.multiFiles,
           },
         ]
@@ -146,7 +143,7 @@ export const buildSelectOptions = ({
     ...(!isBasicApp
       ? [
           {
-            name: t('variableConfig.json', { ns: 'appDebug' }),
+            name: t($ => $['variableConfig.json'], { ns: 'appDebug' }),
             value: InputVarType.jsonObject,
           },
         ]
@@ -158,8 +155,9 @@ export const validateConfigModalPayload = ({
   tempPayload,
   payload,
   checkVariableName,
-  t,
+  t: rawTranslate,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
+  const t = getStringSelectorTranslate(rawTranslate)
   const normalizedTempPayload = [InputVarType.singleFile, InputVarType.multiFiles].includes(tempPayload.type)
     ? { ...tempPayload, hide: false }
     : tempPayload
@@ -182,14 +180,14 @@ export const validateConfigModalPayload = ({
 
   if (!normalizedTempPayload.label) {
     return {
-      errorMessage: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }),
+      errorMessage: t($ => $['variableConfig.errorMsg.labelNameRequired'], { ns: 'appDebug' }),
     }
   }
 
   if (normalizedTempPayload.type === InputVarType.select) {
     if (!normalizedTempPayload.options?.length) {
       return {
-        errorMessage: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
+        errorMessage: t($ => $['variableConfig.errorMsg.atLeastOneOption'], { ns: 'appDebug' }),
       }
     }
 
@@ -204,7 +202,7 @@ export const validateConfigModalPayload = ({
 
     if (hasRepeatedItem) {
       return {
-        errorMessage: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
+        errorMessage: t($ => $['variableConfig.errorMsg.optionRepeat'], { ns: 'appDebug' }),
       }
     }
   }
@@ -212,18 +210,18 @@ export const validateConfigModalPayload = ({
   if ([InputVarType.singleFile, InputVarType.multiFiles].includes(normalizedTempPayload.type)) {
     if (!normalizedTempPayload.allowed_file_types?.length) {
       return {
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorMessage: t($ => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }),
+          field: t($ => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' }),
         }),
       }
     }
 
     if (normalizedTempPayload.allowed_file_types.includes(SupportUploadFileTypes.custom) && !normalizedTempPayload.allowed_file_extensions?.length) {
       return {
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorMessage: t($ => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('variableConfig.file.custom.name', { ns: 'appDebug' }),
+          field: t($ => $['variableConfig.file.custom.name'], { ns: 'appDebug' }),
         }),
       }
     }
@@ -234,13 +232,13 @@ export const validateConfigModalPayload = ({
       const schema = JSON.parse(normalizedJsonSchema)
       if (schema?.type !== 'object') {
         return {
-          errorMessage: t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }),
+          errorMessage: t($ => $['variableConfig.errorMsg.jsonSchemaMustBeObject'], { ns: 'appDebug' }),
         }
       }
     }
     catch {
       return {
-        errorMessage: t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }),
+        errorMessage: t($ => $['variableConfig.errorMsg.jsonSchemaInvalid'], { ns: 'appDebug' }),
       }
     }
   }

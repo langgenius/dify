@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +25,8 @@ import {
   WeaveIcon,
 } from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -39,15 +41,15 @@ const Panel: FC = () => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appDetail = useAppStore(s => s.appDetail)
   const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
-  const canConfigTracing = appACLCapabilities.canMonitor
+  const canConfigTracing = appACLCapabilities.canConfigureTracing
   const readOnly = !canConfigTracing
 
   const [isLoaded, {
@@ -60,7 +62,7 @@ const Panel: FC = () => {
     await updateTracingStatus({ appId, body: tracingStatus })
     setTracingStatus(tracingStatus)
     if (!noToast) {
-      toast(t('api.success', { ns: 'common' }), { type: 'success' })
+      toast(t($ => $['api.success'], { ns: 'common' }), { type: 'success' })
     }
   }
 
@@ -268,7 +270,7 @@ const Panel: FC = () => {
             )}
           >
             <TracingIcon size="md" />
-            <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="mx-2 system-sm-semibold text-text-secondary">{t($ => $[`${I18N_PREFIX}.title`], { ns: 'app' })}</div>
             <div className="rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
@@ -309,7 +311,7 @@ const Panel: FC = () => {
             <div className="mr-1 ml-4 flex items-center">
               <StatusDot status={enabled ? 'success' : 'disabled'} />
               <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
+                {t($ => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </div>
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}

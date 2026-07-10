@@ -25,7 +25,7 @@ export default function IntegrationsSettingModal({
   const { t } = useTranslation()
   const isAgentSource = source === 'agent'
   const handleSwitchToMarketplace = useCallback((path: string) => {
-    window.open(getMarketplaceUrl(path), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(path, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }, [])
 
   return (
@@ -46,7 +46,7 @@ export default function IntegrationsSettingModal({
               variant="tertiary"
               size="large"
               className="px-2"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
               <span className="i-ri-close-line h-5 w-5" />

@@ -13,15 +13,19 @@ import { forumCommand } from '../forum'
 vi.mock('../command-bus')
 
 const mockT = vi.fn((key: string) => key)
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => mockT(key),
-    language: 'en',
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    getI18n: () => ({
+      t: withSelectorKey((key: string) => mockT(key)),
+      language: 'en',
+    }),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   defaultDocBaseUrl: 'https://docs.dify.ai',
+  getDocHomePath: () => '/home',
 }))
 
 vi.mock('@/i18n-config/language', () => ({
@@ -45,7 +49,7 @@ describe('docsCommand', () => {
     docsCommand.execute?.()
 
     expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining('https://docs.dify.ai'),
+      'https://docs.dify.ai/en/home',
       '_blank',
       'noopener,noreferrer',
     )
@@ -85,7 +89,11 @@ describe('docsCommand', () => {
     const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
     await handlers['navigation.doc']!()
 
-    expect(openSpy).toHaveBeenCalledWith('https://docs.dify.ai/en', '_blank', 'noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://docs.dify.ai/en/home',
+      '_blank',
+      'noopener,noreferrer',
+    )
     openSpy.mockRestore()
   })
 

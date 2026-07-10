@@ -1,5 +1,6 @@
 import type { DefaultModel, Model } from '../declarations'
 import type { ModelSelectorPreviewPayload } from './popup-item'
+import type { ModelSelectorModelPredicate } from './types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
@@ -31,7 +32,7 @@ import MarketplaceSection from './marketplace-section'
 import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
-import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
+import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader, ShowIncompatibleModelsButton } from './popup-layout'
 
 export type PopupProps = {
   defaultModel?: DefaultModel
@@ -40,8 +41,11 @@ export type PopupProps = {
   scopeFeatures?: ModelFeatureEnum[]
   hideProviderSettingsFooter?: boolean
   providerSettingsSource?: 'agent'
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
+  onOpenMarketplace?: () => void
   onHide: () => void
 }
 function Popup({
@@ -51,8 +55,11 @@ function Popup({
   scopeFeatures = [],
   hideProviderSettingsFooter,
   providerSettingsSource,
+  modelPredicate,
+  modelSuggestionPredicate,
   onConfigureEmptyState,
   onInputValueChange,
+  onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
@@ -61,6 +68,7 @@ function Popup({
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
+  const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
   const openIntegrationsSetting = useIntegrationsSetting()
   const { modelProviders } = useProviderContext()
   const { data: enableMarketplace } = useSuspenseQuery({
@@ -163,9 +171,11 @@ function Popup({
     defaultModel,
     inputValue,
     installedModelList,
+    modelPredicate: showIncompatibleModels ? undefined : modelPredicate,
     scopeFeatures,
     searchIndex,
-  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, modelPredicate, scopeFeatures, searchIndex, showIncompatibleModels])
+  const shouldShowModelPredicateReveal = !!modelPredicate
 
   const marketplaceProviders = useMemo(() => {
     if (!enableMarketplace)
@@ -195,7 +205,7 @@ function Popup({
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
-      <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+      <ModelSelectorScrollBody label={t($ => $['modelProvider.models'], { ns: 'common' })}>
         <ComboboxList className="max-h-none overflow-visible p-0">
           <div className="pb-1">
             {
@@ -204,6 +214,8 @@ function Popup({
                   key={model.provider}
                   defaultModel={defaultModel}
                   model={model}
+                  modelPredicate={modelPredicate}
+                  modelSuggestionPredicate={modelSuggestionPredicate}
                   previewCardHandle={previewCardHandle}
                   onPreviewCardClose={handleClosePreviewCard}
                   onHide={onHide}
@@ -220,11 +232,17 @@ function Popup({
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
             <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-              {t('modelProvider.selector.noModelFoundForSearch', { ns: 'common', query: inputValue })}
+              {t($ => $['modelProvider.selector.noModelFoundForSearch'], { ns: 'common', query: inputValue })}
             </div>
           )}
           {scopeFeatures.length > 0 && (
             <CompatibleModelsNotice />
+          )}
+          {shouldShowModelPredicateReveal && (
+            <ShowIncompatibleModelsButton
+              showIncompatibleModels={showIncompatibleModels}
+              onClick={() => setShowIncompatibleModels(value => !value)}
+            />
           )}
           {enableMarketplace && (
             <MarketplaceSection
@@ -236,6 +254,7 @@ function Popup({
               theme={theme}
               onMarketplaceCollapsedChange={setMarketplaceCollapsed}
               onInstallPlugin={handleInstallPlugin}
+              onOpenMarketplace={onOpenMarketplace}
             />
           )}
         </div>
@@ -243,7 +262,7 @@ function Popup({
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
           <ModelSelectorPreviewCard
-            capabilitiesLabel={t('model.capabilities', { ns: 'common' })}
+            capabilitiesLabel={t($ => $['model.capabilities'], { ns: 'common' })}
             language={language}
             payload={payload as ModelSelectorPreviewPayload | undefined}
           />

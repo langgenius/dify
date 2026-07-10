@@ -13,7 +13,8 @@ type IShareLinkProps = {
   onClose: () => void
   api_base_url: string
   appId: string
-  mode: AppModeEnum
+  mode?: AppModeEnum
+  sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -38,57 +39,59 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   appId,
   api_base_url,
   mode,
+  sourceCodeRepository,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
-  const apiDocLink = docLink('/use-dify/publish/developing-with-apis')
+  const repository = sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
+  const apiDocLink = docLink('/api-reference/guides/get-started')
 
   return (
     <Dialog open={isShow} onOpenChange={open => !open && onClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!">
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(`${prefixCustomize}.title`, { ns: 'appOverview' })}
+          {t($ => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
         </DialogTitle>
         <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
-          {t(`${prefixCustomize}.explanation`, { ns: 'appOverview' })}
+          {t($ => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
         <DialogCloseButton />
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <Tag bordered={true} hideBg={true} className="border-text-accent-secondary text-text-accent-secondary uppercase">
-              {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}
+              {t($ => $[`${prefixCustomize}.way`], { ns: 'appOverview' })}
               {' '}
               1
             </Tag>
-            <p className="my-2 system-sm-medium text-text-secondary">{t(`${prefixCustomize}.way1.name`, { ns: 'appOverview' })}</p>
+            <p className="my-2 system-sm-medium text-text-secondary">{t($ => $[`${prefixCustomize}.way1.name`], { ns: 'appOverview' })}</p>
             <div className="flex py-4">
               <StepNum>1</StepNum>
               <div className="flex flex-col">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`, { ns: 'appOverview' })}</div>
-                <Button nativeButton={false} render={<a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer" />}>
+                <div className="text-text-primary">{t($ => $[`${prefixCustomize}.way1.step1`], { ns: 'appOverview' })}</div>
+                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t($ => $[`${prefixCustomize}.way1.step1Tip`], { ns: 'appOverview' })}</div>
+                <Button nativeButton={false} render={<a href={`https://github.com/langgenius/${repository}`} target="_blank" rel="noopener noreferrer" aria-label={t($ => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })} />}>
                   <GithubIcon className="mr-2 text-text-secondary" />
-                  {t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })}
+                  {t($ => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })}
                 </Button>
               </div>
             </div>
             <div className="flex pt-4">
               <StepNum>2</StepNum>
               <div className="flex flex-col">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
-                <Button nativeButton={false} render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" />}>
+                <div className="text-text-primary">{t($ => $[`${prefixCustomize}.way1.step2`], { ns: 'appOverview' })}</div>
+                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t($ => $[`${prefixCustomize}.way1.step2Tip`], { ns: 'appOverview' })}</div>
+                <Button nativeButton={false} render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" aria-label={t($ => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })} />}>
                   <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
-                  <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
+                  <span>{t($ => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}</span>
                 </Button>
               </div>
             </div>
             <div className="flex py-4">
               <StepNum>3</StepNum>
               <div className="flex w-full flex-col overflow-hidden">
-                <div className="text-text-primary">{t(`${prefixCustomize}.way1.step3`, { ns: 'appOverview' })}</div>
-                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step3Tip`, { ns: 'appOverview' })}</div>
+                <div className="text-text-primary">{t($ => $[`${prefixCustomize}.way1.step3`], { ns: 'appOverview' })}</div>
+                <div className="mt-1 mb-2 text-xs text-text-tertiary">{t($ => $[`${prefixCustomize}.way1.step3Tip`], { ns: 'appOverview' })}</div>
                 <pre className="box-border overflow-x-scroll rounded-lg border-[0.5px] border-components-panel-border bg-background-section px-4 py-3 text-xs font-medium text-text-secondary select-text">
                   NEXT_PUBLIC_APP_ID=
                   {`'${appId}'`}
@@ -107,17 +110,17 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           </div>
           <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <Tag bordered={true} hideBg={true} className="border-text-accent-secondary text-text-accent-secondary uppercase">
-              {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}
+              {t($ => $[`${prefixCustomize}.way`], { ns: 'appOverview' })}
               {' '}
               2
             </Tag>
-            <p className="my-2 system-sm-medium text-text-secondary">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
+            <p className="my-2 system-sm-medium text-text-secondary">{t($ => $[`${prefixCustomize}.way2.name`], { ns: 'appOverview' })}</p>
             <Button
               nativeButton={false}
-              render={<a href={apiDocLink} target="_blank" rel="noopener noreferrer" />}
+              render={<a href={apiDocLink} target="_blank" rel="noopener noreferrer" aria-label={t($ => $[`${prefixCustomize}.way2.operation`], { ns: 'appOverview' })} />}
               className="mt-2"
             >
-              <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })}</span>
+              <span className="text-sm text-text-secondary">{t($ => $[`${prefixCustomize}.way2.operation`], { ns: 'appOverview' })}</span>
               <span aria-hidden="true" className="ml-1 i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary" />
             </Button>
           </div>

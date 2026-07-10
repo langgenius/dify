@@ -61,24 +61,24 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
 
   const wordCountText = useMemo(() => {
     const count = content.length
-    return `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
+    return `${formatNumber(count)} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count })}`
   }, [content.length])
 
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (childChunkInfo?.updated_at ?? 0) * 1000,
-      dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+      dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
     })
-    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
+    return `${t($ => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
   }, [childChunkInfo?.updated_at])
 
   return (
     <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}>
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t('segment.editChildChunk', { ns: 'datasetDocuments' })}</div>
+          <div className="system-xl-semibold text-text-primary">{t($ => $['segment.editChildChunk'], { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t('segment.childChunk', { ns: 'datasetDocuments' }) as string} />
+            <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t($ => $['segment.childChunk'], { ns: 'datasetDocuments' }) as string} />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
             <Dot />
@@ -101,7 +101,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           )}
           <button
             type="button"
-            aria-label={t(fullScreen ? 'operation.zoomOut' : 'operation.zoomIn', { ns: 'common' })}
+            aria-label={t($ => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], { ns: 'common' })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
@@ -111,7 +111,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           </button>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={onCancel}
           >

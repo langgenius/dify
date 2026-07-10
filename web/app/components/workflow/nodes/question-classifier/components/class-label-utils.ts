@@ -8,7 +8,7 @@ const DEFAULT_EQUIVALENT_PREFIXES = ['CLASS', '分类', '分類', 'クラス']
 const getCanonicalDefaultClassLabel = (index: number) => `${LEGACY_DEFAULT_LABEL_PREFIX} ${index}`
 
 const getTranslatedDefaultClassLabel = (t: TFunction, index: number) => {
-  const translated = t(`${i18nPrefix}.defaultLabel`, { ns: 'workflow', index })
+  const translated = t($ => $[`${i18nPrefix}.defaultLabel`], { ns: 'workflow', index })
   if (typeof translated !== 'string')
     return undefined
 

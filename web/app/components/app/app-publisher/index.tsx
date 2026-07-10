@@ -1,3 +1,4 @@
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
@@ -37,15 +38,15 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { publishToCreatorsPlatform } from '@/service/apps'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
+import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { AccessControl } from '../app-access-control'
+import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -82,7 +83,8 @@ export type AppPublisherProps = {
   hasHumanInputNode?: boolean
 }
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_SHORTCUT = PUBLISH_HOTKEY.split('+')
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -128,6 +130,7 @@ export function AppPublisher({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const canManageTools = useCanManageTools()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -228,7 +231,7 @@ export function AppPublisher({
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
         return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-      throw new Error('No app found in Explore')
+      throw new Error(t($ => $.notPublishedYet, { ns: 'app' }))
     }, {
       onError: (err) => {
         toast.error(`${err.message || err}`)
@@ -240,7 +243,9 @@ export function AppPublisher({
     if (!appDetail)
       return
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
+      const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
+      setAppDetail({ ...res })
     }
     finally {
       setShowAppAccessControl(false)
@@ -283,14 +288,14 @@ export function AppPublisher({
         window.open(res.redirect_url, '_blank')
     }
     catch {
-      toast.error(t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
+      toast.error(t($ => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }))
     }
     finally {
       setPublishingToMarketplace(false)
     }
   }
 
-  useHotkey('Mod+Shift+P', (e) => {
+  useHotkey(PUBLISH_HOTKEY, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return
@@ -324,7 +329,7 @@ export function AppPublisher({
   const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const workflowToolAvailableForUser = workflowToolAvailable && canManageTools
   const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable
-    ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
+    ? t($ => $['common.workflowAsToolDisabledHint'], { ns: 'workflow' })
     : undefined
   const workflowToolPublished = !!toolPublished
   function closeWorkflowToolDrawer() {
@@ -375,7 +380,7 @@ export function AppPublisher({
               className="py-2 pr-2 pl-3"
               disabled={disabled}
             >
-              {t('common.publish', { ns: 'workflow' })}
+              {t($ => $['common.publish'], { ns: 'workflow' })}
               <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
             </Button>
           )}
@@ -449,8 +454,8 @@ export function AppPublisher({
                   onClick={handlePublishToMarketplace}
                 >
                   {publishingToMarketplace
-                    ? t('common.publishingToMarketplace', { ns: 'workflow' })
-                    : t('common.publishToMarketplace', { ns: 'workflow' })}
+                    ? t($ => $['common.publishingToMarketplace'], { ns: 'workflow' })
+                    : t($ => $['common.publishToMarketplace'], { ns: 'workflow' })}
                 </SuggestedAction>
               </div>
             )}

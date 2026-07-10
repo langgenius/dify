@@ -5,7 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxClear,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
@@ -30,9 +29,9 @@ const getSourceGroupLabel = (
   t: TFunction<'agentV2'>,
 ) => {
   if (group.type === 'webapp')
-    return t('agentDetail.logs.filters.source.webapp')
+    return t($ => $['agentDetail.logs.filters.source.webapp'])
   if (group.type === 'workflow')
-    return t('agentDetail.logs.filters.source.workflow')
+    return t($ => $['agentDetail.logs.filters.source.workflow'])
   return group.label
 }
 
@@ -73,16 +72,16 @@ export function AgentLogSourcePicker({
       onInputValueChange={setInputValue}
     >
       <ComboboxTrigger
-        aria-label={t('agentDetail.logs.filters.source.label')}
+        aria-label={t($ => $['agentDetail.logs.filters.source.label'])}
         className="mt-0 w-fit max-w-full min-w-22"
       >
-        <ComboboxValue placeholder={t('agentDetail.logs.filters.source.all')}>
+        <ComboboxValue placeholder={t($ => $['agentDetail.logs.filters.source.all'])}>
           {(selectedValue: AgentLogSourceResponse[]) => {
             if (selectedValue.length === 0)
-              return t('agentDetail.logs.filters.source.all')
+              return t($ => $['agentDetail.logs.filters.source.all'])
             if (selectedValue.length === 1)
               return selectedValue[0]!.app_name
-            return tCommon('dynamicSelect.selected', { count: selectedValue.length })
+            return tCommon($ => $['dynamicSelect.selected'], { count: selectedValue.length })
           }}
         </ComboboxValue>
       </ComboboxTrigger>
@@ -91,23 +90,22 @@ export function AgentLogSourcePicker({
           <ComboboxInputGroup className="h-8 min-h-8 px-2">
             <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
             <ComboboxInput
-              aria-label={t('agentDetail.logs.filters.source.searchLabel')}
-              placeholder={t('agentDetail.logs.filters.source.searchPlaceholder')}
+              aria-label={t($ => $['agentDetail.logs.filters.source.searchLabel'])}
+              placeholder={t($ => $['agentDetail.logs.filters.source.searchPlaceholder'])}
               className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
             />
-            <ComboboxClear className="mr-0" />
           </ComboboxInputGroup>
         </div>
         {isLoading && (
           <SourcePickerStatus>
-            {t('agentDetail.logs.filters.source.loading')}
+            {t($ => $['agentDetail.logs.filters.source.loading'])}
           </SourcePickerStatus>
         )}
         {isError && (
           <SourcePickerStatus className="flex items-center justify-center gap-2">
-            <span>{t('agentDetail.logs.filters.source.loadFailed')}</span>
+            <span>{t($ => $['agentDetail.logs.filters.source.loadFailed'])}</span>
             <Button variant="secondary" size="small" onClick={onRetry}>
-              {t('operation.retry', { ns: 'common' })}
+              {t($ => $['operation.retry'], { ns: 'common' })}
             </Button>
           </SourcePickerStatus>
         )}
@@ -140,7 +138,7 @@ export function AgentLogSourcePicker({
               ))}
             </ComboboxList>
             <ComboboxEmpty className="px-3 py-3 text-center system-xs-regular">
-              {t('agentDetail.logs.filters.source.empty')}
+              {t($ => $['agentDetail.logs.filters.source.empty'])}
             </ComboboxEmpty>
           </>
         )}

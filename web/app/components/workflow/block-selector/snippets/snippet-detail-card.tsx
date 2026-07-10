@@ -23,7 +23,7 @@ const SnippetDetailCard: FC<SnippetDetailCardProps> = ({
 
   const creatorName = useMemo(() => {
     const member = membersData?.accounts?.find(member => member.id === snippet.created_by)
-    return member?.name || t('unknownUser')
+    return member?.name || t($ => $.unknownUser)
   }, [membersData?.accounts, snippet.created_by, t])
 
   const blockTypes = useMemo(() => {

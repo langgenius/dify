@@ -42,7 +42,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
         </div>
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-white/8 p-0 backdrop-blur-[2px]"
           onClick={onCancel}
         >

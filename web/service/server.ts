@@ -1,15 +1,18 @@
-import type { ContractRouterClient } from '@orpc/contract'
+import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
+import type { ClientLink } from '@orpc/client'
+import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { cache } from 'react'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
 } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
-import { consoleRouterContract } from '@/contract/router'
+import { createConsoleDynamicLink } from './console-link'
 
 import 'server-only'
 
@@ -68,7 +71,30 @@ const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext |
   return requestHeaders
 }
 
-export const getServerConsoleClientContext = async (): Promise<ServerConsoleClientContext> => {
+type ServerConsoleClientLink = ClientLink<ServerConsoleClientContext>
+
+function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerConsoleClientLink {
+  return new OpenAPILink<ServerConsoleClientContext>(contract, {
+    url: getServerConsoleApiPrefix,
+    headers: ({ context }) => createServerConsoleRequestHeaders(context),
+    fetch: (request, init) => {
+      if (request.body && !request.headers.has('content-type'))
+        request.headers.set('Content-Type', 'application/json')
+
+      return globalThis.fetch(request, {
+        ...init,
+        cache: 'no-store',
+      })
+    },
+    interceptors: [
+      onError((error) => {
+        console.error(error)
+      }),
+    ],
+  })
+}
+
+export const getServerConsoleClientContext = cache(async (): Promise<ServerConsoleClientContext> => {
   const { cookies, headers } = await import('@/next/headers')
   const requestHeaders = await headers()
   const cookieStore = await cookies()
@@ -77,29 +103,12 @@ export const getServerConsoleClientContext = async (): Promise<ServerConsoleClie
     cookie: requestHeaders.get('cookie') || undefined,
     csrfToken: cookieStore.get(CSRF_COOKIE_NAME())?.value,
   }
-}
+})
 
 export const getServerConsoleRequestHeaders = async () =>
   createServerConsoleRequestHeaders(await getServerConsoleClientContext())
 
-const serverConsoleLink = new OpenAPILink<ServerConsoleClientContext>(consoleRouterContract, {
-  url: getServerConsoleApiPrefix,
-  headers: ({ context }) => createServerConsoleRequestHeaders(context),
-  fetch: (request, init) => {
-    if (request.body && !request.headers.has('content-type'))
-      request.headers.set('Content-Type', 'application/json')
-
-    return globalThis.fetch(request, {
-      ...init,
-      cache: 'no-store',
-    })
-  },
-  interceptors: [
-    onError((error) => {
-      console.error(error)
-    }),
-  ],
-})
+const serverConsoleLink = createConsoleDynamicLink<ServerConsoleClientContext>(createServerConsoleOpenAPILink)
 
 export const serverConsoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>> = createORPCClient(serverConsoleLink)
 

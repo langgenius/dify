@@ -98,20 +98,20 @@ const ViewAnnotationModal: FC<Props> = ({
   }, [id, isShow])
 
   const tabs = [
-    { value: TabType.annotation, text: t('viewModal.annotatedResponse', { ns: 'appAnnotation' }) },
+    { value: TabType.annotation, text: t($ => $['viewModal.annotatedResponse'], { ns: 'appAnnotation' }) },
     {
       value: TabType.hitHistory,
       text: (
         hitHistoryList.length > 0
           ? (
               <div className="flex items-center space-x-1">
-                <div>{t('viewModal.hitHistory', { ns: 'appAnnotation' })}</div>
+                <div>{t($ => $['viewModal.hitHistory'], { ns: 'appAnnotation' })}</div>
                 <Badge
-                  text={`${total} ${t(`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`, { ns: 'appAnnotation' })}`}
+                  text={`${total} ${t($ => $[`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`], { ns: 'appAnnotation' })}`}
                 />
               </div>
             )
-          : t('viewModal.hitHistory', { ns: 'appAnnotation' })
+          : t($ => $['viewModal.hitHistory'], { ns: 'appAnnotation' })
       ),
     },
   ]
@@ -156,12 +156,12 @@ const ViewAnnotationModal: FC<Props> = ({
           <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t('hitHistoryTable.query', { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('hitHistoryTable.match', { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('hitHistoryTable.response', { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('hitHistoryTable.source', { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('hitHistoryTable.score', { ns: 'appAnnotation' })}</td>
-                <td className="w-[160px] rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('hitHistoryTable.time', { ns: 'appAnnotation' })}</td>
+                <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t($ => $['hitHistoryTable.query'], { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['hitHistoryTable.match'], { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['hitHistoryTable.response'], { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['hitHistoryTable.source'], { ns: 'appAnnotation' })}</td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['hitHistoryTable.score'], { ns: 'appAnnotation' })}</td>
+                <td className="w-[160px] rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['hitHistoryTable.time'], { ns: 'appAnnotation' })}</td>
               </tr>
             </thead>
             <tbody className="system-sm-regular text-text-secondary">
@@ -190,7 +190,7 @@ const ViewAnnotationModal: FC<Props> = ({
                   </td>
                   <td className="p-3 pr-2">{item.source}</td>
                   <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
-                  <td className="p-3 pr-2">{formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                  <td className="p-3 pr-2">{formatTime(item.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
                 </tr>
               ))}
             </tbody>
@@ -202,10 +202,10 @@ const ViewAnnotationModal: FC<Props> = ({
                   totalPages={totalPages}
                   onPageChange={page => setCurrPage(page - 1)}
                   labels={{
-                    previous: t('pagination.previous', { ns: 'common' }),
-                    next: t('pagination.next', { ns: 'common' }),
-                    editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                    pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                    previous: t($ => $['pagination.previous'], { ns: 'common' }),
+                    next: t($ => $['pagination.next'], { ns: 'common' }),
+                    editPageNumber: (page, totalPages) => t($ => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+                    pageNumberInput: t($ => $['pagination.pageNumber'], { ns: 'common' }),
                   }}
                 />
               )
@@ -246,7 +246,7 @@ const ViewAnnotationModal: FC<Props> = ({
                       />
                     </DrawerTitle>
                     <DrawerCloseButton
-                      aria-label={t('operation.close', { ns: 'common' })}
+                      aria-label={t($ => $['operation.close'], { ns: 'common' })}
                       className="size-6 rounded-md"
                     />
                   </div>
@@ -259,15 +259,15 @@ const ViewAnnotationModal: FC<Props> = ({
                     <AlertDialogContent>
                       <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                         <AlertDialogTitle
-                          title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                          title={t($ => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           className="w-full truncate title-2xl-semi-bold text-text-primary"
                         >
-                          {t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
+                          {t($ => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                         </AlertDialogTitle>
                       </div>
                       <AlertDialogActions>
                         <AlertDialogCancelButton>
-                          {t('operation.cancel', { ns: 'common' })}
+                          {t($ => $['operation.cancel'], { ns: 'common' })}
                         </AlertDialogCancelButton>
                         <AlertDialogConfirmButton
                           tone="destructive"
@@ -277,7 +277,7 @@ const ViewAnnotationModal: FC<Props> = ({
                             onHide()
                           }}
                         >
-                          {t('operation.confirm', { ns: 'common' })}
+                          {t($ => $['operation.confirm'], { ns: 'common' })}
                         </AlertDialogConfirmButton>
                       </AlertDialogActions>
                     </AlertDialogContent>
@@ -290,12 +290,12 @@ const ViewAnnotationModal: FC<Props> = ({
                       onClick={() => setShowModal(true)}
                     >
                       <MessageCheckRemove />
-                      <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                      <div>{t($ => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
                     </div>
                     <div>
-                      {t('editModal.createdAt', { ns: 'appAnnotation' })}
+                      {t($ => $['editModal.createdAt'], { ns: 'appAnnotation' })}
 &nbsp;
-                      {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                      {formatTime(createdAt, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}
                     </div>
                   </div>
                 )}

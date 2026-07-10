@@ -17,7 +17,15 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Combobox = BaseCombobox.Root
+export type ComboboxProps<Value, Multiple extends boolean | undefined = false>
+  = BaseCombobox.Root.Props<Value, Multiple>
+
+export function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseCombobox.Root {...props} />
+}
+
 export const ComboboxValue = BaseCombobox.Value
 export const ComboboxGroup = BaseCombobox.Group
 export const ComboboxCollection = BaseCombobox.Collection
@@ -25,10 +33,8 @@ export const ComboboxRow = BaseCombobox.Row
 export const useComboboxFilter = BaseCombobox.useFilter
 export const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
-export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
-  = BaseCombobox.Root.Props<Value, Multiple>
-export type ComboboxRootChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
-export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
+export type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+export type ComboboxHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 
 const comboboxPopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
@@ -50,9 +56,9 @@ const comboboxItemClassName = [
 
 const comboboxTriggerVariants = cva(
   [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
+    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
@@ -198,7 +204,7 @@ const comboboxControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
     'group-data-readonly/combobox:hidden',
@@ -207,9 +213,9 @@ const comboboxControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {

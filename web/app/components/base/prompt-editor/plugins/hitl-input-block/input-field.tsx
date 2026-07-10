@@ -49,19 +49,19 @@ const InputField: React.FC<InputFieldProps> = ({
   const fieldTypeItems = useMemo<TypeSelectItem[]>(() => {
     return [
       {
-        name: t('variableConfig.paragraph', { ns: 'appDebug' }),
+        name: t($ => $['variableConfig.paragraph'], { ns: 'appDebug' }),
         value: InputVarType.paragraph,
       },
       {
-        name: t('variableConfig.select', { ns: 'appDebug' }),
+        name: t($ => $['variableConfig.select'], { ns: 'appDebug' }),
         value: InputVarType.select,
       },
       {
-        name: t('variableConfig.single-file', { ns: 'appDebug' }),
+        name: t($ => $['variableConfig.single-file'], { ns: 'appDebug' }),
         value: InputVarType.singleFile,
       },
       {
-        name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+        name: t($ => $['variableConfig.multi-files'], { ns: 'appDebug' }),
         value: InputVarType.multiFiles,
       },
     ]
@@ -216,14 +216,14 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="flex max-h-(--shortcut-popup-max-height) w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+    <div className="flex max-h-[var(--shortcut-popup-max-height,80dvh)] w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
       <div className="shrink-0 p-3 pb-2">
-        <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
+        <div className="system-md-semibold text-text-primary">{t($ => $[`${i18nPrefix}.title`], { ns: 'workflow' })}</div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
         <div className="mt-3">
           <div className="system-xs-medium text-text-secondary">
-            {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
+            {t($ => $[`${i18nPrefix}.fieldType`], { ns: 'workflow' })}
           </div>
           <div className="mt-1.5">
             <TypeSelector
@@ -235,12 +235,12 @@ const InputField: React.FC<InputFieldProps> = ({
         </div>
         <div className="mt-3">
           <div className="system-xs-medium text-text-secondary">
-            {t(`${i18nPrefix}.saveResponseAs`, { ns: 'workflow' })}
+            {t($ => $[`${i18nPrefix}.saveResponseAs`], { ns: 'workflow' })}
             <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
           </div>
           <Input
             className="mt-1.5"
-            placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`, { ns: 'workflow' })}
+            placeholder={t($ => $[`${i18nPrefix}.saveResponseAsPlaceholder`], { ns: 'workflow' })}
             value={tempPayload.output_variable_name}
             onChange={(e) => {
               setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
@@ -249,14 +249,14 @@ const InputField: React.FC<InputFieldProps> = ({
           />
           {tempPayload.output_variable_name && variableNameError && (
             <div className="mt-1 px-1 system-xs-regular text-text-destructive-secondary">
-              {t(`${i18nPrefix}.${variableNameError}`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.${variableNameError}`], { ns: 'workflow' })}
             </div>
           )}
         </div>
         {isParagraphFormInput(tempPayload) && (
           <div className="mt-4">
             <div className="mb-1.5 system-xs-medium text-text-secondary">
-              {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflow' })}
             </div>
             <PrePopulate
               isVariable={paragraphPayload.default.type === 'variable'}
@@ -274,7 +274,7 @@ const InputField: React.FC<InputFieldProps> = ({
         {isSelectFormInput(tempPayload) && (
           <div className="mt-4">
             <div className="mb-1.5 system-xs-medium text-text-secondary">
-              {t(`${i18nPrefix}.options`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.options`], { ns: 'workflow' })}
             </div>
             {tempPayload.option_source.type === 'variable'
               ? (
@@ -336,7 +336,7 @@ const InputField: React.FC<InputFieldProps> = ({
       </div>
       <div className="shrink-0 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
-          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button onClick={onCancel}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
           {isEdit
             ? (
                 <Button
@@ -344,7 +344,7 @@ const InputField: React.FC<InputFieldProps> = ({
                   onClick={handleSave}
                   disabled={!nameValid}
                 >
-                  {t('operation.save', { ns: 'common' })}
+                  {t($ => $['operation.save'], { ns: 'common' })}
                 </Button>
               )
             : (
@@ -354,7 +354,7 @@ const InputField: React.FC<InputFieldProps> = ({
                   disabled={!nameValid}
                   onClick={handleSave}
                 >
-                  <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
+                  <span className="mr-1">{t($ => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}</span>
                   <KbdGroup>
                     {['Mod', 'Enter'].map(key => (
                       <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>

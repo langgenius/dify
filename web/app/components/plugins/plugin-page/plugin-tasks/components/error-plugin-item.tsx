@@ -38,7 +38,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       const manifest: Plugin = {
         plugin_id: plugin.plugin_id,
         type: info.category as Plugin['type'],
-        category: info.category,
+        category: info.category as Plugin['category'],
         name: name!,
         org: org!,
         version: info.latest_version,
@@ -75,14 +75,14 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       ? 'task.errorMsg.github'
       : 'task.errorMsg.unknown'
 
-  const errorMsg = t(errorMsgKey, { ns: 'plugin' })
+  const errorMsg = t($ => $[errorMsgKey], { ns: 'plugin' })
 
   const renderAction = () => {
     if (source === PluginSource.marketplace && canInstallPlugin) {
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small" loading={isFetching} onClick={handleInstallFromMarketplace}>
-            {t('task.installFromMarketplace', { ns: 'plugin' })}
+            {t($ => $['task.installFromMarketplace'], { ns: 'plugin' })}
           </Button>
         </div>
       )
@@ -91,7 +91,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small">
-            {t('task.installFromGithub', { ns: 'plugin' })}
+            {t($ => $['task.installFromGithub'], { ns: 'plugin' })}
           </Button>
         </div>
       )
@@ -111,7 +111,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
           </span>
         )}
         statusText={(
-          <span className="block max-w-full wrap-break-word whitespace-pre-line">
+          <span className="block max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
             {plugin.message || errorMsg}
           </span>
         )}

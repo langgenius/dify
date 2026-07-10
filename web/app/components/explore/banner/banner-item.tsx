@@ -130,7 +130,7 @@ export function BannerItem({
 
   return (
     <div
-      className="flex h-[184px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs"
+      className="flex h-[224px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs xl:h-[184px]"
       onClick={handleBannerClick}
     >
       <div className="flex min-w-px flex-1 flex-col items-end self-stretch rounded-2xl py-6 pl-8">
@@ -140,7 +140,7 @@ export function BannerItem({
           </p>
         </div>
 
-        <div className="flex w-full flex-col gap-3 py-1">
+        <div className="flex w-full flex-col gap-3 py-1 max-xl:flex-1 max-xl:justify-between">
           <div
             ref={textAreaRef}
             className="grid w-full grid-cols-[minmax(0,680px)_minmax(240px,600px)] gap-x-1 max-xl:grid-cols-1"
@@ -159,22 +159,22 @@ export function BannerItem({
           </div>
 
           <div
-            className="grid w-full grid-cols-[minmax(0,680px)_minmax(240px,600px)] gap-x-1 max-xl:grid-cols-1"
+            className="flex w-full items-center justify-between gap-4 pr-4 xl:grid xl:grid-cols-[minmax(0,680px)_minmax(240px,600px)] xl:gap-x-1 xl:pr-0"
             style={responsiveStyle}
           >
             <div
-              className="flex min-w-0 items-center gap-[6px] py-1"
+              className="flex min-w-0 items-center gap-[6px] py-1 max-xl:flex-1"
               style={viewMoreStyle}
             >
               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
                 <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
-                {t('banner.viewMore', { ns: 'explore' })}
+                {t($ => $['banner.viewMore'], { ns: 'explore' })}
               </span>
             </div>
 
-            <div className="flex min-w-0 items-center gap-2 py-1 pr-10">
+            <div className="flex min-w-0 shrink-0 items-center gap-2 py-1 xl:pr-10">
               {/* Slide navigation indicators */}
               <div className="flex items-center gap-1">
                 {indicatorItems.map(({ id, index }) => (
@@ -196,13 +196,13 @@ export function BannerItem({
         </div>
       </div>
 
-      <div className="flex w-60 max-w-60 shrink-0 flex-col items-end self-stretch p-2 max-lg:hidden">
+      <div className="flex w-60 max-w-60 shrink-0 flex-col items-end self-stretch p-2 max-xl:w-[360px] max-xl:max-w-[360px] max-lg:hidden">
         <img
           src={imgSrc}
           alt={title}
           width={224}
           height={168}
-          className="h-[168px] w-56 shrink-0 rounded-xl object-cover"
+          className="h-full w-full shrink-0 rounded-xl object-cover"
         />
       </div>
     </div>

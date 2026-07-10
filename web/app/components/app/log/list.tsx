@@ -36,6 +36,7 @@ import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
@@ -165,13 +166,25 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
+  const {
+    currentLogItem,
+    setCurrentLogItem,
+    showMessageLogModal,
+    setShowMessageLogModal,
+    showPromptLogModal,
+    setShowPromptLogModal,
+    showAgentLogModal,
+    setShowAgentLogModal,
+    currentLogModalActiveTab,
+  } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
     showPromptLogModal: state.showPromptLogModal,
     setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -227,7 +240,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
       setHasMore(messageRes.has_more)
 
-      const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string)
+      const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)
 
       // Use functional update to avoid stale state issues
       setAllChatItems((prevItems: IChatItem[]) => mergeUniqueChatItems(prevItems, newItems))
@@ -281,11 +294,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       setAllChatItems(applyAnnotationRemoved(allChatItems, index))
 
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
   }, [allChatItems, appDetail?.id, t])
@@ -349,7 +362,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         messageRes.data,
         detail.id,
         timezone!,
-        t('dateTimeFormat', { ns: 'appLog' }) as string,
+        t($ => $.dateTimeFormat, { ns: 'appLog' }) as string,
       )
 
       // Use functional update to get latest state and avoid stale closures
@@ -395,6 +408,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
@@ -417,7 +431,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{isChatMode ? t($ => $['detail.conversationId'], { ns: 'appLog' }) : t($ => $['detail.time'], { ns: 'appLog' })}</div>
           {isChatMode && (
             <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
               <Tooltip>
@@ -434,13 +448,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
+        <ActionButton size="l" aria-label={t($ => $['operation.close'], { ns: 'common' })} onClick={onClose}>
           <RiCloseLine className="size-4 text-text-tertiary" />
         </ActionButton>
       </div>
@@ -460,7 +474,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t($ => $['table.header.output'], { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -507,6 +521,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 noChatInput
                 showPromptLog
                 hideProcessDetail
+                hideLogModal
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
@@ -546,6 +561,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   noChatInput
                   showPromptLog
                   hideProcessDetail
+                  hideLogModal
                   chatContainerInnerClassName="px-3"
                   switchSibling={switchSibling}
                 />
@@ -553,7 +569,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               {hasMore && (
                 <div className="py-3 text-center">
                   <div className="system-xs-regular text-text-tertiary">
-                    {t('detail.loading', { ns: 'appLog' })}
+                    {t($ => $['detail.loading'], { ns: 'appLog' })}
                     ...
                   </div>
                 </div>
@@ -574,7 +590,18 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           />
         </WorkflowContextProvider>
       )}
-      {!isChatMode && showPromptLogModal && (
+      {showAgentLogModal && (
+        <AgentLogModal
+          floating
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowAgentLogModal(false)
+          }}
+        />
+      )}
+      {shouldShowPromptLogModal && (
         <PromptLogModal
           width={width}
           currentLogItem={currentLogItem}
@@ -603,11 +630,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
   }
@@ -616,11 +643,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
   }
@@ -650,11 +677,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
   }
@@ -662,11 +689,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return true
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       return false
     }
   }
@@ -796,7 +823,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <TooltipContent className={(isHighlight && !isChatMode) ? '' : 'hidden!'}>
           <span className="inline-flex items-center text-xs text-text-tertiary">
             <RiEditFill className="mr-1 size-3" />
-            {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            {`${t($ => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
       </Tooltip>
@@ -812,14 +839,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.endUser', { ns: 'appLog' })}</td>
-            {isChatflow && <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>}
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.userRate', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.adminRate', { ns: 'appLog' })}</td>
-            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
-            <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.time', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t($ => $['table.header.summary'], { ns: 'appLog' }) : t($ => $['table.header.input'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.endUser'], { ns: 'appLog' })}</td>
+            {isChatflow && <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.status'], { ns: 'appLog' })}</td>}
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t($ => $['table.header.messageCount'], { ns: 'appLog' }) : t($ => $['table.header.output'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.userRate'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.adminRate'], { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.updatedTime'], { ns: 'appLog' })}</td>
+            <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.time'], { ns: 'appLog' })}</td>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -827,8 +854,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } = getConversationRowValues({
               isChatMode,
               log,
-              noChatLabel: t('table.empty.noChat', { ns: 'appLog' }),
-              noOutputLabel: t('table.empty.noOutput', { ns: 'appLog' }),
+              noChatLabel: t($ => $['table.empty.noChat'], { ns: 'appLog' }),
+              noOutputLabel: t($ => $['table.empty.noOutput'], { ns: 'appLog' }),
             })
             return (
               <tr
@@ -875,8 +902,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                         </>
                       )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}</td>
               </tr>
             )
           })}

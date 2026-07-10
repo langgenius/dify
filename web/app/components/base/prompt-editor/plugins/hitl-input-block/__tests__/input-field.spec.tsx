@@ -109,7 +109,11 @@ describe('InputField', () => {
     const scrollBody = panel?.children[1]
     const footer = panel?.lastElementChild
 
-    expect(panel).toHaveClass('max-h-(--shortcut-popup-max-height)', 'overflow-hidden')
+    // The max-height falls back to a viewport unit so the panel stays bounded
+    // (and the footer/actions reachable via the internal scroll) even when it is
+    // rendered outside the shortcuts popup that defines --shortcut-popup-max-height,
+    // e.g. inside the edit dialog. See issue #37979.
+    expect(panel).toHaveClass('max-h-[var(--shortcut-popup-max-height,80dvh)]', 'overflow-hidden')
     expect(header).toHaveClass('shrink-0', 'pb-2')
     expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
     expect(footer).toHaveClass('shrink-0', 'bg-components-panel-bg')
@@ -425,13 +429,13 @@ describe('InputField', () => {
       />,
     )
 
-    expect(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'select-file' }))
     expect(screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'select-paragraph' }))
-    expect(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField')).toBeInTheDocument()
   })
 
   it('should save constant select options', async () => {

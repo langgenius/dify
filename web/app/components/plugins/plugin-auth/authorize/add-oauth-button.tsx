@@ -31,6 +31,11 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  renderTrigger?: (props: {
+    disabled?: boolean
+    isConfigured: boolean
+    onClick: () => void
+  }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
@@ -51,6 +56,7 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  renderTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
@@ -67,8 +73,8 @@ const AddOAuthButton = ({
   }, [oAuthData, data])
   const {
     schema = [],
-    is_oauth_custom_client_enabled,
-    is_system_oauth_params_exists,
+    is_oauth_custom_client_enabled = false,
+    is_system_oauth_params_exists = false,
     client_params = {},
     redirect_uri,
   } = mergedOAuthData
@@ -97,7 +103,7 @@ const AddOAuthButton = ({
           </div>
           <div className="w-0 grow">
             <div className="mb-1.5 system-sm-regular">
-              {t('auth.clientInfo', { ns: 'plugin' })}
+              {t($ => $['auth.clientInfo'], { ns: 'plugin' })}
             </div>
             {
               redirect_uri && (
@@ -138,15 +144,15 @@ const AddOAuthButton = ({
     if (is_system_oauth_params_exists) {
       result.unshift({
         name: '__oauth_client__',
-        label: t('auth.oauthClient', { ns: 'plugin' }),
+        label: t($ => $['auth.oauthClient'], { ns: 'plugin' }),
         type: FormTypeEnum.radio,
         options: [
           {
-            label: t('auth.default', { ns: 'plugin' }),
+            label: t($ => $['auth.default'], { ns: 'plugin' }),
             value: 'default',
           },
           {
-            label: t('auth.custom', { ns: 'plugin' }),
+            label: t($ => $['auth.custom'], { ns: 'plugin' }),
             value: 'custom',
           },
         ],
@@ -186,7 +192,14 @@ const AddOAuthButton = ({
   return (
     <>
       {
-        isConfigured && (
+        renderTrigger?.({
+          disabled,
+          isConfigured,
+          onClick: isConfigured ? handleOAuth : openOAuthSettings,
+        })
+      }
+      {
+        !renderTrigger && isConfigured && (
           <div className={cn('flex w-full', className)}>
             <Button
               variant={buttonVariant}
@@ -210,7 +223,7 @@ const AddOAuthButton = ({
                       buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                     )}
                   >
-                    {t('auth.custom', { ns: 'plugin' })}
+                    {t($ => $['auth.custom'], { ns: 'plugin' })}
                   </Badge>
                 )
               }
@@ -223,7 +236,7 @@ const AddOAuthButton = ({
             </div>
             <Button
               variant={buttonVariant}
-              aria-label={t('auth.oauthClientSettings', { ns: 'plugin' })}
+              aria-label={t($ => $['auth.oauthClientSettings'], { ns: 'plugin' })}
               className={cn(
                 'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,
@@ -239,7 +252,7 @@ const AddOAuthButton = ({
         )
       }
       {
-        !isConfigured && (
+        !renderTrigger && !isConfigured && (
           <Button
             variant={buttonVariant}
             onClick={openOAuthSettings}
@@ -247,7 +260,7 @@ const AddOAuthButton = ({
             className="w-full"
           >
             <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
-            {t('auth.setupOAuth', { ns: 'plugin' })}
+            {t($ => $['auth.setupOAuth'], { ns: 'plugin' })}
           </Button>
         )
       }

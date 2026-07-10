@@ -1,4 +1,4 @@
-import type { TFunction } from 'i18next'
+import type { SelectorParam } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
@@ -10,8 +10,13 @@ type HeaderMetaProps = {
   hasVarValue: boolean
   isLoading: boolean
   loopIndex: ReactElement | null
-  t: TFunction
+  t: WorkflowTranslator
 }
+
+export type WorkflowTranslator = (
+  selector: SelectorParam<'workflow'>,
+  options: { ns: 'workflow' } & Record<string, unknown>,
+) => string
 
 export const NodeHeaderMeta = ({
   data,
@@ -26,14 +31,14 @@ export const NodeHeaderMeta = ({
         <Tooltip>
           <TooltipTrigger>
             <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
-              {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+              {t($ => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
           <TooltipContent className="w-[180px]">
             <div className="font-extrabold">
-              {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+              {t($ => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
             </div>
-            {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
+            {t($ => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
           </TooltipContent>
         </Tooltip>
       )}

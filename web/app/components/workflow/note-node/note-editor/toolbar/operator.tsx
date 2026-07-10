@@ -37,7 +37,7 @@ const Operator = ({
       onOpenChange={setOpen}
     >
       <DropdownMenuTrigger
-        aria-label={t('operation.more', { ns: 'common' })}
+        aria-label={t($ => $['operation.more'], { ns: 'common' })}
         className={cn(
           'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
           'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
@@ -66,7 +66,7 @@ const Operator = ({
                 onCopy()
               }}
             >
-              {t('common.copy', { ns: 'workflow' })}
+              {t($ => $['common.copy'], { ns: 'workflow' })}
               <ShortcutKbd shortcut="workflow.copy" />
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -76,7 +76,7 @@ const Operator = ({
                 onDuplicate()
               }}
             >
-              {t('common.duplicate', { ns: 'workflow' })}
+              {t($ => $['common.duplicate'], { ns: 'workflow' })}
               <ShortcutKbd shortcut="workflow.duplicate" />
             </DropdownMenuItem>
           </div>
@@ -86,7 +86,7 @@ const Operator = ({
               className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               onClick={e => e.stopPropagation()}
             >
-              <div>{t('nodes.note.editor.showAuthor', { ns: 'workflow' })}</div>
+              <div>{t($ => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
               <Switch
                 size="lg"
                 checked={showAuthor}
@@ -104,7 +104,7 @@ const Operator = ({
                 onDelete()
               }}
             >
-              {t('operation.delete', { ns: 'common' })}
+              {t($ => $['operation.delete'], { ns: 'common' })}
               <ShortcutKbd shortcut="workflow.delete" />
             </DropdownMenuItem>
           </div>

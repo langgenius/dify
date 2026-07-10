@@ -7,14 +7,19 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -55,6 +60,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const setNeedRefresh = useSetNeedRefreshAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -119,17 +128,22 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        toast(t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }), {
+        toast(t($ => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'], { ns: 'app' }), {
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
           description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-            ? t('newApp.appCreateDSLWarning', { ns: 'app' })
+            ? t($ => $['newApp.appCreateDSLWarning'], { ns: 'app' })
             : undefined,
         })
         setNeedRefresh('1')
         invalidateAppList()
         if (app_id) {
           await handleCheckPluginDependencies(app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId,
+            resourceMaintainer: currentUserId,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
         }
       }
       else if (status === DSLImportStatus.PENDING) {
@@ -143,11 +157,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
     isCreatingRef.current = false
   }
@@ -178,31 +192,37 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (onClose)
           onClose()
 
-        toast.success(t('newApp.appCreated', { ns: 'app' }))
+        toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
-        if (app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
+        if (app_id) {
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId,
+            resourceMaintainer: currentUserId,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('importFromDSLFile', { ns: 'app' }),
+      label: t($ => $.importFromDSLFile, { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('importFromDSLUrl', { ns: 'app' }),
+      label: t($ => $.importFromDSLUrl, { ns: 'app' }),
     },
   ]
 
@@ -222,7 +242,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
 
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t('importApp', { ns: 'app' })}
+            {t($ => $.importApp, { ns: 'app' })}
             <div
               className="flex size-8 cursor-pointer items-center"
               onClick={() => onClose()}
@@ -266,7 +286,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 <div>
                   <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
                   <Input
-                    placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                    placeholder={t($ => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
                     value={dslUrlValue}
                     onChange={e => setDslUrlValue(e.target.value)}
                   />
@@ -280,14 +300,14 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             </div>
           )}
           <div className="flex justify-end px-6 py-5">
-            <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button className="mr-2" onClick={onClose}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
             <Button
               disabled={buttonDisabled}
               variant="primary"
               onClick={handleCreateApp}
               className="gap-1"
             >
-              <span>{t('newApp.Create', { ns: 'app' })}</span>
+              <span>{t($ => $['newApp.Create'], { ns: 'app' })}</span>
               <KbdGroup>
                 {['Mod', 'Enter'].map(key => (
                   <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
@@ -307,24 +327,24 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
 
           <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-            <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+            <div className="title-2xl-semi-bold text-text-primary">{t($ => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}</div>
             <div className="flex grow flex-col system-md-regular text-text-secondary">
-              <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
-              <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
+              <div>{t($ => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
+              <div>{t($ => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
               <br />
               <div>
-                {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
+                {t($ => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
                 <span className="system-md-medium">{versions?.importedVersion}</span>
               </div>
               <div>
-                {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
+                {t($ => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
                 <span className="system-md-medium">{versions?.systemVersion}</span>
               </div>
             </div>
           </div>
           <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
+            <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t($ => $['newApp.Confirm'], { ns: 'app' })}</Button>
           </div>
         </DialogContent>
       </Dialog>

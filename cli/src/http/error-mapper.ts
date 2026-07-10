@@ -44,9 +44,28 @@ const RATE_LIMITED_CLASS: StatusClass = {
   includeRaw: false,
 }
 
+const ACCESS_DENIED_CLASS: StatusClass = {
+  code: ErrorCode.AccessDenied,
+  fallbackMessage: () => 'not permitted',
+  includeRaw: false,
+}
+
+// 426 Upgrade Required: the server rejected this difyctl as too old. Give it the
+// version-compat exit code so scripts can tell it apart from a generic failure.
+// The server's ErrorBody.code ("upgrade_required") + message still ride along.
+const VERSION_COMPAT_CLASS: StatusClass = {
+  code: ErrorCode.VersionSkew,
+  fallbackMessage: () => 'client version no longer supported by the server',
+  includeRaw: false,
+}
+
 function statusClass(status: number): StatusClass {
   if (status === 401)
     return AUTH_EXPIRED_CLASS
+  if (status === 403)
+    return ACCESS_DENIED_CLASS
+  if (status === 426)
+    return VERSION_COMPAT_CLASS
   if (status === 429)
     return RATE_LIMITED_CLASS
   if (status >= 500)

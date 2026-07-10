@@ -12,7 +12,7 @@ export function LogSourceCell({
   if (!source) {
     return (
       <div className="truncate text-text-quaternary">
-        {t('agentDetail.logs.notAvailable')}
+        {t($ => $['agentDetail.logs.notAvailable'])}
       </div>
     )
   }

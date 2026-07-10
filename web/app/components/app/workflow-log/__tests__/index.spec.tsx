@@ -19,9 +19,9 @@ import type { MockedFunction } from 'vitest'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
@@ -78,16 +78,6 @@ vi.mock('@/hooks/use-theme', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string, timezone: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }),
-}))
-
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
@@ -101,21 +91,8 @@ const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typ
 // Test Utilities
 // ============================================================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-})
-
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return renderWithSystemFeatures(ui)
 }
 
 // ============================================================================

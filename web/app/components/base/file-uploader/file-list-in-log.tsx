@@ -44,7 +44,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
             className="grow cursor-pointer border-none bg-transparent px-0 py-1 text-left system-xs-semibold-uppercase text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => setExpanded(!expanded)}
           >
-            {t('runDetail.fileListLabel', { ns: 'appLog' })}
+            {t($ => $['runDetail.fileListLabel'], { ns: 'appLog' })}
           </button>
         )}
         {!expanded && (
@@ -95,11 +95,11 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
         )}
         <button
           type="button"
-          aria-label={t('runDetail.fileListDetail', { ns: 'appLog' })}
+          aria-label={t($ => $['runDetail.fileListDetail'], { ns: 'appLog' })}
           className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={() => setExpanded(!expanded)}
         >
-          {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t('runDetail.fileListDetail', { ns: 'appLog' })}</div>}
+          {!expanded && <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['runDetail.fileListDetail'], { ns: 'appLog' })}</div>}
           <RiArrowRightSLine className={cn('size-4 text-text-tertiary', expanded && 'rotate-90')} aria-hidden="true" />
         </button>
       </div>

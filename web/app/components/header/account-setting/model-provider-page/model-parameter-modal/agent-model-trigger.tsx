@@ -3,6 +3,7 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import type { WorkflowTranslate } from './status-indicators'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +46,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   scope,
 }) => {
   const { t } = useTranslation()
+  const translateWorkflow: WorkflowTranslate = (selector, options) => t(selector, options)
   const { modelProviders } = useProviderContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
@@ -102,7 +104,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
                 inModelList={inModelList}
                 disabled={!!disabled}
                 pluginInfo={pluginInfo}
-                t={t}
+                t={translateWorkflow}
               />
               {!installed && !modelProvider && pluginInfo && (
                 <InstallPluginButton
@@ -139,7 +141,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             <>
               <div className="flex grow items-center gap-1 p-1 pl-2">
                 <span className="truncate system-sm-regular text-components-input-text-placeholder">
-                  {t('nodes.agent.configureModel', { ns: 'workflow' })}
+                  {t($ => $['nodes.agent.configureModel'], { ns: 'workflow' })}
                 </span>
               </div>
               <div className="flex items-center pr-1">

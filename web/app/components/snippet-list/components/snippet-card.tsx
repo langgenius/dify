@@ -19,11 +19,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { canCreateAndModifySnippets, canManageSnippets } from '@/app/components/snippets/utils/permission'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'
 import { useMembers } from '@/service/use-common'
@@ -46,7 +47,7 @@ const SnippetCard = ({
 }: Props) => {
   const { t } = useTranslation('snippet')
   const { t: tCommon } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: membersData } = useMembers()
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -62,18 +63,18 @@ const SnippetCard = ({
     return new Map((membersData?.accounts ?? []).map(member => [member.id, member.name]))
   }, [membersData?.accounts])
 
-  const updatedByName = memberNameById.get(snippet.updated_by)
-    || memberNameById.get(snippet.created_by)
-    || t('unknownUser')
+  const updatedByName = (snippet.updated_by ? memberNameById.get(snippet.updated_by) : undefined)
+    || (snippet.created_by ? memberNameById.get(snippet.created_by) : undefined)
+    || t($ => $.unknownUser)
 
   const updatedAt = snippet.updated_at || snippet.created_at
   const updatedAtText = formatTime({
     date: (updatedAt > 1_000_000_000_000 ? updatedAt : updatedAt * 1000),
-    dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
+    dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
   })
   const initialValue = useMemo(() => ({
     name: snippet.name,
-    description: snippet.description,
+    description: snippet.description ?? undefined,
   }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = () => {
@@ -82,7 +83,7 @@ const SnippetCard = ({
   }
 
   const handleExportSnippet = async () => {
-    if (!canManageSnippet)
+    if (!canCreateAndModifySnippet)
       return
 
     setIsOperationsMenuOpen(false)
@@ -92,7 +93,7 @@ const SnippetCard = ({
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     }
     catch {
-      toast.error(t('exportFailed'))
+      toast.error(t($ => $.exportFailed))
     }
   }
 
@@ -101,12 +102,12 @@ const SnippetCard = ({
       params: { snippetId: snippet.id },
     }, {
       onSuccess: () => {
-        toast.success(t('deleted'))
+        toast.success(t($ => $.deleted))
         setIsDeleteDialogOpen(false)
         onRefresh?.()
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('deleteFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $.deleteFailed))
       },
     })
   }
@@ -119,16 +120,16 @@ const SnippetCard = ({
       params: { snippetId: snippet.id },
       body: {
         name,
-        description: description || undefined,
+        description,
       },
     }, {
       onSuccess: () => {
-        toast.success(t('editDone'))
+        toast.success(t($ => $.editDone))
         setIsEditDialogOpen(false)
         onRefresh?.()
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('editFailed'))
+        toast.error(error instanceof Error ? error.message : t($ => $.editFailed))
       },
     })
   }
@@ -148,20 +149,14 @@ const SnippetCard = ({
             </div>
           </div>
           <div className="h-22.5 px-3.5 text-xs leading-normal text-text-tertiary">
-            <div className="line-clamp-2" title={snippet.description}>
+            <div className="line-clamp-2" title={snippet.description ?? undefined}>
               {snippet.description}
             </div>
           </div>
         </Link>
 
         <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
-          <div
-            className="flex w-0 grow items-center gap-1"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-          >
+          <div className="flex w-0 grow items-center gap-1">
             <div className="mr-10.25 min-w-0 grow overflow-hidden">
               <TagSelector
                 placement="bottom-start"
@@ -170,6 +165,7 @@ const SnippetCard = ({
                 value={snippet.tags}
                 onOpenTagManagement={onOpenTagManagement}
                 onTagsChange={onTagsChange}
+                canBindOrUnbindTags={canManageSnippet}
               />
             </div>
           </div>
@@ -185,15 +181,15 @@ const SnippetCard = ({
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
               <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
                 <DropdownMenuTrigger
-                  aria-label={tCommon('operation.more', { ns: 'common' })}
-                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
+                  aria-label={tCommon($ => $['operation.more'], { ns: 'common' })}
+                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
                   }}
                 >
                   <div className="flex size-8 cursor-pointer items-center justify-center rounded-md">
-                    <span className="sr-only">{tCommon('operation.more', { ns: 'common' })}</span>
+                    <span className="sr-only">{tCommon($ => $['operation.more'], { ns: 'common' })}</span>
                     <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
                   </div>
                 </DropdownMenuTrigger>
@@ -203,16 +199,18 @@ const SnippetCard = ({
                   popupClassName="w-[216px]"
                 >
                   {canCreateAndModifySnippet && (
-                    <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
-                      <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
+                        <span className="system-sm-regular text-text-secondary">{t($ => $['menu.editInfo'])}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
+                        <span className="system-sm-regular text-text-secondary">{t($ => $['menu.exportSnippet'])}</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {canManageSnippet && (
                     <>
-                      <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
-                        <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      {canCreateAndModifySnippet && <DropdownMenuSeparator />}
                       <DropdownMenuItem
                         variant="destructive"
                         className="gap-2 px-3"
@@ -221,7 +219,7 @@ const SnippetCard = ({
                           setIsDeleteDialogOpen(true)
                         }}
                       >
-                        <span className="system-sm-regular">{t('menu.deleteSnippet')}</span>
+                        <span className="system-sm-regular">{t($ => $['menu.deleteSnippet'])}</span>
                       </DropdownMenuItem>
                     </>
                   )}
@@ -235,8 +233,8 @@ const SnippetCard = ({
         <CreateSnippetDialog
           isOpen={isEditDialogOpen}
           initialValue={initialValue}
-          title={t('editDialogTitle')}
-          confirmText={tCommon('operation.save', { ns: 'common' })}
+          title={t($ => $.editDialogTitle)}
+          confirmText={tCommon($ => $['operation.save'], { ns: 'common' })}
           isSubmitting={updateSnippetMutation.isPending}
           onClose={() => setIsEditDialogOpen(false)}
           onConfirm={handleUpdateSnippet}
@@ -246,21 +244,21 @@ const SnippetCard = ({
         <AlertDialogContent className="w-100">
           <div className="space-y-2 p-6">
             <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-              {t('deleteConfirmTitle')}
+              {t($ => $.deleteConfirmTitle)}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-              {t('deleteConfirmContent')}
+              {t($ => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions className="pt-0">
             <AlertDialogCancelButton disabled={deleteSnippetMutation.isPending}>
-              {tCommon('operation.cancel', { ns: 'common' })}
+              {tCommon($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={deleteSnippetMutation.isPending}
               onClick={handleDeleteSnippet}
             >
-              {t('menu.deleteSnippet')}
+              {t($ => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

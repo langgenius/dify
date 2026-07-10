@@ -1,8 +1,9 @@
+import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
-import { load as yamlLoad } from 'js-yaml'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
+import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
 type ParsedDSL = {
@@ -58,7 +59,7 @@ export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
 
 export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
   try {
-    const data = yamlLoad(content) as ParsedDSL
+    const data = loadYaml(content) as ParsedDSL | undefined
     const nodes = data?.workflow?.graph?.nodes ?? []
     const invalidNodes = getInvalidNodeTypes(mode)
     return !nodes.some((node: Node<CommonNodeType>) => invalidNodes.includes(node?.data?.type))
@@ -72,12 +73,14 @@ export const isImportCompleted = (status: DSLImportStatus) => {
   return status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 }
 
-export const getImportNotificationPayload = (status: DSLImportStatus, t: (key: string, options?: Record<string, unknown>) => string): ImportNotificationPayload => {
+export const getImportNotificationPayload = (status: DSLImportStatus, t: TFunction): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-    message: t(status === DSLImportStatus.COMPLETED ? 'common.importSuccess' : 'common.importWarning', { ns: 'workflow' }),
+    message: status === DSLImportStatus.COMPLETED
+      ? t($ => $['common.importSuccess'], { ns: 'workflow' })
+      : t($ => $['common.importWarning'], { ns: 'workflow' }),
     children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-      ? t('common.importWarningDetails', { ns: 'workflow' })
+      ? t($ => $['common.importWarningDetails'], { ns: 'workflow' })
       : undefined,
   }
 }

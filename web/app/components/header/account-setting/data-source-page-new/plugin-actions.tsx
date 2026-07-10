@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
-import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
@@ -50,7 +50,7 @@ const DataSourcePluginActions = ({
   const locale = useLocale()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
-  const { canManagePlugin, canUpdatePlugin } = usePluginSettingsAccess()
+  const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = usePluginDetailHeader(detail)
   const {
     modalStates,
@@ -69,7 +69,7 @@ const DataSourcePluginActions = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     onUpdate,
   })
@@ -132,12 +132,12 @@ const DataSourcePluginActions = ({
                 className="h-5 rounded-md px-1.5 py-0 system-xs-medium"
                 onClick={handleTriggerLatestUpdate}
               >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
+                {t($ => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
             )}
           />
           <TooltipContent>
-            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+            {t($ => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )}
@@ -150,7 +150,7 @@ const DataSourcePluginActions = ({
         detailUrl={getDetailUrl(detail, locale, theme || 'light')}
         triggerSize="xs"
         showCheckVersion={canUpdatePlugin}
-        showRemove={canManagePlugin}
+        showRemove={canDeletePlugin}
       />
       <HeaderModals
         detail={detail}

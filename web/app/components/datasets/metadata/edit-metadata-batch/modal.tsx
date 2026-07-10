@@ -71,7 +71,7 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
       return Promise.reject(new Error(errorMsg))
     }
     await doAddMetaData(payload)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
   }, [checkName, doAddMetaData, t])
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback((payload: MetadataItemWithEdit) => {
@@ -99,17 +99,17 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
       <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
+          {t($ => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
         </DialogTitle>
 
-        <div className="mt-1 system-xs-medium text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
+        <div className="mt-1 system-xs-medium text-text-accent">{t($ => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}</div>
         <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
           <div className="mt-4 space-y-2">
             {templeList.map(item => (<EditMetadataBatchItem key={item.id} payload={item} onChange={handleTemplesChange} onRemove={handleTempleItemRemove} onReset={handleItemReset} />))}
           </div>
           <div className="mt-4 pl-[18px]">
             <div className="flex items-center">
-              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
+              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t($ => $['metadata.createMetadata.title'], { ns: 'dataset' })}</div>
               <Divider bgStyle="gradient" />
             </div>
             <div className="mt-2 space-y-2">
@@ -137,24 +137,23 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
                 onCheckedChange={setIsApplyToAllSelectDocument}
               />
               <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
-                {t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}
+                {t($ => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
             <Infotip
-              aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
-              className="p-px"
-              iconClassName="size-3.5 text-text-tertiary"
+              aria-label={t($ => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+              className="p-px text-text-tertiary"
               popupClassName="max-w-[240px]"
             >
-              {t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+              {t($ => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
             </Infotip>
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={onHide}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button onClick={handleSave} variant="primary">
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

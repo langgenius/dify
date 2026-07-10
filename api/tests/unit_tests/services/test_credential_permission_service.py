@@ -5,7 +5,7 @@ and admin bypass behavior.
 """
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -37,20 +37,22 @@ def credential_id():
 
 class TestGetPartialMemberList:
     def test_returns_empty_when_no_permissions(self, credential_id):
-        with patch("services.credential_permission_service.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = []
-            result = CredentialPermissionService.get_partial_member_list(
-                credential_id, CredentialType.TRIGGER_SUBSCRIPTION
-            )
-            assert result == []
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = []
+        result = CredentialPermissionService.get_partial_member_list(
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
+        )
+        assert result == []
+        session.scalars.assert_called_once()
 
     def test_returns_account_ids(self, credential_id, user_id, other_user_id):
-        with patch("services.credential_permission_service.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = [user_id, other_user_id]
-            result = CredentialPermissionService.get_partial_member_list(
-                credential_id, CredentialType.TRIGGER_SUBSCRIPTION
-            )
-            assert set(result) == {user_id, other_user_id}
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [user_id, other_user_id]
+        result = CredentialPermissionService.get_partial_member_list(
+            credential_id, CredentialType.TRIGGER_SUBSCRIPTION, session=session
+        )
+        assert set(result) == {user_id, other_user_id}
+        session.scalars.assert_called_once()
 
 
 class TestApplyVisibilityFilter:

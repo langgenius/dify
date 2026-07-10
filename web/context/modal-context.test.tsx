@@ -48,9 +48,38 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockUseAppContext = vi.fn()
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 type DefaultPlanShape = typeof defaultPlan
 type ResetShape = {
@@ -106,7 +135,7 @@ const PreferencesOpener = () => {
   return (
     <button
       type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
     >
       open preferences
     </button>
@@ -191,7 +220,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await user.click(screen.getByRole('button', { name: 'open preferences' }))
 
-    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.LANGUAGE)
+    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

@@ -21,7 +21,7 @@ const TagInput = ({ items, onChange, disableAdd, disableRemove, customizedConfir
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'
-  const inputPlaceholder = placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))
+  const inputPlaceholder = placeholder || (isSpecialMode ? t($ => $['model.params.stop_sequencesPlaceholder'], { ns: 'common' }) : t($ => $['segment.addKeyWord'], { ns: 'datasetDocuments' }))
   const handleRemove = (index: number) => {
     const copyItems = [...items]
     copyItems.splice(index, 1)
@@ -31,15 +31,15 @@ const TagInput = ({ items, onChange, disableAdd, disableRemove, customizedConfir
     const valueTrimmed = value.trim()
     if (!valueTrimmed) {
       if (required)
-        toast.error(t('segment.keywordEmpty', { ns: 'datasetDocuments' }))
+        toast.error(t($ => $['segment.keywordEmpty'], { ns: 'datasetDocuments' }))
       return
     }
     if ((items.find(item => item === valueTrimmed))) {
-      toast.error(t('segment.keywordDuplicate', { ns: 'datasetDocuments' }))
+      toast.error(t($ => $['segment.keywordDuplicate'], { ns: 'datasetDocuments' }))
       return
     }
     if (valueTrimmed.length > 20) {
-      toast.error(t('segment.keywordError', { ns: 'datasetDocuments' }))
+      toast.error(t($ => $['segment.keywordError'], { ns: 'datasetDocuments' }))
       return
     }
     onChange([...items, valueTrimmed])
@@ -68,7 +68,7 @@ const TagInput = ({ items, onChange, disableAdd, disableRemove, customizedConfir
           {!disableRemove && (
             <button
               type="button"
-              aria-label={`${t('operation.remove', { ns: 'common' })} ${item}`}
+              aria-label={`${t($ => $['operation.remove'], { ns: 'common' })} ${item}`}
               className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => handleRemove(index)}
             >

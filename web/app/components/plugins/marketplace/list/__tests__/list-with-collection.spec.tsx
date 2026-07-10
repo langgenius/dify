@@ -1,18 +1,10 @@
-import type { MarketplaceCollection } from '../../types'
+import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ListWithCollection from '../list-with-collection'
 
 const mockMoreClick = vi.fn()
-
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))

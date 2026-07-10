@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { DataSourceNodeType } from './types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -24,11 +25,11 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     datasource_parameters: {},
     datasource_configurations: {},
   },
-  checkValid(payload, t, moreDataForCheckValid) {
+  checkValid(payload, t: TFunction<'workflow'>, moreDataForCheckValid) {
     const { dataSourceInputsSchema, notAuthed } = moreDataForCheckValid
     let errorMessage = ''
     if (notAuthed)
-      errorMessage = t(`${i18nPrefix}.authRequired`, { ns: 'workflow' })
+      errorMessage = t($ => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })
 
     if (!errorMessage) {
       dataSourceInputsSchema.filter((field: any) => {
@@ -36,17 +37,17 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       }).forEach((field: any) => {
         const targetVar = payload.datasource_parameters[field.variable]
         if (!targetVar) {
-          errorMessage = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+          errorMessage = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
           return
         }
         const { type: variable_type, value } = targetVar
         if (variable_type === VarKindType.variable) {
           if (!errorMessage && (!value || value.length === 0))
-            errorMessage = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+            errorMessage = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
         }
         else {
           if (!errorMessage && (value === undefined || value === null || value === ''))
-            errorMessage = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
+            errorMessage = t($ => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: field.label })
         }
       })
     }

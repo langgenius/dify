@@ -36,7 +36,7 @@ export function EdgeContextmenu({
           onClose()
         }}
       >
-        <span>{t('common:operation.delete')}</span>
+        <span>{t($ => $['operation.delete'], { ns: 'common' })}</span>
         <ShortcutKbd shortcut="workflow.delete" />
       </ContextMenuItem>
     </ContextMenuContent>

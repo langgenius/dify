@@ -1,0 +1,30 @@
+{
+  "name": "jotai-tanstack-form",
+  "type": "module",
+  "version": "0.0.0-private",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vp test",
+    "type-check": "tsc"
+  },
+  "peerDependencies": {
+    "@tanstack/form-core": "catalog:",
+    "jotai": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@tanstack/form-core": "catalog:",
+    "@typescript/native": "catalog:",
+    "jotai": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

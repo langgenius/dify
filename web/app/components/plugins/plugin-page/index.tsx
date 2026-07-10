@@ -1,6 +1,5 @@
 'use client'
 
-import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,23 +13,22 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react'
+import { cloneElement, isValidElement, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
-import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { sleep } from '@/utils'
+import { useRouter } from '@/next/navigation'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import { PluginInstallPermissionProvider } from '../install-plugin/components/plugin-install-permission-provider'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
-import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import InstallFromMarketplaceQuery from '../install-plugin/install-from-marketplace-query'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+import { getInstallRedirectPathByPluginCategory } from '../plugin-routes'
 import { PluginCategoryEnum } from '../types'
 import { usePluginPageContext } from './context'
 import { PluginPageContextProvider } from './context-provider'
@@ -50,15 +48,37 @@ const isPluginPageTab = (value: string): value is PluginPageTab => {
   return pluginPageTabSet.has(value)
 }
 
+const getCurrentInstallSearchParams = (packageId: string) => {
+  const searchParams: Record<string, string | string[]> = {}
+
+  new URLSearchParams(window.location.search).forEach((value, key) => {
+    const existing = searchParams[key]
+    if (existing === undefined) {
+      searchParams[key] = value
+      return
+    }
+
+    if (Array.isArray(existing)) {
+      existing.push(value)
+      return
+    }
+
+    searchParams[key] = [existing, value]
+  })
+
+  searchParams['package-ids'] ??= JSON.stringify([packageId])
+
+  return searchParams
+}
+
 export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
 }
 type PluginPanelPermissionProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
 }
 const PluginPage = ({
   plugins,
@@ -66,31 +86,13 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-
-  // Use nuqs hook for installation state
-  const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
-
-  const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
-  const [dependencies, setDependencies] = useState<Dependency[]>([])
-
-  const [isShowInstallFromMarketplace, {
-    setTrue: showInstallFromMarketplace,
-    setFalse: doHideInstallFromMarketplace,
-  }] = useBoolean(false)
-
-  const hideInstallFromMarketplace = () => {
-    doHideInstallFromMarketplace()
-    setInstallState(null)
-  }
-
-  const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
+  const { replace } = useRouter()
 
   const {
     referenceSetting,
     canInstallPlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugger,
     canSetPermissions,
     canSetPluginPreferences,
@@ -100,41 +102,15 @@ const PluginPage = ({
     setReferenceSettings,
   } = useReferenceSetting(PluginCategoryEnum.tool)
 
-  useEffect(() => {
-    (async () => {
-      setUniqueIdentifier(null)
-      await sleep(100)
-      if (isPermissionLoading)
-        return
+  const handlePackageCategoryResolved = useCallback((category: string | undefined, packageId: string) => {
+    const installRedirectPath = getInstallRedirectPathByPluginCategory(category, getCurrentInstallSearchParams(packageId))
+    if (!installRedirectPath)
+      return false
 
-      if (!canInstallPlugin) {
-        setInstallState(null)
-        return
-      }
-      if (packageId) {
-        const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        const { plugin, version } = data
-        setManifest({
-          ...plugin,
-          version: version.version,
-          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
-        })
-        setUniqueIdentifier(packageId)
-        showInstallFromMarketplace()
-        return
-      }
-      if (bundleInfo) {
-        try {
-          const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
-          setDependencies(data.version.dependencies)
-          showInstallFromMarketplace()
-        }
-        catch (error) {
-          console.error('Failed to load bundle info:', error)
-        }
-      }
-    })()
-  }, [packageId, bundleInfo, canInstallPlugin, isPermissionLoading, setInstallState, showInstallFromMarketplace])
+    replace(installRedirectPath)
+    return true
+  }, [replace])
+
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
@@ -155,8 +131,8 @@ const PluginPage = ({
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
   useDocumentTitle(isExploringMarketplace
-    ? t('mainNav.marketplace', { ns: 'common' })
-    : t('metadata.title', { ns: 'plugin' }))
+    ? t($ => $['mainNav.marketplace'], { ns: 'common' })
+    : t($ => $['metadata.title'], { ns: 'plugin' }))
 
   const handleFileChange = (file: File | null) => {
     if (!canInstallPlugin) {
@@ -184,11 +160,10 @@ const PluginPage = ({
 
     return cloneElement(plugins as React.ReactElement<PluginPanelPermissionProps>, {
       canInstall: canInstallPlugin,
-      canManagePlugin,
+      canDeletePlugin,
       canUpdatePlugin,
-      canViewInstalledPlugins,
     })
-  }, [canInstallPlugin, canManagePlugin, canUpdatePlugin, canViewInstalledPlugins, plugins])
+  }, [canInstallPlugin, canDeletePlugin, canUpdatePlugin, plugins])
 
   return (
     <div
@@ -228,7 +203,7 @@ const PluginPage = ({
                       variant="ghost"
                       className="text-text-tertiary"
                     >
-                      {t('requestAPlugin', { ns: 'plugin' })}
+                      {t($ => $.requestAPlugin, { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <Link
@@ -240,7 +215,7 @@ const PluginPage = ({
                       variant="secondary-accent"
                     >
                       <RiBookOpenLine className="mr-1 size-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
+                      {t($ => $.publishPlugins, { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular"></div>
@@ -274,7 +249,7 @@ const PluginPage = ({
                   <TooltipTrigger
                     render={(
                       <Button
-                        aria-label={t('privilege.title', { ns: 'plugin' })}
+                        aria-label={t($ => $['privilege.title'], { ns: 'plugin' })}
                         className="group size-full p-2 text-components-button-secondary-text"
                         disabled={isReferenceSettingLoading || !referenceSetting}
                         loading={isReferenceSettingLoading}
@@ -285,7 +260,7 @@ const PluginPage = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('privilege.title', { ns: 'plugin' })}
+                    {t($ => $['privilege.title'], { ns: 'plugin' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -312,7 +287,7 @@ const PluginPage = ({
           {canInstallPlugin && (
             <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
               <RiDragDropLine className="size-4" />
-              <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+              <span className="system-xs-regular">{t($ => $['installModal.dropPluginToInstall'], { ns: 'plugin' })}</span>
             </div>
           )}
           {currentFile && (
@@ -354,18 +329,11 @@ const PluginPage = ({
         />
       )}
 
-      {
-        isShowInstallFromMarketplace && uniqueIdentifier && (
-          <InstallFromMarketplace
-            manifest={manifest! as PluginManifestInMarket}
-            uniqueIdentifier={uniqueIdentifier}
-            isBundle={!!bundleInfo}
-            dependencies={dependencies}
-            onClose={hideInstallFromMarketplace}
-            onSuccess={hideInstallFromMarketplace}
-          />
-        )
-      }
+      <InstallFromMarketplaceQuery
+        canInstallPlugin={canInstallPlugin}
+        isPermissionLoading={isPermissionLoading}
+        onPackageCategoryResolved={handlePackageCategoryResolved}
+      />
     </div>
   )
 }

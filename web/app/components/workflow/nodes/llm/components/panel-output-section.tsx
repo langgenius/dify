@@ -50,17 +50,17 @@ const PanelOutputSection: FC<Props> = ({
                   )}
                 />
                 <TooltipContent className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                  <div className="title-xs-semi-bold text-text-primary">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                  <div className="mt-1 body-xs-regular text-text-secondary">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
+                  <div className="title-xs-semi-bold text-text-primary">{t($ => $['structOutput.modelNotSupported'], { ns: 'app' })}</div>
+                  <div className="mt-1 body-xs-regular text-text-secondary">{t($ => $['structOutput.modelNotSupportedTip'], { ns: 'app' })}</div>
                 </TooltipContent>
               </Tooltip>
             )}
-            <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t('structOutput.structured', { ns: 'app' })}</div>
+            <div className="mr-0.5 system-xs-medium-uppercase text-text-tertiary">{t($ => $['structOutput.structured'], { ns: 'app' })}</div>
             <Infotip
-              aria-label={t('structOutput.structuredTip', { ns: 'app' })}
+              aria-label={t($ => $['structOutput.structuredTip'], { ns: 'app' })}
               popupClassName="w-[150px]"
             >
-              {t('structOutput.structuredTip', { ns: 'app' })}
+              {t($ => $['structOutput.structuredTip'], { ns: 'app' })}
             </Infotip>
             <Switch
               className="ml-2"
@@ -76,17 +76,17 @@ const PanelOutputSection: FC<Props> = ({
           <VarItem
             name="text"
             type="string"
-            description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.output`], { ns: 'workflow' })}
           />
           <VarItem
             name="reasoning_content"
             type="string"
-            description={t(`${i18nPrefix}.outputVars.reasoning_content`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.reasoning_content`], { ns: 'workflow' })}
           />
           <VarItem
             name="usage"
             type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
           />
           {inputs.structured_output_enabled && (
             <>

@@ -57,11 +57,34 @@ vi.mock('../../../base/check-task-status', () => ({
   }),
 }))
 
-const mockLangGeniusVersionInfo = { current_version: '1.0.0' }
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  langGeniusVersionInfoAtom: Symbol('langGeniusVersionInfoAtom'),
+  langGeniusVersionInfo: { current_version: '1.0.0' as string | undefined },
+}))
+
+vi.mock('@/context/account-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.langGeniusVersionInfoAtom)
+      return mockAppContextState.langGeniusVersionInfo
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 vi.mock('../../../../card', () => ({
@@ -133,7 +156,7 @@ describe('Install', () => {
     it('should render trust source message', () => {
       render(<Install {...defaultProps} />)
 
-      expect(screen.getByText('installModal.fromTrustSource')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.fromTrustSource')).toBeInTheDocument()
     })
 
     it('should render plugin card', () => {
@@ -466,7 +489,7 @@ describe('Install', () => {
   // ================================
   describe('Dify Version Compatibility', () => {
     it('should not show warning when dify version is compatible', () => {
-      mockLangGeniusVersionInfo.current_version = '1.0.0'
+      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
       const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '0.8.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
@@ -475,7 +498,7 @@ describe('Install', () => {
     })
 
     it('should show warning when dify version is incompatible', () => {
-      mockLangGeniusVersionInfo.current_version = '1.0.0'
+      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
       const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
@@ -484,7 +507,7 @@ describe('Install', () => {
     })
 
     it('should be compatible when minimum_dify_version is undefined', () => {
-      mockLangGeniusVersionInfo.current_version = '1.0.0'
+      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
       const payload = createMockManifest({ meta: { version: '1.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
@@ -493,7 +516,7 @@ describe('Install', () => {
     })
 
     it('should be compatible when current_version is empty', () => {
-      mockLangGeniusVersionInfo.current_version = ''
+      mockAppContextState.langGeniusVersionInfo.current_version = ''
       const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
@@ -503,7 +526,7 @@ describe('Install', () => {
     })
 
     it('should be compatible when current_version is undefined', () => {
-      mockLangGeniusVersionInfo.current_version = undefined as unknown as string
+      mockAppContextState.langGeniusVersionInfo.current_version = undefined as unknown as string
       const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)

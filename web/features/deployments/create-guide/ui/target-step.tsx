@@ -3,41 +3,51 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
-  EnvVarBindingsPanel,
-} from '@/features/deployments/components/env-var-bindings'
+  envVarValuesAtom,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+  selectedEnvironmentIdAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state/primitives'
 import {
-  RuntimeCredentialBindingsPanel,
-} from '@/features/deployments/components/runtime-credential-bindings'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
+  deployableEnvironmentsIsErrorAtom,
+  deployableEnvironmentsIsFetchingAtom,
+  deployableEnvironmentsIsLoadingAtom,
+  deploymentOptionsDataAtom,
+  deploymentOptionsIsErrorAtom,
+  deploymentOptionsIsFetchingAtom,
+  deploymentOptionsIsLoadingAtom,
+  unsupportedDslNodesAtom,
+} from '@/features/deployments/create-guide/state/queries'
+import {
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
+} from '@/features/deployments/create-guide/state/submission'
 import {
   canDeployAtom,
   canSkipDeploymentAtom,
-  createDeploymentGuideSubmissionAtom,
-  CreateDeploymentGuideSubmissionBlockedError,
   deployableEnvironmentsAtom,
-  deployableEnvironmentsQueryAtom,
-  deploymentOptionsQueryAtom,
   deploymentTargetBindingSelectionsAtom,
   deploymentTargetBindingSlotsAtom,
   deploymentTargetEnvVarSlotsAtom,
   effectiveSelectedEnvironmentIdAtom,
-  envVarValuesAtom,
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
   selectBindingAtom,
-  selectedEnvironmentIdAtom,
   setEnvVarAtom,
-  stepAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/target'
+import {
+  EnvVarBindingsPanel,
+} from '@/features/deployments/shared/components/env-var-bindings'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '@/features/deployments/shared/components/runtime-credential-bindings'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { deploymentErrorMessage } from '@/features/deployments/shared/domain/error'
 import { useRouter } from '@/next/navigation'
 import { StepShell } from './layout'
@@ -51,8 +61,8 @@ export function TargetStepContent() {
 
   return (
     <StepShell
-      title={t('createGuide.target.title')}
-      description={t('createGuide.target.description')}
+      title={t($ => $['createGuide.target.title'])}
+      description={t($ => $['createGuide.target.description'])}
       hideHeader
     >
       <div className="flex flex-col gap-6">
@@ -67,17 +77,18 @@ export function TargetStepContent() {
 
 function TargetEnvironmentSection() {
   const { t } = useTranslation('deployments')
-  const environmentsQuery = useAtomValue(deployableEnvironmentsQueryAtom)
+  const environmentsIsError = useAtomValue(deployableEnvironmentsIsErrorAtom)
+  const environmentsIsFetching = useAtomValue(deployableEnvironmentsIsFetchingAtom)
+  const environmentsIsLoading = useAtomValue(deployableEnvironmentsIsLoadingAtom)
   const environments = useAtomValue(deployableEnvironmentsAtom)
   const effectiveSelectedEnvironmentId = useAtomValue(effectiveSelectedEnvironmentIdAtom)
-  const isEnvironmentError = environmentsQuery.isError
-  const isEnvironmentLoading = environmentsQuery.isLoading || (environmentsQuery.isFetching && !environmentsQuery.data)
+  const isEnvironmentLoading = environmentsIsLoading || (environmentsIsFetching && environments.length === 0)
   const selectEnvironment = useSetAtom(selectedEnvironmentIdAtom)
   const hasEnvironmentOptions = environments.length > 0
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.environment')}</div>
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['createGuide.target.environment'])}</div>
       {hasEnvironmentOptions
         ? (
             <RadioGroup<string>
@@ -97,9 +108,9 @@ function TargetEnvironmentSection() {
           ? <TargetEnvironmentSkeleton />
           : (
               <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                {isEnvironmentError
-                  ? t('createGuide.target.loadEnvironmentsFailed')
-                  : t('createGuide.target.noEnvironmentOptions')}
+                {environmentsIsError
+                  ? t($ => $['createGuide.target.loadEnvironmentsFailed'])
+                  : t($ => $['createGuide.target.noEnvironmentOptions'])}
               </div>
             )}
     </div>
@@ -110,12 +121,13 @@ function EnvironmentOptionRow({ environment }: {
   environment: Environment
 }) {
   const { t } = useTranslation('deployments')
-  const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
+  const summary = environment.description.trim() || `${t($ => $[`mode.${environment.mode}`])} · ${t($ => $[`backend.${environment.backend}`])}`
 
   return (
-    <RadioRoot<string>
+    <RadioItem<string>
       value={environment.id}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
@@ -132,17 +144,20 @@ function EnvironmentOptionRow({ environment }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 
 function TargetBindingSection() {
   const { t } = useTranslation('deployments')
-  const deploymentOptionsQuery = useAtomValue(deploymentOptionsQueryAtom)
+  const deploymentOptions = useAtomValue(deploymentOptionsDataAtom)
+  const deploymentOptionsIsError = useAtomValue(deploymentOptionsIsErrorAtom)
+  const deploymentOptionsIsFetching = useAtomValue(deploymentOptionsIsFetchingAtom)
+  const deploymentOptionsIsLoading = useAtomValue(deploymentOptionsIsLoadingAtom)
   const bindingSlots = useAtomValue(deploymentTargetBindingSlotsAtom)
   const bindingSelections = useAtomValue(deploymentTargetBindingSelectionsAtom)
-  const isBindingError = deploymentOptionsQuery.isError
-  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+  const isBindingError = deploymentOptionsIsError
+  const isBindingLoading = deploymentOptionsIsLoading || (deploymentOptionsIsFetching && !deploymentOptions)
   const selectBinding = useSetAtom(selectBindingAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
   const shouldRender = !(isBindingError && unsupportedDslNodes.length > 0)
@@ -154,14 +169,14 @@ function TargetBindingSection() {
     return (
       <div className="overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg">
         <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
-          <div className="system-xs-medium-uppercase text-text-tertiary">{t('createGuide.target.bindings')}</div>
-          <span className="system-xs-regular text-text-tertiary">{t('createGuide.target.bindingHint')}</span>
+          <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $['createGuide.target.bindings'])}</div>
+          <span className="system-xs-regular text-text-tertiary">{t($ => $['createGuide.target.bindingHint'])}</span>
         </div>
         {isBindingLoading
           ? <TargetBindingSkeleton />
           : (
               <div className="border-t border-divider-subtle px-3 py-3 system-sm-regular text-text-quaternary">
-                {t('createGuide.target.loadBindingsFailed')}
+                {t($ => $['createGuide.target.loadBindingsFailed'])}
               </div>
             )}
       </div>
@@ -172,13 +187,13 @@ function TargetBindingSection() {
     <RuntimeCredentialBindingsPanel
       slots={bindingSlots}
       selections={bindingSelections}
-      title={t('createGuide.target.bindings')}
-      hint={t('createGuide.target.bindingHint')}
-      noBindingRequiredLabel={t('createGuide.target.noBindingRequired')}
-      noCredentialCandidatesLabel={t('createGuide.target.noCredentialCandidates')}
-      selectCredentialLabel={t('createGuide.target.selectCredential')}
-      missingRequiredLabel={t('createGuide.target.missingRequiredBinding')}
-      bindingCountLabel={t('createGuide.target.bindingCount', { count: bindingSlots.length })}
+      title={t($ => $['createGuide.target.bindings'])}
+      hint={t($ => $['createGuide.target.bindingHint'])}
+      noBindingRequiredLabel={t($ => $['createGuide.target.noBindingRequired'])}
+      noCredentialCandidatesLabel={t($ => $['createGuide.target.noCredentialCandidates'])}
+      selectCredentialLabel={t($ => $['createGuide.target.selectCredential'])}
+      missingRequiredLabel={t($ => $['createGuide.target.missingRequiredBinding'])}
+      bindingCountLabel={t($ => $['createGuide.target.bindingCount'], { count: bindingSlots.length })}
       onChange={selectBinding}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
@@ -190,10 +205,13 @@ function TargetEnvVarSection() {
   const { t } = useTranslation('deployments')
   const setEnvVar = useSetAtom(setEnvVarAtom)
   const envVarValues = useAtomValue(envVarValuesAtom)
-  const deploymentOptionsQuery = useAtomValue(deploymentOptionsQueryAtom)
+  const deploymentOptions = useAtomValue(deploymentOptionsDataAtom)
+  const deploymentOptionsIsError = useAtomValue(deploymentOptionsIsErrorAtom)
+  const deploymentOptionsIsFetching = useAtomValue(deploymentOptionsIsFetchingAtom)
+  const deploymentOptionsIsLoading = useAtomValue(deploymentOptionsIsLoadingAtom)
   const envVarSlots = useAtomValue(deploymentTargetEnvVarSlotsAtom)
-  const isBindingError = deploymentOptionsQuery.isError
-  const isBindingLoading = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+  const isBindingError = deploymentOptionsIsError
+  const isBindingLoading = deploymentOptionsIsLoading || (deploymentOptionsIsFetching && !deploymentOptions)
 
   if (isBindingLoading || isBindingError)
     return null
@@ -202,19 +220,19 @@ function TargetEnvVarSection() {
     <EnvVarBindingsPanel
       slots={envVarSlots}
       values={envVarValues}
-      title={t('createGuide.target.envVars')}
-      hint={t('createGuide.target.envVarHint')}
-      envVarPlaceholder={t('createGuide.target.envVarPlaceholder')}
-      literalSourceLabel={t('createGuide.target.envVarSource.literal')}
-      defaultSourceLabel={t('createGuide.target.envVarSource.default')}
-      lastDeploymentSourceLabel={t('createGuide.target.envVarSource.lastDeployment')}
+      title={t($ => $['createGuide.target.envVars'])}
+      hint={t($ => $['createGuide.target.envVarHint'])}
+      envVarPlaceholder={t($ => $['createGuide.target.envVarPlaceholder'])}
+      literalSourceLabel={t($ => $['createGuide.target.envVarSource.literal'])}
+      defaultSourceLabel={t($ => $['createGuide.target.envVarSource.default'])}
+      lastDeploymentSourceLabel={t($ => $['createGuide.target.envVarSource.lastDeployment'])}
       valueTypeLabels={{
-        string: t('createGuide.target.envVarType.string'),
-        number: t('createGuide.target.envVarType.number'),
-        secret: t('createGuide.target.envVarType.secret'),
+        string: t($ => $['createGuide.target.envVarType.string']),
+        number: t($ => $['createGuide.target.envVarType.number']),
+        secret: t($ => $['createGuide.target.envVarType.secret']),
       }}
-      sourceAriaLabel={key => t('createGuide.target.envVarSource.ariaLabel', { key })}
-      envVarCountLabel={t('createGuide.target.envVarCount', { count: envVarSlots.length })}
+      sourceAriaLabel={key => t($ => $['createGuide.target.envVarSource.ariaLabel'], { key })}
+      envVarCountLabel={t($ => $['createGuide.target.envVarCount'], { count: envVarSlots.length })}
       onChange={setEnvVar}
       listScrollable={false}
       className="border-components-option-card-option-border bg-components-option-card-option-bg"
@@ -261,7 +279,7 @@ export function TargetBackButton() {
 
   return (
     <Button type="button" variant="secondary" onClick={() => setStep('release')} disabled={isSubmitting}>
-      {t('createGuide.actions.back')}
+      {t($ => $['createGuide.actions.back'])}
     </Button>
   )
 }
@@ -274,8 +292,8 @@ export function TargetSkipDeploymentButton() {
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSkippingDeployment
-    ? t('createGuide.actions.creating')
-    : t('createGuide.actions.skipDeploy')
+    ? t($ => $['createGuide.actions.creating'])
+    : t($ => $['createGuide.actions.skipDeploy'])
 
   async function handleSkipDeployment() {
     if (!canSkipDeployment)
@@ -289,8 +307,8 @@ export function TargetSkipDeploymentButton() {
     catch (error) {
       await showSubmissionError({
         error,
-        fallbackMessage: t('createGuide.errors.createReleaseFailed'),
-        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+        fallbackMessage: t($ => $['createGuide.errors.createReleaseFailed']),
+        unsupportedDslModeMessage: t($ => $['createGuide.dsl.unsupportedMode']),
       })
     }
   }
@@ -310,8 +328,8 @@ export function TargetDeployButton() {
   const isSubmitting = useAtomValue(isSubmittingDeploymentGuideAtom)
   const isSkippingDeployment = useAtomValue(isCreatingReleaseOnlyAtom)
   const label = isSubmitting && !isSkippingDeployment
-    ? t('createGuide.actions.deploying')
-    : t('createGuide.actions.createAndDeploy')
+    ? t($ => $['createGuide.actions.deploying'])
+    : t($ => $['createGuide.actions.createAndDeploy'])
 
   async function handleDeploy() {
     if (!canDeploy)
@@ -325,8 +343,8 @@ export function TargetDeployButton() {
     catch (error) {
       await showSubmissionError({
         error,
-        fallbackMessage: t('createGuide.errors.deployFailed'),
-        unsupportedDslModeMessage: t('createGuide.dsl.unsupportedMode'),
+        fallbackMessage: t($ => $['createGuide.errors.deployFailed']),
+        unsupportedDslModeMessage: t($ => $['createGuide.dsl.unsupportedMode']),
       })
     }
   }

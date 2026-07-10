@@ -6,16 +6,22 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { debounce, useQueryState } from 'nuqs'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StudioListHeader } from '@/app/components/apps/studio-list-header'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
+import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
+  deploymentsListErrorAtom,
+  deploymentsListFetchNextPageAtom,
   deploymentsListHasFilterAtom,
-  deploymentsListQueryAtom,
+  deploymentsListHasNextPageAtom,
+  deploymentsListIsFetchingAtom,
+  deploymentsListIsFetchingNextPageAtom,
+  deploymentsListIsLoadingAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
+  deploymentsListShowErrorStateAtom,
   deploymentsListShowSkeletonAtom,
   envFilterQueryState,
   keywordsQueryState,
@@ -34,10 +40,9 @@ function DeploymentsListState({ children }: {
 
 function DeploymentsListEmpty() {
   const { t } = useTranslation('deployments')
-  const hasAtomFilter = useAtomValue(deploymentsListHasFilterAtom)
-  const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
-  const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const hasFilter = hasAtomFilter || Boolean(keywords.trim()) || Boolean(envFilter)
+  const hasFilter = useAtomValue(deploymentsListHasFilterAtom)
+  const [_keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
+  const [_envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
 
   function clearFilters() {
     void setKeywords(null)
@@ -48,12 +53,12 @@ function DeploymentsListEmpty() {
     <DeploymentEmptyState
       variant="page"
       icon={hasFilter ? 'i-ri-search-line' : 'i-ri-rocket-line'}
-      title={hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
-      description={hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
+      title={hasFilter ? t($ => $['list.emptyFilteredTitle']) : t($ => $['list.emptyTitle'])}
+      description={hasFilter ? t($ => $['list.emptyFilteredDescription']) : t($ => $['list.emptyDescription'])}
       action={hasFilter
         ? (
             <Button variant="secondary" size="small" onClick={clearFilters}>
-              {t('list.clearFilters')}
+              {t($ => $['list.clearFilters'])}
             </Button>
           )
         : <CreateDeploymentButton />}
@@ -113,15 +118,15 @@ function DeploymentsSearchInput({ className }: {
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
       <Input
         className="h-8 pr-8 pl-8"
-        aria-label={t('filter.searchPlaceholder')}
-        placeholder={t('filter.searchPlaceholder')}
+        aria-label={t($ => $['filter.searchPlaceholder'])}
+        placeholder={t($ => $['filter.searchPlaceholder'])}
         value={keywords}
         onChange={e => handleKeywordsChange(e.target.value)}
       />
       {keywords && (
         <button
           type="button"
-          aria-label={t('list.clearSearch')}
+          aria-label={t($ => $['list.clearSearch'])}
           className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
           onClick={() => handleKeywordsChange('')}
         >
@@ -139,7 +144,7 @@ function DeploymentsListControls() {
     <StudioListHeader
       title={(
         <div className="flex items-center">
-          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.deployments', { ns: 'common' })}</h1>
+          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $['menus.deployments'], { ns: 'common' })}</h1>
         </div>
       )}
     >
@@ -157,56 +162,39 @@ function DeploymentsListControls() {
 
 export function DeploymentsListShell() {
   const { t } = useTranslation('deployments')
-  const containerRef = useRef<HTMLDivElement>(null)
-  const anchorRef = useRef<HTMLDivElement>(null)
-  const deploymentsListQuery = useAtomValue(deploymentsListQueryAtom)
+  const deploymentsListError = useAtomValue(deploymentsListErrorAtom)
+  const deploymentsListFetchNextPage = useAtomValue(deploymentsListFetchNextPageAtom)
+  const deploymentsListHasNextPage = useAtomValue(deploymentsListHasNextPageAtom)
+  const deploymentsListIsFetching = useAtomValue(deploymentsListIsFetchingAtom)
+  const deploymentsListIsFetchingNextPage = useAtomValue(deploymentsListIsFetchingNextPageAtom)
+  const deploymentsListIsLoading = useAtomValue(deploymentsListIsLoadingAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
+  const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
-  const {
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isError,
-    isFetchingNextPage,
-    isLoading,
-  } = deploymentsListQuery
 
-  useEffect(() => {
-    if (!hasNextPage || isLoading || isFetchingNextPage || error)
-      return
-
-    const anchor = anchorRef.current
-    const container = containerRef.current
-    if (!anchor || !container)
-      return
-
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting)
-        void fetchNextPage()
-    }, {
-      root: container,
-      rootMargin: '160px',
-      threshold: 0.1,
-    })
-
-    observer.observe(anchor)
-    return () => observer.disconnect()
-  }, [error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: deploymentsListError,
+    fetchNextPage: deploymentsListFetchNextPage,
+    hasNextPage: deploymentsListHasNextPage,
+    isFetching: deploymentsListIsFetching,
+    isFetchingNextPage: deploymentsListIsFetchingNextPage,
+    isLoading: deploymentsListIsLoading,
+  })
 
   return (
-    <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+    <div ref={rootRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
       <DeploymentsListControls />
       <div className={cn(
-        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-8 pt-2',
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-8 pt-2 pb-8',
         showEmptyState && 'overflow-hidden',
       )}
       >
         {showSkeleton
           ? <DeploymentsListSkeleton />
-          : isError
-            ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-            : appInstanceSummaries.length === 0
+          : showErrorState
+            ? <DeploymentsListState>{t($ => $['common.loadFailed'])}</DeploymentsListState>
+            : showEmptyState
               ? <DeploymentsListEmpty />
               : appInstanceSummaries.map(summary => (
                   <InstanceCard
@@ -214,11 +202,9 @@ export function DeploymentsListShell() {
                     summary={summary}
                   />
                 ))}
-        {isFetchingNextPage && <DeploymentsListSkeleton />}
+        {deploymentsListIsFetchingNextPage && <DeploymentsListSkeleton />}
+        <div ref={sentinelRef} aria-hidden="true" className="col-span-full h-px" />
       </div>
-
-      <div ref={anchorRef} className="h-0" />
-      <div className="py-4" />
     </div>
   )
 }

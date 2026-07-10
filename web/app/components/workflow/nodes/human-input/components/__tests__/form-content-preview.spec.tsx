@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import FormContentPreview from '../form-content-preview'
 
@@ -80,7 +81,7 @@ describe('FormContentPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseStore.mockImplementation((selector: (state: { panelWidth: number }) => unknown) => selector({ panelWidth: 320 }))
     mockUseNodes.mockReturnValue([{

@@ -1,5 +1,6 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore } from '@/app/components/app/store'
 import {
   useAppAccessRules,
@@ -12,6 +13,14 @@ const mockAppContext = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
@@ -34,9 +43,37 @@ const mockMutations = vi.hoisted(() => ({
   removeMemberBindings: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppContext,
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/access-control/use-app-access-config', () => ({
   useAppAccessRules: vi.fn(() => ({
@@ -75,6 +112,7 @@ describe('AppAccessConfigPage', () => {
     vi.clearAllMocks()
     mockAppContext.userProfile = { id: 'user-1' }
     mockAppContext.workspacePermissionKeys = []
+    mockIsRbacEnabled = true
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
     mockAppUserAccessSettings.data = []
@@ -187,6 +225,16 @@ describe('AppAccessConfigPage', () => {
           permission_keys: [AppACLPermission.ViewLayout],
         } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
       })
+
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+      expect(useAppAccessRules).not.toHaveBeenCalled()
+      expect(useAppUserAccessSettings).not.toHaveBeenCalled()
+    })
+
+    it('should not mount access config data hooks when RBAC is disabled', () => {
+      mockIsRbacEnabled = false
 
       render(<AppAccessConfigPage appId="app-1" />)
 

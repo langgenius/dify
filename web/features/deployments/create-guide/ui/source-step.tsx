@@ -1,42 +1,54 @@
 'use client'
 
-import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/create-guide/state'
+import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/create-guide/state/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
 import {
-  continueFromSourceAtom,
   dslFileAtom,
+  effectiveMethodAtom,
+  sourceSearchTextAtom,
+} from '@/features/deployments/create-guide/state/primitives'
+import { unsupportedDslNodesAtom } from '@/features/deployments/create-guide/state/queries'
+import {
   dslReadErrorAtom,
   dslUnsupportedModeAtom,
   effectiveSelectedAppAtom,
   isReadingDslAtom,
-  methodAtom,
+  sourceAppsAtom,
+  sourceAppsErrorAtom,
+  sourceAppsFetchNextPageAtom,
+  sourceAppsHasNextPageAtom,
+  sourceAppsIsFetchingAtom,
+  sourceAppsIsFetchingNextPageAtom,
+  sourceAppsIsLoadingAtom,
+  sourceAppsIsPlaceholderDataAtom,
+} from '@/features/deployments/create-guide/state/source'
+import {
+  continueFromSourceAtom,
   selectDslFileAtom,
   selectMethodAtom,
   selectSourceAppAtom,
   setSourceSearchTextAtom,
-  sourceAppsQueryAtom,
   sourceCanGoNextAtom,
-  sourceSearchTextAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/workflow'
+import { DeploymentStateMessage } from '@/features/deployments/shared/components/empty-state'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
+import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
+import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceStepContent() {
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
   return (
@@ -55,13 +67,13 @@ export function SourceStepContent() {
 
 function SourceMethodSection() {
   const { t } = useTranslation('deployments')
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const selectMethod = useSetAtom(selectMethodAtom)
 
   return (
     <StepShell
-      title={t('createGuide.steps.method')}
-      description={t('createGuide.method.description')}
+      title={t($ => $['createGuide.steps.method'])}
+      description={t($ => $['createGuide.method.description'])}
       descriptionClassName="lg:hidden"
       hideHeader
     >
@@ -73,15 +85,17 @@ function SourceMethodSection() {
         <SourceMethodCard
           value="bindApp"
           icon="i-ri-stack-line"
-          title={t('createGuide.methods.bindApp.title')}
-          description={t('createGuide.methods.bindApp.description')}
+          title={t($ => $['createGuide.methods.bindApp.title'])}
+          description={t($ => $['createGuide.methods.bindApp.description'])}
         />
-        <SourceMethodCard
-          value="importDsl"
-          icon="i-ri-file-code-line"
-          title={t('createGuide.methods.importDsl.title')}
-          description={t('createGuide.methods.importDsl.description')}
-        />
+        {isDeploymentDslImportEnabled && (
+          <SourceMethodCard
+            value="importDsl"
+            icon="i-ri-file-code-line"
+            title={t($ => $['createGuide.methods.importDsl.title'])}
+            description={t($ => $['createGuide.methods.importDsl.description'])}
+          />
+        )}
       </RadioGroup>
     </StepShell>
   )
@@ -95,15 +109,16 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
   badge?: string
 }) {
   return (
-    <RadioRoot<GuideMethod>
+    <RadioItem<GuideMethod>
       value={value}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
         text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2
         focus-visible:ring-state-accent-solid sm:w-[240px]`,
-        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:ring-[0.5px] data-checked:ring-components-option-card-option-selected-border data-checked:ring-inset',
+        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">
@@ -124,7 +139,7 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 
@@ -133,8 +148,8 @@ function SourceAppSelectionSection() {
 
   return (
     <StepShell
-      title={t('createGuide.source.title')}
-      description={t('createGuide.source.description')}
+      title={t($ => $['createGuide.source.title'])}
+      description={t($ => $['createGuide.source.description'])}
       descriptionClassName="lg:hidden"
       hideHeader
       className="min-h-0 flex-1"
@@ -157,16 +172,16 @@ function SourceSearchInput() {
       <span className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" aria-hidden="true" />
       <Input
         id="create-guide-source-search"
-        aria-label={t('createGuide.source.sourceApp')}
+        aria-label={t($ => $['createGuide.source.sourceApp'])}
         value={sourceSearchText}
         onChange={event => setSourceSearchText(event.target.value)}
-        placeholder={t('createGuide.source.searchPlaceholder')}
+        placeholder={t($ => $['createGuide.source.searchPlaceholder'])}
         className="h-9 pr-8 pl-8"
       />
       {sourceSearchText && (
         <button
           type="button"
-          aria-label={t('createGuide.source.clearSearch')}
+          aria-label={t($ => $['createGuide.source.clearSearch'])}
           onClick={() => setSourceSearchText('')}
           className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
         >
@@ -181,18 +196,36 @@ function SourceAppList() {
   const { t } = useTranslation('deployments')
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const effectiveSelectedApp = useAtomValue(effectiveSelectedAppAtom)
-  const sourceAppsQuery = useAtomValue(sourceAppsQueryAtom)
-  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-  const sourceAppsLoading = sourceAppsQuery.isLoading || sourceAppsQuery.isPlaceholderData || (sourceAppsQuery.isFetching && sourceApps.length === 0)
+  const sourceApps = useAtomValue(sourceAppsAtom)
+  const sourceAppsError = useAtomValue(sourceAppsErrorAtom)
+  const sourceAppsFetchNextPage = useAtomValue(sourceAppsFetchNextPageAtom)
+  const sourceAppsHasNextPage = useAtomValue(sourceAppsHasNextPageAtom)
+  const sourceAppsIsFetching = useAtomValue(sourceAppsIsFetchingAtom)
+  const sourceAppsIsFetchingNextPage = useAtomValue(sourceAppsIsFetchingNextPageAtom)
+  const sourceAppsIsLoading = useAtomValue(sourceAppsIsLoadingAtom)
+  const sourceAppsIsPlaceholderData = useAtomValue(sourceAppsIsPlaceholderDataAtom)
+  const sourceAppsLoading = sourceAppsIsLoading || sourceAppsIsPlaceholderData || (sourceAppsIsFetching && sourceApps.length === 0)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: sourceAppsError,
+    fetchNextPage: sourceAppsFetchNextPage,
+    hasNextPage: sourceAppsHasNextPage,
+    isFetching: sourceAppsIsFetching,
+    isFetchingNextPage: sourceAppsIsFetchingNextPage,
+    isLoading: sourceAppsIsLoading,
+  }, {
+    enabled: !sourceAppsLoading,
+    rootMargin: '0px 0px 160px 0px',
+    threshold: 0.1,
+  })
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
+    <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
       {sourceAppsLoading
         ? <SourceAppSkeleton />
         : sourceApps.length === 0
           ? (
               <DeploymentStateMessage variant="embedded">
-                {t('createGuide.source.empty')}
+                {t($ => $['createGuide.source.empty'])}
               </DeploymentStateMessage>
             )
           : (
@@ -205,20 +238,12 @@ function SourceAppList() {
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}
-                {sourceAppsQuery.hasNextPage && (
-                  <div className="flex justify-center border-t border-divider-subtle px-3 py-2">
-                    <Button
-                      type="button"
-                      size="small"
-                      disabled={sourceAppsQuery.isFetchingNextPage}
-                      onClick={() => {
-                        void sourceAppsQuery.fetchNextPage()
-                      }}
-                    >
-                      {sourceAppsQuery.isFetchingNextPage ? t('createModal.loadingApps') : t('createModal.loadMoreApps')}
-                    </Button>
+                {sourceAppsIsFetchingNextPage && (
+                  <div className="border-t border-divider-subtle px-3 py-2 text-center system-xs-regular text-text-tertiary">
+                    {t($ => $['createModal.loadingApps'])}
                   </div>
                 )}
+                {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
               </div>
             )}
     </div>
@@ -292,13 +317,13 @@ function DslUploadSection() {
   const selectDslFile = useSetAtom(selectDslFileAtom)
 
   return (
-    <StepShell title={t('createGuide.dsl.title')} description={t('createGuide.dsl.description')} hideHeader>
+    <StepShell title={t($ => $['createGuide.dsl.title'])} description={t($ => $['createGuide.dsl.description'])} hideHeader>
       <div className="flex flex-col gap-4 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-5">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 i-ri-upload-cloud-2-line size-5 shrink-0 text-text-tertiary" aria-hidden="true" />
           <div className="flex min-w-0 flex-col gap-1">
-            <div className="system-sm-semibold text-text-primary">{t('createGuide.dsl.dropTitle')}</div>
-            <div className="system-sm-regular text-text-tertiary">{t('createGuide.dsl.dropDescription')}</div>
+            <div className="system-sm-semibold text-text-primary">{t($ => $['createGuide.dsl.dropTitle'])}</div>
+            <div className="system-sm-regular text-text-tertiary">{t($ => $['createGuide.dsl.dropDescription'])}</div>
           </div>
         </div>
         <Uploader
@@ -322,17 +347,17 @@ function DslReadStatus() {
     <>
       {isReadingDsl && (
         <div className="system-xs-regular text-text-tertiary">
-          {t('createGuide.dsl.reading')}
+          {t($ => $['createGuide.dsl.reading'])}
         </div>
       )}
       {dslReadError && (
         <div className="system-xs-regular text-text-destructive">
-          {t('createGuide.dsl.readFailed')}
+          {t($ => $['createGuide.dsl.readFailed'])}
         </div>
       )}
       {dslUnsupportedMode && (
         <div role="alert" className="system-xs-regular text-text-destructive">
-          {t('createGuide.dsl.unsupportedMode')}
+          {t($ => $['createGuide.dsl.unsupportedMode'])}
         </div>
       )}
     </>
@@ -350,11 +375,11 @@ export function SourceActionButtons() {
       variant="primary"
       disabled={!canGoNext}
       onClick={() => continueFromSource({
-        defaultDslAppName: t('createGuide.dsl.defaultAppName'),
-        defaultReleaseName: t('createGuide.release.defaultName'),
+        defaultDslAppName: t($ => $['createGuide.dsl.defaultAppName']),
+        defaultReleaseName: t($ => $['createGuide.release.defaultName']),
       })}
     >
-      {t('createGuide.actions.next')}
+      {t($ => $['createGuide.actions.next'])}
     </Button>
   )
 }

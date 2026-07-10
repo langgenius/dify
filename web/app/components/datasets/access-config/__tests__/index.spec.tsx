@@ -1,5 +1,6 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   useDatasetAccessRules,
   useDatasetUserAccessSettings,
@@ -26,6 +27,14 @@ const mockAppContextState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
@@ -66,9 +75,41 @@ vi.mock('@/context/dataset-detail', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
 
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
@@ -78,6 +119,12 @@ vi.mock('@/app/components/access-rules-editor', () => ({
     )
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 describe('DatasetAccessConfigPage', () => {
   beforeEach(() => {
@@ -93,6 +140,7 @@ describe('DatasetAccessConfigPage', () => {
     }
     mockAppContextState.userProfile = { id: 'user-1' }
     mockAppContextState.workspacePermissionKeys = []
+    mockIsRbacEnabled = true
     mockAccessRulesEditor.props = null
   })
 
@@ -154,6 +202,16 @@ describe('DatasetAccessConfigPage', () => {
         maintainer: 'account-1',
         permission_keys: [],
       }
+
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+    })
+
+    it('should disable access config queries and hide the editor when RBAC is disabled', () => {
+      mockIsRbacEnabled = false
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 

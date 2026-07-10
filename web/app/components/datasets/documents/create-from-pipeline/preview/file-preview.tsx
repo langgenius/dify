@@ -32,7 +32,7 @@ const FilePreview = ({
     <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
         <div className="flex grow flex-col gap-y-1">
-          <div className="system-2xs-semibold-uppercase text-text-accent">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
+          <div className="system-2xs-semibold-uppercase text-text-accent">{t($ => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}</div>
           <div className="text-tex-primary title-md-semi-bold">{`${fileName}.${file.extension || ''}`}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
             <DocumentFileIcon
@@ -46,7 +46,7 @@ const FilePreview = ({
             {fileData && (
               <>
                 <span>·</span>
-                <span>{`${formatNumberAbbreviated(fileData.content.length)} ${t('addDocuments.characters', { ns: 'datasetPipeline' })}`}</span>
+                <span>{`${formatNumberAbbreviated(fileData.content.length)} ${t($ => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>
               </>
             )}
           </div>

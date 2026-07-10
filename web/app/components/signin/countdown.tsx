@@ -1,6 +1,7 @@
 'use client'
 import { useCountDown } from 'ahooks'
-import { useEffect, useState } from 'react'
+import { useIsClient } from 'foxact/use-is-client'
+import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime } from './storage'
 
@@ -9,6 +10,29 @@ type CountdownProps = {
 }
 
 export default function Countdown({ onResend }: CountdownProps) {
+  const isClient = useIsClient()
+
+  if (!isClient)
+    return <CountdownFallback />
+
+  return (
+    <Suspense fallback={<CountdownFallback />}>
+      <CountdownContent onResend={onResend} />
+    </Suspense>
+  )
+}
+
+function CountdownFallback() {
+  const { t } = useTranslation()
+
+  return (
+    <p className="system-xs-regular text-text-tertiary">
+      <span>{t($ => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
+    </p>
+  )
+}
+
+function CountdownContent({ onResend }: CountdownProps) {
   const { t } = useTranslation()
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()
@@ -33,7 +57,7 @@ export default function Countdown({ onResend }: CountdownProps) {
 
   return (
     <p className="system-xs-regular text-text-tertiary">
-      <span>{t('checkCode.didNotReceiveCode', { ns: 'login' })}</span>
+      <span>{t($ => $['checkCode.didNotReceiveCode'], { ns: 'login' })}</span>
       {time > 0 && (
         <span>
           {Math.round(time / 1000)}
@@ -47,7 +71,7 @@ export default function Countdown({ onResend }: CountdownProps) {
             className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={resend}
           >
-            {t('checkCode.resend', { ns: 'login' })}
+            {t($ => $['checkCode.resend'], { ns: 'login' })}
           </button>
         )
       }

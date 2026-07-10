@@ -1,3 +1,4 @@
+import type { WorkflowTranslate } from './parallel'
 import type { NodeTracing } from '@/types/workflow'
 import { cloneDeep } from 'es-toolkit/object'
 import { BlockEnum } from '../../../types'
@@ -8,7 +9,7 @@ import { addChildrenToLoopNode } from './loop'
 import formatParallelNode from './parallel'
 import formatRetryNode from './retry'
 
-const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
+const formatIterationAndLoopNode = (list: NodeTracing[], t: WorkflowTranslate) => {
   const clonedList = cloneDeep(list)
 
   // Identify all loop and iteration nodes
@@ -77,7 +78,7 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
   return result
 }
 
-const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
+const formatToTracingNodeList = (list: NodeTracing[], t: WorkflowTranslate) => {
   const allItems = cloneDeep([...list]).sort((a, b) => a.index - b.index)
   /*
   * First handle not change list structure node

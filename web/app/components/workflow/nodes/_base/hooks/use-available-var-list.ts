@@ -1,6 +1,6 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
-import { useSnippetDetailStore } from '@/app/components/snippets/store'
+import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import {
   useIsChatMode,
   useWorkflow,
@@ -34,7 +34,7 @@ const useAvailableVarList = (nodeId: string, {
   filterVar: () => true,
 }) => {
   const { t } = useTranslation()
-  const snippetInputFields = useSnippetDetailStore(s => s.fields)
+  const snippetInputFields = useSnippetDraftStore(s => s.inputFields)
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
@@ -43,7 +43,7 @@ const useAvailableVarList = (nodeId: string, {
   const snippetInputFieldAvailability = appendSnippetInputFieldVars({
     availableNodes,
     fields: snippetInputFields,
-    title: t('panelTitle', { ns: 'snippet' }),
+    title: t($ => $.panelTitle, { ns: 'snippet' }),
   })
   const {
     parentNode: iterationNode,

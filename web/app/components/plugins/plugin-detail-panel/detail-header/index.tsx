@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -34,7 +34,7 @@ import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
 type Props = Readonly<{
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   detail: PluginDetail
   isReadmeView?: boolean
@@ -71,7 +71,7 @@ const getDetailUrl = (
 }
 
 const DetailHeader = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   detail,
   isReadmeView = false,
@@ -123,7 +123,7 @@ const DetailHeader = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     onUpdate,
   })
@@ -175,7 +175,7 @@ const DetailHeader = ({
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+            {verified && !isReadmeView && <Verified className="ml-0.5 size-4" text={t($ => $['marketplace.verifiedTip'], { ns: 'plugin' })} />}
 
             {/* Version Picker */}
             {!!version && (
@@ -219,7 +219,7 @@ const DetailHeader = ({
                   )}
                 />
                 <TooltipContent>
-                  {t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}
+                  {t($ => $['autoUpdate.nextUpdateTime'], { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -236,12 +236,12 @@ const DetailHeader = ({
                       className="h-5!"
                       onClick={handleTriggerLatestUpdate}
                     >
-                      {t('detailPanel.operation.update', { ns: 'plugin' })}
+                      {t($ => $['detailPanel.operation.update'], { ns: 'plugin' })}
                     </Button>
                   )}
                 />
                 <TooltipContent>
-                  {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+                  {t($ => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -271,7 +271,7 @@ const DetailHeader = ({
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
               detailUrl={detailUrl}
               showCheckVersion={canUpdatePlugin}
-              showRemove={canManagePlugin}
+              showRemove={canDeletePlugin}
             />
             <ActionButton onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />

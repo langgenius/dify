@@ -18,6 +18,7 @@ import InstallFromMarketplace from './install-from-marketplace'
 
 type DataSourcePageProps = {
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   stickyToolbar?: boolean
 }
 
@@ -43,7 +44,7 @@ function DataSourceListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <DataSourceCardSkeleton key={index} />
       ))}
@@ -53,6 +54,7 @@ function DataSourceListSkeleton() {
 
 const DataSourcePage = ({
   layout,
+  onOpenMarketplace,
   stickyToolbar,
 }: DataSourcePageProps) => {
   const { t } = useTranslation()
@@ -60,14 +62,13 @@ const DataSourcePage = ({
   const [searchText, setSearchText] = useState('')
   const {
     canSetPluginPreferences,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList(!canViewInstalledPlugins)
+  const { data: installedPluginList } = useInstalledPluginList()
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
@@ -108,7 +109,7 @@ const DataSourcePage = ({
     >
       <SearchInput
         className="w-[200px]"
-        placeholder={t('operation.search', { ns: 'common' })}
+        placeholder={t($ => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
       />
@@ -130,7 +131,7 @@ const DataSourcePage = ({
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">
             <Trans
-              i18nKey="dataSourcePage.notSetUpTitle"
+              i18nKey={$ => $['dataSourcePage.notSetUpTitle']}
               ns="common"
               components={{
                 highlight: <span className="text-text-primary" />,
@@ -138,7 +139,7 @@ const DataSourcePage = ({
             />
           </div>
           <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t('dataSourcePage.installFirst', { ns: 'common' })}
+            {t($ => $['dataSourcePage.installFirst'], { ns: 'common' })}
           </div>
         </div>
       )}
@@ -165,6 +166,7 @@ const DataSourcePage = ({
           <InstallFromMarketplace
             providers={dataSources}
             searchText={searchText}
+            onOpenMarketplace={onOpenMarketplace}
           />
         )
       }

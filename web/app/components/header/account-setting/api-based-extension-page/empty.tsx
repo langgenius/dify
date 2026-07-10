@@ -11,14 +11,14 @@ export function Empty() {
         <span aria-hidden className="i-custom-vender-workflow-api-aggregate size-5 text-text-tertiary" />
       </div>
       <div className="flex w-full flex-col gap-1">
-        <div className="system-xs-regular text-text-primary">{t('apiBasedExtension.title', { ns: 'common' })}</div>
+        <div className="system-xs-regular text-text-primary">{t($ => $['apiBasedExtension.title'], { ns: 'common' })}</div>
         <a
           className="flex items-center gap-1 system-xs-regular text-text-accent"
           href={docLink('/use-dify/workspace/api-extension/api-extension')}
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t('apiBasedExtension.link', { ns: 'common' })}
+          {t($ => $['apiBasedExtension.link'], { ns: 'common' })}
           <span aria-hidden className="i-ri-external-link-line size-3" />
         </a>
       </div>

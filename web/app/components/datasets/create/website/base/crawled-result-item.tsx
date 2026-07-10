@@ -53,7 +53,7 @@ const CrawledResultItem: FC<Props> = ({
           onClick={onPreview}
           className="top-0 right-0 hidden h-6 px-1.5 text-xs font-medium uppercase group-hover:absolute group-hover:block"
         >
-          {t('stepOne.website.preview', { ns: 'datasetCreation' })}
+          {t($ => $['stepOne.website.preview'], { ns: 'datasetCreation' })}
         </Button>
       </div>
     </div>

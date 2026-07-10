@@ -1,12 +1,15 @@
 'use client'
 
+import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
@@ -18,6 +21,7 @@ import { StudioListHeader } from '../apps/studio-list-header'
 import { canAccessSnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
+import SnippetPublishStatusFilter from './components/snippet-publish-status-filter'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
 
@@ -26,6 +30,14 @@ const TagManagementModal = dynamic(() => import('@/features/tag-management/compo
 })
 
 const SNIPPET_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
+
+const toSnippetPublishedQuery = (publishStatus: SnippetPublishStatus) => {
+  if (publishStatus === 'published')
+    return true
+  if (publishStatus === 'draft')
+    return false
+  return undefined
+}
 
 type SnippetCardSkeletonProps = {
   count: number
@@ -46,8 +58,8 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 
 const SnippetList = () => {
   const { t } = useTranslation()
-  const isLoadingCurrentWorkspace = useAppContextWithSelector(state => state.isLoadingCurrentWorkspace)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
     query: { tagIDs, keywords, creatorIDs },
@@ -59,16 +71,22 @@ const SnippetList = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
-  useDocumentTitle(t('tabs.snippets', { ns: 'workflow' }))
+  useDocumentTitle(t($ => $['tabs.snippets'], { ns: 'workflow' }))
 
-  const snippetListQuery = useMemo(() => ({
-    page: 1,
-    limit: 30,
-    keyword: debouncedKeywords,
-    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
-  }), [creatorIDs, debouncedKeywords, tagIDs])
+  const snippetListQuery = useMemo(() => {
+    const isPublished = toSnippetPublishedQuery(publishStatus)
+
+    return {
+      page: 1,
+      limit: 30,
+      keyword: debouncedKeywords,
+      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+      ...(typeof isPublished === 'boolean' ? { is_published: isPublished } : {}),
+    }
+  }, [creatorIDs, debouncedKeywords, publishStatus, tagIDs])
   const canQuerySnippetList = canAccessSnippets(workspacePermissionKeys)
 
   const {
@@ -129,11 +147,11 @@ const SnippetList = () => {
               href="/apps"
               className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
-              {t('menus.apps', { ns: 'common' })}
+              {t($ => $['menus.apps'], { ns: 'common' })}
             </Link>
             <span className="mx-1.5 shrink-0 font-light text-divider-deep">/</span>
             <h1 className="min-w-0 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-              {t('tabs.snippets', { ns: 'workflow' })}
+              {t($ => $['tabs.snippets'], { ns: 'workflow' })}
             </h1>
           </>
         )}
@@ -144,6 +162,10 @@ const SnippetList = () => {
               value={creatorIDs}
               onChange={setCreatorIDs}
             />
+            <SnippetPublishStatusFilter
+              value={publishStatus}
+              onChange={setPublishStatus}
+            />
             <TagFilter type="snippet" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <div className="relative w-50">
               <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
@@ -151,12 +173,12 @@ const SnippetList = () => {
                 className={cn('pl-6.5', keywords && 'pr-6.5')}
                 value={keywords}
                 onChange={e => setKeywords(e.target.value)}
-                placeholder={t('tabs.searchSnippets', { ns: 'workflow' })}
+                placeholder={t($ => $['tabs.searchSnippets'], { ns: 'workflow' })}
               />
               {!!keywords && (
                 <button
                   type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
+                  aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                   className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
                   onClick={() => setKeywords('')}
                 >
@@ -169,7 +191,7 @@ const SnippetList = () => {
         </div>
       </StudioListHeader>
       <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
         !hasAnySnippet && 'overflow-hidden',
       )}
       >
@@ -185,7 +207,7 @@ const SnippetList = () => {
                   onTagsChange={refetch}
                 />
               ))
-            : <Empty message={t('tabs.noSnippetsFound', { ns: 'workflow' })} />}
+            : <Empty message={t($ => $['tabs.noSnippetsFound'], { ns: 'workflow' })} />}
         {isFetchingNextPage && (
           <SnippetCardSkeleton count={3} />
         )}

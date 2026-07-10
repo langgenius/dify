@@ -1,5 +1,5 @@
 'use client'
-import type { LangGeniusVersionResponse } from '@/models/common'
+import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
@@ -13,7 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 
 type IAccountSettingProps = {
-  langGeniusVersionInfo: LangGeniusVersionResponse
+  langGeniusVersionInfo: LangGeniusVersionInfo
   onCancel: () => void
 }
 
@@ -39,7 +39,7 @@ export default function AccountAbout({
           <button
             type="button"
             className="absolute top-0 right-0 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             onClick={onCancel}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -86,8 +86,8 @@ export default function AccountAbout({
             <div className="min-w-0 text-xs font-medium text-text-tertiary">
               {
                 isLatest
-                  ? t('about.latestAvailable', { ns: 'common', version: langGeniusVersionInfo.latest_version })
-                  : t('about.nowAvailable', { ns: 'common', version: langGeniusVersionInfo.latest_version })
+                  ? t($ => $['about.latestAvailable'], { ns: 'common', version: langGeniusVersionInfo.latest_version })
+                  : t($ => $['about.nowAvailable'], { ns: 'common', version: langGeniusVersionInfo.latest_version })
               }
             </div>
             <div className="flex shrink-0 items-center">
@@ -97,7 +97,7 @@ export default function AccountAbout({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {t('about.changeLog', { ns: 'common' })}
+                  {t($ => $['about.changeLog'], { ns: 'common' })}
                 </Link>
               </Button>
               {
@@ -108,7 +108,7 @@ export default function AccountAbout({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {t('about.updateNow', { ns: 'common' })}
+                      {t($ => $['about.updateNow'], { ns: 'common' })}
                     </Link>
                   </Button>
                 )

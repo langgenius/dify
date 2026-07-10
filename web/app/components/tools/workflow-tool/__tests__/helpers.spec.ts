@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import { VarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -19,7 +20,7 @@ describe('workflow-tool helpers', () => {
   })
 
   it('builds translated reserved workflow outputs', () => {
-    const t = ((key: string, options?: { ns?: string }) => `${options?.ns}:${key}`) as TFunction
+    const t = withSelectorKey((key: string, options?: { ns?: string }) => `${options?.ns}:${key}`) as TFunction
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {

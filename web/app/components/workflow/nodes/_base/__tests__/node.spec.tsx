@@ -11,6 +11,41 @@ const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
 const mockUseCollaboration = vi.fn()
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'User',
+    email: 'user@example.com',
+    avatar: '',
+    avatar_url: '',
+  },
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
@@ -81,6 +116,9 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 vi.mock('@/app/components/workflow/nodes/tool/components/copy-id', () => ({
   default: ({ content }: { content: string }) => <div>{content}</div>,
 }))
+vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
+  selectWorkflowNode: vi.fn(),
+}))
 
 const createData = (overrides: Record<string, unknown> = {}) => ({
   type: BlockEnum.Tool,
@@ -127,6 +165,42 @@ describe('BaseNode', () => {
     expect(screen.getByTestId('node-target-handle')).toBeInTheDocument()
   })
 
+  it('should expose the node title area as a selectable button', async () => {
+    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData())}>
+        <div>Body</div>
+      </BaseNode>,
+    )
+
+    const node = screen.getByRole('button', { name: 'Node title' })
+
+    fireEvent.click(node)
+
+    expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
+  })
+
+  it('should keep header metadata outside the selectable button', () => {
+    renderWorkflowComponent(
+      <BaseNode
+        id="node-1"
+        data={toNodeData(createData({
+          type: BlockEnum.Iteration,
+          is_parallel: true,
+        }))}
+      >
+        <div>Iteration body</div>
+      </BaseNode>,
+    )
+
+    const titleButton = screen.getByRole('button', { name: 'Node title' })
+    const parallelButton = screen.getByRole('button', { name: /workflow\.nodes\.iteration\.parallelModeUpper/ })
+
+    expect(titleButton).not.toContainElement(parallelButton)
+    expect(titleButton.querySelector('button')).toBeNull()
+  })
+
   it('should render entry nodes inside the entry container', () => {
     renderWorkflowComponent(
       <BaseNode id="node-1" data={toNodeData(createData({ type: BlockEnum.Start }))}>
@@ -152,9 +226,9 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
-    const overlay = screen.getByTestId('workflow-node-install-overlay')
+    const overlay = screen.getByRole('button', { name: 'plugin.installPlugin' })
     expect(overlay).toBeInTheDocument()
-    fireEvent.click(overlay)
+    expect(overlay).toBeDisabled()
   })
 
   it('should render running status indicators for loop nodes', () => {

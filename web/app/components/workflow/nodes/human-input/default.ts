@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { DeliveryMethod, EmailConfig, FormInputItem, HumanInputNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -63,37 +64,37 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     timeout: 3,
     timeout_unit: 'day',
   },
-  checkValid(payload: HumanInputNodeType, t: (str: string, options: Record<string, unknown>) => string) {
+  checkValid(payload: HumanInputNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     if (!errorMessages && !payload.delivery_methods.length)
-      errorMessages = t(`${i18nPrefix}.noDeliveryMethod`, { ns: 'workflow' })
+      errorMessages = t($ => $[`${i18nPrefix}.noDeliveryMethod`], { ns: 'workflow' })
 
     if (!errorMessages && payload.delivery_methods.length > 0 && !payload.delivery_methods.some(method => method.enabled))
-      errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`, { ns: 'workflow' })
+      errorMessages = t($ => $[`${i18nPrefix}.noDeliveryMethodEnabled`], { ns: 'workflow' })
 
     if (!errorMessages && hasIncompleteEnabledEmailConfig(payload.delivery_methods))
-      errorMessages = t(`${i18nPrefix}.emailConfigIncomplete`, { ns: 'workflow' })
+      errorMessages = t($ => $[`${i18nPrefix}.emailConfigIncomplete`], { ns: 'workflow' })
 
     if (!errorMessages && !payload.user_actions.length)
-      errorMessages = t(`${i18nPrefix}.noUserActions`, { ns: 'workflow' })
+      errorMessages = t($ => $[`${i18nPrefix}.noUserActions`], { ns: 'workflow' })
 
     if (!errorMessages && payload.user_actions.length > 0) {
       const actionIds = payload.user_actions.map(action => action.id)
       const hasDuplicateIds = actionIds.length !== new Set(actionIds).size
       if (hasDuplicateIds)
-        errorMessages = t(`${i18nPrefix}.duplicateActionId`, { ns: 'workflow' })
+        errorMessages = t($ => $[`${i18nPrefix}.duplicateActionId`], { ns: 'workflow' })
     }
 
     if (!errorMessages && payload.user_actions.length > 0) {
       const hasEmptyId = payload.user_actions.some(action => !action.id?.trim())
       if (hasEmptyId)
-        errorMessages = t(`${i18nPrefix}.emptyActionId`, { ns: 'workflow' })
+        errorMessages = t($ => $[`${i18nPrefix}.emptyActionId`], { ns: 'workflow' })
     }
 
     if (!errorMessages && payload.user_actions.length > 0) {
       const hasEmptyTitle = payload.user_actions.some(action => !action.title?.trim())
       if (hasEmptyTitle)
-        errorMessages = t(`${i18nPrefix}.emptyActionTitle`, { ns: 'workflow' })
+        errorMessages = t($ => $[`${i18nPrefix}.emptyActionTitle`], { ns: 'workflow' })
     }
 
     return {

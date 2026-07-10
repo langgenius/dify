@@ -5,6 +5,7 @@ import type { AppSourceType } from '@/service/share'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useResultSender } from '../use-result-sender'
 
@@ -195,7 +196,7 @@ const renderSender = ({
     onShowRes,
     promptConfig,
     runState: runState || createRunStateHarness().runState,
-    t: (key: string) => key,
+    t: withSelectorKey((key: string) => key),
     taskId,
     visionConfig,
   }), {

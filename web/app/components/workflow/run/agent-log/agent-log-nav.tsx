@@ -40,12 +40,12 @@ export function AgentLogNav({
                 variant="ghost-accent"
                 onClick={() => onShowAgentOrToolLog(first)}
               >
-                {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+                {t($ => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
               </Button>
             )
           : (
               <div className="flex items-center px-1.25 system-xs-medium-uppercase text-text-tertiary">
-                {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+                {t($ => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
               </div>
             )
       }

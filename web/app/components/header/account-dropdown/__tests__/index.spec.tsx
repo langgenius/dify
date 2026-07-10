@@ -1,12 +1,11 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -43,6 +42,10 @@ vi.mock('@/app/components/base/theme-switcher', () => ({
 const { mockSetTheme } = vi.hoisted(() => ({
   mockSetTheme: vi.fn(),
 }))
+const mockAppContextState = vi.hoisted(() => ({
+  current: undefined as AppContextStateMockState | undefined,
+}))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -51,9 +54,31 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -63,7 +88,8 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
+vi.mock('@/service/use-common', async importOriginal => ({
+  ...await importOriginal<typeof import('@/service/use-common')>(),
   useLogout: vi.fn(),
 }))
 
@@ -74,10 +100,6 @@ vi.mock('@/next/navigation', async (importOriginal) => {
     useRouter: vi.fn(),
   }
 })
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
 
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
@@ -108,7 +130,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 vi.mock('@/env', () => mockEnv)
 
-const baseAppContextValue: AppContextValue = {
+const baseAppContextValue: AppContextStateMockState = {
   userProfile: {
     id: '1',
     name: 'Test User',
@@ -144,10 +166,13 @@ const baseAppContextValue: AppContextValue = {
     version: '0.6.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [],
+}
+
+const setAppContextValue = (value: AppContextStateMockState) => {
+  mockAppContextState.current = value
+  mockUseAppContext.mockReturnValue(value)
 }
 
 describe('AccountDropdown', () => {
@@ -170,7 +195,7 @@ describe('AccountDropdown', () => {
     mockConfig.IS_CLOUD_EDITION = false
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
-    vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
+    setAppContextValue(baseAppContextValue)
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
@@ -248,7 +273,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByText('common.settings.preferences'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
     })
 
     it('should show Appearance after Preferences in the main nav account dropdown', () => {
@@ -267,7 +292,7 @@ describe('AccountDropdown', () => {
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
@@ -286,7 +311,7 @@ describe('AccountDropdown', () => {
     it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         isCurrentWorkspaceOwner: false,
       })
@@ -382,7 +407,7 @@ describe('AccountDropdown', () => {
   describe('Version Indicators', () => {
     it('should show orange indicator when version is not latest', () => {
       // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {
@@ -402,7 +427,7 @@ describe('AccountDropdown', () => {
 
     it('should show green indicator when version is latest', () => {
       // Arrange
-      vi.mocked(useAppContext).mockReturnValue({
+      setAppContextValue({
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         langGeniusVersionInfo: {

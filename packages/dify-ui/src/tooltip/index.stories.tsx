@@ -8,8 +8,8 @@ import {
   TooltipTrigger,
 } from '.'
 
-const iconButtonClassName = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs hover:bg-state-base-hover'
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+const iconButtonClassName = 'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const meta = {
   title: 'Base/UI/Tooltip',
@@ -117,7 +117,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >

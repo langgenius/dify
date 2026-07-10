@@ -38,12 +38,12 @@ const Header = () => {
             : <DifyLogo alt="" />}
         </Link>
         <div className="h-4 w-px origin-center rotate-[11.31deg] bg-divider-regular" />
-        <p className="relative mt-[-2px] title-3xl-semi-bold text-text-primary">{t('account.account', { ns: 'common' })}</p>
+        <p className="relative mt-[-2px] title-3xl-semi-bold text-text-primary">{t($ => $['account.account'], { ns: 'common' })}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <Button className="gap-2 px-3 py-2 system-sm-medium" onClick={goToHome}>
           <span aria-hidden className="i-custom-vender-main-nav-home size-4" />
-          <p>{t('mainNav.home', { ns: 'common' })}</p>
+          <p>{t($ => $['mainNav.home'], { ns: 'common' })}</p>
           <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
         </Button>
         <div className="h-4 w-px bg-divider-regular" />

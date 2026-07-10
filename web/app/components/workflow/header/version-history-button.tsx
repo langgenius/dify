@@ -24,7 +24,7 @@ const PopupContent = React.memo(() => {
   return (
     <div className="flex items-center gap-x-1">
       <div className="px-0.5 system-xs-medium text-text-secondary">
-        {t('common.versionHistory', { ns: 'workflow' })}
+        {t($ => $['common.versionHistory'], { ns: 'workflow' })}
       </div>
       <ShortcutKbd hotkey={VERSION_HISTORY_HOTKEY} bgColor="gray" textColor="secondary" />
     </div>

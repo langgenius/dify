@@ -12,7 +12,7 @@ const Trigger = ({
   const { t } = useTranslation()
 
   if (!option)
-    return <span className="grow p-1">{t('placeholder.select', { ns: 'common' })}</span>
+    return <span className="grow p-1">{t($ => $['placeholder.select'], { ns: 'common' })}</span>
 
   return (
     <span className="flex min-w-0 items-center gap-x-0.5">

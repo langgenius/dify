@@ -33,20 +33,21 @@ export const useSnippetPublish = ({
         params: { snippetId },
       })
       queryClient.setQueryData<SnippetContract | undefined>(
-        consoleQuery.snippets.detail.queryKey({
+        consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
+          type: 'query',
           input: {
-            params: { snippetId },
+            params: { snippet_id: snippetId },
           },
         }),
         old => old ? { ...old, is_published: true } : old,
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
       resetWorkflowVersionHistory()
-      toast.success(t('saveSuccess'))
+      toast.success(t($ => $.publishSuccess))
       return true
     }
     catch (error) {
-      toast.error(error instanceof Error ? error.message : t('publishFailed'))
+      toast.error(error instanceof Error ? error.message : t($ => $.publishFailed))
       return false
     }
   }, [handleCheckBeforePublish, publishSnippetMutation, queryClient, resetWorkflowVersionHistory, snippetId, t, workflowStore])

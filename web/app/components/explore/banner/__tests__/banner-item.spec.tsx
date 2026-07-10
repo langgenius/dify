@@ -346,7 +346,7 @@ describe('BannerItem', () => {
       expect(wrapper).toHaveClass('rounded-2xl')
     })
 
-    it('keeps a fixed height even when text content is empty', () => {
+    it('keeps the desktop height even when text content is empty', () => {
       const banner = createMockBanner({
         content: {
           'category': '',
@@ -359,7 +359,7 @@ describe('BannerItem', () => {
       const { container } = renderBannerItem(banner)
       const wrapper = container.firstChild as HTMLElement
 
-      expect(wrapper).toHaveClass('h-[184px]')
+      expect(wrapper).toHaveClass('xl:h-[184px]')
     })
   })
 })

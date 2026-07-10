@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from '../types'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -5,6 +6,7 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
@@ -14,7 +16,6 @@ import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
   isHighQualitySearchMethod,
-  isKnowledgeBaseEmbeddingIssue,
   KnowledgeBaseValidationIssueCode,
 } from '../utils'
 
@@ -190,7 +191,7 @@ describe('knowledge-base validation issue', () => {
 })
 
 describe('knowledge-base validation messaging', () => {
-  const t = (key: string) => key
+  const t = withSelectorKey((key: string, _options?: Record<string, unknown>) => key) as unknown as TFunction
 
   it.each([
     [KnowledgeBaseValidationIssueCode.chunkStructureRequired, 'nodes.knowledgeBase.chunkIsRequired'],
@@ -206,21 +207,10 @@ describe('knowledge-base validation messaging', () => {
     [KnowledgeBaseValidationIssueCode.rerankingModelRequired, 'nodes.knowledgeBase.rerankingModelIsRequired'],
     [KnowledgeBaseValidationIssueCode.rerankingModelInvalid, 'nodes.knowledgeBase.rerankingModelIsInvalid'],
   ] as const)('maps %s to the expected translation key', (code, expectedKey) => {
-    expect(getKnowledgeBaseValidationMessage({ code }, t as never)).toBe(expectedKey)
+    expect(getKnowledgeBaseValidationMessage({ code }, t)).toBe(expectedKey)
   })
 
   it('returns an empty string when there is no issue', () => {
-    expect(getKnowledgeBaseValidationMessage(undefined, t as never)).toBe('')
-  })
-})
-
-describe('isKnowledgeBaseEmbeddingIssue', () => {
-  it('returns true for embedding-related issues', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.embeddingModelDisabled })).toBe(true)
-  })
-
-  it('returns false for non-embedding issues and missing values', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.rerankingModelInvalid })).toBe(false)
-    expect(isKnowledgeBaseEmbeddingIssue(undefined)).toBe(false)
+    expect(getKnowledgeBaseValidationMessage(undefined, t)).toBe('')
   })
 })

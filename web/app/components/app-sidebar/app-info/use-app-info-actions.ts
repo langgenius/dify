@@ -3,12 +3,13 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
@@ -58,6 +59,8 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
   const uiStateMatchesResetKey = uiState.resetKey === resetKey
@@ -185,13 +188,13 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         max_active_requests,
       })
       closeModal()
-      toast(t('editDone', { ns: 'app' }), { type: 'success' })
+      toast(t($ => $.editDone, { ns: 'app' }), { type: 'success' })
       queryClient.setQueryData([...appDetailQueryKeyPrefix, app.id], app)
       setAppDetail(app)
       emitAppMetaUpdate()
     }
     catch {
-      toast(t('editFailed', { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.editFailed, { ns: 'app' }), { type: 'error' })
     }
   }, [appDetail, closeModal, queryClient, setAppDetail, t, emitAppMetaUpdate])
 
@@ -213,15 +216,15 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
         mode: appDetail.mode,
       })
       closeModal()
-      toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
+      toast(t($ => $['newApp.appCreated'], { ns: 'app' }), { type: 'success' })
       setNeedRefresh('1')
       onPlanInfoChanged()
-      getRedirection(newApp, replace)
+      getRedirection(newApp, replace, { isRbacEnabled })
     }
     catch {
-      toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
+      toast(t($ => $['newApp.appCreateFailed'], { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, onPlanInfoChanged, replace, setNeedRefresh, t])
+  }, [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, replace, setNeedRefresh, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)
@@ -232,7 +235,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.exportFailed, { ns: 'app' }), { type: 'error' })
     }
   }, [appDetail, t])
 
@@ -259,7 +262,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       setSecretEnvList(list)
     }
     catch {
-      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+      toast(t($ => $.exportFailed, { ns: 'app' }), { type: 'error' })
     }
     finally {
       closeModal()
@@ -271,14 +274,14 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       return
     try {
       await deleteApp(appDetail.id)
-      toast(t('appDeleted', { ns: 'app' }), { type: 'success' })
+      toast(t($ => $.appDeleted, { ns: 'app' }), { type: 'success' })
       invalidateAppList()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     }
     catch (e: unknown) {
-      toast(`${t('appDeleteFailed', { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
+      toast(`${t($ => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`, { type: 'error' })
     }
     closeModal()
   }, [appDetail, closeModal, invalidateAppList, onPlanInfoChanged, replace, setAppDetail, t])

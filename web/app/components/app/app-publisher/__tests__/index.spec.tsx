@@ -19,7 +19,7 @@ const mockRefetch = vi.fn()
 const mockUseGetUserCanAccessApp = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
-const mockFetchAppDetailDirect = vi.fn()
+const mockFetchAppDetail = vi.fn()
 const mockToastError = vi.fn()
 const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
@@ -30,21 +30,16 @@ const sectionProps = vi.hoisted(() => ({
   actions: null as null | Record<string, any>,
 }))
 const hotkeyMocks = vi.hoisted(() => ({
+  hotkeys: [] as string[],
   handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
-
 vi.mock('@tanstack/react-hotkeys', () => ({
-  useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+  useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+    hotkeyMocks.hotkeys.push(hotkey)
     hotkeyMocks.handlers.push(handler)
   },
 }))
@@ -88,7 +83,7 @@ vi.mock('@/service/explore', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
   publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
 }))
 
@@ -105,14 +100,46 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: true,
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -135,14 +162,19 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
     : null),
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
   WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
@@ -190,6 +222,7 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    hotkeyMocks.hotkeys.length = 0
     hotkeyMocks.handlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
@@ -208,7 +241,7 @@ describe('AppPublisher', () => {
     mockFetchInstalledAppList.mockResolvedValue({
       installed_apps: [{ id: 'installed-1' }],
     })
-    mockFetchAppDetailDirect.mockResolvedValue({
+    mockFetchAppDetail.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
     })
@@ -229,7 +262,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
 
     expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
     expect(mockOnToggle).toHaveBeenCalledWith(true)
@@ -240,6 +273,7 @@ describe('AppPublisher', () => {
         enabled: true,
       })
     })
+    expect(sectionProps.summary?.publishShortcut).toEqual(['Mod', 'Shift', 'P'])
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
@@ -253,7 +287,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-summary-publish'))
 
     await waitFor(() => {
@@ -273,7 +307,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-embed'))
 
     expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
@@ -294,15 +328,15 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-run-config'))
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Secret'), {
       target: { value: 'top-secret' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.launch(?=$|:)/ }))
 
     await waitFor(() => {
       expect(mockWindowOpen).toHaveBeenCalledWith(
@@ -332,13 +366,13 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-batch-run-config'))
 
     fireEvent.change(screen.getByLabelText('Batch Secret'), {
       target: { value: 'batch-value' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.launch(?=$|:)/ }))
 
     await waitFor(() => {
       expect(mockWindowOpen).toHaveBeenCalledWith(
@@ -360,7 +394,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
@@ -380,7 +414,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
     expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
@@ -394,12 +428,12 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-embed'))
     fireEvent.click(screen.getByText('close-embedded-modal'))
     expect(screen.queryByTestId('embedded-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-access-control'))
     expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
     fireEvent.click(screen.getByText('close-access-control'))
@@ -412,9 +446,9 @@ describe('AppPublisher', () => {
         publishedAt={Date.now()}
       />,
     )
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-access-control'))
 
     expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
@@ -422,8 +456,14 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
   })
 
   it('should open the installed explore page through the async window helper', async () => {
@@ -438,7 +478,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-open-in-explore'))
 
     await waitFor(() => {
@@ -458,7 +498,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish').parentElement?.parentElement as HTMLElement)
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/).parentElement?.parentElement as HTMLElement)
 
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
     expect(mockOnToggle).not.toHaveBeenCalled()
@@ -477,6 +517,7 @@ describe('AppPublisher', () => {
       />,
     )
 
+    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
     hotkeyMocks.handlers[0]!({ preventDefault })
 
     await waitFor(() => {
@@ -484,7 +525,7 @@ describe('AppPublisher', () => {
       expect(mockOnPublish).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-summary-restore'))
 
     await waitFor(() => {
@@ -514,7 +555,7 @@ describe('AppPublisher', () => {
     })
     expect(mockTrackEvent).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-summary-restore'))
 
     await waitFor(() => {
@@ -542,11 +583,11 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-open-in-explore'))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
+      expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)notPublishedYet(?=$|:)/))
     })
   })
 
@@ -570,7 +611,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-open-in-explore'))
 
     await waitFor(() => {
@@ -590,8 +631,8 @@ describe('AppPublisher', () => {
       { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
 
     await waitFor(() => {
       expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith({ appID: 'app-1' })
@@ -612,11 +653,11 @@ describe('AppPublisher', () => {
       { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('common.publishToMarketplaceFailed')
+      expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)common\.publishToMarketplaceFailed(?=$|:)/))
     })
   })
 
@@ -628,11 +669,11 @@ describe('AppPublisher', () => {
       { systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true } },
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
-    const marketplaceButton = screen.getByText('common.publishToMarketplace').closest('a, button, div[role="button"]') as HTMLElement
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    const marketplaceButton = screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/).closest('a, button, div[role="button"]') as HTMLElement
     expect(marketplaceButton).toBeInTheDocument()
     // clicking should not call the API because publishedAt is undefined
-    fireEvent.click(screen.getByText('common.publishToMarketplace'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
     expect(mockPublishToCreatorsPlatform).not.toHaveBeenCalled()
   })
 
@@ -644,8 +685,8 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
-    expect(screen.queryByText('common.publishToMarketplace')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(screen.queryByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should keep access control open when app detail is unavailable during confirmation', async () => {
@@ -657,12 +698,12 @@ describe('AppPublisher', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-access-control'))
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+      expect(mockFetchAppDetail).not.toHaveBeenCalled()
     })
     expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
   })

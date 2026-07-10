@@ -49,7 +49,7 @@ const ConditionAdd = ({
             disabled={disabled}
           >
             <RiAddLine className="mr-1 size-3.5" />
-            {t('nodes.ifElse.addCondition', { ns: 'workflow' })}
+            {t($ => $['nodes.ifElse.addCondition'], { ns: 'workflow' })}
           </Button>
         )}
         onClick={(e) => {

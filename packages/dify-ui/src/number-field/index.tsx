@@ -8,7 +8,7 @@ import { cn } from '../cn'
 import { textControlCompoundFocusClassName } from '../form-control-shared'
 
 export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = BaseNumberField.Root.Props
+export type NumberFieldProps = BaseNumberField.Root.Props
 
 export const numberFieldGroupVariants = cva(
   [
@@ -100,8 +100,8 @@ export const numberFieldUnitVariants = cva(
   {
     variants: {
       size: {
-        medium: 'pr-2',
-        large: 'pr-2.5',
+        medium: 'pe-2',
+        large: 'pe-2.5',
       },
     },
     defaultVariants: {
@@ -147,7 +147,7 @@ const numberFieldControlButtonVariants = cva(
   [
     'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',

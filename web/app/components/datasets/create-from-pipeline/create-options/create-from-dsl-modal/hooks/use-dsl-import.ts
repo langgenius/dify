@@ -63,7 +63,7 @@ export const useDSLImport = ({ activeTab = CreateFromDSLModalTab.FROM_FILE, dslU
   const { mutateAsync: importDSL } = useImportPipelineDSL()
   const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
   const notifyError = useCallback((message?: string) => {
-    toast.error(message || t('creation.errorTip', { ns: 'datasetPipeline' }))
+    toast.error(message || t($ => $['creation.errorTip'], { ns: 'datasetPipeline' }))
   }, [t])
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -110,9 +110,9 @@ export const useDSLImport = ({ activeTab = CreateFromDSLModalTab.FROM_FILE, dslU
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         onSuccess?.()
         onClose?.()
-        toast(t(status === DSLImportStatus.COMPLETED ? 'creation.successTip' : 'creation.caution', { ns: 'datasetPipeline' }), {
+        toast(t($ => $[status === DSLImportStatus.COMPLETED ? 'creation.successTip' : 'creation.caution'], { ns: 'datasetPipeline' }), {
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
+          description: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t($ => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
         })
         if (pipeline_id)
           await handleCheckPluginDependencies(pipeline_id, true)
@@ -167,7 +167,7 @@ export const useDSLImport = ({ activeTab = CreateFromDSLModalTab.FROM_FILE, dslU
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.()
         setShowConfirmModal(false)
-        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
+        toast.success(t($ => $['creation.successTip'], { ns: 'datasetPipeline' }))
         if (pipeline_id)
           await handleCheckPluginDependencies(pipeline_id, true)
         push(`/datasets/${dataset_id}/pipeline`)

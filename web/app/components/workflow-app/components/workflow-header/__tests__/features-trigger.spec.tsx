@@ -47,6 +47,7 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockInvalidateQueries = vi.fn()
+const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -102,6 +103,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
+      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -223,7 +225,7 @@ describe('FeaturesTrigger', () => {
     mockUseEdges.mockReturnValue([])
     // Set up app store state
     useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
-    mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
+    mockFetchAppDetail.mockResolvedValue({ id: 'app-id', name: 'Updated App' })
     mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
@@ -468,8 +470,13 @@ describe('FeaturesTrigger', () => {
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
         expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
-        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-id'] })
-        expect(useAppStore.getState().appDetail).toBeDefined()
+        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
+        expect(mockSetQueryData).toHaveBeenCalledWith(['apps', 'detail', 'app-id'], expect.objectContaining({
+          name: 'Updated App',
+        }))
+        expect(useAppStore.getState().appDetail).toEqual(expect.objectContaining({
+          name: 'Updated App',
+        }))
       })
     })
 
@@ -500,6 +507,15 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
           queryKey: consoleQuery.agent.get.key(),
+        })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+            input: {
+              params: {
+                agent_id: 'agent-1',
+              },
+            },
+          }).queryKey,
         })
       })
     })
@@ -534,6 +550,15 @@ describe('FeaturesTrigger', () => {
       })
       expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.get.key(),
+      })
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+        }).queryKey,
       })
     })
 
@@ -598,7 +623,7 @@ describe('FeaturesTrigger', () => {
       // Arrange
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockInvalidateQueries.mockRejectedValue(new Error('fetch failed'))
+      mockFetchAppDetail.mockRejectedValueOnce(new Error('fetch failed'))
 
       renderWithToast(<FeaturesTrigger />)
 

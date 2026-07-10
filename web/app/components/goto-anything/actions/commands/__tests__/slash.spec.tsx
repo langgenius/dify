@@ -3,6 +3,11 @@ import { render } from '@testing-library/react'
 import { slashAction } from '../slash'
 import { SlashCommandProvider } from '../slash-provider'
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextLanguageMock } = await import('@/test/i18n-mock')
+  return createReactI18nextLanguageMock('ja')
+})
+
 const {
   mockSetTheme,
   mockSetLocale,
@@ -33,14 +38,6 @@ vi.mock('next-themes', () => ({
     setTheme: mockSetTheme,
   }),
 }))
-
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    language: 'ja',
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: mockSetLocale,
 }))

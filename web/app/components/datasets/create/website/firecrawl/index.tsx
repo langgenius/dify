@@ -70,17 +70,17 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {
-      errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
+      errorMsg = t($ => $[`${ERROR_I18N_PREFIX}.fieldRequired`], {
         ns: 'common',
         field: 'url',
       })
     }
     if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
-      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`, { ns: 'common' })
+      errorMsg = t($ => $[`${ERROR_I18N_PREFIX}.urlError`], { ns: 'common' })
     if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
-      errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
+      errorMsg = t($ => $[`${ERROR_I18N_PREFIX}.fieldRequired`], {
         ns: 'common',
-        field: t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' }),
+        field: t($ => $[`${I18N_PREFIX}.limit`], { ns: 'datasetCreation' }),
       })
     }
     return {
@@ -178,7 +178,7 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
       if (isCancelled || !isMountedRef.current)
         return
       if (isError) {
-        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
+        setCrawlErrorMessage(errorMessage || t($ => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }))
       }
       else {
         setCrawlResult(data as CrawlState)
@@ -189,7 +189,7 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
     catch (e) {
       if (!isMountedRef.current)
         return
-      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' })!)
+      setCrawlErrorMessage(t($ => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' })!)
       console.log(e)
     }
     finally {
@@ -199,7 +199,7 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
   }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange])
   return (
     <div>
-      <Header onClickConfiguration={handleSetting} title={t(`${I18N_PREFIX}.firecrawlTitle`, { ns: 'datasetCreation' })} buttonText={t(`${I18N_PREFIX}.configureFirecrawl`, { ns: 'datasetCreation' })} docTitle={t(`${I18N_PREFIX}.firecrawlDoc`, { ns: 'datasetCreation' })} docLink="https://docs.firecrawl.dev/introduction" />
+      <Header onClickConfiguration={handleSetting} title={t($ => $[`${I18N_PREFIX}.firecrawlTitle`], { ns: 'datasetCreation' })} buttonText={t($ => $[`${I18N_PREFIX}.configureFirecrawl`], { ns: 'datasetCreation' })} docTitle={t($ => $[`${I18N_PREFIX}.firecrawlDoc`], { ns: 'datasetCreation' })} docLink="https://docs.firecrawl.dev/introduction" />
       <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap className="mt-4" controlFoldOptions={controlFoldOptions}>
@@ -210,7 +210,7 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
           <div className="relative left-[-16px] mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning
               && (<Crawling className="mt-2" crawledNum={crawlResult?.current || 0} totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0} />)}
-            {showError && (<ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />)}
+            {showError && (<ErrorMessage className="rounded-b-xl" title={t($ => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />)}
             {isCrawlFinished && !showError
               && (<CrawledResult className="mb-2" list={crawlResult?.data || []} checkedList={checkedCrawlResult} onSelectedChange={onCheckedCrawlResultChange} onPreview={onPreview} usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0} />)}
           </div>

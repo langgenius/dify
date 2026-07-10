@@ -8,10 +8,11 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
@@ -35,7 +36,7 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-  const email = useAppContextWithSelector(s => s.userProfile.email)
+  const email = useAtomValue(userProfileEmailAtom)
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '{{#url#}}')
@@ -43,22 +44,22 @@ const EmailConfigureModal = ({
 
   const checkValidConfig = useCallback(() => {
     if (!subject.trim()) {
-      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`, { ns: 'workflow' }))
+      toast.error(t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`], { ns: 'workflow' }))
       return false
     }
     if (!body.trim()) {
-      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`, { ns: 'workflow' }))
+      toast.error(t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`], { ns: 'workflow' }))
       return false
     }
     if (!/\{\{#url#\}\}/.test(body.trim())) {
-      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`, {
+      toast.error(t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`], {
         ns: 'workflow',
-        field: t('promptEditor.requestURL.item.title', { ns: 'common' }),
+        field: t($ => $['promptEditor.requestURL.item.title'], { ns: 'common' }),
       }))
       return false
     }
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
-      toast.error(t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`, { ns: 'workflow' }))
+      toast.error(t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`], { ns: 'workflow' }))
       return false
     }
     return true
@@ -83,24 +84,24 @@ const EmailConfigureModal = ({
       <DialogContent className="max-h-[calc(100dvh-64px)]! w-[720px]!">
         <DialogCloseButton />
         <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.title`, { ns: 'workflow' })}</DialogTitle>
-          <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`, { ns: 'workflow' })}</div>
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], { ns: 'workflow' })}</DialogTitle>
+          <div className="system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], { ns: 'workflow' })}</div>
         </div>
         <div className="mt-6 space-y-5">
           <div>
             <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(`${i18nPrefix}.deliveryMethod.emailConfigure.subject`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], { ns: 'workflow' })}
             </div>
             <Input
               className="w-full"
               value={subject}
               onChange={e => setSubject(e.target.value)}
-              placeholder={t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`, { ns: 'workflow' })}
+              placeholder={t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`], { ns: 'workflow' })}
             />
           </div>
           <div>
             <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(`${i18nPrefix}.deliveryMethod.emailConfigure.body`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], { ns: 'workflow' })}
             </div>
             <MailBodyInput
               value={body}
@@ -111,7 +112,7 @@ const EmailConfigureModal = ({
           </div>
           <div>
             <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`, { ns: 'workflow' })}
+              {t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], { ns: 'workflow' })}
             </div>
             <Recipient
               data={recipients}
@@ -123,15 +124,15 @@ const EmailConfigureModal = ({
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>
             <div className="grow space-y-1">
-              <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`, { ns: 'workflow' })}</div>
+              <div className="system-sm-medium text-text-secondary">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], { ns: 'workflow' })}</div>
               <div className="body-xs-regular text-text-tertiary">
                 <Trans
-                  i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
+                  i18nKey={$ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
                   ns="workflow"
                   components={{ email: <span className="body-md-medium text-text-primary">{email}</span> }}
                   values={{ email }}
                 />
-                <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`, { ns: 'workflow' })}</div>
+                <div>{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], { ns: 'workflow' })}</div>
               </div>
             </div>
             <Switch
@@ -146,13 +147,13 @@ const EmailConfigureModal = ({
             className="w-[72px]"
             onClick={handleConfirm}
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
           <Button
             className="w-[72px]"
             onClick={() => onOpenChange(false)}
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

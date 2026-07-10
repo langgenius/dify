@@ -165,7 +165,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">
-            {t('common.chooseStartNodeToRun', { ns: 'workflow' })}
+            {t($ => $['common.chooseStartNodeToRun'], { ns: 'workflow' })}
           </DropdownMenuLabel>
           <div>
             {hasUserInput && renderOption(options.userInput!)}

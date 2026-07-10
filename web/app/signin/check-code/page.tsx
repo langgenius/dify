@@ -35,11 +35,11 @@ export default function CheckCode() {
   const verify = async () => {
     try {
       if (!code.trim()) {
-        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
+        toast.error(t($ => $['checkCode.emptyCode'], { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
+        toast.error(t($ => $['checkCode.invalidCode'], { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -100,19 +100,19 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t($ => $['checkCode.checkYourEmail'], { ns: 'login' })}</h2>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
-            {t('checkCode.tipsPrefix', { ns: 'login' })}
+            {t($ => $['checkCode.tipsPrefix'], { ns: 'login' })}
             <strong>{email}</strong>
           </span>
           <br />
-          {t('checkCode.validTime', { ns: 'login' })}
+          {t($ => $['checkCode.validTime'], { ns: 'login' })}
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t($ => $['checkCode.verificationCode'], { ns: 'login' })}</label>
         <Input
           ref={codeInputRef}
           id="code"
@@ -120,9 +120,9 @@ export default function CheckCode() {
           onChange={e => setVerifyCode(e.target.value)}
           maxLength={6}
           className="mt-1"
-          placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) as string}
+          placeholder={t($ => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string}
         />
-        <Button type="submit" loading={loading} disabled={loading} className="my-3 w-full" variant="primary">{t('checkCode.verify', { ns: 'login' })}</Button>
+        <Button type="submit" loading={loading} disabled={loading} className="my-3 w-full" variant="primary">{t($ => $['checkCode.verify'], { ns: 'login' })}</Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
@@ -132,7 +132,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="ml-2 system-xs-regular">{t('back', { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t($ => $.back, { ns: 'login' })}</span>
       </div>
     </div>
   )

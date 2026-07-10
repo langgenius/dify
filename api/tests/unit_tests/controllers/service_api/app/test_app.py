@@ -3,13 +3,14 @@ Unit tests for Service API App controllers
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
-from controllers.service_api.app.error import AppUnavailableError
+from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from models.account import TenantStatus
 from models.model import App, AppMode
 from tests.unit_tests.conftest import setup_mock_tenant_owner_execute_result
@@ -135,6 +136,90 @@ class TestAppParameterApi:
         # Assert
         assert "user_input_form" in response
         assert "opening_statement" in response
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.app.app._get_agent_app_feature_dict_and_user_input_form")
+    def test_get_parameters_for_agent_app(
+        self,
+        mock_get_agent_parameters,
+        mock_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        mock_app_model,
+    ):
+        """Test retrieving parameters for an Agent App from Agent Soul app variables."""
+        _configure_current_app_mock(mock_current_app)
+
+        mock_app_model.mode = AppMode.AGENT
+        mock_app_model.app_model_config = None
+        mock_app_model.workflow = None
+        mock_get_agent_parameters.return_value = (
+            {"opening_statement": "Hi from Agent"},
+            [{"text-input": {"label": "topic", "variable": "topic", "required": True}}],
+        )
+
+        mock_api_token = Mock()
+        mock_api_token.app_id = mock_app_model.id
+        mock_api_token.tenant_id = mock_app_model.tenant_id
+        mock_validate_token.return_value = mock_api_token
+
+        mock_tenant = Mock()
+        mock_tenant.status = TenantStatus.NORMAL
+        mock_db.session.get.side_effect = [mock_app_model, mock_tenant]
+
+        mock_account = Mock()
+        mock_account.current_tenant = mock_tenant
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
+
+        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
+            api = AppParameterApi()
+            response = api.get()
+
+        assert response["opening_statement"] == "Hi from Agent"
+        assert response["user_input_form"] == [
+            {"text-input": {"label": "topic", "variable": "topic", "required": True}}
+        ]
+        mock_get_agent_parameters.assert_called_once_with(mock_app_model)
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.current_app")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.db")
+    @patch(
+        "controllers.service_api.app.app.get_published_agent_app_feature_dict_and_user_input_form",
+        side_effect=AgentAppNotPublishedError("Agent has not been published"),
+    )
+    def test_get_parameters_for_unpublished_agent_app_raises_friendly_error(
+        self,
+        mock_get_agent_parameters,
+        mock_db,
+        mock_validate_token,
+        mock_current_app,
+        mock_user_logged_in,
+        app: Flask,
+        mock_app_model,
+    ):
+        _configure_current_app_mock(mock_current_app)
+
+        mock_app_model.mode = AppMode.AGENT
+        mock_api_token = Mock()
+        mock_api_token.app_id = mock_app_model.id
+        mock_api_token.tenant_id = mock_app_model.tenant_id
+        mock_validate_token.return_value = mock_api_token
+
+        mock_tenant = Mock()
+        mock_tenant.status = TenantStatus.NORMAL
+        mock_db.session.get.side_effect = [mock_app_model, mock_tenant]
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, Mock(current_tenant=mock_tenant))
+
+        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
+            with pytest.raises(AgentNotPublishedError):
+                AppParameterApi().get()
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
@@ -283,7 +368,7 @@ class TestAppMetaApi:
             response = api.get()
 
         # Assert
-        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model)
+        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model, session=ANY)
         assert response == {"tool_icons": {}, "AgentIcons": {}}
 
 

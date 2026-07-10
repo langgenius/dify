@@ -177,7 +177,7 @@ const StepOne = ({
               {shouldShowDataSourceTypeList && (
                 <>
                   <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
-                    {t('steps.one', { ns: 'datasetCreation' })}
+                    {t($ => $['steps.one'], { ns: 'datasetCreation' })}
                   </div>
                   <DataSourceTypeSelector
                     currentType={dataSourceType}
@@ -218,7 +218,11 @@ const StepOne = ({
               {/* Notion Data Source */}
               {dataSourceType === DataSourceType.NOTION && (
                 <>
-                  {!isNotionAuthed && <NotionConnector onSetting={onSetting} />}
+                  {!isNotionAuthed && (
+                    <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                      <NotionConnector onSetting={onSetting} />
+                    </div>
+                  )}
                   {isNotionAuthed && (
                     <>
                       <div className="mb-8 w-[640px]">
@@ -281,7 +285,7 @@ const StepOne = ({
                     onClick={openModal}
                   >
                     <RiFolder6Line className="mr-1 size-4" />
-                    {t('stepOne.emptyDatasetCreation', { ns: 'datasetCreation' })}
+                    {t($ => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
                   </span>
                 </>
               )}

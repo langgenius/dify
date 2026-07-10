@@ -2,8 +2,9 @@
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 
 type AccountSectionProps = {
   compact?: boolean
@@ -12,7 +13,7 @@ type AccountSectionProps = {
 const AccountSection = ({
   compact = false,
 }: AccountSectionProps) => {
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
 
   return (
     <AccountDropdown
@@ -23,7 +24,7 @@ const AccountSection = ({
           aria-label={ariaLabel}
           title={userProfile.name}
           className={cn(
-            'text-components-main-nav-text flex min-w-0 shrink items-center rounded-full text-left transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
+            'flex min-w-0 shrink items-center rounded-full text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
             compact ? 'justify-center p-1' : 'max-w-[180px] gap-3 py-1 pr-4 pl-1',
             isOpen && 'bg-state-base-hover',
           )}

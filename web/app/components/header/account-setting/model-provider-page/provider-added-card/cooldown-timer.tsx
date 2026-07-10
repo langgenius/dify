@@ -61,7 +61,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
             )}
           />
           <TooltipContent>
-            {t('modelProvider.apiKeyRateLimit', { ns: 'common', seconds: displayTime })}
+            {t($ => $['modelProvider.apiKeyRateLimit'], { ns: 'common', seconds: displayTime })}
           </TooltipContent>
         </Tooltip>
       )

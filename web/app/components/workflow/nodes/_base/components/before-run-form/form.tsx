@@ -84,7 +84,7 @@ const Form: FC<Props> = ({
           {isArrayLikeType && !isIteratorItemFile && (
             <button
               type="button"
-              aria-label={`${t('operation.add', { ns: 'common' })} ${label}`}
+              aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${label}`}
               className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleAddContext}
             >

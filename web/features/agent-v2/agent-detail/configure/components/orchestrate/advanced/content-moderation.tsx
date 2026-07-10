@@ -14,6 +14,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useAppFeatures, useSetAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import { ConfigureSection } from '../common/section'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
 const defaultModerationConfig: ModerationConfig = {
   enabled: true,
@@ -30,6 +31,7 @@ function AgentContentModerationSettingsContent() {
   const { t } = useTranslation()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
+  const readOnly = useAgentOrchestrateReadOnly()
   const setAppFeatures = useSetAppFeatures()
   const { setShowModerationSettingModal } = useModalContext()
   const moderation = useFeatures(state => state.features.moderation)
@@ -81,63 +83,68 @@ function AgentContentModerationSettingsContent() {
 
   const providerContent = useMemo(() => {
     if (moderation?.type === 'openai_moderation')
-      return t('feature.moderation.modal.provider.openai', { ns: 'appDebug' })
+      return t($ => $['feature.moderation.modal.provider.openai'], { ns: 'appDebug' })
     if (moderation?.type === 'keywords')
-      return t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })
+      return t($ => $['feature.moderation.modal.provider.keywords'], { ns: 'appDebug' })
     if (moderation?.type === 'api')
-      return t('apiBasedExtension.selector.title', { ns: 'common' })
+      return t($ => $['apiBasedExtension.selector.title'], { ns: 'common' })
 
     return codeBasedExtensionList?.data.find(item => item.name === moderation?.type)?.label[locale] || '-'
   }, [codeBasedExtensionList?.data, locale, moderation?.type, t])
 
   const enabledContent = useMemo(() => {
     if (moderation?.config?.inputs_config?.enabled && moderation.config?.outputs_config?.enabled)
-      return t('feature.moderation.allEnabled', { ns: 'appDebug' })
+      return t($ => $['feature.moderation.allEnabled'], { ns: 'appDebug' })
     if (moderation?.config?.inputs_config?.enabled)
-      return t('feature.moderation.inputEnabled', { ns: 'appDebug' })
+      return t($ => $['feature.moderation.inputEnabled'], { ns: 'appDebug' })
     if (moderation?.config?.outputs_config?.enabled)
-      return t('feature.moderation.outputEnabled', { ns: 'appDebug' })
+      return t($ => $['feature.moderation.outputEnabled'], { ns: 'appDebug' })
 
     return '-'
   }, [moderation?.config?.inputs_config?.enabled, moderation?.config?.outputs_config?.enabled, t])
 
   return (
     <ConfigureSection
-      label={t('feature.moderation.title', { ns: 'appDebug' })}
+      label={t($ => $['feature.moderation.title'], { ns: 'appDebug' })}
       labelId="agent-configure-content-moderation-label"
       headingLevel="h4"
       panelId={panelId}
-      tip={t('feature.moderation.description', { ns: 'appDebug' })}
-      tipAriaLabel={t('feature.moderation.description', { ns: 'appDebug' })}
       rootClassName="gap-1 border-t border-divider-subtle py-3"
       headerClassName="mb-0 gap-1 px-3"
       panelContentClassName="px-3 pt-1"
-      actions={(
-        <div className="flex shrink-0 items-center gap-2">
-          {!!moderation?.enabled && (
-            <Button
-              size="small"
-              variant="ghost"
-              className="h-6 gap-0.5 px-1.5 py-1 text-text-tertiary"
-              onClick={() => openSettings()}
-            >
-              <span className="i-ri-equalizer-2-line size-3.5" aria-hidden />
-              <span className="px-0.5 system-xs-medium">
-                {t('operation.settings', { ns: 'common' })}
-              </span>
-            </Button>
-          )}
-          <div className="h-3 w-px bg-divider-regular" />
-          <Switch checked={!!moderation?.enabled} onCheckedChange={handleEnabledChange} size="sm" />
-        </div>
-      )}
+      actions={!readOnly
+        ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {!!moderation?.enabled && (
+                <Button
+                  size="small"
+                  variant="ghost"
+                  className="h-6 gap-0.5 px-1.5 py-1 text-text-tertiary"
+                  onClick={() => openSettings()}
+                >
+                  <span className="i-ri-equalizer-2-line size-3.5" aria-hidden />
+                  <span className="px-0.5 system-xs-medium">
+                    {t($ => $['operation.settings'], { ns: 'common' })}
+                  </span>
+                </Button>
+              )}
+              <div className="h-3 w-px bg-divider-regular" />
+              <Switch
+                checked={!!moderation?.enabled}
+                onCheckedChange={handleEnabledChange}
+                size="sm"
+                aria-label={t($ => $['feature.moderation.title'], { ns: 'appDebug' }) as string}
+              />
+            </div>
+          )
+        : undefined}
     >
       {moderation?.enabled
         ? (
             <div className="flex min-w-0 items-center gap-4">
               <div className="min-w-0">
                 <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-                  {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
+                  {t($ => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
                 </div>
                 <div className="truncate system-xs-regular text-text-secondary">
                   {providerContent}
@@ -146,7 +153,7 @@ function AgentContentModerationSettingsContent() {
               <div className="h-[27px] w-px shrink-0 rotate-12 bg-divider-subtle" />
               <div className="min-w-0">
                 <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-                  {t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}
+                  {t($ => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
                 </div>
                 <div className="truncate system-xs-regular text-text-secondary">
                   {enabledContent}
@@ -156,7 +163,7 @@ function AgentContentModerationSettingsContent() {
           )
         : (
             <p className="system-xs-regular text-text-tertiary">
-              {t('feature.moderation.description', { ns: 'appDebug' })}
+              {t($ => $['feature.moderation.description'], { ns: 'appDebug' })}
             </p>
           )}
     </ConfigureSection>

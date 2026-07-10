@@ -6,6 +6,7 @@ import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { expectLoadingButton } from '@/test/button'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
@@ -24,7 +25,7 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
 
     return {
       ...translation,
-      t: ((key: string, options?: Record<string, unknown>) => {
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         if (emptyKeys.includes(key))
           return ''
         const ns = (options?.ns as string | undefined) ?? defaultNs

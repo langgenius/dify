@@ -105,9 +105,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      toast.error(t('errorMsg.fieldRequired', {
+      toast.error(t($ => $['errorMsg.fieldRequired'], {
         ns: 'common',
-        field: t('code.instruction', { ns: 'appDebug' }),
+        field: t($ => $['code.instruction'], { ns: 'appDebug' }),
       }))
       return false
     }
@@ -194,7 +194,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('codegen.loading', { ns: 'appDebug' })}</div>
+      <div className="text-[13px] text-text-tertiary">{t($ => $['codegen.loading'], { ns: 'appDebug' })}</div>
     </div>
   )
 
@@ -211,8 +211,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         <div className="relative flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
-              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
-              <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('codegen.description', { ns: 'appDebug' })}</div>
+              <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t($ => $['codegen.title'], { ns: 'appDebug' })}</div>
+              <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t($ => $['codegen.description'], { ns: 'appDebug' })}</div>
             </div>
             <div className="mb-4">
               <ModelParameterModal
@@ -228,7 +228,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
             </div>
             <div>
               <div className="text-[0px]">
-                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">{t($ => $['codegen.instruction'], { ns: 'appDebug' })}</div>
                 <InstructionEditor
                   editorKey={editorKey}
                   value={instruction}
@@ -244,7 +244,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               />
 
               <div className="mt-7 flex justify-end space-x-2">
-                <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
+                <Button onClick={onClose}>{t($ => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}</Button>
                 <Button
                   className="flex space-x-1"
                   variant="primary"
@@ -252,7 +252,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                   disabled={isLoading}
                 >
                   <Generator className="size-4" />
-                  <span className="text-xs font-semibold">{t('codegen.generate', { ns: 'appDebug' })}</span>
+                  <span className="text-xs font-semibold">{t($ => $['codegen.generate'], { ns: 'appDebug' })}</span>
                 </Button>
               </div>
             </div>
@@ -276,21 +276,21 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
+                {t($ => $['codegen.overwriteConfirmTitle'], { ns: 'appDebug' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
+                {t($ => $['codegen.overwriteConfirmMessage'], { ns: 'appDebug' })}
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
               <AlertDialogConfirmButton
                 onClick={() => {
                   hideShowConfirmOverwrite()
                   onFinished(current!)
                 }}
               >
-                {t('operation.confirm', { ns: 'common' })}
+                {t($ => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </AlertDialogContent>

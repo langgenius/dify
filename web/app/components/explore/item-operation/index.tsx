@@ -45,7 +45,7 @@ function ItemOperation({
           e.stopPropagation()
         }}
       >
-        <span className="sr-only">{tCommon('operation.more')}</span>
+        <span className="sr-only">{tCommon($ => $['operation.more'])}</span>
         <span aria-hidden className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -61,7 +61,7 @@ function ItemOperation({
           }}
         >
           <Pin02 className="size-4 shrink-0 text-text-secondary" />
-          <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
+          <span className={s.actionName}>{isPinned ? t($ => $['sidebar.action.unpin']) : t($ => $['sidebar.action.pin'])}</span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
@@ -72,7 +72,7 @@ function ItemOperation({
             }}
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
-            <span className={s.actionName}>{t('sidebar.action.rename')}</span>
+            <span className={s.actionName}>{t($ => $['sidebar.action.rename'])}</span>
           </DropdownMenuItem>
         )}
         {isShowDelete && (
@@ -84,7 +84,7 @@ function ItemOperation({
             }}
           >
             <span aria-hidden className={cn(s.deleteActionItemChild, 'i-ri-delete-bin-line size-4 shrink-0 text-inherit')} />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
+            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t($ => $['sidebar.action.delete'])}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

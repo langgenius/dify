@@ -83,7 +83,7 @@ def test_revoke_oauth_token_invalidates_redis_cache_when_live_hash_seen():
 
     redis = MagicMock()
 
-    revoke_oauth_token(session, redis, "token-id")
+    revoke_oauth_token(redis, "token-id", session=session)
 
     assert session.execute.called  # UPDATE ... WHERE revoked_at IS NULL
     assert session.commit.called
@@ -101,7 +101,7 @@ def test_revoke_oauth_token_is_idempotent_when_already_revoked():
 
     redis = MagicMock()
 
-    revoke_oauth_token(session, redis, "token-id")
+    revoke_oauth_token(redis, "token-id", session=session)
 
     assert session.execute.called
     assert session.commit.called
@@ -126,7 +126,7 @@ def test_list_active_sessions_returns_session_execute_rows():
     fake_rows = [MagicMock(), MagicMock()]
     session.execute.return_value.scalars.return_value.all.return_value = fake_rows
 
-    out = list_active_sessions(session, _account_ctx(), datetime.now(UTC))
+    out = list_active_sessions(_account_ctx(), datetime.now(UTC), session=session)
 
     assert out == fake_rows
     assert session.execute.called
@@ -136,11 +136,11 @@ def test_token_belongs_to_subject_true_when_row_present():
     session = MagicMock()
     session.execute.return_value.first.return_value = ("some-id",)
 
-    assert token_belongs_to_subject(session, "token-id", _account_ctx()) is True
+    assert token_belongs_to_subject("token-id", _account_ctx(), session=session) is True
 
 
 def test_token_belongs_to_subject_false_when_no_row():
     session = MagicMock()
     session.execute.return_value.first.return_value = None
 
-    assert token_belongs_to_subject(session, "token-id", _account_ctx()) is False
+    assert token_belongs_to_subject("token-id", _account_ctx(), session=session) is False

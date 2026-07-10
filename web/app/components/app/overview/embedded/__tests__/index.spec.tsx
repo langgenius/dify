@@ -24,26 +24,11 @@ const mockThemeBuilder = {
     primaryColor: '#123456',
   },
 }
-const mockUseAppContext = vi.fn(() => ({
-  langGeniusVersionInfo: {
-    current_env: 'PRODUCTION',
-    current_version: '',
-    latest_version: '',
-    release_date: '',
-    release_notes: '',
-    version: '',
-    can_auto_update: false,
-  },
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: () => mockThemeBuilder,
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
@@ -140,6 +125,20 @@ describe('Embedded', () => {
       '_blank',
       'noopener,noreferrer',
     )
+  })
+
+  it('calls onClose when the close button is clicked', async () => {
+    const onClose = vi.fn()
+
+    await act(async () => {
+      render(<Embedded {...baseProps} onClose={onClose} />)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {

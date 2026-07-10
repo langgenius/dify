@@ -1,9 +1,8 @@
 import type { AccountSettingTab } from '../constants'
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { fireEvent, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ACCOUNT_SETTING_TAB } from '../constants'
@@ -13,6 +12,7 @@ const mockResetModelProviderListExpanded = vi.fn()
 const mockAppContextState = vi.hoisted(() => ({
   current: null as unknown,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -22,13 +22,30 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/app-context')>()
-  return {
-    ...actual,
-    useAppContext: vi.fn(),
-    useSelector: vi.fn((selector: (state: unknown) => unknown) => selector(mockAppContextState.current)),
-  }
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/next/navigation', () => ({
@@ -77,10 +94,14 @@ vi.mock('@/service/use-datasource', () => ({
   useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-  useProviderContext: vi.fn(),
-}))
+vi.mock('@/service/use-common', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-common')>()
+  return {
+    ...actual,
+    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
+    useProviderContext: vi.fn(),
+  }
+})
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
@@ -125,7 +146,7 @@ vi.mock('@/app/components/header/account-setting/access-rules-page', () => ({
   default: () => <div data-testid="access-rules-page" />,
 }))
 
-const baseAppContextValue: AppContextValue = {
+const baseAppContextValue: AppContextStateMockState = {
   userProfile: {
     id: '1',
     name: 'Test User',
@@ -161,9 +182,7 @@ const baseAppContextValue: AppContextValue = {
     version: '0.1.0',
     can_auto_update: false,
   },
-  useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
-  isValidatingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
     'workspace.role.manage',
@@ -183,11 +202,13 @@ describe('AccountSetting', () => {
     initialTab?: AccountSettingTab
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
+    rbacEnabled?: boolean
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
       onCancel = mockOnCancel,
       onTabChange = mockOnTabChange,
+      rbacEnabled = true,
     } = props ?? {}
 
     const StatefulAccountSetting = () => {
@@ -211,6 +232,7 @@ describe('AccountSetting', () => {
         branding: { enabled: false },
         enable_marketplace: true,
         enable_collaboration_mode: false,
+        rbac_enabled: rbacEnabled,
       },
     })
   }
@@ -222,7 +244,7 @@ describe('AccountSetting', () => {
       enableBilling: true,
       enableReplaceWebAppLogo: true,
     })
-    vi.mocked(useAppContext).mockReturnValue(baseAppContextValue)
+    mockUseAppContext.mockReturnValue(baseAppContextValue)
     mockAppContextState.current = baseAppContextValue
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -238,7 +260,7 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.permissionSet' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
@@ -252,6 +274,17 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
+    })
+
+    it('should normalize legacy language tab entries to preferences', () => {
+      // Act
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.LANGUAGE })
+
+      // Assert
+      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
+      expect(screen.getByText('common.account.general')).toBeInTheDocument()
+      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -334,7 +367,7 @@ describe('AccountSetting', () => {
         ...baseAppContextValue,
         isCurrentWorkspaceDatasetOperator: true,
       }
-      vi.mocked(useAppContext).mockReturnValue(datasetOperatorContext)
+      mockUseAppContext.mockReturnValue(datasetOperatorContext)
       mockAppContextState.current = datasetOperatorContext
 
       // Act
@@ -343,7 +376,7 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.permissionSet' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.preferences' })).toBeInTheDocument()
@@ -353,9 +386,9 @@ describe('AccountSetting', () => {
       // Arrange
       const contextWithoutApiExtensionPermission = {
         ...baseAppContextValue,
-        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'api_extension.manage'),
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys!.filter(key => key !== 'api_extension.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutApiExtensionPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutApiExtensionPermission)
       mockAppContextState.current = contextWithoutApiExtensionPermission
 
       // Act
@@ -371,9 +404,9 @@ describe('AccountSetting', () => {
       // Arrange
       const contextWithoutCustomizationPermission = {
         ...baseAppContextValue,
-        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'customization.manage'),
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys!.filter(key => key !== 'customization.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutCustomizationPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutCustomizationPermission)
       mockAppContextState.current = contextWithoutCustomizationPermission
 
       // Act
@@ -386,13 +419,13 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
-    it('should hide role and resource access entries when role management permission is missing', () => {
+    it('should hide role and permission set entries when role management permission is missing', () => {
       // Arrange
       const contextWithoutRoleManagePermission = {
         ...baseAppContextValue,
-        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'workspace.role.manage'),
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys!.filter(key => key !== 'workspace.role.manage'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutRoleManagePermission)
+      mockUseAppContext.mockReturnValue(contextWithoutRoleManagePermission)
       mockAppContextState.current = contextWithoutRoleManagePermission
 
       // Act
@@ -401,7 +434,27 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.permissionSet' })).not.toBeInTheDocument()
+    })
+
+    it('should hide role and permission set entries when RBAC is disabled', () => {
+      // Act
+      renderAccountSetting({ rbacEnabled: false })
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.permissionSet' })).not.toBeInTheDocument()
+    })
+
+    it('should not render direct role pages when RBAC is disabled', () => {
+      // Act
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PERMISSION_SET, rbacEnabled: false })
+
+      // Assert
+      expect(screen.queryByTestId('access-rules-page')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('permissions-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should hide billing and custom tabs when disabled', () => {
@@ -417,36 +470,6 @@ describe('AccountSetting', () => {
 
       // Assert
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
     })
@@ -455,9 +478,9 @@ describe('AccountSetting', () => {
       // Arrange
       const contextWithoutBillingViewPermission = {
         ...baseAppContextValue,
-        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys!.filter(key => key !== 'billing.view'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutBillingViewPermission)
       mockAppContextState.current = contextWithoutBillingViewPermission
 
       // Act
@@ -471,9 +494,9 @@ describe('AccountSetting', () => {
       // Arrange
       const contextWithoutBillingViewPermission = {
         ...baseAppContextValue,
-        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys!.filter(key => key !== 'billing.view'),
       }
-      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockUseAppContext.mockReturnValue(contextWithoutBillingViewPermission)
       mockAppContextState.current = contextWithoutBillingViewPermission
 
       // Act
@@ -520,9 +543,9 @@ describe('AccountSetting', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }))
       expect(screen.getByTestId('permissions-page')).toBeInTheDocument()
 
-      // Resource Access
-      fireEvent.click(screen.getByRole('button', { name: 'common.settings.resourceAccess' }))
-      expect(screen.getByText('common.settings.resourceAccessDescription')).toBeInTheDocument()
+      // Permission Set
+      fireEvent.click(screen.getByRole('button', { name: 'common.settings.permissionSet' }))
+      expect(screen.getByText('common.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
       // Language

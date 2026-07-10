@@ -1,7 +1,7 @@
 'use client'
 
 import type { NotionPageRow, NotionPageSelectionMode } from './types'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -92,7 +92,7 @@ const VirtualPageList = ({
         {selectionMode === 'single'
           ? (
               <RadioGroup
-                aria-label={t('dataSource.notion.selector.headerTitle', { ns: 'common' })}
+                aria-label={t($ => $['dataSource.notion.selector.headerTitle'], { ns: 'common' })}
                 value={selectedPageId}
                 onValueChange={onSelect}
                 className="contents"

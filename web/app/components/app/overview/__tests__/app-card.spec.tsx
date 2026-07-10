@@ -9,6 +9,10 @@ import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: { enabled: true } },
 })
@@ -17,21 +21,11 @@ const mockPush = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
+const mockFetchAppDetail = vi.fn()
 
 let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { appDetail: AppDetailResponse, setAppDetail: typeof mockSetAppDetail }) => unknown) => selector({
@@ -59,6 +53,10 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   }),
 }))
 
+vi.mock('@/service/apps', () => ({
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+}))
+
 vi.mock('@/app/components/develop/secret-key/secret-key-button', () => ({
   default: ({ appId }: { appId: string }) => <div data-testid="secret-key-button">{appId}</div>,
 }))
@@ -75,14 +73,19 @@ vi.mock('../customize', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => isShow ? <button data-testid="customize-modal" onClick={onClose}>customize-modal</button> : null,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
@@ -125,6 +128,14 @@ describe('AppCard', () => {
       groups: [],
       members: [],
     }
+    mockFetchAppDetail.mockResolvedValue({
+      id: 'app-1',
+      access_mode: AccessMode.PUBLIC,
+      site: {
+        app_base_url: 'https://example.com',
+        access_token: 'access-token',
+      },
+    } as AppDetailResponse)
   })
 
   it('should open the published webapp when launch is clicked', () => {
@@ -135,7 +146,7 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(`https://example.com${basePath}/chat/access-token`, '_blank')
   })
@@ -171,13 +182,13 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(
       `https://example.com${basePath}/workflow/access-token`,
       '_blank',
     )
-    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should collect hidden workflow inputs from the config action before launching the workflow web app', async () => {
@@ -211,14 +222,14 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Secret'), {
       target: { value: 'top-secret' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.launch(?=$|:)/ }))
 
     await waitFor(() => {
       expect(mockWindowOpen).toHaveBeenCalledWith(
@@ -259,13 +270,13 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(
       `https://example.com${basePath}/chat/access-token`,
       '_blank',
     )
-    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should collect hidden chatflow inputs from the config action before launching the chat web app', async () => {
@@ -299,14 +310,14 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ }))
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Chat Secret'), {
       target: { value: 'chat-secret' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.launch(?=$|:)/ }))
 
     await waitFor(() => {
       expect(mockWindowOpen).toHaveBeenCalledWith(
@@ -324,7 +335,7 @@ describe('AppCard', () => {
       />,
     )
 
-    expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should hide the access-control section when release permission is missing', () => {
@@ -338,8 +349,8 @@ describe('AppCard', () => {
       />,
     )
 
-    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
-    expect(screen.queryByText('publishApp.notSet')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)publishApp\.title(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should hide the address and operation sections for unpublished workflows', () => {
@@ -355,9 +366,9 @@ describe('AppCard', () => {
       />,
     )
 
-    expect(screen.queryByText('overview.appInfo.accessibleAddress')).not.toBeInTheDocument()
-    expect(screen.queryByText('overview.appInfo.launch')).not.toBeInTheDocument()
-    expect(screen.getByText('overview.status.disable')).toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)overview\.appInfo\.accessibleAddress(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.status\.disable(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render api operations and navigate to the develop page', () => {
@@ -374,7 +385,7 @@ describe('AppCard', () => {
 
     expect(screen.getByTestId('secret-key-button')).toHaveTextContent('app-1')
 
-    fireEvent.click(screen.getByText('overview.apiInfo.doc'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.apiInfo\.doc(?=$|:)/))
 
     expect(mockPush).toHaveBeenCalledWith('/app/app-1/develop')
   })
@@ -387,13 +398,13 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('overview.appInfo.embedded.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.embedded\.entry(?=$|:)/))
     expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('overview.appInfo.customize.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.customize\.entry(?=$|:)/))
     expect(screen.getByTestId('customize-modal')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('overview.appInfo.settings.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.settings\.entry(?=$|:)/))
     expect(screen.getByTestId('settings-modal')).toBeInTheDocument()
   })
 
@@ -405,16 +416,22 @@ describe('AppCard', () => {
         onGenerateCode={mockOnGenerateCode}
       />,
     )
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
-    fireEvent.click(screen.getByText('publishApp.notSet'))
+    fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
   })
 
   it('should surface the learn-more tooltip action for workflows without a start node', () => {
@@ -434,8 +451,8 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.enableTooltip.description' }))
-    fireEvent.click(screen.getByText('overview.appInfo.enableTooltip.learnMore'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.enableTooltip\.description(?=$|:)/ }))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.enableTooltip\.learnMore(?=$|:)/))
 
     expect(mockWindowOpen).toHaveBeenCalledWith('https://docs.example.com/use-dify/nodes/user-input', '_blank')
   })
@@ -448,35 +465,35 @@ describe('AppCard', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('overview.appInfo.embedded.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.embedded\.entry(?=$|:)/))
     fireEvent.click(screen.getByTestId('embedded-modal'))
     expect(screen.queryByTestId('embedded-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('overview.appInfo.customize.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.customize\.entry(?=$|:)/))
     fireEvent.click(screen.getByTestId('customize-modal'))
     expect(screen.queryByTestId('customize-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('overview.appInfo.settings.entry'))
+    fireEvent.click(screen.getByText(/(?:^|\.)overview\.appInfo\.settings\.entry(?=$|:)/))
     fireEvent.click(screen.getByTestId('settings-modal'))
     expect(screen.queryByTestId('settings-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('publishApp.notSet'))
+    fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
     fireEvent.click(screen.getByText('close-access-control'))
     expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
   })
 
   it('should report refresh failures from access control updates', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    mockFetchAppDetail.mockRejectedValueOnce(new Error('refresh failed'))
 
-    const { queryClient } = render(
+    render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
       />,
     )
-    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValueOnce(new Error('refresh failed'))
 
-    fireEvent.click(screen.getByText('publishApp.notSet'))
+    fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
@@ -496,13 +513,13 @@ describe('AppCard', () => {
 
     const refreshButton = container.querySelector('[class*="refreshIcon"]')?.parentElement as HTMLElement
     fireEvent.click(refreshButton)
-    expect(screen.getByText('overview.appInfo.regenerateNotice')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.regenerateNotice(?=$|:)/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     expect(mockOnGenerateCode).not.toHaveBeenCalled()
     return waitFor(() => {
-      expect(screen.queryByText('overview.appInfo.regenerateNotice')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)overview\.appInfo\.regenerateNotice(?=$|:)/)).not.toBeInTheDocument()
     })
   })
 
@@ -518,7 +535,7 @@ describe('AppCard', () => {
 
     const refreshButton = container.querySelector('[class*="refreshIcon"]')?.parentElement as HTMLElement
     fireEvent.click(refreshButton)
-    fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     await waitFor(() => {
       expect(mockOnGenerateCode).toHaveBeenCalledTimes(1)

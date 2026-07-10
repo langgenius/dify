@@ -1,6 +1,7 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import DatasetInfo from '@/app/components/app-sidebar/dataset-info'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -15,13 +16,6 @@ const mockDeleteDataset = vi.fn()
 const mockDownloadBlob = vi.fn()
 
 let mockDataset: DataSet
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,

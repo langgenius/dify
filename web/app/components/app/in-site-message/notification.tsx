@@ -25,7 +25,7 @@ function isValidActionItem(value: unknown): value is InSiteMessageActionItem {
 
   return (
     typeof candidate.text === 'string'
-    && (candidate.type === 'primary' || candidate.type === 'default')
+    && (candidate.type === 'primary' || candidate.type === 'default' || candidate.type === 'outline')
     && (candidate.action === 'link' || candidate.action === 'close')
     && (candidate.data === undefined || typeof candidate.data !== 'function')
   )
@@ -60,23 +60,24 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 
 function InSiteMessageNotification() {
   const { t } = useTranslation()
-  const dismissNotificationMutation = useMutation(consoleQuery.notificationDismiss.mutationOptions())
+  const dismissNotificationMutation = useMutation(consoleQuery.notification.dismiss.post.mutationOptions())
 
-  const { data } = useQuery(consoleQuery.notification.queryOptions({
+  const { data } = useQuery(consoleQuery.notification.get.queryOptions({
     enabled: IS_CLOUD_EDITION,
   }))
 
   const notification = data?.notifications?.[0]
   const parsedBody = notification ? parseNotificationBody(notification.body) : null
 
-  if (!IS_CLOUD_EDITION || !notification)
+  if (!IS_CLOUD_EDITION || !notification || !notification.notification_id)
     return null
 
+  const notificationId = notification.notification_id
   const fallbackActions: InSiteMessageActionItem[] = [
     {
       type: 'default',
       action_name: 'dismiss',
-      text: t('operation.close', { ns: 'common' }),
+      text: t($ => $['operation.close'], { ns: 'common' }),
       action: 'close',
     },
   ]
@@ -89,15 +90,15 @@ function InSiteMessageNotification() {
 
     dismissNotificationMutation.mutate({
       body: {
-        notification_id: notification.notification_id,
+        notification_id: notificationId,
       },
     })
   }
 
   return (
     <InSiteMessage
-      key={notification.notification_id}
-      notificationId={notification.notification_id}
+      key={notificationId}
+      notificationId={notificationId}
       title={notification.title}
       subtitle={notification.subtitle}
       headerBgUrl={notification.title_pic_url}

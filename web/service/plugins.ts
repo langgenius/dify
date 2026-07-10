@@ -1,7 +1,7 @@
+import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
 import type {
   Dependency,
   InstallPackageResponse,
-  PluginInfoFromMarketPlace,
   PluginManifestInMarket,
   TaskStatusResponse,
   UninstallPluginResponse,

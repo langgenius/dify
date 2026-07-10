@@ -41,7 +41,7 @@ const PromptResInWorkflow: FC<Props> = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('blocks.start', { ns: 'workflow' }),
+              title: t($ => $['blocks.start'], { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

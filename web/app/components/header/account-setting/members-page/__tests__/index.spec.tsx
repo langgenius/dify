@@ -1,20 +1,47 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
 import MembersPage from '../index'
 
-vi.mock('@/context/app-context')
+const mockAppContextState = vi.hoisted(() => ({
+  current: {} as Partial<AppContextStateMockState>,
+}))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
@@ -22,6 +49,10 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
   systemFeatures: { is_email_setup: true },
+})
+
+const getMemberDetailsButton = (memberId: string) => within(screen.getByTestId(`member-row-${memberId}`)).getByRole('button', {
+  name: /members\.memberDetails\.openAria/i,
 })
 
 const createRole = (overrides: Partial<Role>): Role => ({
@@ -36,6 +67,11 @@ const createRole = (overrides: Partial<Role>): Role => ({
   role_tag: '',
   ...overrides,
 })
+
+const setAppContextValue = (value: AppContextStateMockState) => {
+  mockAppContextState.current = value
+  mockUseAppContext.mockReturnValue(value)
+}
 
 vi.mock('../edit-workspace-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
@@ -177,13 +213,13 @@ describe('MembersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'owner@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: mockAccounts },
@@ -220,8 +256,20 @@ describe('MembersPage', () => {
 
     expect(screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('w-65', 'shrink-0')
     expect(screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
-    expect(screen.getByTestId('member-row-1').children[0])!.toHaveClass('w-65', 'shrink-0')
-    expect(screen.getByTestId('member-row-1').children[2])!.toHaveClass('min-w-0', 'grow')
+    expect(getMemberDetailsButton('1').children[0])!.toHaveClass('w-65', 'shrink-0')
+    expect(getMemberDetailsButton('1').children[2])!.toHaveClass('min-w-0', 'grow')
+  })
+
+  it('should render plural roles column header when RBAC is enabled', () => {
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    expect(screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' })).not.toBeInTheDocument()
   })
 
   it('should open and close invite modal', async () => {
@@ -273,12 +321,12 @@ describe('MembersPage', () => {
   })
 
   it('should hide manager controls for non-owner non-manager users', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 
@@ -374,13 +422,13 @@ describe('MembersPage', () => {
   })
 
   it('should show invite button when user is manager but not owner', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 
@@ -389,13 +437,13 @@ describe('MembersPage', () => {
   })
 
   it('should allow admins to operate other non-owner members only', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
     vi.mocked(useMembers).mockReturnValue({
       data: {
         accounts: [
@@ -467,12 +515,12 @@ describe('MembersPage', () => {
   })
 
   it('should render role badge names from account roles', () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
       refetch: mockRefetch,
@@ -483,12 +531,26 @@ describe('MembersPage', () => {
     expect(screen.getByText('Admin'))!.toBeInTheDocument()
   })
 
+  it('should expose member details as a native row button without nesting member actions', () => {
+    renderMembersPage()
+
+    const row = screen.getByTestId('member-row-2')
+    const detailsButton = getMemberDetailsButton('2')
+    const memberMenu = within(row).getByTestId('member-menu')
+
+    expect(row).not.toHaveAttribute('role', 'button')
+    expect(row).not.toHaveClass('hover:bg-state-base-hover')
+    expect(detailsButton).toHaveAttribute('type', 'button')
+    expect(detailsButton).toHaveClass('hover:bg-state-base-hover', 'focus-visible:bg-state-base-hover')
+    expect(detailsButton).not.toContainElement(memberMenu)
+  })
+
   it('should open member details modal when a member row is clicked', async () => {
     const user = userEvent.setup()
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
 
     expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
     expect(screen.getByTestId('details-member-name'))!.toHaveTextContent('Admin User')
@@ -502,8 +564,8 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    const row = screen.getByTestId('member-row-2')
-    row.focus()
+    const detailsButton = getMemberDetailsButton('2')
+    detailsButton.focus()
     await user.keyboard('{Enter}')
 
     expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
@@ -514,24 +576,24 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-1'))
+    await user.click(getMemberDetailsButton('1'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
 
   it('should not allow assigning roles from member details when target is current user', async () => {
     const user = userEvent.setup()
-    vi.mocked(useAppContext).mockReturnValue({
+    setAppContextValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
       workspacePermissionKeys: ['workspace.member.manage'],
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
@@ -541,7 +603,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
@@ -563,7 +625,7 @@ describe('MembersPage', () => {
       },
     })
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({

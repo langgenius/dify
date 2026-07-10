@@ -83,6 +83,19 @@ class AgentConfigRevisionOperation(StrEnum):
     SAVE_NEW_AGENT = "save_new_agent"
     # Promotes a workflow-only Agent into the reusable Agent Roster.
     SAVE_TO_ROSTER = "save_to_roster"
+    # Switches the Agent's current published config back to an existing version.
+    RESTORE_VERSION = "restore_version"
+    # Publishes the editable Agent Soul draft as a new immutable version.
+    PUBLISH_DRAFT = "publish_draft"
+
+
+class AgentConfigDraftType(StrEnum):
+    """Editable Agent Soul draft workspace type."""
+
+    # Shared Agent Console draft edited by users before publishing.
+    DRAFT = "draft"
+    # Per-editor build draft mutated during debug/build mode.
+    DEBUG_BUILD = "debug_build"
 
 
 class WorkflowAgentBindingType(StrEnum):
@@ -132,6 +145,7 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_scope_idx", "tenant_id", "scope"),
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
+        Index("agent_tenant_backing_app_id_idx", "tenant_id", "backing_app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
         Index(
             "agent_tenant_invitable_idx",
@@ -160,11 +174,29 @@ class Agent(DefaultFieldsMixin, Base):
     scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False)
     source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    backing_app_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        comment=(
+            "Runtime Agent App used for chat/log/monitoring. For workflow-only agents, "
+            "app_id remains the parent workflow app id and this points to the hidden backing app."
+        ),
+    )
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     active_config_has_model: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
+    active_config_is_published: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        default=False,
+        server_default=sa.text("false"),
+        comment=(
+            "Whether the normal shared Agent draft has been published into the active config snapshot. "
+            "User-scoped debug drafts do not affect this flag."
+        ),
     )
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
@@ -178,6 +210,72 @@ class Agent(DefaultFieldsMixin, Base):
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentDebugConversation(DefaultFieldsMixin, Base):
+    """Per-account console debug conversation for an Agent App.
+
+    Agent App preview state must be isolated by editor account. The Agent row is
+    shared by everyone in the workspace, so this table owns the user-specific
+    conversation pointer used by console debug chat.
+    """
+
+    __tablename__ = "agent_debug_conversations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_debug_conversation_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "account_id",
+            name="agent_debug_conversation_agent_account_unique",
+        ),
+        Index("agent_debug_conversation_conversation_idx", "conversation_id"),
+        Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+
+class AgentConfigDraft(DefaultFieldsMixin, Base):
+    """Editable Agent Soul draft separated from immutable published snapshots."""
+
+    __tablename__ = "agent_config_drafts"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_config_draft_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "draft_type",
+            "draft_owner_key",
+            name="agent_config_draft_agent_type_account_unique",
+        ),
+        Index("agent_config_draft_tenant_agent_idx", "tenant_id", "agent_id"),
+        Index("agent_config_draft_base_snapshot_idx", "tenant_id", "base_snapshot_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    draft_type: Mapped[AgentConfigDraftType] = mapped_column(EnumText(AgentConfigDraftType, length=32), nullable=False)
+    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+
+    @property
+    def config_snapshot_dict(self) -> dict[str, Any]:
+        if not self.config_snapshot:
+            return {}
+        if hasattr(self.config_snapshot, "model_dump"):
+            return self.config_snapshot.model_dump(mode="json")
+        if isinstance(self.config_snapshot, str):
+            return json.loads(self.config_snapshot)
+        return dict(self.config_snapshot)
 
 
 class AgentConfigSnapshot(DefaultFieldsMixin, Base):
@@ -325,9 +423,9 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
       agent_config_snapshot_id / composition_layer_specs`` columns are set.
     - Agent App conversations: ``owner_type = conversation``; the
       ``conversation_id`` column is set and the workflow columns stay NULL.
-      Published/web/API runs scope runtime state by ``agent_config_snapshot_id``;
-      console debugger runs may keep it NULL so prompt-only draft saves can reuse
-      the same preview conversation state while executing the latest Agent Soul.
+      Runtime state is scoped by ``agent_config_snapshot_id``. For published
+      web/API runs this points to an immutable AgentConfigSnapshot; for console
+      debugger/build runs it points to the editable AgentConfigDraft row.
 
     The snapshot is runtime state returned by Agent backend, kept separate from
     Agent Soul snapshots and workflow node-job config.
@@ -430,14 +528,17 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
     (created by the agent runtime or Skill standardization, not shared with other
     business records) have their storage object + record deleted when the KV entry is
-    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
-    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    overwritten or removed; otherwise only the KV row is dropped. Skills are represented
+    by the canonical ``<path>/SKILL.md`` row with ``is_skill=True`` and a serialized
+    ``skill_metadata`` string. Lifecycle never relies on ``UploadFile.used/used_by``
+    (not a reliable refcount).
     """
 
     __tablename__ = "agent_drive_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
         UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+        Index("agent_drive_files_tenant_agent_is_skill_key_idx", "tenant_id", "agent_id", "is_skill", "key"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -453,6 +554,8 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     value_owned_by_drive: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    is_skill: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    skill_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)

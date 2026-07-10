@@ -130,7 +130,7 @@ const WebsiteCrawl = ({
           setStep(CrawlStep.finished)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
+          setCrawlErrorMessage(error.error || t($ => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }))
           setStep(CrawlStep.finished)
         },
       },
@@ -184,7 +184,7 @@ const WebsiteCrawl = ({
           {showError && (
             <ErrorMessage
               className="mt-2"
-              title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })}
+              title={t($ => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
               errorMsg={crawlErrorMessage}
             />
           )}

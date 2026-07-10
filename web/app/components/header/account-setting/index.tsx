@@ -3,6 +3,8 @@ import type { AccountSettingTab } from '@/app/components/header/account-setting/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -11,18 +13,19 @@ import {
   ACCOUNT_SETTING_TAB,
 } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
-import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
+import PreferencePage from './preference-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
@@ -51,69 +54,77 @@ export default function AccountSetting({
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { workspacePermissionKeys } = useAppContext()
-  const canManageWorkspaceRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
-  const activeMenu = activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling
-    ? ACCOUNT_SETTING_TAB.LANGUAGE
-    : activeTab
+  // Keep legacy `language` deep links opening Preferences during the tab rename migration.
+  const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
+  const activeMenu = (() => {
+    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+      return ACCOUNT_SETTING_TAB.PREFERENCES
+    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) && !canManageWorkspaceRoles)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    return normalizedActiveTab
+  })()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const settingItems: GroupItem[] = [
     {
       key: ACCOUNT_SETTING_TAB.PROVIDER,
-      name: t('settings.provider', { ns: 'common' }),
+      name: t($ => $['settings.provider'], { ns: 'common' }),
       icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.MEMBERS,
-      name: t('settings.members', { ns: 'common' }),
+      name: t($ => $['settings.members'], { ns: 'common' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.PERMISSIONS,
-      name: t('settings.rolesAndPermissions', { ns: 'common' }),
+      key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
+      name: t($ => $['settings.rolesAndPermissions'], { ns: 'common' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
-      name: t('settings.resourceAccess', { ns: 'common' }),
-      description: t('settings.resourceAccessDescription', { ns: 'common' }),
+      key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
+      name: t($ => $['settings.permissionSet'], { ns: 'common' }),
+      description: t($ => $['settings.permissionSetDescription'], { ns: 'common' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.BILLING,
-      name: t('settings.billing', { ns: 'common' }),
-      description: t('plansCommon.receiptInfo', { ns: 'billing' }),
+      name: t($ => $['settings.billing'], { ns: 'common' }),
+      description: t($ => $['plansCommon.receiptInfo'], { ns: 'billing' }),
       icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      name: t('settings.dataSource', { ns: 'common' }),
+      name: t($ => $['settings.dataSource'], { ns: 'common' }),
       icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-      name: t('settings.customEndpoint', { ns: 'common' }),
+      name: t($ => $['settings.customEndpoint'], { ns: 'common' }),
       icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.CUSTOM,
-      name: t('custom', { ns: 'custom' }),
+      name: t($ => $.custom, { ns: 'custom' }),
       icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.LANGUAGE,
-      name: t('settings.preferences', { ns: 'common' }),
-      title: t('account.general', { ns: 'common' }),
+      key: ACCOUNT_SETTING_TAB.PREFERENCES,
+      name: t($ => $['settings.preferences'], { ns: 'common' }),
+      title: t($ => $['account.general'], { ns: 'common' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
@@ -126,8 +137,8 @@ export default function AccountSetting({
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
 
     if (canManageWorkspaceRoles) {
-      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSIONS)
-      visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_RULES)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
 
     if (canViewBilling)
@@ -143,17 +154,17 @@ export default function AccountSetting({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const languageItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.LANGUAGE)
+  const preferenceItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.PREFERENCES)
 
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t('settings.workspace', { ns: 'common' }),
+      name: t($ => $['settings.workspace'], { ns: 'common' }),
       items: visibleSettingItems,
     },
     {
       key: 'user-group',
-      items: languageItem ? [languageItem] : [],
+      items: preferenceItem ? [preferenceItem] : [],
     },
   ]
 
@@ -178,7 +189,7 @@ export default function AccountSetting({
     >
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
         <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">{t('settings.settings', { ns: 'common' })}</div>
+          <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">{t($ => $['settings.settings'], { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
@@ -221,7 +232,7 @@ export default function AccountSetting({
               variant="tertiary"
               size="large"
               className="px-2"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               onClick={handleClose}
             >
               <span className="i-ri-close-line size-5" />
@@ -252,13 +263,13 @@ export default function AccountSetting({
                 />
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
-              {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
             </div>
           </ScrollArea>
         </div>

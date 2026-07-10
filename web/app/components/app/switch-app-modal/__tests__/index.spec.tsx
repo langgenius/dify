@@ -1,7 +1,8 @@
 import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { Plan } from '@/app/components/billing/type'
@@ -25,19 +26,6 @@ const mockDeleteApp = vi.fn()
 vi.mock('@/service/apps', () => ({
   switchApp: (...args: unknown[]) => mockSwitchApp(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
-}))
-
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
 }))
 
 let mockEnableBilling = false
@@ -171,7 +159,6 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
       type: Plan.sandbox,

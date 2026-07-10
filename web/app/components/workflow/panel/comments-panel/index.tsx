@@ -1,7 +1,8 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -9,7 +10,7 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const CommentsPanel = () => {
@@ -29,16 +30,16 @@ const CommentsPanel = () => {
     handleCommentIconClick(comment)
   }, [handleCommentIconClick])
 
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
 
   const filteredSorted = useMemo(() => {
     let data = comments
     if (!showResolvedComments)
       data = data.filter(c => !c.resolved)
     if (showOnlyMine)
-      data = data.filter(c => c.created_by === userProfile?.id)
+      data = data.filter(c => c.created_by === currentUserId)
     return data
-  }, [comments, showOnlyMine, showResolvedComments, userProfile?.id])
+  }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved)
@@ -57,14 +58,14 @@ const CommentsPanel = () => {
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
       <div className="flex items-center justify-between p-4 pb-2">
-        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
+        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t($ => $['comments.panelTitle'], { ns: 'workflow' })}</div>
         <div className="relative flex items-center gap-2">
           <button
             className={cn(
               'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
               hasActiveFilter && 'bg-state-accent-active',
             )}
-            aria-label={t('comments.aria.filterComments', { ns: 'workflow' })}
+            aria-label={t($ => $['comments.aria.filterComments'], { ns: 'workflow' })}
             onClick={() => setShowFilter(v => !v)}
           >
             <RiFilter3Line className={cn(
@@ -82,7 +83,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.all', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">{t($ => $['comments.filter.all'], { ns: 'workflow' })}</span>
                 {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <button
@@ -92,7 +93,7 @@ const CommentsPanel = () => {
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.onlyYourThreads', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">{t($ => $['comments.filter.onlyYourThreads'], { ns: 'workflow' })}</span>
                 {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <Divider type="horizontal" className="my-1" />
@@ -102,7 +103,7 @@ const CommentsPanel = () => {
                   e.stopPropagation()
                 }}
               >
-                <span className="text-sm text-text-secondary">{t('comments.filter.showResolved', { ns: 'workflow' })}</span>
+                <span className="text-sm text-text-secondary">{t($ => $['comments.filter.showResolved'], { ns: 'workflow' })}</span>
                 <Switch
                   size="md"
                   checked={showResolvedComments}
@@ -163,7 +164,7 @@ const CommentsPanel = () => {
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="truncate system-sm-medium text-text-primary">{c.created_by_account?.name ?? ''}</div>
                     <div className="shrink-0 system-2xs-regular text-text-tertiary">
-                      {formatTimeFromNow(c.updated_at * 1000)}
+                      {formatTimeFromNow((c.updated_at ?? c.created_at ?? 0) * 1000)}
                     </div>
                   </div>
                 </div>
@@ -175,7 +176,7 @@ const CommentsPanel = () => {
                     <div className="system-2xs-regular text-text-tertiary">
                       {c.reply_count}
                       {' '}
-                      {t('comments.reply', { ns: 'workflow' })}
+                      {t($ => $['comments.reply'], { ns: 'workflow' })}
                     </div>
                   </div>
                 )}
@@ -184,7 +185,7 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
+          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t($ => $['comments.noComments'], { ns: 'workflow' })}</div>
         )}
       </div>
     </div>

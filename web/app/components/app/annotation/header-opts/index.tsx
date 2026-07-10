@@ -86,12 +86,12 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
         }}
       >
         <span aria-hidden className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary" />
-        {t('table.header.bulkImport', { ns: 'appAnnotation' })}
+        {t($ => $['table.header.bulkImport'], { ns: 'appAnnotation' })}
       </DropdownMenuItem>
       <DropdownMenuSub>
         <DropdownMenuSubTrigger className="gap-2">
           <span aria-hidden className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary" />
-          {t('table.header.bulkExport', { ns: 'appAnnotation' })}
+          {t($ => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
           placement="left-start"
@@ -127,7 +127,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
         }}
       >
         <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-        {t('table.header.clearAll', { ns: 'appAnnotation' })}
+        {t($ => $['table.header.clearAll'], { ns: 'appAnnotation' })}
       </DropdownMenuItem>
     </>
   )
@@ -187,11 +187,11 @@ const HeaderOptions: FC<Props> = ({
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
         <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
-        <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
+        <div>{t($ => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
       </Button>
       <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
         <DropdownMenuTrigger
-          aria-label={t('operation.more', { ns: 'common' })}
+          aria-label={t($ => $['operation.more'], { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />

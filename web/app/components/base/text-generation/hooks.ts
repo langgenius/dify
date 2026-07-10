@@ -10,7 +10,7 @@ export const useTextGeneration = () => {
   const [messageId, setMessageId] = useState<string | null>(null)
   const handleSend = async (url: string, data: any) => {
     if (isResponding) {
-      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
     }
     setIsResponding(true)

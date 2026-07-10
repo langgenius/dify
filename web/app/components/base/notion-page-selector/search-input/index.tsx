@@ -17,7 +17,7 @@ const SearchInput = ({
     onChange('')
   }, [onChange])
 
-  const placeholderText = t('dataSource.notion.selector.searchPages', { ns: 'common' })
+  const placeholderText = t($ => $['dataSource.notion.selector.searchPages'], { ns: 'common' })
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safePlaceholderText = placeholderText || ''
 
@@ -39,7 +39,7 @@ const SearchInput = ({
           ? (
               <button
                 type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
+                aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                 className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active"
                 onClick={handleClear}
               >

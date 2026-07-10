@@ -27,9 +27,9 @@ export function AgentCliToolItem({
     <ConfigureSectionConfigurableItem
       icon={<CliIcon />}
       label={tool.name}
-      badge={t('agentDetail.configure.tools.cliTool')}
-      editAriaLabel={t('agentDetail.configure.tools.editAction', { name: tool.name })}
-      removeAriaLabel={t('agentDetail.configure.tools.removeAction', { name: tool.name })}
+      badge={t($ => $['agentDetail.configure.tools.cliTool'])}
+      editAriaLabel={t($ => $['agentDetail.configure.tools.editAction'], { name: tool.name })}
+      removeAriaLabel={t($ => $['agentDetail.configure.tools.removeAction'], { name: tool.name })}
       onEdit={onEdit}
       onRemove={onDelete}
     />

@@ -501,7 +501,7 @@ class TestDatasetListApiPost:
             json={"name": "New Dataset"},
         ):
             api = DatasetListApi()
-            response, status = unwrap(api.post)(api, tenant_id=mock_tenant.id)
+            response, status = unwrap(api.post)(api, Mock(spec=Session), tenant_id=mock_tenant.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -529,7 +529,7 @@ class TestDatasetListApiPost:
         ):
             api = DatasetListApi()
             with pytest.raises(DatasetNameDuplicateError):
-                unwrap(api.post)(api, tenant_id=mock_tenant.id)
+                unwrap(api.post)(api, Mock(spec=Session), tenant_id=mock_tenant.id)
 
 
 # ---------------------------------------------------------------------------
@@ -722,7 +722,12 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
-            response, status = unwrap(api.patch)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+            response, status = unwrap(api.patch)(
+                api,
+                Mock(spec=Session),
+                _=mock_dataset.tenant_id,
+                dataset_id=mock_dataset.id,
+            )
 
         assert status == 200
         assert_dataset_detail_shape(response, with_partial_members=True)
@@ -730,12 +735,15 @@ class TestDatasetApiPatch:
         assert response["partial_member_list"] == ["user-1"]
         mock_dataset_svc.update_dataset.assert_called_once()
         _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
+        session = mock_dataset_svc.update_dataset.call_args.kwargs["session"]
+        assert isinstance(session, (Session, scoped_session))
         assert update_data["name"] == "Updated Dataset"
         assert update_data["permission"] == "partial_members"
         mock_perm_svc.update_partial_member_list.assert_called_once_with(
             mock_dataset.tenant_id,
             mock_dataset.id,
             [{"user_id": "user-1", "role": "editor"}],
+            SessionMatcher(),
         )
 
 
@@ -1006,7 +1014,7 @@ class TestDatasetTagsApiGet:
 
         assert status == 200
         assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
-        mock_tag_svc.get_tags.assert_called_once_with(SessionMatcher(), "knowledge", "tenant-1")
+        mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1", session=SessionMatcher())
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_list_tags_from_db(
@@ -1186,7 +1194,7 @@ class TestDatasetTagsApiDelete:
             result = api.delete(_=None)
 
         assert result == ("", 204)
-        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", ANY)
+        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", ANY, tag_type=TagType.KNOWLEDGE)
 
     @patch("libs.login.current_user")
     def test_delete_tag_forbidden(self, mock_current_user, app: Flask):

@@ -69,9 +69,11 @@ const ToolItem: FC<Props> = ({
   }, [theme, normalizedIcon, normalizedIconDark])
 
   const row = (
-    <div
+    <button
       key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      type="button"
+      disabled={disabled}
+      className="flex w-full cursor-pointer items-center justify-between rounded-lg border-none bg-transparent pr-1 pl-[21px] text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
       onClick={() => {
         if (disabled)
           return
@@ -109,9 +111,9 @@ const ToolItem: FC<Props> = ({
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">{t($ => $['addToolModal.added'], { ns: 'tools' })}</div>
       )}
-    </div>
+    </button>
   )
 
   return (

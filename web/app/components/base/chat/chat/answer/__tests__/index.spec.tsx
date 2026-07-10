@@ -81,6 +81,23 @@ describe('Answer Component', () => {
       expect(container.querySelector('.group')).toBeInTheDocument()
     })
 
+    it('should render custom agent content when only agent response parts exist', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            id: 'msg-with-parts',
+            content: '',
+            isAnswer: true,
+            agent_response_parts: [{ type: 'message', content: 'streamed answer' }],
+          } as ChatItem}
+          renderAgentContent={() => <div data-testid="custom-agent-content">streamed answer</div>}
+        />,
+      )
+
+      expect(screen.getByTestId('custom-agent-content')).toHaveTextContent('streamed answer')
+    })
+
     it('should render file lists', () => {
       render(
         <Answer
@@ -147,6 +164,92 @@ describe('Answer Component', () => {
         />,
       )
       expect(screen.getByTestId('chat-answer-container')).toBeInTheDocument()
+    })
+  })
+
+  // Reasoning panel slot (separated-mode chain-of-thought) in both layouts.
+  // The panel body renders through the async dynamic Markdown, so assertions
+  // target the synchronously-rendered "Thinking…/Thought" summary label.
+  describe('Reasoning Panel', () => {
+    it('should render the reasoning panel in the normal layout while thinking', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={true}
+          item={{
+            ...defaultProps.item,
+            // Thinking ⇒ the answer has not started yet, so content must be empty.
+            content: '',
+            reasoningContent: { llm: 'deep thought' },
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel in the thought state once finished', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: { llm: 'recalled reasoning' },
+            reasoningFinished: true,
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel within the human-input layout', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: { llm: 'human-input reasoning' },
+            humanInputFormDataList: [{ id: 'form1' }],
+          } as unknown as ChatItem}
+        />,
+      )
+      // hasHumanInputs is true, so this can only come from the human-input slot
+      expect(screen.getByText(/chat\.(thinking|thought)/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel in the human-input layout when the answer is empty (history reload)', () => {
+      // Regression: the human-input slot outer guard must include hasReasoning, otherwise a
+      // rehydrated message with forms + reasoning but an empty answer drops the panel entirely.
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            content: '',
+            reasoningContent: { llm: 'reload reasoning' },
+            reasoningFinished: true,
+            humanInputFilledFormDataList: [{ id: 'form1' }],
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel when reasoningContent is absent', () => {
+      render(<Answer {...defaultProps} />)
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel for an empty reasoningContent map (rehydrated, no reasoning)', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: {},
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
     })
   })
 

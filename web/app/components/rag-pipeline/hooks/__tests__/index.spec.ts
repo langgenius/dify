@@ -8,14 +8,11 @@ import { FlowType } from '@/types/common'
 
 import {
   useAvailableNodesMetaData,
-  useDSL,
   useGetRunAndTraceUrl,
   useInputFieldPanel,
   useNodesSyncDraft,
   usePipelineInit,
   usePipelineRefreshDraft,
-  usePipelineRun,
-  usePipelineStartRun,
 } from '../index'
 import { useConfigsMap } from '../use-configs-map'
 import { useConfigurations, useInitialData } from '../use-input-fields'
@@ -46,10 +43,6 @@ vi.mock('@/context/event-emitter', () => ({
       emit: mockEventEmit,
     },
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({
@@ -458,20 +451,9 @@ describe('usePipelineTemplate', () => {
   })
 })
 
-describe('useDSL', () => {
-  it('should be defined and exported', () => {
-    expect(useDSL).toBeDefined()
-    expect(typeof useDSL).toBe('function')
-  })
-})
-
 describe('exports', () => {
   it('should export useAvailableNodesMetaData', () => {
     expect(useAvailableNodesMetaData).toBeDefined()
-  })
-
-  it('should export useDSL', () => {
-    expect(useDSL).toBeDefined()
   })
 
   it('should export useGetRunAndTraceUrl', () => {
@@ -492,14 +474,6 @@ describe('exports', () => {
 
   it('should export usePipelineRefreshDraft', () => {
     expect(usePipelineRefreshDraft).toBeDefined()
-  })
-
-  it('should export usePipelineRun', () => {
-    expect(usePipelineRun).toBeDefined()
-  })
-
-  it('should export usePipelineStartRun', () => {
-    expect(usePipelineStartRun).toBeDefined()
   })
 })
 

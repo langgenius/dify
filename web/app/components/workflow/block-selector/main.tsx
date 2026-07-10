@@ -64,6 +64,7 @@ export type NodeSelectorProps = {
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
   snippetInsertPayload?: Parameters<OnNodeAdd>[1]
+  isolateKeyboardEvents?: boolean
 }
 function NodeSelector({
   open: openFromProps,
@@ -90,6 +91,7 @@ function NodeSelector({
   forceEnableStartTab = false,
   allowUserInputSelection,
   snippetInsertPayload,
+  isolateKeyboardEvents = false,
 }: NodeSelectorProps) {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -182,6 +184,10 @@ function NodeSelector({
     if (open && newActiveTab === TabsEnum.Snippets)
       setSnippetsLoading(true)
   }, [open, setActiveTab])
+  const handlePopupKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (isolateKeyboardEvents)
+      event.stopPropagation()
+  }, [isolateKeyboardEvents])
 
   useEffect(() => {
     if (!snippetsLoading)
@@ -201,24 +207,24 @@ function NodeSelector({
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
-      return t('tabs.searchTrigger', { ns: 'workflow' })
+      return t($ => $['tabs.searchTrigger'], { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Blocks)
-      return t('tabs.searchBlock', { ns: 'workflow' })
+      return t($ => $['tabs.searchBlock'], { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Tools)
-      return t('tabs.searchTool', { ns: 'workflow' })
+      return t($ => $['tabs.searchTool'], { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Sources)
-      return t('tabs.searchDataSource', { ns: 'workflow' })
+      return t($ => $['tabs.searchDataSource'], { ns: 'workflow' })
     if (activeTab === TabsEnum.Snippets)
-      return t('tabs.searchSnippets', { ns: 'workflow' })
+      return t($ => $['tabs.searchSnippets'], { ns: 'workflow' })
     return ''
   }, [activeTab, t])
 
   const defaultTriggerElement = (
     <PopoverTrigger
-      aria-label={t('common.addBlock', { ns: 'workflow' })}
+      aria-label={t($ => $['common.addBlock'], { ns: 'workflow' })}
       className={cn(
         'z-10 flex size-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
         triggerClassName?.(open),
@@ -263,6 +269,7 @@ function NodeSelector({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
+        popupProps={isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : undefined}
       >
         <div className={cn('w-[400px] min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', popupClassName)}>
           <Tabs
@@ -317,7 +324,7 @@ function NodeSelector({
                         onSearchChange={setSearchText}
                         tags={tags}
                         onTagsChange={setTags}
-                        placeholder={t('searchTools', { ns: 'plugin' })!}
+                        placeholder={t($ => $.searchTools, { ns: 'plugin' })!}
                         inputClassName="grow"
                       />
                     )}

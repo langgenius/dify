@@ -72,6 +72,50 @@ describe('classifyResponse — canonical ErrorBody', () => {
   })
 })
 
+describe('classifyResponse 403', () => {
+  it('maps 403 to AccessDenied (exit 4 bucket)', async () => {
+    const req403 = new Request('https://x/openapi/v1/apps/abc/dsl')
+    const res403 = new Response(
+      JSON.stringify({ code: 'unsupported_token_type', message: 'unsupported_token_type', status: 403 }),
+      { status: 403, headers: { 'content-type': 'application/json' } },
+    )
+    const err = await classifyResponse(req403, res403)
+    expect(err.code).toBe(ErrorCode.AccessDenied)
+    expect(err.message).toBe('unsupported_token_type')
+  })
+
+  it('403 with no parseable ErrorBody falls back to generic denied message', async () => {
+    const err = await classified(403, 'not json')
+    expect(err.code).toBe(ErrorCode.AccessDenied)
+    expect(err.message).toBe('not permitted')
+  })
+})
+
+describe('classifyResponse 426', () => {
+  it('maps 426 to VersionSkew (exit 6) and surfaces the server upgrade message', async () => {
+    const body = {
+      code: 'upgrade_required',
+      message: 'difyctl 0.1.0 is no longer supported; upgrade to >= 0.2.0.',
+      status: 426,
+      hint: 'Upgrade difyctl: https://docs.dify.ai/en/cli/install',
+    }
+
+    const err = await classified(426, body)
+
+    expect(err.code).toBe(ErrorCode.VersionSkew)
+    expect(err.exit()).toBe(6)
+    expect(err.message).toBe('difyctl 0.1.0 is no longer supported; upgrade to >= 0.2.0.')
+    expect(err.serverError?.code).toBe('upgrade_required')
+  })
+
+  it('426 with no parseable ErrorBody falls back to a version message', async () => {
+    const err = await classified(426, 'not json')
+
+    expect(err.code).toBe(ErrorCode.VersionSkew)
+    expect(err.message).toBe('client version no longer supported by the server')
+  })
+})
+
 describe('classifyResponse — non-conforming bodies (no fallback by design)', () => {
   it('non-JSON body yields no serverError, classification by status', async () => {
     const err = await classified(502, '<html>bad gateway</html>')

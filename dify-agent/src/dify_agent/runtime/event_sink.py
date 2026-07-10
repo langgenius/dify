@@ -17,6 +17,7 @@ from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     DeferredToolCallPayload,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
@@ -88,11 +89,22 @@ async def emit_run_started(sink: RunEventSink, *, run_id: str) -> str:
     )
 
 
-async def emit_pydantic_ai_event(sink: RunEventSink, *, run_id: str, data: AgentStreamEvent) -> str:
+async def emit_pydantic_ai_event(
+    sink: RunEventSink,
+    *,
+    run_id: str,
+    data: AgentStreamEvent,
+    agent_message_delta: str | None = None,
+) -> str:
     """Emit one typed Pydantic AI stream event."""
     return await emit_run_event(
         sink,
-        event=PydanticAIStreamRunEvent(run_id=run_id, data=data, created_at=utc_now()),
+        event=PydanticAIStreamRunEvent(
+            run_id=run_id,
+            data=data,
+            agent_message_delta=agent_message_delta,
+            created_at=utc_now(),
+        ),
     )
 
 
@@ -103,6 +115,7 @@ async def emit_run_succeeded(
     output: JsonValue | None | object = _UNSET,
     deferred_tool_call: DeferredToolCallPayload | object = _UNSET,
     session_snapshot: CompositorSessionSnapshot,
+    usage: AgentRunUsage | None = None,
 ) -> str:
     """Emit the terminal success event with output or deferred continuation.
 
@@ -112,13 +125,15 @@ async def emit_run_succeeded(
     Without that sentinel, ``output=None`` would be indistinguishable from
     “output field absent”, which would break nullable-success payloads.
     """
-    data: dict[str, JsonValue | DeferredToolCallPayload | CompositorSessionSnapshot | None] = {
+    data: dict[str, JsonValue | DeferredToolCallPayload | CompositorSessionSnapshot | AgentRunUsage | None] = {
         "session_snapshot": session_snapshot,
     }
     if output is not _UNSET:
         data["output"] = cast(JsonValue | None, output)
     if deferred_tool_call is not _UNSET:
         data["deferred_tool_call"] = cast(DeferredToolCallPayload, deferred_tool_call)
+    if usage is not None:
+        data["usage"] = usage
 
     return await emit_run_event(
         sink,

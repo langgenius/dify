@@ -24,13 +24,6 @@ vi.mock('reactflow', async () => {
     }),
   }
 })
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesMetaData: () => ({
     nodesMap: {

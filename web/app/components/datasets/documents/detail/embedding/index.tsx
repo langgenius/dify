@@ -31,10 +31,10 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentI
   })
   const { data: ruleDetail } = useProcessRule(documentId)
   const handleSuccess = useCallback(() => {
-    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [t])
   const handleError = useCallback(() => {
-    toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
   }, [t])
   const pauseMutation = usePauseIndexing({
     datasetId,

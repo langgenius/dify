@@ -57,10 +57,10 @@ const SettingContent = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t($ => $['feature.fileUpload.modalTitle'], { ns: 'appDebug' }) : t($ => $['feature.imageUpload.modalTitle'], { ns: 'appDebug' })}</div>
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onClose}
         >
@@ -79,14 +79,14 @@ const SettingContent = ({
           onClick={onClose}
           className="mr-2"
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t($ => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           onClick={handleChange}
           disabled={tempPayload.allowed_file_types.length === 0}
         >
-          {t('operation.save', { ns: 'common' })}
+          {t($ => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
     </>

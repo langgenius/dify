@@ -1,5 +1,5 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,11 +15,47 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
@@ -30,17 +66,18 @@ const i18n = {
 }
 
 const appTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'API', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'API', type: 'app', binding_count: '' },
 ]
 
-const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: 2 }
+const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: '' }
 
 type PanelHarnessProps = {
   type?: TagType
   value?: Tag[]
   tagList?: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
 }
 
@@ -52,6 +89,7 @@ const PanelHarness = ({
   type = 'app',
   value = [appTags[0]!],
   tagList = [...appTags, knowledgeTag],
+  canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
   const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
@@ -66,7 +104,7 @@ const PanelHarness = ({
       id: `__create_tag__:${inputValue}`,
       name: inputValue,
       type,
-      binding_count: 0,
+      binding_count: '',
       isCreateOption: true,
     }, ...tags]
   }, [inputValue, tagList, type])
@@ -92,6 +130,7 @@ const PanelHarness = ({
         type={type}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
+        canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -211,19 +250,44 @@ describe('TagSearchContent', () => {
     expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
   })
 
+  it('does not update selection when neither tag management nor binding permission is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).not.toHaveBeenCalled()
+  })
+
+  it('updates selection with binding capability without tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'tag-2' }),
+    ]))
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
   })
 
-  it('renders snippet management action with snippets management permission', () => {
-    mockWorkspacePermissionKeys.value = ['snippets.management']
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
 
     render(
       <PanelHarness
         type="snippet"
         value={[]}
-        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]}
       />,
     )
 

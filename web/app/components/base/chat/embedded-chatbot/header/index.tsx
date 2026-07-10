@@ -95,7 +95,7 @@ const Header: FC<IHeaderProps> = ({
                 )}
                 data-testid="webapp-brand"
               >
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['chat.poweredBy'], { ns: 'share' })}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                     ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -116,7 +116,7 @@ const Header: FC<IHeaderProps> = ({
                   render={(
                     <ActionButton
                       size="l"
-                      aria-label={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                      aria-label={expanded ? t($ => $['chat.collapse'], { ns: 'share' }) : t($ => $['chat.expand'], { ns: 'share' })}
                       onClick={handleToggleExpand}
                     >
                       {
@@ -128,7 +128,7 @@ const Header: FC<IHeaderProps> = ({
                   )}
                 />
                 <TooltipContent>
-                  {expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                  {expanded ? t($ => $['chat.collapse'], { ns: 'share' }) : t($ => $['chat.expand'], { ns: 'share' })}
                 </TooltipContent>
               </Tooltip>
             )
@@ -139,7 +139,7 @@ const Header: FC<IHeaderProps> = ({
                 render={(
                   <ActionButton
                     size="l"
-                    aria-label={t('chat.resetChat', { ns: 'share' })}
+                    aria-label={t($ => $['chat.resetChat'], { ns: 'share' })}
                     onClick={onCreateNewChat}
                   >
                     <div className="i-ri-reset-left-line h-[18px] w-[18px]" aria-hidden="true" />
@@ -147,7 +147,7 @@ const Header: FC<IHeaderProps> = ({
                 )}
               />
               <TooltipContent>
-                {t('chat.resetChat', { ns: 'share' })}
+                {t($ => $['chat.resetChat'], { ns: 'share' })}
               </TooltipContent>
             </Tooltip>
           )}
@@ -181,7 +181,7 @@ const Header: FC<IHeaderProps> = ({
                 render={(
                   <ActionButton
                     size="l"
-                    aria-label={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                    aria-label={expanded ? t($ => $['chat.collapse'], { ns: 'share' }) : t($ => $['chat.expand'], { ns: 'share' })}
                     onClick={handleToggleExpand}
                   >
                     {
@@ -193,7 +193,7 @@ const Header: FC<IHeaderProps> = ({
                 )}
               />
               <TooltipContent>
-                {expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                {expanded ? t($ => $['chat.collapse'], { ns: 'share' }) : t($ => $['chat.expand'], { ns: 'share' })}
               </TooltipContent>
             </Tooltip>
           )
@@ -204,7 +204,7 @@ const Header: FC<IHeaderProps> = ({
               render={(
                 <ActionButton
                   size="l"
-                  aria-label={t('chat.resetChat', { ns: 'share' })}
+                  aria-label={t($ => $['chat.resetChat'], { ns: 'share' })}
                   onClick={onCreateNewChat}
                 >
                   <div className={cn('i-ri-reset-left-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} aria-hidden="true" />
@@ -212,7 +212,7 @@ const Header: FC<IHeaderProps> = ({
               )}
             />
             <TooltipContent>
-              {t('chat.resetChat', { ns: 'share' })}
+              {t($ => $['chat.resetChat'], { ns: 'share' })}
             </TooltipContent>
           </Tooltip>
         )}

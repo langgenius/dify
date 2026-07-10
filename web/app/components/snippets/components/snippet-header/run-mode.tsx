@@ -51,13 +51,13 @@ const RunMode = ({
           ? (
               <>
                 <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
-                {t('common.running', { ns: 'workflow' })}
+                {t($ => $['common.running'], { ns: 'workflow' })}
               </>
             )
           : (
               <>
                 <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
-                {text ?? t('common.run', { ns: 'workflow' })}
+                {text ?? t($ => $['common.run'], { ns: 'workflow' })}
                 <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
               </>
             )}

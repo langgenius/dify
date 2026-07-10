@@ -3,6 +3,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormData, HumanInputFormTimeoutData, NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   appendParallelNext,
   appendParallelStart,
@@ -373,7 +374,7 @@ describe('createWorkflowStreamHandlers', () => {
       setMessageId,
       setRespondingFalse,
       setWorkflowProcessData,
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
       taskId: 3,
     })
 
@@ -635,6 +636,10 @@ describe('createWorkflowStreamHandlers', () => {
       message: 'failed',
     })
     expect(failureSetup.onCompleted).toHaveBeenCalledWith('', 3, false)
+    expect(failureSetup.workflowProcessData()).toEqual(expect.objectContaining({
+      status: WorkflowRunningStatus.Failed,
+      error: 'failed',
+    }))
   })
 
   it('should cover existing workflow starts, stopped runs, and non-string outputs', () => {
@@ -668,7 +673,7 @@ describe('createWorkflowStreamHandlers', () => {
       setWorkflowProcessData: (value) => {
         existingProcess = value!
       },
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
       taskId: 5,
     }) as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>>
 

@@ -11,7 +11,6 @@ import {
   useMarketplaceSort,
   useMarketplaceSortValue,
   useSearchPluginText,
-  useSetMarketplaceSort,
 } from '../atoms'
 import { DEFAULT_SORT } from '../constants'
 
@@ -45,20 +44,6 @@ describe('Marketplace sort atoms', () => {
     const { result } = renderHook(() => useMarketplaceSortValue(), { wrapper })
 
     expect(result.current).toEqual(DEFAULT_SORT)
-  })
-
-  it('should return setter from useSetMarketplaceSort', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      setSort: useSetMarketplaceSort(),
-      sortValue: useMarketplaceSortValue(),
-    }), { wrapper })
-
-    act(() => {
-      result.current.setSort({ sortBy: 'created_at', sortOrder: 'ASC' })
-    })
-
-    expect(result.current.sortValue).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
   })
 
   it('should update sort value via useMarketplaceSort setter', () => {

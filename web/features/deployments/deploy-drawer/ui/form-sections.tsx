@@ -1,13 +1,13 @@
 'use client'
 
 import type { CredentialSlot, Environment } from '@dify/contracts/enterprise/types.gen'
-import type { RuntimeCredentialBindingSelections } from '../../components/runtime-credential-bindings-utils'
+import type { RuntimeCredentialBindingSelections } from '../../shared/components/runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentStateMessage } from '../../components/empty-state'
-import { RuntimeCredentialBindingsPanel } from '../../components/runtime-credential-bindings'
+import { DeploymentStateMessage } from '../../shared/components/empty-state'
+import { RuntimeCredentialBindingsPanel } from '../../shared/components/runtime-credential-bindings'
 import { formatDate, releaseCommit } from '../../shared/domain/release'
 import {
   deployDisplayedReleaseAtom,
@@ -35,7 +35,7 @@ function environmentOptionLabel(env: Environment, t: ReturnType<typeof useTransl
   if (description)
     return `${env.displayName} · ${description}`
 
-  return `${env.displayName} · ${t(`mode.${env.mode}`)} · ${t(`backend.${env.backend}`)}`
+  return `${env.displayName} · ${t($ => $[`mode.${env.mode}`])} · ${t($ => $[`backend.${env.backend}`])}`
 }
 
 export function BindingOptionsPanel({
@@ -72,7 +72,7 @@ export function BindingOptionsPanel({
   if (hasError) {
     return (
       <div className="rounded-xl border border-divider-subtle bg-background-default-subtle px-3 py-4 system-sm-regular text-text-destructive">
-        {t('deployDrawer.bindingOptionsFailed')}
+        {t($ => $['deployDrawer.bindingOptionsFailed'])}
       </div>
     )
   }
@@ -81,12 +81,12 @@ export function BindingOptionsPanel({
     <RuntimeCredentialBindingsPanel
       slots={slots}
       selections={selections}
-      title={t('deployDrawer.runtimeCredentials')}
-      hint={t('deployDrawer.bindingSelectionHint')}
-      noBindingRequiredLabel={t('deployDrawer.noBindingRequired')}
-      noCredentialCandidatesLabel={t('deployDrawer.noCredentialCandidates')}
-      selectCredentialLabel={t('deployDrawer.selectCredential')}
-      missingRequiredLabel={t('deployDrawer.missingRequiredBinding')}
+      title={t($ => $['deployDrawer.runtimeCredentials'])}
+      hint={t($ => $['deployDrawer.bindingSelectionHint'])}
+      noBindingRequiredLabel={t($ => $['deployDrawer.noBindingRequired'])}
+      noCredentialCandidatesLabel={t($ => $['deployDrawer.noCredentialCandidates'])}
+      selectCredentialLabel={t($ => $['deployDrawer.selectCredential'])}
+      missingRequiredLabel={t($ => $['deployDrawer.missingRequiredBinding'])}
       bindingCountLabel={bindingCountLabel}
       showMissingRequired={showMissingRequired}
       listClassName={DEPLOY_DRAWER_BINDING_LIST_CLASS_NAME}
@@ -101,10 +101,10 @@ export function DeployFormHeader() {
   return (
     <div className="shrink-0 border-b border-divider-subtle px-6 py-5 pr-14">
       <DrawerTitle className="title-xl-semi-bold text-text-primary">
-        {t('deployDrawer.title')}
+        {t($ => $['deployDrawer.title'])}
       </DrawerTitle>
       <DrawerDescription className="mt-1 system-sm-regular text-text-tertiary">
-        {t('deployDrawer.description')}
+        {t($ => $['deployDrawer.description'])}
       </DrawerDescription>
     </div>
   )
@@ -120,7 +120,7 @@ export function ReleaseField() {
   const selectRelease = useSetAtom(selectDeployReleaseAtom)
 
   return (
-    <Field label={t('deployDrawer.releaseLabel')}>
+    <Field label={t($ => $['deployDrawer.releaseLabel'])}>
       {isExistingRelease && displayedRelease
         ? (
             <div className="flex flex-col gap-1">
@@ -133,14 +133,14 @@ export function ReleaseField() {
                 <span className="shrink-0 system-xs-regular text-text-quaternary">{formatDate(displayedRelease.createdAt)}</span>
               </div>
               <span className="system-xs-regular text-text-tertiary">
-                {t('deployDrawer.existingReleaseHint')}
+                {t($ => $['deployDrawer.existingReleaseHint'])}
               </span>
             </div>
           )
         : releases.length === 0
           ? (
               <DeploymentStateMessage variant="compact">
-                {emptyLabel ?? t('deployDrawer.noReleaseAvailable')}
+                {emptyLabel ?? t($ => $['deployDrawer.noReleaseAvailable'])}
               </DeploymentStateMessage>
             )
           : (
@@ -151,8 +151,8 @@ export function ReleaseField() {
                   value: release.id,
                   label: `${release.displayName} · ${releaseCommit(release)}`,
                 }))}
-                ariaLabel={t('deployDrawer.releaseLabel')}
-                placeholder={t('deployDrawer.selectRelease')}
+                ariaLabel={t($ => $['deployDrawer.releaseLabel'])}
+                placeholder={t($ => $['deployDrawer.selectRelease'])}
               />
             )}
     </Field>
@@ -169,15 +169,15 @@ export function EnvironmentField() {
 
   return (
     <Field
-      label={t('deployDrawer.targetEnv')}
-      hint={lockedEnvId ? t('deployDrawer.lockedHint') : undefined}
+      label={t($ => $['deployDrawer.targetEnv'])}
+      hint={lockedEnvId ? t($ => $['deployDrawer.lockedHint']) : undefined}
     >
       {lockedEnv
         ? <EnvironmentRow env={lockedEnv} />
         : environments.length === 0
           ? (
               <DeploymentStateMessage variant="compact">
-                {t('deployDrawer.noNewEnvironmentAvailable')}
+                {t($ => $['deployDrawer.noNewEnvironmentAvailable'])}
               </DeploymentStateMessage>
             )
           : (
@@ -188,8 +188,8 @@ export function EnvironmentField() {
                   value: env.id,
                   label: environmentOptionLabel(env, t),
                 }))}
-                ariaLabel={t('deployDrawer.targetEnv')}
-                placeholder={t('deployDrawer.selectEnv')}
+                ariaLabel={t($ => $['deployDrawer.targetEnv'])}
+                placeholder={t($ => $['deployDrawer.selectEnv'])}
               />
             )}
     </Field>

@@ -20,13 +20,6 @@ const mockWorkflowState = {
   setListeningTriggerIsAll: vi.fn(),
   setShowVariableInspectPanel: vi.fn(),
 }
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),

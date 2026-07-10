@@ -3,9 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useMembers } from '@/service/use-common'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
@@ -22,7 +24,8 @@ const Recipient = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile, currentWorkspace } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: members } = useMembers()
   const accounts = members?.accounts || []
 
@@ -65,19 +68,19 @@ const Recipient = ({
         <div className="flex h-10 items-center justify-between pr-1 pl-3">
           <div className="flex grow items-center gap-2">
             <RiGroupLine className="size-4 text-text-secondary" />
-            <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`, { ns: 'workflow' })}</div>
+            <div className="system-sm-medium text-text-secondary">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`], { ns: 'workflow' })}</div>
           </div>
           <div className="w-[86px]">
             <MemberSelector
               value={data.items}
-              email={userProfile.email}
+              email={userProfileEmail}
               list={accounts}
               onSelect={handleMemberSelect}
             />
           </div>
         </div>
         <EmailInput
-          email={userProfile.email}
+          email={userProfileEmail}
           value={data.items}
           list={accounts}
           onDelete={handleDelete}
@@ -89,7 +92,7 @@ const Recipient = ({
         <div className="flex h-5 w-5 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[14px]">
           <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
         </div>
-        <div className={cn('grow system-sm-medium text-text-secondary')}>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`, { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
+        <div className={cn('grow system-sm-medium text-text-secondary')}>{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], { workspaceName: currentWorkspace.name.replace(/'/g, '’'), ns: 'workflow' })}</div>
         <Switch
           checked={data.whole_workspace}
           onCheckedChange={checked => onChange({ ...data, whole_workspace: checked })}

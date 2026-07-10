@@ -41,7 +41,7 @@ const PluginAuthInAgent = ({
   const extraAuthorizationItems: Credential[] = [
     {
       id: '__workspace_default__',
-      name: t('auth.workspaceDefault', { ns: 'plugin' }),
+      name: t($ => $['auth.workspaceDefault'], { ns: 'plugin' }),
       provider: '',
       is_default: !credentialId,
       isWorkspaceDefault: true,
@@ -62,11 +62,11 @@ const PluginAuthInAgent = ({
     let unavailable = false
     let color: StatusDotStatus = 'success'
     if (!credentialId) {
-      label = t('auth.workspaceDefault', { ns: 'plugin' })
+      label = t($ => $['auth.workspaceDefault'], { ns: 'plugin' })
     }
     else {
       const credential = credentials.find(c => c.id === credentialId)
-      label = credential ? credential.name : t('auth.authRemoved', { ns: 'plugin' })
+      label = credential ? credential.name : t($ => $['auth.authRemoved'], { ns: 'plugin' })
       removed = !credential
       unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
       if (removed)
@@ -88,7 +88,7 @@ const PluginAuthInAgent = ({
         />
         {label}
         {
-          unavailable && t('auth.unavailable', { ns: 'plugin' })
+          unavailable && t($ => $['auth.unavailable'], { ns: 'plugin' })
         }
         <RiArrowDownSLine className="ml-0.5 size-4" />
       </Button>

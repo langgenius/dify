@@ -16,13 +16,6 @@ const mockOnDelete = vi.fn()
 const mockOnHideContextMissingTip = vi.fn()
 const mockCopy = vi.fn()
 const mockToastError = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
@@ -172,7 +165,7 @@ describe('AdvancedPromptInput', () => {
     )
 
     fireEvent.click(screen.getByText('blur-advanced'))
-    fireEvent.click(screen.getByText('operation.add'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.add(?=$|:)/))
 
     expect(mockSetModelConfig).toHaveBeenCalledWith(expect.objectContaining({
       configs: expect.objectContaining({
@@ -210,7 +203,7 @@ describe('AdvancedPromptInput', () => {
 
     const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
-    expect(mockToastError).toHaveBeenCalledWith('varKeyError.keyAlreadyExists')
+    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)varKeyError\.keyAlreadyExists(?=$|:)/))
 
     modalConfig.onSaveCallback({
       label: 'Search',

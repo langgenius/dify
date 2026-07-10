@@ -32,13 +32,43 @@ const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
 
-let mockWorkspacePermissionKeys = ['plugin.manage']
+let mockWorkspacePermissionKeys = ['plugin.model_config']
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -108,7 +138,7 @@ describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelSelectorProps.length = 0
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
   })
 
   it('should render settings button', () => {
@@ -184,7 +214,7 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save without plugin manage permission', async () => {
+  it('should disable save without model config permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 

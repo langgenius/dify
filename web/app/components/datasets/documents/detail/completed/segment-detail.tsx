@@ -115,12 +115,12 @@ export function SegmentDetail({
     const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
     const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
     const count = isEditMode ? contentLength : segInfo!.word_count as number
-    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
+    return `${total} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count })}`
   }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
   const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
-  const titleText = isEditMode ? t('segment.editChunk', { ns: 'datasetDocuments' }) : t('segment.chunkDetail', { ns: 'datasetDocuments' })
-  const labelPrefix = docForm === ChunkingMode.parentChild ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
+  const titleText = isEditMode ? t($ => $['segment.editChunk'], { ns: 'datasetDocuments' }) : t($ => $['segment.chunkDetail'], { ns: 'datasetDocuments' })
+  const labelPrefix = docForm === ChunkingMode.parentChild ? t($ => $['segment.parentChunk'], { ns: 'datasetDocuments' }) : t($ => $['segment.chunk'], { ns: 'datasetDocuments' })
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
@@ -153,7 +153,7 @@ export function SegmentDetail({
           )}
           <button
             type="button"
-            aria-label={t(fullScreen ? 'operation.zoomOut' : 'operation.zoomIn', { ns: 'common' })}
+            aria-label={t($ => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], { ns: 'common' })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
@@ -165,7 +165,7 @@ export function SegmentDetail({
           </button>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={onCancel}
           >

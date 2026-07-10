@@ -1,4 +1,4 @@
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../../types'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,23 +11,26 @@ import ListWrapper from '../list-wrapper'
 // Mock External Dependencies Only
 // ================================
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, num?: number }) => {
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string, num?: number }) => {
       // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      const translations: Record<string, string> = {
-        'plugin.marketplace.viewMore': 'View More',
-        'plugin.marketplace.pluginsResult': `${options?.num || 0} plugins found`,
-        'plugin.marketplace.noPluginFound': 'No plugins found',
-        'plugin.detailPanel.operation.install': 'Install',
-        'plugin.detailPanel.operation.detail': 'Detail',
-      }
-      return translations[fullKey] || key
-    },
-  }),
-  useLocale: () => 'en-US',
-}))
+        const fullKey = options?.ns ? `${options.ns}.${key}` : key
+        const translations: Record<string, string> = {
+          'plugin.marketplace.viewMore': 'View More',
+          'plugin.marketplace.pluginsResult': `${options?.num || 0} plugins found`,
+          'plugin.marketplace.noPluginFound': 'No plugins found',
+          'plugin.detailPanel.operation.install': 'Install',
+          'plugin.detailPanel.operation.detail': 'Detail',
+        }
+        return translations[fullKey] || key
+      }),
+    }),
+    useLocale: () => 'en-US',
+  })
+})
 
 const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
   return {
@@ -50,11 +53,6 @@ vi.mock('../../state', () => ({
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 const mockTags = [
   { name: 'search', label: 'Search' },
   { name: 'image', label: 'Image' },

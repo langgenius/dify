@@ -2,24 +2,26 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   const React = await import('react')
   return {
     useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) => {
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = options?.ns as string | undefined
         return ns ? `${ns}.${key}` : key
-      },
+      }),
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
-    Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
+    Trans: withSelectorKeyProps(({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
       <span data-i18n-key={i18nKey}>
         {i18nKey}
         {components?.docLink}
       </span>
-    ),
+    )),
   }
 })
 
@@ -124,7 +126,7 @@ vi.mock('../../config-string', () => ({
   ),
 }))
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key)
 
 const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
 
@@ -163,7 +165,7 @@ const createBaseProps = () => {
       required: false,
       hide: false,
     } as any,
-    t,
+    t: withSelectorKey(t),
     payloadChangeHandlers,
   }
 }

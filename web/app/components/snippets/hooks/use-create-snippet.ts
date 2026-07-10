@@ -1,8 +1,9 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -11,7 +12,7 @@ import { canCreateAndModifySnippets } from '../utils/permission'
 export const useCreateSnippet = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
@@ -42,22 +43,22 @@ export const useCreateSnippet = () => {
     try {
       const createPayload = {
         name,
-        description: description || undefined,
+        description,
         graph,
         input_fields,
       }
       const snippet = await createSnippetMutation.mutateAsync({
         body: createPayload,
       })
-      await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId: snippet.id },
+      await consoleClient.snippets.bySnippetId.workflows.draft.post({
+        params: { snippet_id: snippet.id },
         body: {
           graph: createPayload.graph,
           input_fields: createPayload.input_fields,
         },
       })
 
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      toast.success(t($ => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     }

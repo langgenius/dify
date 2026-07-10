@@ -3,12 +3,10 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from enum import StrEnum
 from urllib.parse import urlparse
 
 import yaml
-from packaging import version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +18,9 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
+from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
 
@@ -28,20 +29,7 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "snippet_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "snippet_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
-
-
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
 
 
 class SnippetImportInfo(BaseModel):
@@ -53,32 +41,9 @@ class SnippetImportInfo(BaseModel):
     error: str = ""
 
 
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
-
-
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
-    """Determine import status based on version comparison"""
-    try:
-        current_ver = version.parse(CURRENT_DSL_VERSION)
-        imported_ver = version.parse(imported_version)
-    except version.InvalidVersion:
-        return ImportStatus.FAILED
-
-    # If imported version is newer than current, always return PENDING
-    if imported_ver > current_ver:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's major, return PENDING
-    if imported_ver.major < current_ver.major:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
-    if imported_ver.minor < current_ver.minor:
-        return ImportStatus.COMPLETED_WITH_WARNINGS
-
-    # If imported version equals or is older than current's micro, return COMPLETED
-    return ImportStatus.COMPLETED
+    """Determine import status based on version comparison."""
+    return check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
 
 class SnippetPendingData(BaseModel):
@@ -145,13 +110,14 @@ class SnippetDslService:
                         status=ImportStatus.FAILED,
                         error=f"Failed to fetch YAML from URL: {response.status_code}",
                     )
-                content = response.text
-                if len(content) > DSL_MAX_SIZE:
+                raw_content = response.content
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return SnippetImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error=f"YAML content size exceeds maximum limit of {DSL_MAX_SIZE} bytes",
                     )
+                content = raw_content.decode("utf-8")
             except Exception as e:
                 logger.exception("Failed to fetch YAML from URL")
                 return SnippetImportInfo(
@@ -167,7 +133,7 @@ class SnippetDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
-            if len(content) > DSL_MAX_SIZE:
+            if dsl_content_size(content) > DSL_MAX_SIZE:
                 return SnippetImportInfo(
                     id=import_id,
                     status=ImportStatus.FAILED,

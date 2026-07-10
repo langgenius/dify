@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
-from controllers.web.error import AppUnavailableError
+from controllers.web.error import AgentNotPublishedError, AppUnavailableError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +81,18 @@ class TestAppParameterApi:
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
+    def test_agent_mode_unpublished_raises_friendly_error(self, app: Flask) -> None:
+        app_model = SimpleNamespace(mode="agent")
+        with (
+            app.test_request_context("/parameters"),
+            patch(
+                "controllers.web.app.get_published_agent_app_feature_dict_and_user_input_form",
+                side_effect=AgentAppNotPublishedError("Agent has not been published"),
+            ),
+        ):
+            with pytest.raises(AgentNotPublishedError):
+                AppParameterApi().get(app_model, SimpleNamespace())
+
 
 # ---------------------------------------------------------------------------
 # AppMeta
@@ -135,7 +148,7 @@ class TestAppAccessMode:
         with app.test_request_context("/webapp/access-mode?appCode=code1"):
             result = AppAccessMode().get()
 
-        mock_resolve.assert_called_once_with("code1")
+        mock_resolve.assert_called_once_with("code1", session=ANY)
         mock_access.assert_called_once_with("resolved-id")
         assert result == {"accessMode": "external"}
 

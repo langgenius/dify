@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import type { TFunction } from 'i18next'
 import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
@@ -171,18 +172,18 @@ const SelectPreview: React.FC<{ label: string, options: string[] }> = ({ label, 
   )
 }
 
-const FileUploadPreview: React.FC<{ methods: TransferMethod[], t: (key: string, options?: Record<string, unknown>) => string }> = ({ methods, t }) => {
+const FileUploadPreview: React.FC<{ methods: TransferMethod[], t: TFunction }> = ({ methods, t }) => {
   const normalizedMethods = methods.length
     ? methods
     : [TransferMethod.local_file, TransferMethod.remote_url]
   const actions = [
     normalizedMethods.includes(TransferMethod.local_file) && {
       iconClassName: 'i-ri-upload-cloud-2-line',
-      label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
+      label: t($ => $['fileUploader.uploadFromComputer'], { ns: 'common' }),
     },
     normalizedMethods.includes(TransferMethod.remote_url) && {
       iconClassName: 'i-ri-link',
-      label: t('fileUploader.pasteFileLink', { ns: 'common' }),
+      label: t($ => $['fileUploader.pasteFileLink'], { ns: 'common' }),
     },
   ].filter(Boolean) as Array<{ iconClassName: string, label: string }>
 
@@ -219,12 +220,12 @@ export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) =
         <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
           {variablePath
             ? <Variable path={variablePath} />
-            : <span>{t('nodes.humanInput.insertInputField.variable', { ns: 'workflow' })}</span>}
+            : <span>{t($ => $['nodes.humanInput.insertInputField.variable'], { ns: 'workflow' })}</span>}
         </div>
       )
     }
 
-    const label = input.option_source.value[0] || t('variableConfig.select', { ns: 'appDebug' })
+    const label = input.option_source.value[0] || t($ => $['variableConfig.select'], { ns: 'appDebug' })
     return <SelectPreview label={label} options={input.option_source.value} />
   }
 

@@ -13,6 +13,7 @@ from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
+    _is_setup_completed,
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_rate_limit_check,
@@ -33,6 +34,12 @@ from controllers.console.wraps import (
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from services.feature_service import LicenseStatus
+
+
+@pytest.fixture(autouse=True)
+def reset_setup_required_cache():
+    """Keep setup_required's process cache isolated across unit tests."""
+    _is_setup_completed.reset_success()
 
 
 class MockUser(UserMixin):
@@ -603,7 +610,7 @@ class TestRateLimiting:
 
     @patch("controllers.console.wraps.redis_client")
     @patch("controllers.console.wraps.db")
-    def test_should_allow_requests_within_rate_limit(self, mock_db, mock_redis):
+    def test_should_allow_requests_within_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
         """Test that requests within rate limit are allowed"""
         # Arrange
         mock_rate_limit = MagicMock()
@@ -631,7 +638,7 @@ class TestRateLimiting:
 
     @patch("controllers.console.wraps.redis_client")
     @patch("controllers.console.wraps.db")
-    def test_should_reject_requests_over_rate_limit(self, mock_db, mock_redis):
+    def test_should_reject_requests_over_rate_limit(self, mock_db: MagicMock, mock_redis: MagicMock):
         """Test that requests over rate limit are rejected and logged"""
         # Arrange
         app = create_app_with_login()
@@ -720,7 +727,7 @@ class TestSystemSetup:
     """Test system setup decorator"""
 
     @patch("controllers.console.wraps.db")
-    def test_should_allow_when_setup_complete(self, mock_db):
+    def test_should_allow_when_setup_complete(self, mock_db: MagicMock):
         """Test that requests are allowed when setup is complete"""
         # Arrange
 
@@ -736,8 +743,41 @@ class TestSystemSetup:
         assert result == "admin_success"
 
     @patch("controllers.console.wraps.db")
+    def test_should_cache_completed_setup(self, mock_db):
+        """Test that completed setup skips repeated DB reads in this process"""
+        mock_db.session.scalar.return_value = MagicMock()
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            assert admin_view() == "admin_success"
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 1
+
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db):
+    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+        """Test that first-time bootstrap completion can be observed later in the same process"""
+        mock_db.session.scalar.side_effect = [None, MagicMock()]
+        mock_environ_get.return_value = None
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            with pytest.raises(NotSetupError):
+                admin_view()
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 2
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
+    def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db: MagicMock):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
@@ -754,7 +794,7 @@ class TestSystemSetup:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db):
+    def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db: MagicMock):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup

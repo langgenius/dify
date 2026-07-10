@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -64,7 +64,7 @@ const RetrievalParamConfig: FC<Props> = ({
     if (disabled)
       return
     if (enable && !currentModel)
-      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
+      toast.error(t($ => $['errorMsg.rerankModelRequired'], { ns: 'workflow' }))
     onChange({
       ...value,
       reranking_enable: enable,
@@ -103,20 +103,20 @@ const RetrievalParamConfig: FC<Props> = ({
       }
     }
     if (v === RerankingModeEnum.RerankingModel && !currentModel)
-      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
+      toast.error(t($ => $['errorMsg.rerankModelRequired'], { ns: 'workflow' }))
     onChange(result)
   }
 
   const rerankingModeOptions = [
     {
       value: RerankingModeEnum.WeightedScore,
-      label: t('weightedScore.title', { ns: 'dataset' }),
-      tips: t('weightedScore.description', { ns: 'dataset' }),
+      label: t($ => $['weightedScore.title'], { ns: 'dataset' }),
+      tips: t($ => $['weightedScore.description'], { ns: 'dataset' }),
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t('modelProvider.rerankModel.key', { ns: 'common' }),
-      tips: t('modelProvider.rerankModel.tip', { ns: 'common' }),
+      label: t($ => $['modelProvider.rerankModel.key'], { ns: 'common' }),
+      tips: t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
     },
   ]
 
@@ -134,12 +134,12 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 system-sm-semibold text-text-secondary">{t($ => $['modelProvider.rerankModel.key'], { ns: 'common' })}</span>
               <Infotip
-                aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                aria-label={t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                 popupClassName="w-[200px]"
               >
-                {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                {t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
               </Infotip>
             </div>
           </div>
@@ -169,7 +169,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
                     <span className="system-xs-medium text-text-primary">
-                      {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                      {t($ => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
                     </span>
                   </div>
                 )}
@@ -227,14 +227,14 @@ const RetrievalParamConfig: FC<Props> = ({
         isHybridSearch && (
           <>
             <RadioGroup<RerankingModeEnum>
-              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+              aria-label={t($ => $['modelProvider.rerankModel.key'], { ns: 'common' })}
               value={value.reranking_mode}
               onValueChange={handleChangeRerankMode}
               className="mb-4 flex gap-2"
             >
               {
                 rerankingModeOptions.map(option => (
-                  <RadioCard
+                  <RadioCard<RerankingModeEnum>
                     key={option.value}
                     value={option.value}
                     icon={(
@@ -310,7 +310,7 @@ const RetrievalParamConfig: FC<Props> = ({
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
                       <span className="system-xs-medium text-text-primary">
-                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                        {t($ => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
                       </span>
                     </div>
                   )}

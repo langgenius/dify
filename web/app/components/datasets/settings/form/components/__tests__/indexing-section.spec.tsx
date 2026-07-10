@@ -8,16 +8,6 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: ({ className }: { className?: string }) => (
     <div data-testid="divider" className={className} />
@@ -273,17 +263,17 @@ describe('IndexingSection', () => {
     it('should render the chunk structure, index method, and retrieval sections for a standard dataset', () => {
       renderComponent()
 
-      expect(screen.getByText('form.chunkStructure.title')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.chunkStructure\.title(?=$|:)/)).toBeInTheDocument()
       expect(screen.getByTestId('chunk-structure')).toHaveAttribute('data-mode', ChunkingMode.text)
-      expect(screen.getByText('form.indexMethod')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.indexMethod(?=$|:)/)).toBeInTheDocument()
       expect(screen.getByTestId('index-method')).toBeInTheDocument()
-      expect(screen.getByText('form.retrievalSetting.title')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.retrievalSetting\.title(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render the embedding model selector when the index method is high quality', () => {
       renderComponent()
 
-      expect(screen.getByText('form.embeddingModel')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.embeddingModel(?=$|:)/)).toBeInTheDocument()
       expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model', 'text-embedding-ada-002')
     })
   })
@@ -297,16 +287,16 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.queryByText('form.chunkStructure.title')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)form\.chunkStructure\.title(?=$|:)/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('chunk-structure')).not.toBeInTheDocument()
     })
 
     it('should render the chunk structure learn more link and description', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: 'form.chunkStructure.learnMore' })
+      const learnMoreLink = screen.getByRole('link', { name: /(?:^|\.)form\.chunkStructure\.learnMore(?=$|:)/ })
       expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('chunking-and-cleaning-text'))
-      expect(screen.getByText('form.chunkStructure.description')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.chunkStructure\.description(?=$|:)/)).toBeInTheDocument()
     })
   })
 
@@ -319,22 +309,22 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.queryByText('form.indexMethod')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)form\.indexMethod(?=$|:)/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('index-method')).not.toBeInTheDocument()
     })
 
     it('should render both index method options', () => {
       renderComponent()
 
-      expect(screen.getByRole('button', { name: 'stepTwo.qualified' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'form.indexMethodEconomy' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /(?:^|\.)stepTwo\.qualified(?=$|:)/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ })).toBeInTheDocument()
     })
 
     it('should call setIndexMethod when the user selects a new index method', () => {
       const setIndexMethod = vi.fn()
       renderComponent({ setIndexMethod })
 
-      fireEvent.click(screen.getByRole('button', { name: 'form.indexMethodEconomy' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ }))
 
       expect(setIndexMethod).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
     })
@@ -347,7 +337,7 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.getByText('form.upgradeHighQualityTip')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.upgradeHighQualityTip(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should pass disabled state to the index method when embeddings are unavailable', () => {
@@ -380,7 +370,7 @@ describe('IndexingSection', () => {
     it('should hide the embedding model selector for economy indexing', () => {
       renderComponent({ indexMethod: IndexingType.ECONOMICAL })
 
-      expect(screen.queryByText('form.embeddingModel')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)form\.embeddingModel(?=$|:)/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
 
@@ -422,9 +412,9 @@ describe('IndexingSection', () => {
     it('should render the retrieval learn more link', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: 'form.retrievalSetting.learnMore' })
+      const learnMoreLink = screen.getByRole('link', { name: /(?:^|\.)form\.retrievalSetting\.learnMore(?=$|:)/ })
       expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('setting-indexing-methods'))
-      expect(screen.getByText('form.retrievalSetting.description')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)form\.retrievalSetting\.description(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render the high-quality retrieval config and propagate changes', () => {
@@ -472,7 +462,7 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.queryByText('form.retrievalSetting.title')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)form\.retrievalSetting\.title(?=$|:)/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('retrieval-method-config')).not.toBeInTheDocument()
       expect(screen.queryByTestId('economical-retrieval-method-config')).not.toBeInTheDocument()
     })
@@ -494,7 +484,7 @@ describe('IndexingSection', () => {
         indexMethod: undefined,
       })
 
-      expect(screen.queryByText('form.indexMethod')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)form\.indexMethod(?=$|:)/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('index-method')).not.toBeInTheDocument()
     })
   })

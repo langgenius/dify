@@ -16,8 +16,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorized from './authorized'
 
 type SwitchCredentialInLoadBalancingProps = {
@@ -40,9 +39,8 @@ const SwitchCredentialInLoadBalancing = ({
 }: SwitchCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canOpenCredentialMenu = canUseCredential || canCreateCredential || canManageCredential
   const handleItemClick = useCallback((credential: Credential) => {
     if (!canUseCredential)
       return
@@ -67,7 +65,7 @@ const SwitchCredentialInLoadBalancing = ({
         className={cn(
           'shrink-0 space-x-1',
           (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
-          (empty || !canUseCredential) && 'cursor-not-allowed opacity-50',
+          (!canOpenCredentialMenu || (empty && !canCreateCredential)) && 'cursor-not-allowed opacity-50',
         )}
       >
         {
@@ -79,10 +77,16 @@ const SwitchCredentialInLoadBalancing = ({
           )
         }
         {
-          authRemoved && t('modelProvider.auth.authRemoved', { ns: 'common' })
+          authRemoved && t($ => $['modelProvider.auth.authRemoved'], { ns: 'common' })
         }
         {
-          (unavailable || empty) && t('auth.credentialUnavailableInButton', { ns: 'plugin' })
+          unavailable && t($ => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })
+        }
+        {
+          empty && canCreateCredential && !notAllowCustomCredential && t($ => $['modelProvider.auth.addCredential'], { ns: 'common' })
+        }
+        {
+          empty && (!canCreateCredential || notAllowCustomCredential) && t($ => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })
         }
         {
           !authRemoved && !unavailable && !empty && customModelCredential?.credential_name
@@ -95,18 +99,18 @@ const SwitchCredentialInLoadBalancing = ({
         <span className="i-ri-arrow-down-s-line size-4" />
       </Button>
     )
-    if ((empty && notAllowCustomCredential) || !canUseCredential) {
+    if ((empty && notAllowCustomCredential) || !canOpenCredentialMenu) {
       return (
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t($ => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )
     }
     return Item
-  }, [canUseCredential, customModelCredential, t, credentials, notAllowCustomCredential])
+  }, [canCreateCredential, canOpenCredentialMenu, customModelCredential, t, credentials, notAllowCustomCredential])
 
   return (
     <Authorized
@@ -140,10 +144,9 @@ const SwitchCredentialInLoadBalancing = ({
       onItemClick={handleItemClick}
       enableAddModelCredential
       showItemSelectedIcon
-      disabled={!canUseCredential}
-      hideAddAction={!canManageCredential}
-      popupTitle={t('modelProvider.auth.modelCredentials', { ns: 'common' })}
-      triggerOnlyOpenModal={!credentials?.length && canManageCredential}
+      hideAddAction={!canCreateCredential}
+      popupTitle={t($ => $['modelProvider.auth.modelCredentials'], { ns: 'common' })}
+      triggerOnlyOpenModal={!credentials?.length && canCreateCredential}
     />
   )
 }

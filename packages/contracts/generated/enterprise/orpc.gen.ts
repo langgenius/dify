@@ -25,8 +25,6 @@ import {
   zAccessServiceUpdateAccessPolicyBody,
   zAccessServiceUpdateAccessPolicyPath,
   zAccessServiceUpdateAccessPolicyResponse,
-  zAccessSubjectServiceListAccessSubjectsQuery,
-  zAccessSubjectServiceListAccessSubjectsResponse,
   zAppInstanceServiceCreateAppInstanceBody,
   zAppInstanceServiceCreateAppInstanceResponse,
   zAppInstanceServiceDeleteAppInstancePath,
@@ -108,21 +106,6 @@ import {
   zWebAppAuthUpdateWebAppWhitelistSubjectsBody,
   zWebAppAuthUpdateWebAppWhitelistSubjectsResponse,
 } from './zod.gen'
-
-export const listAccessSubjects = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'AccessSubjectService_ListAccessSubjects',
-    path: '/enterprise/access-subjects',
-    tags: ['AccessSubjectService'],
-  })
-  .input(z.object({ query: zAccessSubjectServiceListAccessSubjectsQuery.optional() }))
-  .output(zAccessSubjectServiceListAccessSubjectsResponse)
-
-export const accessSubjectService = {
-  listAccessSubjects,
-}
 
 export const listAppInstanceSummaries = oc
   .route({
@@ -380,12 +363,8 @@ export const listRollbackTargets = oc
   )
   .output(zDeploymentServiceListRollbackTargetsResponse)
 
-/**
- * CancelDeployment cancels the in-flight deployment on the environment.
- */
 export const cancelDeployment = oc
   .route({
-    description: 'CancelDeployment cancels the in-flight deployment on the environment.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'DeploymentService_CancelDeployment',
@@ -607,13 +586,8 @@ export const releaseService = {
   precheckRelease,
 }
 
-/**
- * ListEnvironments returns only the environments the current user can
- * deploy to.
- */
 export const listEnvironments = oc
   .route({
-    description: 'ListEnvironments returns only the environments the current user can\n deploy to.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'EnvironmentService_ListEnvironments',
@@ -739,7 +713,6 @@ export const webAppAuth = {
 }
 
 export const contract = {
-  accessSubjectService,
   appInstanceService,
   accessService,
   deploymentService,

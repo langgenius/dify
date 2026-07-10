@@ -1,3 +1,7 @@
+import type {
+  AgentInviteOptionResponse,
+  AgentInviteOptionsResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -15,7 +19,7 @@ const runtimeState = vi.hoisted(() => ({
 }))
 
 const queryMocks = vi.hoisted(() => ({
-  inviteOptionsQueryFn: vi.fn(),
+  request: vi.fn(),
   toastError: vi.fn(),
 }))
 
@@ -35,19 +39,8 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    agent: {
-      inviteOptions: {
-        get: {
-          queryOptions: (options: unknown) => ({
-            queryKey: ['agents', 'invite-options', options],
-            queryFn: () => queryMocks.inviteOptionsQueryFn(options),
-          }),
-        },
-      },
-    },
-  },
+vi.mock('@/service/base', () => ({
+  request: (...args: unknown[]) => queryMocks.request(...args),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -73,6 +66,58 @@ const createBlock = (
   defaultValue: {},
   checkValid: () => ({ isValid: true }),
 })
+
+const createInviteOption = (
+  overrides: Partial<AgentInviteOptionResponse> & Pick<AgentInviteOptionResponse, 'id' | 'name'>,
+): AgentInviteOptionResponse => {
+  const { id, name, ...rest } = overrides
+
+  return {
+    id,
+    name,
+    description: rest.description ?? 'Clarification Drafter',
+    active_config_snapshot_id: rest.active_config_snapshot_id ?? 'version-1',
+    role: rest.role ?? 'Researcher',
+    agent_kind: rest.agent_kind ?? 'dify_agent',
+    icon: rest.icon ?? 'A',
+    icon_background: rest.icon_background ?? '#E9D7FE',
+    icon_type: rest.icon_type ?? 'emoji',
+    scope: rest.scope ?? 'roster',
+    source: rest.source ?? 'workflow',
+    status: rest.status ?? 'active',
+    ...rest,
+  }
+}
+
+const createInviteOptionsResponse = (
+  agents: AgentInviteOptionResponse[],
+): AgentInviteOptionsResponse => ({
+  data: agents,
+  has_more: false,
+  limit: 8,
+  page: 1,
+  total: agents.length,
+})
+
+const createJsonResponse = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+const mockInviteOptionsResponse = (agents: AgentInviteOptionResponse[]) => {
+  queryMocks.request.mockImplementation(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse(agents))))
+}
+
+const expectLastInviteOptionsRequest = () => {
+  const [url] = queryMocks.request.mock.calls.at(-1) ?? []
+  const requestURL = new URL(String(url), window.location.origin)
+
+  expect(requestURL.pathname).toBe('/console/api/agent/invite-options')
+  return requestURL
+}
 
 describe('Blocks', () => {
   beforeEach(() => {
@@ -125,13 +170,7 @@ describe('Blocks', () => {
 
   it('opens the agent selector on Agent block hover', async () => {
     const user = userEvent.setup()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 0,
-    })
+    mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -160,7 +199,10 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.hover(screen.getByRole('button', { name: 'Agent' }))
+    const agentBlock = screen.getByRole('button', { name: /Agent/ })
+    expect(agentBlock).toHaveTextContent('common.menus.status')
+
+    await user.hover(agentBlock)
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
   })
@@ -168,28 +210,12 @@ describe('Blocks', () => {
   it('opens the agent selector from the Agent block and selects an agent', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [
-        {
-          id: 'agent-1',
-          name: 'Nadia',
-          description: 'Clarification Drafter',
-          active_config_snapshot_id: 'version-1',
-          role: 'Researcher',
-          agent_kind: 'dify_agent',
-          icon: 'A',
-          icon_background: '#E9D7FE',
-          icon_type: 'emoji',
-          scope: 'roster',
-          source: 'workflow',
-          status: 'active',
-        },
-      ],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 1,
-    })
+    mockInviteOptionsResponse([
+      createInviteOption({
+        id: 'agent-1',
+        name: 'Nadia',
+      }),
+    ])
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -226,7 +252,7 @@ describe('Blocks', () => {
       screen.getByText('Agent').compareDocumentPosition(screen.getByText('LLM')) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
@@ -243,42 +269,84 @@ describe('Blocks', () => {
       agent_node_kind: 'dify_agent',
       version: '2',
     })
-    expect(queryMocks.inviteOptionsQueryFn).toHaveBeenCalledWith({
-      input: {
-        query: {
-          app_id: 'app-1',
-          limit: 8,
-          page: 1,
+    const requestURL = expectLastInviteOptionsRequest()
+    expect(requestURL.searchParams.get('app_id')).toBe('app-1')
+    expect(requestURL.searchParams.get('limit')).toBe('8')
+    expect(requestURL.searchParams.get('page')).toBe('1')
+  })
+
+  it('should refresh Agent v2 roster options when the selector is reopened', async () => {
+    const user = userEvent.setup()
+    queryMocks.request
+      .mockImplementationOnce(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse([
+        createInviteOption({
+          id: 'agent-1',
+          name: 'Nadia',
+        }),
+      ]))))
+      .mockImplementation(() => Promise.resolve(createJsonResponse(createInviteOptionsResponse([
+        createInviteOption({
+          id: 'agent-2',
+          name: 'Bruno',
+          role: 'Planner',
+        }),
+      ]))))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: 5 * 60 * 1000,
         },
       },
     })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <Blocks
+            searchText=""
+            onSelect={vi.fn()}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+    expect(await screen.findByText('Nadia')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+
+    expect(await screen.findByText('Bruno')).toBeInTheDocument()
+    expect(screen.getByText('Planner')).toBeInTheDocument()
+    await waitFor(() => expect(queryMocks.request).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 
   it('does not select an Agent v2 roster agent without active config snapshot', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [
-        {
-          id: 'agent-1',
-          name: 'Nadia',
-          description: 'Clarification Drafter',
-          active_config_snapshot_id: null,
-          role: 'Researcher',
-          agent_kind: 'dify_agent',
-          icon: 'A',
-          icon_background: '#E9D7FE',
-          icon_type: 'emoji',
-          scope: 'roster',
-          source: 'workflow',
-          status: 'active',
-        },
-      ],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 1,
-    })
+    mockInviteOptionsResponse([
+      createInviteOption({
+        id: 'agent-1',
+        name: 'Nadia',
+        active_config_snapshot_id: null,
+      }),
+    ])
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -308,7 +376,7 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
     await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
@@ -320,13 +388,7 @@ describe('Blocks', () => {
   it('inserts an inline Agent v2 node from the selector start action', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 0,
-    })
+    mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -355,8 +417,12 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
-    await user.click(await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+    const consoleLink = await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.manageInAgentConsole' })
+    expect(consoleLink).toHaveAttribute('href', '/agents')
+    expect(consoleLink).toHaveAttribute('target', '_blank')
+    expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
+    await user.click(await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -369,13 +435,7 @@ describe('Blocks', () => {
 
   it('closes the agent selector when Escape closes the combobox', async () => {
     const user = userEvent.setup()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 0,
-    })
+    mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -404,7 +464,7 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
 

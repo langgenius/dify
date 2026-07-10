@@ -19,7 +19,6 @@ import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 
-let mockIsCurrentWorkspaceEditor = true
 let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
@@ -78,23 +77,6 @@ vi.mock('@/next/dynamic', () => ({
     Wrapper.displayName = 'DynamicWrapper'
     return Wrapper
   },
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
-  }),
-  useSelector: <T,>(selector: (state: {
-    isCurrentWorkspaceEditor: boolean
-    userProfile: { id: string }
-    workspacePermissionKeys: string[]
-  }) => T): T => selector({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
-  }),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -212,14 +194,19 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: Record<string, unknown>) => (
+vi.mock('@/app/components/app/app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: overrides.id ?? 'app-1',
@@ -273,7 +260,6 @@ describe('App Card Operations Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteMutationPending = false
-    mockIsCurrentWorkspaceEditor = true
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -371,7 +357,6 @@ describe('App Card Operations Flow', () => {
   // -- Access mode display --
   describe('Access Mode Display', () => {
     it('should not render operations menu when user has no app permissions', () => {
-      mockIsCurrentWorkspaceEditor = false
       renderAppCard({ name: 'Readonly App', created_by: 'another-user', permission_keys: [] })
 
       expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()

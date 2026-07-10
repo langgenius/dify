@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '.'
 import { cn } from '../cn'
 
 const meta = {
   title: 'Base/UI/Collapsible',
-  component: CollapsibleRoot,
+  component: Collapsible,
   parameters: {
     layout: 'centered',
     docs: {
@@ -19,7 +19,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CollapsibleRoot>
+} satisfies Meta<typeof Collapsible>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -67,25 +67,25 @@ export const Anatomy: Story = {
     defaultOpen: true,
   },
   render: args => (
-    <CollapsibleRoot {...args} className={rootClassName}>
+    <Collapsible {...args} className={rootClassName}>
       <RecoveryKeys />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
 export const DefaultClosed: Story = {
   render: () => (
-    <CollapsibleRoot className={rootClassName}>
+    <Collapsible className={rootClassName}>
       <RecoveryKeys />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
 export const DefaultOpen: Story = {
   render: () => (
-    <CollapsibleRoot defaultOpen className={rootClassName}>
+    <Collapsible defaultOpen className={rootClassName}>
       <RecoveryKeys />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
@@ -97,14 +97,14 @@ export const Controlled: Story = {
       <div className="flex flex-col items-start gap-3">
         <button
           type="button"
-          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 hover:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => setOpen(value => !value)}
         >
           {open ? 'Close panel' : 'Open panel'}
         </button>
-        <CollapsibleRoot open={open} onOpenChange={setOpen} className={rootClassName}>
+        <Collapsible open={open} onOpenChange={setOpen} className={rootClassName}>
           <RecoveryKeys />
-        </CollapsibleRoot>
+        </Collapsible>
       </div>
     )
   },
@@ -112,25 +112,25 @@ export const Controlled: Story = {
 
 export const Disabled: Story = {
   render: () => (
-    <CollapsibleRoot disabled className={rootClassName}>
+    <Collapsible disabled className={rootClassName}>
       <RecoveryKeys />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
 export const KeepMounted: Story = {
   render: () => (
-    <CollapsibleRoot className={rootClassName}>
+    <Collapsible className={rootClassName}>
       <RecoveryKeys panelProps={{ keepMounted: true }} />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
 export const HiddenUntilFound: Story = {
   render: () => (
-    <CollapsibleRoot className={rootClassName}>
+    <Collapsible className={rootClassName}>
       <RecoveryKeys panelProps={{ hiddenUntilFound: true }} />
-    </CollapsibleRoot>
+    </Collapsible>
   ),
 }
 
@@ -159,7 +159,7 @@ export const SettingsSections: Story = {
   render: () => (
     <div className={sectionRootClassName}>
       {settingSections.map((section, index) => (
-        <CollapsibleRoot
+        <Collapsible
           key={section.title}
           defaultOpen={section.defaultOpen}
           className={cn(index > 0 && 'mt-px')}
@@ -176,7 +176,7 @@ export const SettingsSections: Story = {
               {section.description}
             </div>
           </CollapsiblePanel>
-        </CollapsibleRoot>
+        </Collapsible>
       ))}
     </div>
   ),

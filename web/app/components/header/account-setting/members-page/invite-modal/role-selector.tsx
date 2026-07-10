@@ -1,3 +1,4 @@
+import type { Role } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -19,6 +20,28 @@ type RoleSelectorProps = {
 }
 
 const PAGE_SIZE = 20
+const LEGACY_ROLE_DESCRIPTION_KEY_MAP = {
+  admin: 'members.adminTip',
+  editor: 'members.editorTip',
+  normal: 'members.normalTip',
+  dataset_operator: 'members.datasetOperatorTip',
+} as const
+
+type LegacyRoleKey = keyof typeof LEGACY_ROLE_DESCRIPTION_KEY_MAP
+
+const normalizeLegacyRoleKey = (value: string) => value.trim().toLowerCase()
+
+const isLegacyRoleKey = (value: string): value is LegacyRoleKey =>
+  Object.prototype.hasOwnProperty.call(LEGACY_ROLE_DESCRIPTION_KEY_MAP, value)
+
+const getLegacyRoleDescriptionKey = (role: Role) => {
+  const candidateKeys = [
+    normalizeLegacyRoleKey(role.name),
+    normalizeLegacyRoleKey(role.id),
+  ]
+
+  return candidateKeys.find(isLegacyRoleKey)
+}
 
 const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const { t } = useTranslation()
@@ -70,8 +93,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const selectedRole = roles.find(role => role.id === value)
   const selectedRoleName = selectedRole?.name || value
   const triggerLabel = selectedRoleName
-    ? t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })
-    : t('members.selectRole', { ns: 'common' })
+    ? t($ => $['members.invitedAsRole'], { ns: 'common', role: selectedRoleName })
+    : t($ => $['members.selectRole'], { ns: 'common' })
 
   const setContainerElement = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node
@@ -86,6 +109,26 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const handleRoleChange = (roleId: string) => {
     onChange(roleId)
     setOpen(false)
+  }
+
+  const getRoleDescription = (role: Role) => {
+    if (role.description)
+      return role.description
+
+    const legacyRoleDescriptionKey = getLegacyRoleDescriptionKey(role)
+
+    switch (legacyRoleDescriptionKey) {
+      case 'admin':
+        return t($ => $['members.adminTip'], { ns: 'common' })
+      case 'editor':
+        return t($ => $['members.editorTip'], { ns: 'common' })
+      case 'normal':
+        return t($ => $['members.normalTip'], { ns: 'common' })
+      case 'dataset_operator':
+        return t($ => $['members.datasetOperatorTip'], { ns: 'common' })
+    }
+
+    return t($ => $['role.noDescription'], { ns: 'permission' })
   }
 
   return (
@@ -118,13 +161,13 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             {rolesLoading
               ? (
                   <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                    {t('loading', { ns: 'common' })}
+                    {t($ => $.loading, { ns: 'common' })}
                   </div>
                 )
               : roles.length === 0
                 ? (
                     <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                      {t('dynamicSelect.noData', { ns: 'common' })}
+                      {t($ => $['dynamicSelect.noData'], { ns: 'common' })}
                     </div>
                   )
                 : (
@@ -141,7 +184,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                           >
                             <div className="relative min-w-0 pl-5">
                               <div className="truncate text-sm leading-5 text-text-secondary">{role.name}</div>
-                              <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{role.description || t('role.noDescription', { ns: 'permission' })}</div>
+                              <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{getRoleDescription(role)}</div>
                               {value === role.id && (
                                 <div
                                   aria-hidden="true"

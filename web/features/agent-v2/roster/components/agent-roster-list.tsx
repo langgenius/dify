@@ -9,21 +9,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
+import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
 type AgentRosterListProps = {
-  agents: AgentRosterListItem[]
+  agents: AgentAppPartial[]
   hasMore: boolean
   isEmptySearch: boolean
   isError: boolean
@@ -34,8 +32,6 @@ type AgentRosterListProps = {
   onLoadMore: () => void
 }
 
-export type AgentRosterListItem = AgentAppPartial
-
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)
 
@@ -45,19 +41,21 @@ function AgentRosterSkeleton() {
       {skeletonRows.map(row => (
         <div key={row} className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-            <SkeletonRectangle className="my-0 size-12 shrink-0 animate-pulse rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2.5 py-px">
-              <SkeletonRectangle className="my-0 h-4 w-36 max-w-full animate-pulse rounded-md" />
-              <SkeletonRectangle className="my-0 h-3 w-20 max-w-full animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
+              <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
+              <SkeletonRectangle className="my-0 h-2 w-20 max-w-full rounded-md opacity-12" />
             </div>
           </div>
           <div className="px-4 py-1">
-            <SkeletonRectangle className="my-0 h-3 w-full animate-pulse rounded-md" />
-            <SkeletonRectangle className="mt-2 mb-0 h-3 w-3/4 animate-pulse rounded-md" />
+            <div className="flex min-h-8 flex-col gap-2 py-0.5">
+              <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
+              <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
+            </div>
           </div>
           <div className="flex items-center pt-2 pr-3 pb-3 pl-4">
-            <SkeletonRectangle className="my-0 h-4 w-6 animate-pulse rounded-md" />
-            <SkeletonRectangle className="my-0 ml-2.5 h-4 w-28 animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
+            <SkeletonRectangle className="my-0 ml-2.5 h-3 w-28 rounded-md opacity-10" />
           </div>
         </div>
       ))}
@@ -71,7 +69,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
       aria-labelledby="agent-roster-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {emptyPlaceholderCardIds.map(id => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
@@ -96,7 +94,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
 function AgentRosterItem({
   agent,
 }: {
-  agent: AgentRosterListItem
+  agent: AgentAppPartial
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -104,10 +102,12 @@ function AgentRosterItem({
   const nameId = useId()
   const descriptionId = useId()
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editSessionKey, setEditSessionKey] = useState(0)
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
+  const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const updatedAt = agent.updated_at != null
-    ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
+    ? formatTime(agent.updated_at, t($ => $['roster.dateTimeFormat']))
     : null
   const referenceCount = agent.published_reference_count ?? 0
   const publishedReferences = agent.published_references ?? []
@@ -115,33 +115,25 @@ function AgentRosterItem({
   const isDraft = agent.active_config_is_published !== true
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
-  const handleDuplicate = () => {
-    if (duplicateAgentMutation.isPending)
-      return
 
-    duplicateAgentMutation.mutate({
-      params: {
-        agent_id: agent.id,
-      },
-      body: {},
-    }, {
-      onSuccess: () => {
-        toast.success(t('roster.duplicateSuccess'))
-      },
-      onError: () => {
-        toast.error(t('roster.duplicateFailed'))
-      },
-    })
+  const handleEditOpen = () => {
+    setEditSessionKey(key => key + 1)
+    setIsEditOpen(true)
+  }
+
+  const handleDuplicateOpen = () => {
+    setDuplicateSessionKey(key => key + 1)
+    setIsDuplicateOpen(true)
   }
 
   return (
-    <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
+    <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid">
       <div className="flex h-full min-w-0 flex-col">
         <Link
-          href={`/roster/agent/${agent.id}/configure`}
+          href={`/agents/${agent.id}/configure`}
           aria-labelledby={nameId}
           aria-describedby={agent.description ? descriptionId : undefined}
-          className="relative block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid focus-visible:after:ring-inset"
+          className="block shrink-0 cursor-pointer touch-manipulation outline-hidden"
         >
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
             <span aria-hidden className="shrink-0">
@@ -172,7 +164,7 @@ function AgentRosterItem({
             <div className="absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden">
               <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
               <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t('roster.usageStatus.draft')}
+                {t($ => $['roster.usageStatus.draft'])}
               </div>
             </div>
           )}
@@ -188,7 +180,7 @@ function AgentRosterItem({
                   />
                 )
               : (
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex h-4 shrink-0 items-center gap-1">
                     <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
                     <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
                   </div>
@@ -207,24 +199,23 @@ function AgentRosterItem({
       >
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
-            aria-label={t('roster.moreActions', { name: agent.name })}
+            aria-label={t($ => $['roster.moreActions'], { name: agent.name })}
             className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
           >
-            <span className="sr-only">{t('roster.moreActions', { name: agent.name })}</span>
+            <span className="sr-only">{t($ => $['roster.moreActions'], { name: agent.name })}</span>
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-            <DropdownMenuItem className="gap-2" onClick={() => setIsEditOpen(true)}>
+            <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span>{t('roster.editInfo')}</span>
+              <span>{t($ => $['roster.editInfo'])}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={duplicateAgentMutation.isPending}
               className="gap-2"
-              onClick={handleDuplicate}
+              onClick={handleDuplicateOpen}
             >
               <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-              <span>{tCommon('operation.duplicate')}</span>
+              <span>{tCommon($ => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -233,12 +224,23 @@ function AgentRosterItem({
               onClick={() => setIsDeleteOpen(true)}
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span>{tCommon('operation.delete')}</span>
+              <span>{tCommon($ => $['operation.delete'])}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
+      <EditAgentDialog
+        agent={agent}
+        formKey={editSessionKey}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+      />
+      <DuplicateAgentDialog
+        agent={agent}
+        formKey={duplicateSessionKey}
+        open={isDuplicateOpen}
+        onOpenChange={setIsDuplicateOpen}
+      />
       <DeleteAgentDialog agentId={agent.id} agentName={agent.name} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </article>
   )
@@ -258,13 +260,13 @@ export function AgentRosterList({
   const { t } = useTranslation('agentV2')
 
   return (
-    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,294px),1fr))] gap-2.5" aria-busy={isFetching || undefined}>
+    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
-        <AgentRosterPlaceholderState title={t('roster.loadingError')} />
+        <AgentRosterPlaceholderState title={t($ => $['roster.loadingError'])} />
       )}
       {!isPending && !isError && agents.length === 0 && (
-        <AgentRosterPlaceholderState title={isEmptySearch ? t('roster.emptySearch') : t('roster.empty')} />
+        <AgentRosterPlaceholderState title={isEmptySearch ? t($ => $['roster.emptySearch']) : t($ => $['roster.empty'])} />
       )}
       {!isPending && !isError && agents.map(agent => (
         <AgentRosterItem key={agent.id} agent={agent} />
@@ -276,7 +278,7 @@ export function AgentRosterList({
             disabled={isFetchingNextPage}
             onClick={onLoadMore}
           >
-            {t('roster.loadMore')}
+            {t($ => $['roster.loadMore'])}
           </Button>
         </div>
       )}

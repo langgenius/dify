@@ -10,22 +10,23 @@ import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
 
 vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) => {
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const prefix = options?.ns ? `${options.ns}.` : ''
         if (options?.returnObjects)
           return [`${prefix}${key}-feature-1`, `${prefix}${key}-feature-2`]
         return `${prefix}${key}`
-      },
+      }),
       i18n: {
         language: 'en',
         changeLanguage: vi.fn(),
       },
     }),
-    Trans: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    Trans: withSelectorKeyProps(({ children }: { children?: ReactNode }) => <>{children}</>),
   }
 })
 
@@ -52,14 +53,6 @@ const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 const buildModalContext = (): ModalContextState => ({
   setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -109,6 +102,7 @@ const mockAppInfo = {
     copyright: '© Dify',
     privacy_policy: '',
     custom_disclaimer: 'Disclaimer',
+    input_placeholder: 'Ask me anything',
     default_language: 'en-US',
     show_workflow_steps: true,
     use_icon_as_answer_icon: true,
@@ -127,6 +121,8 @@ const renderSettingsModal = (appInfo = mockAppInfo) => render(
   />,
 )
 
+const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     toastMocks.call.mockClear()
@@ -139,7 +135,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: Plan.professional,
       },
       webappCopyrightEnabled: true,
     })
@@ -149,17 +145,14 @@ describe('SettingsModal', () => {
     vi.useRealTimers()
   })
 
-  it('should render the modal and expose the expanded settings section', async () => {
+  it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
 
-    const showMoreEntry = screen.getByText('appOverview.overview.appInfo.settings.more.entry')
-    fireEvent.click(showMoreEntry)
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.copyRightPlaceholder')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
-    })
+    expect(screen.queryByText('appOverview.overview.appInfo.settings.more.entry')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.copyRightPlaceholder')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
   })
 
   it('should notify the user when the name is empty', async () => {
@@ -188,9 +181,8 @@ describe('SettingsModal', () => {
     expect(mockOnSave).not.toHaveBeenCalled()
   })
 
-  it('should validate the privacy policy URL when advanced settings are open', async () => {
+  it('should validate the privacy policy URL', async () => {
     renderSettingsModal()
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
     const privacyInput = screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')
 
     fireEvent.change(privacyInput, { target: { value: 'ftp://invalid-url' } })
@@ -221,6 +213,7 @@ describe('SettingsModal', () => {
       copyright: mockAppInfo.site.copyright,
       privacy_policy: mockAppInfo.site.privacy_policy,
       custom_disclaimer: mockAppInfo.site.custom_disclaimer,
+      input_placeholder: mockAppInfo.site.input_placeholder,
       icon_type: 'emoji',
       icon: mockAppInfo.site.icon,
       icon_background: mockAppInfo.site.icon_background,
@@ -231,15 +224,11 @@ describe('SettingsModal', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it('should collapse the expanded settings section immediately when closing', () => {
+  it('should not render a show-more trigger', () => {
     renderSettingsModal()
 
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    expect(screen.queryByText('appOverview.overview.appInfo.settings.more.entry')).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('common.operation.cancel'))
-
-    expect(screen.getByText('appOverview.overview.appInfo.settings.more.entry')).toBeInTheDocument()
   })
 
   it('should reset local form state when the controlled dialog reopens', () => {
@@ -252,8 +241,6 @@ describe('SettingsModal', () => {
         onSave={mockOnSave}
       />,
     )
-
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
     expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
 
     rerender(
@@ -275,14 +262,109 @@ describe('SettingsModal', () => {
       />,
     )
 
-    expect(screen.getByText('appOverview.overview.appInfo.settings.more.entry')).toBeInTheDocument()
+    expect(screen.queryByText('appOverview.overview.appInfo.settings.more.entry')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
+  })
+
+  it('should reset the input placeholder when app info changes while open', () => {
+    const { rerender } = render(
+      <SettingsModal
+        isChat
+        isShow={true}
+        appInfo={mockAppInfo}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Ask me anything')
+
+    rerender(
+      <SettingsModal
+        isChat
+        isShow={true}
+        appInfo={{
+          ...mockAppInfo,
+          site: {
+            ...mockAppInfo.site,
+            input_placeholder: 'Updated prompt',
+          },
+        } as typeof mockAppInfo}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Updated prompt')
+  })
+
+  it('should display paid webapp settings as defaults for Cloud sandbox plans', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined)
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: true,
+    })
+
+    renderSettingsModal()
+
+    const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
+    expect(inputPlaceholder).toBeDisabled()
+    expect(inputPlaceholder).toHaveValue('')
+    expect(screen.queryByPlaceholderText('appOverview.overview.appInfo.settings.more.copyRightPlaceholder')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        copyright: '',
+        input_placeholder: '',
+      }))
+    })
+  })
+
+  it('should keep the input placeholder editable when billing is disabled', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined)
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: false,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: false,
+    })
+
+    renderSettingsModal()
+    const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
+    fireEvent.change(inputPlaceholder, { target: { value: 'Self-hosted prompt' } })
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    expect(inputPlaceholder).toBeEnabled()
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        copyright: '',
+        input_placeholder: 'Self-hosted prompt',
+      }))
+    })
   })
 
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
-    renderSettingsModal()
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: false,
+    })
 
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
-    fireEvent.click(await screen.findByText('billing.upgradeBtn.encourageShort'))
+    renderSettingsModal()
+    fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
     expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
@@ -300,8 +382,6 @@ describe('SettingsModal', () => {
     })
 
     renderSettingsModal()
-
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
     await waitFor(() => {
       expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     })
@@ -321,8 +401,6 @@ describe('SettingsModal', () => {
     } as typeof mockAppInfo
 
     renderSettingsModal(imageAppInfo)
-
-    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
 
     fireEvent.change(screen.getByDisplayValue('A description'), {
       target: { value: 'Updated description' },

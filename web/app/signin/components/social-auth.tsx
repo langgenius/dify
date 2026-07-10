@@ -44,7 +44,7 @@ export default function SocialAuth(props: SocialAuthProps) {
                 cn(style.githubIcon, 'mr-2 size-5')
               }
               />
-              <span className="truncate leading-normal">{t('withGitHub', { ns: 'login' })}</span>
+              <span className="truncate leading-normal">{t($ => $.withGitHub, { ns: 'login' })}</span>
             </>
           </Button>
         </a>
@@ -60,7 +60,7 @@ export default function SocialAuth(props: SocialAuthProps) {
                 cn(style.googleIcon, 'mr-2 size-5')
               }
               />
-              <span className="truncate leading-normal">{t('withGoogle', { ns: 'login' })}</span>
+              <span className="truncate leading-normal">{t($ => $.withGoogle, { ns: 'login' })}</span>
             </>
           </Button>
         </a>

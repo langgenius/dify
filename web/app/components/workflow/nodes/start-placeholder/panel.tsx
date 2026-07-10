@@ -140,7 +140,7 @@ const Panel: FC<NodePanelProps<StartPlaceholderNodeType>> = ({
           onSearchChange={setSearchText}
           tags={tags}
           onTagsChange={setTags}
-          placeholder={t('tabs.searchTrigger', { ns: 'workflow' })}
+          placeholder={t($ => $['tabs.searchTrigger'], { ns: 'workflow' })}
           inputClassName="grow"
         />
       </div>

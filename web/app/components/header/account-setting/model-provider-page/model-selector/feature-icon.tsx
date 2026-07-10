@@ -45,7 +45,7 @@ function FeatureIcon({
           )}
         />
         <TooltipContent>
-          {t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.vision })}
+          {t($ => $['modelProvider.featureSupported'], { ns: 'common', feature: ModelFeatureTextEnum.vision })}
         </TooltipContent>
       </Tooltip>
     )
@@ -80,7 +80,7 @@ function FeatureIcon({
           )}
         />
         <TooltipContent>
-          {t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.document })}
+          {t($ => $['modelProvider.featureSupported'], { ns: 'common', feature: ModelFeatureTextEnum.document })}
         </TooltipContent>
       </Tooltip>
     )
@@ -115,7 +115,7 @@ function FeatureIcon({
           )}
         />
         <TooltipContent>
-          {t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.audio })}
+          {t($ => $['modelProvider.featureSupported'], { ns: 'common', feature: ModelFeatureTextEnum.audio })}
         </TooltipContent>
       </Tooltip>
     )
@@ -150,7 +150,7 @@ function FeatureIcon({
           )}
         />
         <TooltipContent>
-          {t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.video })}
+          {t($ => $['modelProvider.featureSupported'], { ns: 'common', feature: ModelFeatureTextEnum.video })}
         </TooltipContent>
       </Tooltip>
     )

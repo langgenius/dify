@@ -109,7 +109,7 @@ describe('Version command', () => {
   }
 
   it('--check-compat exits with COMPAT_FAIL_EXIT_CODE when compat is unsupported', async () => {
-    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ status: 'unsupported' }))
+    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ status: 'too_new' }))
     const exitSpy = stubProcessExit()
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
@@ -119,7 +119,7 @@ describe('Version command', () => {
   })
 
   it('--check-compat -o json emits the JSON envelope on stdout before exiting', async () => {
-    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ status: 'unsupported' }))
+    vi.spyOn(probe, 'runVersionProbe').mockResolvedValue(fakeReport({ status: 'too_new' }))
     const exitSpy = stubProcessExit()
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
@@ -131,7 +131,7 @@ describe('Version command', () => {
     expect(stdoutSpy).toHaveBeenCalled()
     const written = stdoutSpy.mock.calls.map(c => String(c[0])).join('')
     const parsed = JSON.parse(written) as { compat: { status: string } }
-    expect(parsed.compat.status).toBe('unsupported')
+    expect(parsed.compat.status).toBe('too_new')
     expect(exitSpy).toHaveBeenCalledWith(COMPAT_FAIL_EXIT_CODE)
   })
 
@@ -158,6 +158,6 @@ describe('Version command', () => {
     if (output?.kind !== 'formatted')
       throw new Error('expected formatted output')
 
-    expect(output.data.text()).toContain('WARNING: This build is a release candidate')
+    expect(output.data.text()).toContain('WARNING: This build is a(n) rc release')
   })
 })

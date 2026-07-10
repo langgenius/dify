@@ -45,7 +45,7 @@ function IntegrationsToolProviderCard({
   const description = renderI18nObject(collection.description, language)
   const { org, name } = getCollectionPluginIdentity(collection)
   const toolsCount = collection.tools?.length ?? 0
-  const builtInLabel = t('metadata.datasetMetadata.builtIn', { ns: 'dataset' })
+  const builtInLabel = t($ => $['metadata.datasetMetadata.builtIn'], { ns: 'dataset' })
   const shouldShowBuiltInBadge = showBuiltInBadge && !collection.plugin_id
   const isLabeledVariant = variant === 'labeled'
 
@@ -57,7 +57,7 @@ function IntegrationsToolProviderCard({
         data-org={collection.plugin_id ? org : ''}
         className={cn(
           'group/tool-provider relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-md',
-          current && 'outline-[1.5px] outline-components-option-card-option-selected-border',
+          current && 'after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:inset-ring-[1.5px] after:inset-ring-components-option-card-option-selected-border after:content-[\'\']',
         )}
       >
         <div className="flex w-full shrink-0 items-center gap-3 px-4 pt-4 pb-2">
@@ -66,8 +66,8 @@ function IntegrationsToolProviderCard({
             <div className="min-w-0 truncate system-md-semibold text-text-secondary" title={title}>
               {title}
             </div>
-            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t('author', { ns: 'tools' })} ${collection.author}` : undefined}>
-              {collection.author && `${t('author', { ns: 'tools' })} ${collection.author}`}
+            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t($ => $.author, { ns: 'tools' })} ${collection.author}` : undefined}>
+              {collection.author && `${t($ => $.author, { ns: 'tools' })} ${collection.author}`}
             </div>
           </div>
         </div>
@@ -97,10 +97,9 @@ function IntegrationsToolProviderCard({
       data-org={collection.plugin_id ? org : ''}
       className={cn(
         'group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-[3px]',
-        current && 'outline-[1.5px] outline-components-option-card-option-selected-border',
+        current && 'after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:inset-ring-[1.5px] after:inset-ring-components-option-card-option-selected-border after:content-[\'\']',
       )}
     >
-      {shouldShowBuiltInBadge && <CornerMark className="z-20" text={builtInLabel} />}
       <div className="relative flex w-full items-center gap-3 overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 group-hover/tool-provider:bg-components-panel-on-panel-item-bg-hover">
         <Icon src={collection.icon} size="large" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
@@ -130,12 +129,13 @@ function IntegrationsToolProviderCard({
             <div className="flex min-w-0 flex-1 items-center gap-1">
               <RiLoginCircleLine className="size-3 shrink-0 text-text-tertiary" />
               <div className="truncate system-xs-regular text-text-tertiary">
-                {t('mcp.toolsCount', { ns: 'tools', count: toolsCount })}
+                {t($ => $['mcp.toolsCount'], { ns: 'tools', count: toolsCount })}
               </div>
             </div>
           </>
         )}
       </div>
+      {shouldShowBuiltInBadge && <CornerMark text={builtInLabel} />}
     </div>
   )
 }

@@ -3,9 +3,9 @@ import * as React from 'react'
 import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
 import {
+  Field,
   FieldDescription,
   FieldLabel,
-  FieldRoot,
 } from '../field'
 
 const meta = {
@@ -55,7 +55,7 @@ const SwitchDemo = (args: SwitchDemoProps) => {
   const [enabled, setEnabled] = React.useState(args.checked ?? false)
 
   return (
-    <FieldRoot name="autoRetry" className="w-72">
+    <Field name="autoRetry" className="w-72">
       <FieldLabel className="flex items-center justify-between gap-3">
         <span>Enable auto retry</span>
         <Switch
@@ -67,7 +67,7 @@ const SwitchDemo = (args: SwitchDemoProps) => {
       <FieldDescription>
         {enabled ? 'Failures will retry automatically.' : 'Failures require manual retry.'}
       </FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -187,30 +187,30 @@ const SizeComparisonDemo = () => {
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      <FieldRoot name="extraSmallSwitch">
+      <Field name="extraSmallSwitch">
         <FieldLabel className="flex items-center gap-3">
           <Switch size="xs" checked={states.xs} onCheckedChange={v => setStates({ ...states, xs: v })} />
           Extra Small (xs) - 14x10
         </FieldLabel>
-      </FieldRoot>
-      <FieldRoot name="smallSwitch">
+      </Field>
+      <Field name="smallSwitch">
         <FieldLabel className="flex items-center gap-3">
           <Switch size="sm" checked={states.sm} onCheckedChange={v => setStates({ ...states, sm: v })} />
           Small (sm) - 20x12
         </FieldLabel>
-      </FieldRoot>
-      <FieldRoot name="regularSwitch">
+      </Field>
+      <Field name="regularSwitch">
         <FieldLabel className="flex items-center gap-3">
           <Switch size="md" checked={states.md} onCheckedChange={v => setStates({ ...states, md: v })} />
           Regular (md) - 28x16
         </FieldLabel>
-      </FieldRoot>
-      <FieldRoot name="largeSwitch">
+      </Field>
+      <Field name="largeSwitch">
         <FieldLabel className="flex items-center gap-3">
           <Switch size="lg" checked={states.lg} onCheckedChange={v => setStates({ ...states, lg: v })} />
           Large (lg) - 36x20
         </FieldLabel>
-      </FieldRoot>
+      </Field>
     </div>
   )
 }
@@ -225,48 +225,48 @@ const LoadingDemo = () => {
   return (
     <div className="flex flex-col items-center space-y-4">
       <button
-        className="rounded-sm border px-2 py-1 text-xs"
+        className="rounded-sm border px-2 py-1 text-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={() => setLoading(!loading)}
       >
         {loading ? 'Stop Loading' : 'Start Loading'}
       </button>
       <div className="space-y-3">
-        <FieldRoot name="largeUncheckedLoading">
+        <Field name="largeUncheckedLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="lg" checked={false} loading={loading} />
             Large unchecked
           </FieldLabel>
-        </FieldRoot>
-        <FieldRoot name="largeCheckedLoading">
+        </Field>
+        <Field name="largeCheckedLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="lg" checked={true} loading={loading} />
             Large checked
           </FieldLabel>
-        </FieldRoot>
-        <FieldRoot name="regularUncheckedLoading">
+        </Field>
+        <Field name="regularUncheckedLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="md" checked={false} loading={loading} />
             Regular unchecked
           </FieldLabel>
-        </FieldRoot>
-        <FieldRoot name="regularCheckedLoading">
+        </Field>
+        <Field name="regularCheckedLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="md" checked={true} loading={loading} />
             Regular checked
           </FieldLabel>
-        </FieldRoot>
-        <FieldRoot name="smallLoading">
+        </Field>
+        <Field name="smallLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="sm" checked={false} loading={loading} />
             Small
           </FieldLabel>
-        </FieldRoot>
-        <FieldRoot name="extraSmallLoading">
+        </Field>
+        <Field name="extraSmallLoading">
           <FieldLabel className="flex items-center gap-3">
             <Switch size="xs" checked={false} loading={loading} />
             Extra Small
           </FieldLabel>
-        </FieldRoot>
+        </Field>
       </div>
     </div>
   )
@@ -335,7 +335,7 @@ const MutationLoadingDemo = () => {
 
   return (
     <div className="grid w-90 gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg p-4 shadow-sm">
-      <FieldRoot name="autoRetry">
+      <Field name="autoRetry">
         <FieldLabel className="flex items-center justify-between gap-4">
           <span className="system-sm-medium text-text-secondary">Enable auto retry</span>
           <Switch
@@ -346,7 +346,7 @@ const MutationLoadingDemo = () => {
           />
         </FieldLabel>
         <FieldDescription>Retry failed workflow runs without manual intervention.</FieldDescription>
-      </FieldRoot>
+      </Field>
 
       <span className="text-xs text-text-tertiary" aria-live="polite">
         {statusText}

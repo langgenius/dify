@@ -56,7 +56,7 @@ const EndpointCard = ({
       await handleChange()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       setActive(false)
     },
   })
@@ -66,7 +66,7 @@ const EndpointCard = ({
       hideDisableConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       setActive(false)
     },
   })
@@ -92,7 +92,7 @@ const EndpointCard = ({
       hideDeleteConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     },
   })
 
@@ -117,7 +117,7 @@ const EndpointCard = ({
       hideEndpointModalConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     },
   })
   const handleUpdate = (state: Record<string, unknown>) => updateEndpoint({
@@ -150,7 +150,7 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
+  const copyLabel = t($ => $[`operation.${isCopied ? 'copied' : 'copy'}`], { ns: 'common' })
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
@@ -200,13 +200,13 @@ const EndpointCard = ({
         {active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
             <StatusDot status="success" />
-            {t('detailPanel.serviceOk', { ns: 'plugin' })}
+            {t($ => $['detailPanel.serviceOk'], { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
             <StatusDot status="disabled" />
-            {t('detailPanel.disabled', { ns: 'plugin' })}
+            {t($ => $['detailPanel.disabled'], { ns: 'plugin' })}
           </div>
         )}
         <Switch
@@ -223,18 +223,18 @@ const EndpointCard = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
+              {t($ => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('detailPanel.endpointDisableContent', { ns: 'plugin', name: data.name })}
+              {t($ => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => disableEndpoint(endpointID)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
@@ -243,16 +243,16 @@ const EndpointCard = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}
+              {t($ => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('detailPanel.endpointDeleteContent', { ns: 'plugin', name: data.name })}
+              {t($ => $['detailPanel.endpointDeleteContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => deleteEndpoint(endpointID)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

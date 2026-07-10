@@ -18,30 +18,34 @@ export function AgentLogsTable({
   isPending,
   isError,
   isSuccess,
+  selectedLogId,
+  onOpenLog,
   onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
   isError: boolean
   isSuccess: boolean
+  selectedLogId?: string
+  onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
   const { t } = useTranslation('agentV2')
   const tableHeaderLabels = {
-    unread: t('agentDetail.logs.table.unread'),
-    title: t('agentDetail.logs.table.title'),
-    source: t('agentDetail.logs.table.source'),
-    endUser: t('agentDetail.logs.table.endUser'),
-    messageCount: t('agentDetail.logs.table.messageCount'),
-    userRate: t('agentDetail.logs.table.userRate'),
-    operationRate: t('agentDetail.logs.table.operationRate'),
-    updatedTime: t('agentDetail.logs.table.updatedTime'),
-    createdTime: t('agentDetail.logs.table.createdTime'),
+    unread: t($ => $['agentDetail.logs.table.unread']),
+    title: t($ => $['agentDetail.logs.table.title']),
+    source: t($ => $['agentDetail.logs.table.source']),
+    endUser: t($ => $['agentDetail.logs.table.endUser']),
+    messageCount: t($ => $['agentDetail.logs.table.messageCount']),
+    userRate: t($ => $['agentDetail.logs.table.userRate']),
+    operationRate: t($ => $['agentDetail.logs.table.operationRate']),
+    updatedTime: t($ => $['agentDetail.logs.table.updatedTime']),
+    createdTime: t($ => $['agentDetail.logs.table.createdTime']),
   }
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0">
+      <div className="shrink-0 pr-3">
         <table aria-hidden="true" className="w-full table-fixed border-collapse">
           <LogsTableColGroup />
           <LogsTableHeader labels={tableHeaderLabels} />
@@ -50,12 +54,12 @@ export function AgentLogsTable({
 
       <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport
-          aria-label={t('agentDetail.logs.title')}
+          aria-label={t($ => $['agentDetail.logs.title'])}
           role="region"
           tabIndex={-1}
           className="overscroll-contain"
         >
-          <ScrollAreaContent>
+          <ScrollAreaContent className="pr-3">
             <table className="w-full table-fixed border-collapse">
               <LogsTableColGroup />
               <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
@@ -64,12 +68,14 @@ export function AgentLogsTable({
                 isPending={isPending}
                 isError={isError}
                 isSuccess={isSuccess}
+                selectedLogId={selectedLogId}
+                onOpenLog={onOpenLog}
                 onRetry={onRetry}
               />
             </table>
           </ScrollAreaContent>
         </ScrollAreaViewport>
-        <ScrollAreaScrollbar className="data-[orientation=vertical]:translate-x-1">
+        <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollAreaRoot>
@@ -82,20 +88,24 @@ function AgentLogsTableBody({
   isPending,
   isError,
   isSuccess,
+  selectedLogId,
+  onOpenLog,
   onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
   isError: boolean
   isSuccess: boolean
+  selectedLogId?: string
+  onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { formatTime } = useTimestamp()
-  const notAvailable = t('agentDetail.logs.notAvailable')
+  const notAvailable = t($ => $['agentDetail.logs.notAvailable'])
   const formatLogTime = (value?: number | null) =>
-    value == null ? notAvailable : formatTime(value, t('roster.dateTimeFormat'))
+    value == null ? notAvailable : formatTime(value, t($ => $['roster.dateTimeFormat']))
 
   return (
     <tbody className="system-sm-regular text-text-secondary">
@@ -105,56 +115,75 @@ function AgentLogsTableBody({
       {isError && (
         <LogsStateRow>
           <div className="flex items-center justify-center gap-2">
-            <span>{t('agentDetail.logs.loadFailed')}</span>
+            <span>{t($ => $['agentDetail.logs.loadFailed'])}</span>
             <Button variant="secondary" size="small" onClick={onRetry}>
-              {tCommon('operation.retry')}
+              {tCommon($ => $['operation.retry'])}
             </Button>
           </div>
         </LogsStateRow>
       )}
       {isSuccess && logs.length === 0 && (
         <LogsStateRow>
-          {t('agentDetail.logs.empty')}
+          {t($ => $['agentDetail.logs.empty'])}
         </LogsStateRow>
       )}
-      {isSuccess && logs.map(log => (
-        <tr
-          key={log.id}
-          className="h-10 border-b border-divider-subtle hover:bg-background-default-hover"
-        >
-          <td className="px-0">
-            <span className={cn(
-              'mx-auto block size-1.5 rounded-full',
-              log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
+      {isSuccess && logs.map((log) => {
+        const logTitle = log.title || log.conversation_id
+        const isSelected = selectedLogId === log.id
+
+        return (
+          <tr
+            key={log.id}
+            className={cn(
+              'h-10 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
+              isSelected && 'bg-background-default-hover',
             )}
-            />
-          </td>
-          <TableCell className="system-sm-medium text-text-secondary">
-            {log.title || notAvailable}
-          </TableCell>
-          <td className="px-3">
-            <LogSourceCell source={log.source} />
-          </td>
-          <TableCell translate="no">
-            {log.end_user_id || notAvailable}
-          </TableCell>
-          <TableCell className="tabular-nums">
-            {log.message_count}
-          </TableCell>
-          <TableCell className="text-text-quaternary">
-            {formatRate(log.user_rate, notAvailable)}
-          </TableCell>
-          <TableCell className="text-text-quaternary">
-            {formatRate(log.operation_rate, notAvailable)}
-          </TableCell>
-          <TableCell>
-            {formatLogTime(log.updated_at)}
-          </TableCell>
-          <TableCell>
-            {formatLogTime(log.created_at)}
-          </TableCell>
-        </tr>
-      ))}
+            onClick={() => onOpenLog(log)}
+          >
+            <td className="px-0">
+              <span className={cn(
+                'mx-auto block size-1.5 rounded-full',
+                log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
+              )}
+              />
+            </td>
+            <TableCell>
+              <button
+                type="button"
+                aria-label={logTitle}
+                className="block w-full truncate rounded-sm text-left system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenLog(log)
+                }}
+              >
+                {log.title || notAvailable}
+              </button>
+            </TableCell>
+            <td className="px-3">
+              <LogSourceCell source={log.source} />
+            </td>
+            <TableCell translate="no">
+              {log.end_user_id || notAvailable}
+            </TableCell>
+            <TableCell className="tabular-nums">
+              {log.message_count}
+            </TableCell>
+            <TableCell className="text-text-quaternary">
+              {formatRate(log.user_rate, notAvailable)}
+            </TableCell>
+            <TableCell className="text-text-quaternary">
+              {formatRate(log.operation_rate, notAvailable)}
+            </TableCell>
+            <TableCell>
+              {formatLogTime(log.updated_at)}
+            </TableCell>
+            <TableCell>
+              {formatLogTime(log.created_at)}
+            </TableCell>
+          </tr>
+        )
+      })}
     </tbody>
   )
 }

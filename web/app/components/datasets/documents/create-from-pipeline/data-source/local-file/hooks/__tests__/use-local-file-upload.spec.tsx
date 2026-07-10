@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
+import { PROGRESS_ERROR } from '../../constants'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -34,13 +34,6 @@ vi.mock('@/utils/format', () => ({
     return parts[parts.length - 1] || ''
   },
 }))
-
-// Mock react-i18next
-// Mock locale context
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 // Mock i18n config
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
@@ -854,31 +847,6 @@ describe('useLocalFileUpload', () => {
   })
 
   describe('file progress constants', () => {
-    it('should use PROGRESS_NOT_STARTED for new files', async () => {
-      mockUpload.mockResolvedValue({ id: 'file-id' })
-
-      const { result } = renderHook(
-        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
-        { wrapper: createWrapper() },
-      )
-
-      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
-      const event = {
-        target: {
-          files: [mockFile],
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(event)
-      })
-
-      await waitFor(() => {
-        const callArgs = mockSetLocalFileList.mock.calls[0]![0]
-        expect(callArgs[0].progress).toBe(PROGRESS_NOT_STARTED)
-      })
-    })
-
     it('should set PROGRESS_ERROR on upload failure', async () => {
       mockUpload.mockRejectedValue(new Error('Upload failed'))
 

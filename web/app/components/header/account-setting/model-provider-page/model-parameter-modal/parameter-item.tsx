@@ -4,10 +4,9 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -57,7 +56,7 @@ function ParameterItem({
       }
       if (node.data.type === BlockEnum.Start) {
         acc.sys = {
-          title: t('blocks.start', { ns: 'workflow' }),
+          title: t($ => $['blocks.start'], { ns: 'workflow' }),
           type: BlockEnum.Start,
         }
       }
@@ -182,7 +181,7 @@ function ParameterItem({
       }
 
       return (
-        <FieldsetRoot className="flex items-center">
+        <Fieldset className="flex items-center">
           <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
           <Slider
             className="w-[120px]"
@@ -204,7 +203,7 @@ function ParameterItem({
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </FieldsetRoot>
+        </Fieldset>
       )
     }
 
@@ -226,7 +225,7 @@ function ParameterItem({
       }
 
       return (
-        <FieldsetRoot className="flex items-center">
+        <Fieldset className="flex items-center">
           <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
           <Slider
             className="w-[120px]"
@@ -248,7 +247,7 @@ function ParameterItem({
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </FieldsetRoot>
+        </Fieldset>
       )
     }
 
@@ -257,8 +256,8 @@ function ParameterItem({
       const translatedLabel = parameterRule.label[language] || parameterRule.label.en_US
 
       return (
-        <FieldRoot name={parameterRule.name} className="contents">
-          <FieldsetRoot
+        <Field name={parameterRule.name} className="contents">
+          <Fieldset
             render={(
               <RadioGroup<boolean>
                 className="w-[150px] gap-3"
@@ -270,18 +269,18 @@ function ParameterItem({
             <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
             <FieldItem>
               <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
-                <Radio value={true} />
+                <Radio<boolean> value={true} />
                 True
               </FieldLabel>
             </FieldItem>
             <FieldItem>
               <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
-                <Radio value={false} />
+                <Radio<boolean> value={false} />
                 False
               </FieldLabel>
             </FieldItem>
-          </FieldsetRoot>
-        </FieldRoot>
+          </Fieldset>
+        </Field>
       )
     }
 

@@ -83,7 +83,7 @@ const AnnotationReply = ({
             <MessageFast className="size-4 text-text-primary-on-surface" />
           </div>
         )}
-        title={t('feature.annotation.title', { ns: 'appDebug' })}
+        title={t($ => $['feature.annotation.title'], { ns: 'appDebug' })}
         value={!!annotationReply?.enabled}
         onChange={state => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
@@ -92,19 +92,19 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t($ => $['feature.annotation.description'], { ns: 'appDebug' })}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
-                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}</div>
                     <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold ?? '-'}</div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
-                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['modelProvider.embeddingModel.key'], { ns: 'common' })}</div>
                     <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
@@ -113,7 +113,7 @@ const AnnotationReply = ({
                 <div className="flex items-center justify-between">
                   <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
                     <RiEqualizer2Line className="mr-1 size-4" />
-                    {t('operation.params', { ns: 'common' })}
+                    {t($ => $['operation.params'], { ns: 'common' })}
                   </Button>
                   <Button
                     className="w-[178px]"
@@ -122,7 +122,7 @@ const AnnotationReply = ({
                     }}
                   >
                     <RiExternalLinkLine className="mr-1 size-4" />
-                    {t('feature.annotation.cacheManagement', { ns: 'appDebug' })}
+                    {t($ => $['feature.annotation.cacheManagement'], { ns: 'appDebug' })}
                   </Button>
                 </div>
               )}

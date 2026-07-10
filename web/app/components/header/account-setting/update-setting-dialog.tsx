@@ -7,12 +7,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useMutationPluginAutoUpgradeSettings, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import UpdateSettingDialogForm from './update-setting-dialog-form'
 
@@ -26,7 +27,7 @@ const UpdateSettingDialog = ({
   disabled = false,
 }: Props) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const timezone = userProfile.timezone || 'UTC'
   const {
     data: autoUpgradeSetting,
@@ -37,7 +38,7 @@ const UpdateSettingDialog = ({
   const { mutate: saveAutoUpgrade, isPending: isSavePending } = useMutationPluginAutoUpgradeSettings({
     category,
     onSuccess: () => {
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
     },
   })
   const savedAutoUpgrade = autoUpgradeSetting?.auto_upgrade
@@ -49,11 +50,11 @@ const UpdateSettingDialog = ({
   const getStrategyLabel = useCallback((strategy: AUTO_UPDATE_STRATEGY) => {
     switch (strategy) {
       case AUTO_UPDATE_STRATEGY.disabled:
-        return t('autoUpdate.strategy.disabled.name', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.disabled.name'], { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.fixOnly:
-        return t('autoUpdate.strategy.fixOnly.name', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.fixOnly.name'], { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.latest:
-        return t('autoUpdate.strategy.latest.name', { ns: 'plugin' })
+        return t($ => $['autoUpdate.strategy.latest.name'], { ns: 'plugin' })
       default:
         return ''
     }
@@ -96,15 +97,15 @@ const UpdateSettingDialog = ({
   const scopeOptions = useMemo(() => [
     {
       value: AUTO_UPDATE_MODE.update_all,
-      label: t('autoUpdate.scopeMode.all', { ns: 'plugin' }),
+      label: t($ => $['autoUpdate.scopeMode.all'], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_MODE.exclude,
-      label: t('autoUpdate.scopeMode.exclude', { ns: 'plugin' }),
+      label: t($ => $['autoUpdate.scopeMode.exclude'], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_MODE.partial,
-      label: t('autoUpdate.upgradeMode.partial', { ns: 'plugin' }),
+      label: t($ => $['autoUpdate.upgradeMode.partial'], { ns: 'plugin' }),
     },
   ], [t])
 
@@ -205,7 +206,7 @@ const UpdateSettingDialog = ({
             disabled={disabled}
           >
             <span aria-hidden className="i-custom-vender-system-auto-update-line size-4" />
-            <span className="px-0.5">{t('autoUpdate.autoUpdate', { ns: 'plugin' })}</span>
+            <span className="px-0.5">{t($ => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
             {selectedStrategyLabel && (
               <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                 {selectedStrategyLabel}
@@ -220,7 +221,7 @@ const UpdateSettingDialog = ({
         >
           <div className="relative flex w-full items-start gap-2 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-              {t('autoUpdate.autoUpdateSettings', { ns: 'plugin' })}
+              {t($ => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
             </DialogTitle>
             <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
@@ -230,12 +231,12 @@ const UpdateSettingDialog = ({
               className="flex min-h-[260px] items-center justify-center gap-2 px-6 py-6 system-sm-regular text-text-tertiary"
             >
               <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none" />
-              <span>{t('loading', { ns: 'common' })}</span>
+              <span>{t($ => $.loading, { ns: 'common' })}</span>
             </div>
           )}
           {!isSettingsLoading && !hasSettings && (
             <div className="flex min-h-[260px] items-center justify-center px-6 py-6 text-center system-sm-regular text-text-tertiary">
-              {t('api.actionFailed', { ns: 'common' })}
+              {t($ => $['api.actionFailed'], { ns: 'common' })}
             </div>
           )}
           {!isSettingsLoading && hasSettings && autoUpgrade && (
@@ -261,7 +262,7 @@ const UpdateSettingDialog = ({
                   className="min-w-[72px]"
                   onClick={handleCancel}
                 >
-                  {t('operation.cancel', { ns: 'common' })}
+                  {t($ => $['operation.cancel'], { ns: 'common' })}
                 </Button>
                 <Button
                   variant="primary"
@@ -269,7 +270,7 @@ const UpdateSettingDialog = ({
                   onClick={handleSave}
                   disabled={isSavePending}
                 >
-                  {t('operation.save', { ns: 'common' })}
+                  {t($ => $['operation.save'], { ns: 'common' })}
                 </Button>
               </div>
             </>

@@ -48,7 +48,7 @@ const ToolTrigger = ({
       )}
       {!value?.provider_name && (
         <div className="grow system-sm-regular text-components-input-text-placeholder">
-          {!isConfigure ? t('detailPanel.toolSelector.placeholder', { ns: 'plugin' }) : t('detailPanel.configureTool', { ns: 'plugin' })}
+          {!isConfigure ? t($ => $['detailPanel.toolSelector.placeholder'], { ns: 'plugin' }) : t($ => $['detailPanel.configureTool'], { ns: 'plugin' })}
         </div>
       )}
       {isConfigure && (

@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from 'react'
-import { FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Field } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   fireEvent,
   render,
@@ -111,8 +111,8 @@ function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
   } = props
 
   render(
-    <FieldRoot name="retrieval_search_method">
-      <FieldsetRoot
+    <Field name="retrieval_search_method">
+      <Fieldset
         render={(
           <RadioGroup
             value={props.searchMethod}
@@ -122,8 +122,8 @@ function renderSearchMethodOption(props: ReturnType<typeof createProps>) {
       >
         <FieldsetLegend>Retrieval search method</FieldsetLegend>
         <SearchMethodOption {...optionProps} />
-      </FieldsetRoot>
-    </FieldRoot>,
+      </Fieldset>
+    </Field>,
   )
 }
 

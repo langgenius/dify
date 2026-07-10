@@ -43,6 +43,7 @@ export const zAudioTranscriptResponse = z.object({
  */
 export const zChatMessagePayload = z.object({
   conversation_id: z.string().nullish(),
+  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   model_config: z.record(z.string(), z.unknown()).optional(),
@@ -112,9 +113,15 @@ export const zSuggestedQuestionsResponse = z.object({
 
 /**
  * ExploreAppMetaResponse
+ *
+ * Metadata consumed by the installed-app chat UI.
+ *
+ * Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
  */
 export const zExploreAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.unknown()).optional(),
+  tool_icons: z
+    .record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())]))
+    .optional(),
 })
 
 /**
@@ -166,11 +173,6 @@ export const zJsonValue = z
     z.array(z.unknown()),
   ])
   .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 /**
  * SimpleConversation
@@ -229,9 +231,11 @@ export const zParameters = z.object({
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponse = z.object({
+  description: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   mode: z.string().nullish(),
   name: z.string().nullish(),
@@ -262,11 +266,11 @@ export const zInstalledAppListResponse = z.object({
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),
@@ -503,32 +507,114 @@ export const zHumanInputContent = z.object({
 })
 
 /**
- * MessageListItem
+ * ExploreMessageListItem
  */
-export const zMessageListItem = z.object({
+export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
- * MessageInfiniteScrollPagination
+ * ExploreMessageInfiniteScrollPagination
  */
-export const zMessageInfiniteScrollPagination = z.object({
-  data: z.array(zMessageListItem),
+export const zExploreMessageInfiniteScrollPagination = z.object({
+  data: z.array(zExploreMessageListItem),
   has_more: z.boolean(),
   limit: z.int(),
+})
+
+/**
+ * ExploreMessageListItem
+ */
+export const zExploreMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+})
+
+/**
+ * ExploreMessageInfiniteScrollPagination
+ */
+export const zExploreMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zExploreMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponseWritable = z.object({
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  mode: z.string().nullish(),
+  name: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponseWritable = z.object({
+  app: zInstalledAppInfoResponseWritable,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullish(),
+  uninstallable: z.boolean(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponseWritable = z.object({
+  installed_apps: z.array(zInstalledAppResponseWritable),
 })
 
 export const zGetInstalledAppsQuery = z.object({
@@ -585,7 +671,10 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -608,7 +697,10 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -693,7 +785,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesResponse = zMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdMessagesResponse
+  = zExploreMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
   = zMessageFeedbackPayload
@@ -721,8 +814,10 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQue
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = zGeneratedAppResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   installed_app_id: z.uuid(),
@@ -809,7 +904,10 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),

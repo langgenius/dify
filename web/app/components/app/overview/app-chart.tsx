@@ -1,12 +1,13 @@
 /* eslint-disable react-refresh/only-export-components, react/component-hook-factories */
 'use client'
 import type { Dayjs } from 'dayjs'
+import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Basic from '@/app/components/app-sidebar/basic'
+import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
 import {
   useAppAverageResponseTime,
@@ -30,6 +31,7 @@ import {
   getDefaultChartData,
   getSummaryValue,
   getTokenSummary,
+  hasNonZeroChartData,
 } from './app-chart-utils'
 
 export type PeriodParams = {
@@ -66,8 +68,10 @@ type IChartProps = {
   chartData: { data: ChartRow[] }
 }
 
+const ECHARTS_RENDER_OPTIONS = { renderer: 'svg' as const }
+
 const Chart: React.FC<IChartProps> = ({
-  basicInfo: { title, explanation, timePeriod },
+  basicInfo: { title, explanation },
   chartType = 'conversations',
   chartData,
   valueKey,
@@ -93,37 +97,45 @@ const Chart: React.FC<IChartProps> = ({
     unit,
   })
   const tokenSummary = getTokenSummary(statistics)
+  const showTokenSummary = CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
+  const isZeroSummary = summaryValue === '0' || summaryValue === '0 ms'
 
   return (
-    <div className={`flex h-[316px] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg ${className ?? ''}`}>
+    <div className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}>
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
-        <Basic name={title} type={timePeriod} hoverTip={explanation} />
+        <div className="flex min-w-0 items-center">
+          <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
+            {title}
+          </div>
+          {explanation && (
+            <Infotip aria-label={explanation} className="ml-1" popupClassName="w-[240px]">
+              {explanation}
+            </Infotip>
+          )}
+        </div>
       </div>
-      <div className="flex h-8 shrink-0 items-start px-6 py-1">
-        <Basic
-          isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
-          name={summaryValue}
-          type={!CHART_TYPE_CONFIG[chartType].showTokens
-            ? ''
-            : (
-                <span>
-                  {t('analysis.tokenUsage.consumed', { ns: 'appOverview' })}
-                  {' '}
-                  Tokens
-                  <span className="text-sm">
-                    <span className="ml-1 text-text-tertiary">(</span>
-                    <span className="text-orange-400">
-                      ~
-                      {tokenSummary}
-                    </span>
-                    <span className="text-text-tertiary">)</span>
-                  </span>
-                </span>
-              )}
-          textStyle={{ main: `text-3xl! font-normal! ${summaryValue === '0' || summaryValue === '0 ms' ? 'text-text-quaternary!' : ''}` }}
-        />
+      <div className="flex h-8 shrink-0 items-baseline gap-1 px-6 py-1">
+        <div className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
+          {summaryValue}
+        </div>
+        {showTokenSummary && (
+          <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
+            {t($ => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })}
+            {' '}
+            Tokens
+            {' '}
+            <span>(</span>
+            <span className="text-orange-400">
+              ~
+              {tokenSummary}
+            </span>
+            <span>)</span>
+          </div>
+        )}
       </div>
-      <ReactECharts option={options} style={{ height: 240, width: '100%' }} />
+      <div className="h-[240px] shrink-0 px-6 pb-4">
+        <ReactECharts option={options} opts={ECHARTS_RENDER_OPTIONS} style={{ height: '100%', width: '100%' }} />
+      </div>
     </div>
   )
 }
@@ -137,16 +149,41 @@ type UseChartData = (id: string, query?: PeriodParams['query']) => {
   isLoading: boolean
 }
 
+const CHART_TRANSLATION_SELECTOR_MAP = {
+  'analysis.activeUsers.explanation': $ => $['analysis.activeUsers.explanation'],
+  'analysis.activeUsers.title': $ => $['analysis.activeUsers.title'],
+  'analysis.avgResponseTime.explanation': $ => $['analysis.avgResponseTime.explanation'],
+  'analysis.avgResponseTime.title': $ => $['analysis.avgResponseTime.title'],
+  'analysis.avgSessionInteractions.explanation': $ => $['analysis.avgSessionInteractions.explanation'],
+  'analysis.avgSessionInteractions.title': $ => $['analysis.avgSessionInteractions.title'],
+  'analysis.avgUserInteractions.explanation': $ => $['analysis.avgUserInteractions.explanation'],
+  'analysis.avgUserInteractions.title': $ => $['analysis.avgUserInteractions.title'],
+  'analysis.ms': $ => $['analysis.ms'],
+  'analysis.tokenPS': $ => $['analysis.tokenPS'],
+  'analysis.tokenUsage.explanation': $ => $['analysis.tokenUsage.explanation'],
+  'analysis.tokenUsage.title': $ => $['analysis.tokenUsage.title'],
+  'analysis.totalConversations.explanation': $ => $['analysis.totalConversations.explanation'],
+  'analysis.totalConversations.title': $ => $['analysis.totalConversations.title'],
+  'analysis.totalMessages.explanation': $ => $['analysis.totalMessages.explanation'],
+  'analysis.totalMessages.title': $ => $['analysis.totalMessages.title'],
+  'analysis.tps.explanation': $ => $['analysis.tps.explanation'],
+  'analysis.tps.title': $ => $['analysis.tps.title'],
+  'analysis.userSatisfactionRate.explanation': $ => $['analysis.userSatisfactionRate.explanation'],
+  'analysis.userSatisfactionRate.title': $ => $['analysis.userSatisfactionRate.title'],
+} satisfies Record<string, SelectorParam<'appOverview'>>
+
+type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
+
 type BizChartConfig = {
   chartType: keyof typeof CHART_TYPE_CONFIG
-  titleKey: string
-  explanationKey: string
+  titleKey: ChartTranslationKey
+  explanationKey: ChartTranslationKey
   useChartData: UseChartData
   valueKey?: string
   emptyValueKey?: string
   yMaxWhenEmpty: number
   isAvg?: boolean
-  unitKey?: string
+  unitKey?: ChartTranslationKey
   className?: string
 }
 
@@ -171,6 +208,11 @@ const createBizChartComponent = ({
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey
+    const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
+    const explanationSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+    const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
+      ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
+      : undefined
     const fallbackData = {
       data: getDefaultChartData({
         ...(period.query ?? defaultPeriod),
@@ -181,15 +223,15 @@ const createBizChartComponent = ({
     return (
       <Chart
         basicInfo={{
-          title: t(titleKey, titleKey, { ns: 'appOverview' }),
-          explanation: t(explanationKey, explanationKey, { ns: 'appOverview' }),
+          title: t(titleSelector, { ns: 'appOverview', defaultValue: titleKey }),
+          explanation: t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey }),
           timePeriod: period.name,
         }}
         chartData={noDataFlag ? fallbackData : response}
         chartType={chartType}
         valueKey={valueKey}
         isAvg={isAvg}
-        unit={unitKey ? t(unitKey, unitKey, { ns: 'appOverview' }) : undefined}
+        unit={unitKey && unitSelector ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey }) : undefined}
         className={className}
         {...(noDataFlag && { yMax: yMaxWhenEmpty })}
       />
@@ -204,6 +246,8 @@ export const MessagesChart = createBizChartComponent({
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
   useChartData: useAppDailyMessages,
+  valueKey: 'message_count',
+  emptyValueKey: 'message_count',
   yMaxWhenEmpty: 500,
 })
 
@@ -212,6 +256,8 @@ export const ConversationsChart = createBizChartComponent({
   titleKey: 'analysis.totalConversations.title',
   explanationKey: 'analysis.totalConversations.explanation',
   useChartData: useAppDailyConversations,
+  valueKey: 'conversation_count',
+  emptyValueKey: 'conversation_count',
   yMaxWhenEmpty: 500,
 })
 
@@ -220,6 +266,8 @@ export const EndUsersChart = createBizChartComponent({
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
   useChartData: useAppDailyEndUsers,
+  valueKey: 'terminal_count',
+  emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
 })
 
@@ -276,6 +324,8 @@ export const CostChart = createBizChartComponent({
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
   useChartData: useAppTokenCosts,
+  valueKey: 'token_count',
+  emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
 })
 
@@ -294,6 +344,8 @@ export const WorkflowDailyTerminalsChart = createBizChartComponent({
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
   useChartData: useWorkflowDailyTerminals,
+  valueKey: 'terminal_count',
+  emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
 })
 
@@ -302,6 +354,8 @@ export const WorkflowCostChart = createBizChartComponent({
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
   useChartData: useWorkflowTokenCosts,
+  valueKey: 'token_count',
+  emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
 })
 
@@ -315,5 +369,4 @@ export const AvgUserInteractions = createBizChartComponent({
   yMaxWhenEmpty: 500,
   isAvg: true,
 })
-
 export default Chart

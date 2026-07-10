@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/in
 
 Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
 
-Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh`).
+Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh` / `install.ps1`), which resolves releases via the GitHub API. That API caps unauthenticated requests at 60/hour per IP; behind a shared NAT or in CI, set `GITHUB_TOKEN` (or `GH_TOKEN`) to raise it to 5000/hour — the installer sends it as a bearer token.
 
 ## Quickstart
 

@@ -4,26 +4,6 @@ import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import TriggerCard from '../trigger-card'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
-      return key
-    },
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
-  useSelector: <T,>(selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
@@ -135,7 +115,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.noTriggerAdded')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.triggerInfo\.noTriggerAdded(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should show trigger status description when no triggers', () => {
@@ -143,7 +123,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.triggerStatusDescription')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.triggerInfo\.triggerStatusDescription(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should show learn more link when no triggers', () => {
@@ -151,7 +131,7 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const learnMoreLink = screen.getByText('overview.triggerInfo.learnAboutTriggers')
+      const learnMoreLink = screen.getByText(/(?:^|\.)overview\.triggerInfo\.learnAboutTriggers(?=$|:)/)
       expect(learnMoreLink).toBeInTheDocument()
       expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/trigger/overview')
     })
@@ -180,7 +160,7 @@ describe('TriggerCard', () => {
     it('should show triggers count message', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.triggerInfo.triggersAdded (2)')).toBeInTheDocument()
+      expect(screen.getByText(/overview\.triggerInfo\.triggersAdded.*2/)).toBeInTheDocument()
     })
 
     it('should render trigger titles', () => {
@@ -193,13 +173,13 @@ describe('TriggerCard', () => {
     it('should show running status for enabled triggers', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.status.running')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.status\.running(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should show disable status for disabled triggers', () => {
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText('overview.status.disable')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)overview\.status\.disable(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render block icons for each trigger', () => {

@@ -12,6 +12,9 @@ import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/
 import PluginPageWithContext from '../index'
 
 let mockEnableMarketplace = true
+const { mockRouterReplace } = vi.hoisted(() => ({
+  mockRouterReplace: vi.fn(),
+}))
 
 const render = (ui: ReactElement, options: Parameters<typeof renderWithSystemFeatures>[1] = {}) =>
   renderWithSystemFeatures(ui, {
@@ -33,19 +36,107 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+  }),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: { current_version: '1.0.0' },
-    workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug', 'plugin.plugin_preferences'],
-  }),
-}))
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: true,
+    isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_env: 'CLOUD',
+      current_version: '1.0.0',
+      latest_version: '1.0.0',
+      version: '1.0.0',
+      release_date: '',
+      release_notes: '',
+      can_auto_update: false,
+    },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug', 'plugin.plugin_preferences'],
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-plugins', () => ({
   hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
@@ -466,7 +557,7 @@ describe('PluginPage Component', () => {
           plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -502,16 +593,38 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       await waitFor(() => {
         expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
       }, { timeout: 3000 })
+    })
+
+    it('should redirect supported plugin categories to integrations before opening the modal', async () => {
+      const mockSetInstallState = vi.fn()
+      vi.mocked(usePluginInstallation).mockReturnValue([
+        { packageId: 'junjiem/mcp_see_agent:0.2.4@test', bundleInfo: null },
+        mockSetInstallState,
+      ])
+
+      vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
+        data: {
+          plugin: { org: 'junjiem', name: 'mcp_see_agent', category: 'agent-strategy' },
+          version: { version: '0.2.4' },
+        },
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+
+      await waitFor(() => {
+        expect(mockRouterReplace).toHaveBeenCalledWith('/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%3A0.2.4%40test%22%5D')
+      })
+      expect(screen.queryByTestId('install-marketplace-modal')).not.toBeInTheDocument()
     })
 
     it('should handle fetch error gracefully', async () => {
@@ -764,10 +877,10 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -1044,10 +1157,10 @@ describe('PluginPage Integration', () => {
 
     vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
       data: {
-        plugin: { org: 'langgenius', name: 'test-plugin', category: 'tool' },
+        plugin: { org: 'langgenius', name: 'test-plugin', category: 'unknown' },
         version: { version: '1.0.0' },
       },
-    } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+    } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
     render(<PluginPageWithContext {...createDefaultProps()} />)
 

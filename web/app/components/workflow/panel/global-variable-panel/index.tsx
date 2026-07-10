@@ -23,39 +23,39 @@ const Panel = () => {
       ? [{
           name: 'conversation_id',
           value_type: 'string' as const,
-          description: t('globalVar.fieldsDescription.conversationId', { ns: 'workflow' }),
+          description: t($ => $['globalVar.fieldsDescription.conversationId'], { ns: 'workflow' }),
         }, {
           name: 'dialog_count',
           value_type: 'number' as const,
-          description: t('globalVar.fieldsDescription.dialogCount', { ns: 'workflow' }),
+          description: t($ => $['globalVar.fieldsDescription.dialogCount'], { ns: 'workflow' }),
         }]
       : []),
     {
       name: 'user_id',
       value_type: 'string',
-      description: t('globalVar.fieldsDescription.userId', { ns: 'workflow' }),
+      description: t($ => $['globalVar.fieldsDescription.userId'], { ns: 'workflow' }),
     },
     {
       name: 'app_id',
       value_type: 'string',
-      description: t('globalVar.fieldsDescription.appId', { ns: 'workflow' }),
+      description: t($ => $['globalVar.fieldsDescription.appId'], { ns: 'workflow' }),
     },
     {
       name: 'workflow_id',
       value_type: 'string',
-      description: t('globalVar.fieldsDescription.workflowId', { ns: 'workflow' }),
+      description: t($ => $['globalVar.fieldsDescription.workflowId'], { ns: 'workflow' }),
     },
     {
       name: 'workflow_run_id',
       value_type: 'string',
-      description: t('globalVar.fieldsDescription.workflowRunId', { ns: 'workflow' }),
+      description: t($ => $['globalVar.fieldsDescription.workflowRunId'], { ns: 'workflow' }),
     },
     // is workflow
     ...((isWorkflowPage && !isChatMode)
       ? [{
           name: 'timestamp',
           value_type: 'number' as const,
-          description: t('globalVar.fieldsDescription.triggerTimestamp', { ns: 'workflow' }),
+          description: t($ => $['globalVar.fieldsDescription.triggerTimestamp'], { ns: 'workflow' }),
         }]
       : []),
   ]
@@ -67,7 +67,7 @@ const Panel = () => {
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
-        {t('globalVar.title', { ns: 'workflow' })}
+        {t($ => $['globalVar.title'], { ns: 'workflow' })}
         <div className="flex items-center">
           <div
             className="flex size-6 cursor-pointer items-center justify-center"
@@ -77,7 +77,7 @@ const Panel = () => {
           </div>
         </div>
       </div>
-      <div className="shrink-0 px-4 py-1 system-sm-regular text-text-tertiary">{t('globalVar.description', { ns: 'workflow' })}</div>
+      <div className="shrink-0 px-4 py-1 system-sm-regular text-text-tertiary">{t($ => $['globalVar.description'], { ns: 'workflow' })}</div>
 
       <div className="mt-4 grow overflow-y-auto rounded-b-2xl px-4">
         {globalVariableList.map(item => (

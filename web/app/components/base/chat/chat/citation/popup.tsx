@@ -108,7 +108,7 @@ const Popup: FC<PopupProps> = ({
                                 href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
                                 className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
                               >
-                                {t('chat.citation.linkToDataset', { ns: 'common' })}
+                                {t($ => $['chat.citation.linkToDataset'], { ns: 'common' })}
                                 <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
                               </Link>
                             )
@@ -119,17 +119,17 @@ const Popup: FC<PopupProps> = ({
                           showHitInfo && (
                             <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center system-xs-medium text-text-quaternary">
                               <Tooltip
-                                text={t('chat.citation.characters', { ns: 'common' })}
+                                text={t($ => $['chat.citation.characters'], { ns: 'common' })}
                                 data={source.word_count}
                                 icon={<i className="mr-1 i-custom-vender-line-editor-type-square size-3" aria-hidden />}
                               />
                               <Tooltip
-                                text={t('chat.citation.hitCount', { ns: 'common' })}
+                                text={t($ => $['chat.citation.hitCount'], { ns: 'common' })}
                                 data={source.hit_count}
                                 icon={<i className="mr-1 i-custom-vender-line-general-target-04 size-3" aria-hidden />}
                               />
                               <Tooltip
-                                text={t('chat.citation.vectorHash', { ns: 'common' })}
+                                text={t($ => $['chat.citation.vectorHash'], { ns: 'common' })}
                                 data={source.index_node_hash?.substring(0, 7)}
                                 icon={<i className="mr-1 i-custom-vender-line-editor-bezier-curve-03 size-3" aria-hidden />}
                               />

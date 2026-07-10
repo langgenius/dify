@@ -39,6 +39,8 @@ function getFormattedChatList(messages: any[]) {
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
+      reasoningContent: item.metadata?.reasoning,
+      reasoningFinished: true,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: `question-${item.id}`,
     })
@@ -272,7 +274,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
-        name: t('chat.newChatDefaultName', { ns: 'share' }),
+        name: t($ => $['chat.newChatDefaultName'], { ns: 'share' }),
         inputs: {},
         introduction: '',
       })
@@ -331,11 +333,11 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       })
     }
     if (hasEmptyInput) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
+      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
     if (fileIsUploading) {
-      toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
       return
     }
     return true
@@ -375,7 +377,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [handleConversationIdInfoChange, invalidateShareConversations])
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
-    toast.success(t('api.success', { ns: 'common' }))
+    toast.success(t($ => $['api.success'], { ns: 'common' }))
   }, [appSourceType, appId, t])
   return {
     appSourceType,

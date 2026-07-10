@@ -309,6 +309,17 @@ export type TextChunkResponse = {
   }
 }
 
+export type ReasoningChunkResponse = {
+  task_id: string
+  event: string
+  data: {
+    message_id: string
+    reasoning: string
+    node_id?: string
+    is_final?: boolean
+  }
+}
+
 export type TextReplaceResponse = {
   task_id: string
   workflow_run_id: string
@@ -331,10 +342,10 @@ export type HumanInputFormData = {
   form_content: string
   inputs: FormInputItem[]
   actions: UserAction[]
-  form_token: string
+  form_token: string | null
   resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
-  expiration_time: number
+  expiration_time: number | null
 }
 
 export type HumanInputRequiredResponse = {

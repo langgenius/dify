@@ -2,12 +2,16 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useAppAccessRules,
@@ -76,9 +80,9 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
       <header className="flex min-h-15.5 flex-col justify-center px-6 py-3">
-        <h1 className="system-xl-semibold text-text-primary">{t('settings.resourceAccess', { ns: 'common' })}</h1>
+        <h1 className="system-xl-semibold text-text-primary">{t($ => $['settings.resourceAccess'], { ns: 'common' })}</h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
-          {t('accessRule.appDescription', { ns: 'permission' })}
+          {t($ => $['accessRule.appDescription'], { ns: 'permission' })}
         </p>
       </header>
       <main className="w-full px-6 pt-8 pb-10">
@@ -103,13 +107,17 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
 }
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore(state => state.appDetail)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
 
   if (!appDetail || appDetail.id !== appId || !appACLCapabilities.canAccessConfig)
     return null

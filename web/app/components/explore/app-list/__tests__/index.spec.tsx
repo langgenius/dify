@@ -7,7 +7,6 @@ import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
@@ -15,12 +14,10 @@ import { AppACLPermission } from '@/utils/permission'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
 
-type MockAppContext = {
-  userProfile: { id: string }
-  workspacePermissionKeys: string[]
-}
-
-const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
 let mockLearnDifyApps: App[] = []
@@ -34,6 +31,23 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
+    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { record, api }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
+}))
 
 vi.mock('@/service/use-explore', () => ({
   useLearnDifyAppList: () => ({
@@ -60,7 +74,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -74,7 +88,7 @@ vi.mock('@/service/client', () => ({
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
-              queryKey: ['console', 'apps', 'list', options],
+              queryKey: ['console', 'apps', 'get', options],
               queryFn: () => new Promise(() => {}),
               select: options.select,
             }
@@ -87,7 +101,7 @@ vi.mock('@/service/client', () => ({
             total: mockWorkspaceApps.length,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options],
+            queryKey: ['console', 'apps', 'get', options],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,
@@ -97,19 +111,50 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/hooks/use-import-dsl', () => ({
   useImportDSL: () => ({
@@ -261,20 +306,18 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
 })
 
 const mockAppCreatePermission = (hasEditPermission: boolean) => {
-  ;(useAppContext as Mock).mockReturnValue({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
-  })
+  mockAppContextState.workspacePermissionKeys = hasEditPermission ? ['app.create_and_management'] : []
 }
 
 type RenderOptions = {
   enableExploreBanner?: boolean
+  enableLearnApp?: boolean
   isCloudEdition?: boolean
 }
 
-const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', localeInput, 'en']
+const localeInput = { query: { language: 'en-US' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en-US']
 
 const renderAppList = (
   hasEditPermission = false,
@@ -285,7 +328,10 @@ const renderAppList = (
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
-    systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
+    systemFeatures: {
+      enable_explore_banner: options.enableExploreBanner ?? false,
+      enable_learn_app: options.enableLearnApp ?? true,
+    },
   })
   if (!mockIsLoading && !mockIsError && mockExploreData)
     queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
@@ -465,6 +511,36 @@ describe('AppList', () => {
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
     })
 
+    it('should render preview-only continue work app as a dimmed card and warn on click', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = [
+        createWorkspaceApp({
+          id: 'preview-app',
+          name: 'Preview Only App',
+          author_name: 'Readonly Author',
+          permission_keys: [AppACLPermission.Preview],
+        }),
+      ]
+
+      renderAppList()
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
+    })
+
     it('should hide continue work when there are no workspace apps', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -493,6 +569,18 @@ describe('AppList', () => {
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
       expect(screen.queryByText('3 min')).not.toBeInTheDocument()
+    })
+
+    it('should hide learn dify templates when learn app is disabled', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, undefined, { enableLearnApp: false })
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Learn Workflow Basics')).not.toBeInTheDocument()
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
@@ -529,6 +617,18 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+
+    it('should hide categories without apps even when the API returns them', () => {
+      mockExploreData = {
+        categories: ['Writing', 'c'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, { category: 'c' })
+
+      expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
     })
 
     it('should keep selected category when clearing search text', async () => {

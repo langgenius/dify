@@ -1,22 +1,55 @@
 import type { DataSet, RelatedAppResponse } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
 let mockDataset: DataSet | undefined
 let mockRelatedApps: RelatedAppResponse | undefined
+let mockIsRbacEnabled = true
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [] as string[],
+  },
+}))
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
@@ -77,6 +110,7 @@ describe('DatasetDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
+    mockIsRbacEnabled = true
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -115,6 +149,17 @@ describe('DatasetDetailSection', () => {
   })
 
   it('should hide resource access navigation when dataset access config permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+  })
+
+  it('should hide resource access navigation when RBAC is disabled', () => {
+    mockIsRbacEnabled = false
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.AccessConfig],
+    })
+
     render(<DatasetDetailSection expand />)
 
     expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()

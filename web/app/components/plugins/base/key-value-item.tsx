@@ -42,7 +42,7 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
+  const copyLabel = t($ => $[`operation.${isCopied ? 'copied' : 'copy'}`], { ns: 'common' })
 
   return (
     <div className="flex items-center gap-1">

@@ -85,7 +85,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const isSearching = inputValue !== '' && isFullDocMode
   const contentOpacity = (enabled || focused) ? '' : 'opacity-50 group-hover/card:opacity-100'
   const { displayText, count, translationKey } = computeTotalInfo(isFullDocMode, isSearching, total, childChunks.length)
-  const totalText = `${displayText} ${t(translationKey, { ns: 'datasetDocuments', count })}`
+  const totalText = `${displayText} ${t($ => $[translationKey], { ns: 'datasetDocuments', count })}`
 
   const toggleCollapse = () => setCollapsed(prev => !prev)
   const showContent = (isFullDocMode && !isLoading) || !collapsed
@@ -102,7 +102,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     const isEdited = childChunk.updated_at !== childChunk.created_at
     const isFocused = currChildChunk?.childChunkInfo?.id === childChunk.id
     const label = isEdited
-      ? `C-${childChunk.position} · ${t('segment.edited', { ns: 'datasetDocuments' })}`
+      ? `C-${childChunk.position} · ${t($ => $['segment.edited'], { ns: 'datasetDocuments' })}`
       : `C-${childChunk.position}`
 
     return (
@@ -184,7 +184,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             }}
             disabled={isLoading}
           >
-            {t('operation.add', { ns: 'common' })}
+            {t($ => $['operation.add'], { ns: 'common' })}
           </button>
         </div>
         {isFullDocMode && (

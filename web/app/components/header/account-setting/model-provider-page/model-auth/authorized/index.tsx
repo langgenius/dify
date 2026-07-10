@@ -30,8 +30,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
@@ -101,9 +100,7 @@ const Authorized = ({
   disableDeleteTip,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -139,12 +136,12 @@ const Authorized = ({
   )
 
   const handleEdit = useCallback((credential?: Credential, model?: CustomModel) => {
-    if (!canManageCredential)
+    if (credential ? !canManageCredential : !canCreateCredential)
       return
 
     setMergedIsOpen(false)
     handleOpenModal(credential, model)
-  }, [canManageCredential, handleOpenModal, setMergedIsOpen])
+  }, [canCreateCredential, canManageCredential, handleOpenModal, setMergedIsOpen])
   const handleDelete = useCallback((credential?: Credential, model?: CustomModel) => {
     if (!canManageCredential)
       return
@@ -179,11 +176,11 @@ const Authorized = ({
       return
 
     event.preventDefault()
-    if (!canManageCredential)
+    if (!canCreateCredential)
       return
 
     handleOpenModal()
-  }, [canManageCredential, handleOpenModal, triggerOnlyOpenModal])
+  }, [canCreateCredential, handleOpenModal, triggerOnlyOpenModal])
 
   return (
     <>
@@ -224,7 +221,7 @@ const Authorized = ({
                       title={item.title}
                       model={item.model}
                       credentials={item.credentials}
-                      disabled={disabled || !canUseCredential}
+                      disabled={disabled}
                       disableEdit={!canManageCredential}
                       disableDelete={!canManageCredential}
                       onDelete={handleDelete}
@@ -233,7 +230,7 @@ const Authorized = ({
                       onEdit={handleEdit}
                       showItemSelectedIcon={showItemSelectedIcon}
                       selectedCredentialId={item.selectedCredential?.credential_id}
-                      onItemClick={handleItemClick}
+                      onItemClick={canUseCredential ? handleItemClick : undefined}
                       showModelTitle={showModelTitle}
                     />
                     {
@@ -247,7 +244,7 @@ const Authorized = ({
             </div>
             <div className="h-px bg-divider-subtle"></div>
             {
-              isModelCredential && !notAllowCustomCredential && !hideAddAction && canManageCredential && (
+              isModelCredential && !notAllowCustomCredential && !hideAddAction && canCreateCredential && (
                 <div
                   onClick={() => handleEdit(
                     undefined,
@@ -261,18 +258,18 @@ const Authorized = ({
                   className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <span className="mr-1 i-ri-add-line size-4" />
-                  {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
+                  {t($ => $['modelProvider.auth.addModelCredential'], { ns: 'common' })}
                 </div>
               )
             }
             {
-              !isModelCredential && !notAllowCustomCredential && !hideAddAction && canManageCredential && (
+              !isModelCredential && !notAllowCustomCredential && !hideAddAction && canCreateCredential && (
                 <div className="p-2">
                   <Button
                     onClick={() => handleEdit()}
                     className="w-full"
                   >
-                    {t('modelProvider.auth.addApiKey', { ns: 'common' })}
+                    {t($ => $['modelProvider.auth.addApiKey'], { ns: 'common' })}
                   </Button>
                 </div>
               )
@@ -284,13 +281,13 @@ const Authorized = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

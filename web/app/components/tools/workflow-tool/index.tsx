@@ -1,5 +1,5 @@
 'use client'
-import type { DrawerRootProps } from '@langgenius/dify-ui/drawer'
+import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -75,7 +75,6 @@ const InfoTooltip = ({ children }: { children: string }) => {
     <Infotip
       aria-label={children}
       className="ml-1 size-3.5"
-      iconClassName="h-3.5 w-3.5"
       popupClassName="w-[180px]"
     >
       {children}
@@ -84,7 +83,7 @@ const InfoTooltip = ({ children }: { children: string }) => {
 }
 
 const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: WorkflowToolDrawerFrameProps) => {
-  const handleOpenChange = React.useCallback<NonNullable<DrawerRootProps['onOpenChange']>>((open) => {
+  const handleOpenChange = React.useCallback<NonNullable<DrawerProps['onOpenChange']>>((open) => {
     if (!open)
       onHide()
   }, [onHide])
@@ -170,13 +169,13 @@ export function WorkflowToolDrawer({
   const onConfirm = () => {
     let errorMessage = ''
     if (!label)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
+      errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: t($ => $['createTool.name'], { ns: 'tools' }) })
 
     if (!name)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.nameForToolCall', { ns: 'tools' }) })
+      errorMessage = t($ => $['errorMsg.fieldRequired'], { ns: 'common', field: t($ => $['createTool.nameForToolCall'], { ns: 'tools' }) })
 
     if (!isWorkflowToolNameValid(name))
-      errorMessage = t('createTool.nameForToolCall', { ns: 'tools' }) + t('createTool.nameForToolCallTip', { ns: 'tools' })
+      errorMessage = t($ => $['createTool.nameForToolCall'], { ns: 'tools' }) + t($ => $['createTool.nameForToolCallTip'], { ns: 'tools' })
 
     if (errorMessage) {
       toast.error(errorMessage)
@@ -210,15 +209,15 @@ export function WorkflowToolDrawer({
     <>
       <WorkflowToolDrawerFrame
         onHide={onHide}
-        title={t('common.workflowAsTool', { ns: 'workflow' })!}
-        closeLabel={t('operation.close', { ns: 'common' })!}
+        title={t($ => $['common.workflowAsTool'], { ns: 'workflow' })!}
+        closeLabel={t($ => $['operation.close'], { ns: 'common' })!}
       >
         <div className="flex h-full flex-col">
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
             <div>
               <div className="py-2 system-sm-medium text-text-primary">
-                {t('createTool.name', { ns: 'tools' })}
+                {t($ => $['createTool.name'], { ns: 'tools' })}
                 {' '}
                 <span className="ml-1 text-red-500">*</span>
               </div>
@@ -226,7 +225,7 @@ export function WorkflowToolDrawer({
                 <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" iconType="emoji" icon={emoji.content} background={emoji.background} />
                 <Input
                   className="h-10 grow"
-                  placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
+                  placeholder={t($ => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
                   value={label}
                   onChange={e => setLabel(e.target.value)}
                 />
@@ -235,43 +234,43 @@ export function WorkflowToolDrawer({
             {/* name for tool call */}
             <div>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                {t('createTool.nameForToolCall', { ns: 'tools' })}
+                {t($ => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 {' '}
                 <span className="ml-1 text-red-500">*</span>
                 <InfoTooltip>
-                  {t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })}
+                  {t($ => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                 </InfoTooltip>
               </div>
               <Input
                 className="h-10"
-                placeholder={t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })!}
+                placeholder={t($ => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })!}
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
               {!isWorkflowToolNameValid(name) && (
-                <div className="text-xs leading-[18px] text-red-500">{t('createTool.nameForToolCallTip', { ns: 'tools' })}</div>
+                <div className="text-xs leading-[18px] text-red-500">{t($ => $['createTool.nameForToolCallTip'], { ns: 'tools' })}</div>
               )}
             </div>
             {/* description */}
             <div>
-              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.description'], { ns: 'tools' })}</div>
               <Textarea
-                aria-label={t('createTool.description', { ns: 'tools' })}
-                placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
+                aria-label={t($ => $['createTool.description'], { ns: 'tools' })}
+                placeholder={t($ => $['createTool.descriptionPlaceholder'], { ns: 'tools' }) || ''}
                 value={description}
                 onValueChange={value => setDescription(value)}
               />
             </div>
             {/* Tool Input  */}
             <div>
-              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.toolInput.title'], { ns: 'tools' })}</div>
               <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                 <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.toolInput.name', { ns: 'tools' })}</th>
-                      <th className="w-[102px] p-2 pl-3 font-medium">{t('createTool.toolInput.method', { ns: 'tools' })}</th>
-                      <th className="p-2 pl-3 font-medium">{t('createTool.toolInput.description', { ns: 'tools' })}</th>
+                      <th className="w-[156px] p-2 pl-3 font-medium">{t($ => $['createTool.toolInput.name'], { ns: 'tools' })}</th>
+                      <th className="w-[102px] p-2 pl-3 font-medium">{t($ => $['createTool.toolInput.method'], { ns: 'tools' })}</th>
+                      <th className="p-2 pl-3 font-medium">{t($ => $['createTool.toolInput.description'], { ns: 'tools' })}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,7 +280,7 @@ export function WorkflowToolDrawer({
                           <div className="text-[13px] leading-[18px]">
                             <div className="flex">
                               <span className="truncate font-medium text-text-primary">{item.name}</span>
-                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
+                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t($ => $['createTool.toolInput.required'], { ns: 'tools' }) : ''}</span>
                             </div>
                             <div className="text-text-tertiary">{item.type}</div>
                           </div>
@@ -293,7 +292,7 @@ export function WorkflowToolDrawer({
                             )}
                             >
                               <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
-                                {t('createTool.toolInput.methodParameter', { ns: 'tools' })}
+                                {t($ => $['createTool.toolInput.methodParameter'], { ns: 'tools' })}
                               </div>
                             </div>
                           )}
@@ -305,7 +304,7 @@ export function WorkflowToolDrawer({
                           <input
                             type="text"
                             className="w-full appearance-none bg-transparent text-[13px] leading-[18px] font-normal text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary"
-                            placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
+                            placeholder={t($ => $['createTool.toolInput.descriptionPlaceholder'], { ns: 'tools' })!}
                             value={item.description}
                             onChange={e => handleParameterChange('description', e.target.value, index)}
                           />
@@ -318,13 +317,13 @@ export function WorkflowToolDrawer({
             </div>
             {/* Tool Output  */}
             <div>
-              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.toolOutput.title'], { ns: 'tools' })}</div>
               <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                 <table className="w-full text-xs leading-[18px] font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.name', { ns: 'tools' })}</th>
-                      <th className="p-2 pl-3 font-medium">{t('createTool.toolOutput.description', { ns: 'tools' })}</th>
+                      <th className="w-[156px] p-2 pl-3 font-medium">{t($ => $['createTool.name'], { ns: 'tools' })}</th>
+                      <th className="p-2 pl-3 font-medium">{t($ => $['createTool.toolOutput.description'], { ns: 'tools' })}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -334,7 +333,7 @@ export function WorkflowToolDrawer({
                           <div className="text-[13px] leading-[18px]">
                             <div className="flex items-center">
                               <span className="truncate font-medium text-text-primary">{item.name}</span>
-                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
+                              <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t($ => $['createTool.toolOutput.reserved'], { ns: 'tools' }) : ''}</span>
                               {
                                 !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
                                   ? (
@@ -346,7 +345,7 @@ export function WorkflowToolDrawer({
                                         />
                                         <TooltipContent>
                                           <div className="w-[180px]">
-                                            {t('createTool.toolOutput.reservedParameterDuplicateTip', { ns: 'tools' })}
+                                            {t($ => $['createTool.toolOutput.reservedParameterDuplicateTip'], { ns: 'tools' })}
                                           </div>
                                         </TooltipContent>
                                       </Tooltip>
@@ -368,26 +367,26 @@ export function WorkflowToolDrawer({
             </div>
             {/* Tags */}
             <div>
-              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.toolInput.label'], { ns: 'tools' })}</div>
               <LabelSelector value={labels} onChange={handleLabelSelect} />
             </div>
             {/* Privacy Policy */}
             <div>
-              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+              <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.privacyPolicy'], { ns: 'tools' })}</div>
               <Input
                 className="h-10"
                 value={privacyPolicy}
                 onChange={e => setPrivacyPolicy(e.target.value)}
-                placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                placeholder={t($ => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''}
               />
             </div>
           </div>
           <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
             {!isAdd && onRemove && (
-              <Button variant="primary" tone="destructive" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+              <Button variant="primary" tone="destructive" onClick={onRemove}>{t($ => $['operation.delete'], { ns: 'common' })}</Button>
             )}
             <div className="flex space-x-2">
-              <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
               <Button
                 variant="primary"
                 onClick={() => {
@@ -397,7 +396,7 @@ export function WorkflowToolDrawer({
                     setConfirmModalOpen(true)
                 }}
               >
-                {t('operation.save', { ns: 'common' })}
+                {t($ => $['operation.save'], { ns: 'common' })}
               </Button>
             </div>
           </div>

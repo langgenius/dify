@@ -29,11 +29,11 @@ export const useCheckInputsForms = () => {
       })
     }
     if (hasEmptyInput) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
+      toast.error(t($ => $['errorMessage.valueOfVarRequired'], { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
     if (fileIsUploading) {
-      toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
+      toast.info(t($ => $['errorMessage.waitForFileUpload'], { ns: 'appDebug' }))
       return
     }
     return true

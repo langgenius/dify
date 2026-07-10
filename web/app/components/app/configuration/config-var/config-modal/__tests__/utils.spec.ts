@@ -1,6 +1,7 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildSelectOptions,
   createPayloadForType,
@@ -9,12 +10,11 @@ import {
   isJsonSchemaEmpty,
   isStringInputType,
   normalizeSelectDefaultValue,
-  parseCheckboxSelectValue,
   updatePayloadField,
   validateConfigModalPayload,
 } from '../utils'
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key)
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,
@@ -82,9 +82,7 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBeUndefined()
     })
 
-    it('should parse checkbox default values and normalize json schema editor content', () => {
-      expect(parseCheckboxSelectValue('true')).toBe(true)
-      expect(parseCheckboxSelectValue('false')).toBe(false)
+    it('should normalize json schema editor content', () => {
       expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(JSON.stringify({ type: 'object' }, null, 2))
       expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
       expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe('{"type":"object"}')

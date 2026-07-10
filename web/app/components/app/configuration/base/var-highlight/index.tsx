@@ -24,23 +24,4 @@ const VarHighlight: FC<IVarHighlightProps> = ({
     </div>
   )
 }
-
-// DEPRECATED: This function is vulnerable to XSS attacks and should not be used
-// Use the VarHighlight React component instead
-export const varHighlightHTML = ({ name, className = '' }: IVarHighlightProps) => {
-  const escapedName = name
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-
-  const html = `<div class="${s.item} ${className} inline-flex mb-2 items-center justify-center px-1 rounded-md h-5 text-xs font-medium text-primary-600">
-  <span class='opacity-60'>{{</span>
-  <span>${escapedName}</span>
-  <span class='opacity-60'>}}</span>
-</div>`
-  return html
-}
-
 export default React.memo(VarHighlight)

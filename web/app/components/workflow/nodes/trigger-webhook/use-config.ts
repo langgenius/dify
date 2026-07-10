@@ -1,3 +1,4 @@
+import type { SelectorParam } from 'i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
@@ -16,7 +17,18 @@ import {
 
 export const DEFAULT_STATUS_CODE = 200
 export const MAX_STATUS_CODE = 399
-export const normalizeStatusCode = (statusCode: number) => Math.min(Math.max(statusCode, DEFAULT_STATUS_CODE), MAX_STATUS_CODE)
+
+const varKeyErrorSelectors = {
+  'varKeyError.canNoBeEmpty': $ => $['varKeyError.canNoBeEmpty'],
+  'varKeyError.keyAlreadyExists': $ => $['varKeyError.keyAlreadyExists'],
+  'varKeyError.notStartWithNumber': $ => $['varKeyError.notStartWithNumber'],
+  'varKeyError.notValid': $ => $['varKeyError.notValid'],
+  'varKeyError.tooLong': $ => $['varKeyError.tooLong'],
+} satisfies Record<string, SelectorParam<'appDebug'>>
+
+function isVarKeyErrorKey(key: string): key is keyof typeof varKeyErrorSelectors {
+  return Object.hasOwn(varKeyErrorSelectors, key)
+}
 
 export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
@@ -27,11 +39,11 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
   const notifyVarError = useCallback((key: string) => {
     const fieldLabel = key === 'variableConfig.varName'
-      ? t('variableConfig.varName', { ns: 'appDebug' })
+      ? t($ => $['variableConfig.varName'], { ns: 'appDebug' })
       : key
-    const message = key.startsWith('varKeyError.')
-      ? t(key as never, { ns: 'appDebug', key: fieldLabel })
-      : t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: fieldLabel })
+    const message = isVarKeyErrorKey(key)
+      ? t(varKeyErrorSelectors[key], { ns: 'appDebug', key: fieldLabel })
+      : t($ => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: fieldLabel })
 
     toast.error(message)
   }, [t])

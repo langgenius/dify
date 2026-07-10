@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -19,7 +20,7 @@ export type AgentThought = {
 }
 
 export type Annotation = {
-  content?: string | null
+  answer?: string | null
   created_at?: number | null
   hit_count?: number | null
   id: string
@@ -31,10 +32,15 @@ export type AnnotationCreatePayload = {
   question: string
 }
 
-export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
   job_id: string
-  job_status: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusResponse = {
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationList = {
@@ -567,7 +573,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -592,40 +598,45 @@ export type DocumentBatchDownloadZipPayload = {
 }
 
 export type DocumentDetailResponse = {
-  archived?: boolean | null
-  average_segment_length?: number | null
+  archived?: boolean
+  average_segment_length?: number | number
   completed_at?: number | null
-  created_at?: number | null
-  created_by?: string | null
-  created_from?: string | null
+  created_at?: number
+  created_by?: string
+  created_from?: string
   data_source_info?: {
     [key: string]: unknown
-  } | null
-  data_source_type?: string | null
+  }
+  data_source_type?: string
   dataset_process_rule?: {
     [key: string]: unknown
-  } | null
+  }
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
   display_status?: string | null
-  doc_form?: string | null
+  doc_form?: string
   doc_language?: string | null
-  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_metadata?:
+    | Array<DocumentMetadataResponse>
+    | {
+      [key: string]: unknown
+    }
+    | null
   doc_type?: string | null
   document_process_rule?: {
     [key: string]: unknown
-  } | null
-  enabled?: boolean | null
+  }
+  enabled?: boolean
   error?: string | null
-  hit_count?: number | null
+  hit_count?: number
   id: string
   indexing_latency?: number | null
-  indexing_status?: string | null
-  name?: string | null
-  need_summary?: boolean | null
-  position?: number | null
-  segment_count?: number | null
+  indexing_status?: string
+  name?: string
+  need_summary?: boolean
+  position?: number
+  segment_count?: number
   summary_index_status?: string | null
   tokens?: number | null
   updated_at?: number | null
@@ -1060,8 +1071,10 @@ export type MessageInfiniteScrollPagination = {
 export type MessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -1070,10 +1083,14 @@ export type MessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type MessageListQuery = {
@@ -1414,7 +1431,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1463,6 +1480,7 @@ export type Site = {
   icon_background?: string | null
   icon_type?: string | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -1572,7 +1590,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1679,6 +1697,36 @@ export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
 }
 
+export type MessageInfiniteScrollPaginationWritable = {
+  data: Array<MessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type MessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
+}
+
 export type SiteWritable = {
   chat_color_theme?: string | null
   chat_color_theme_inverted: boolean
@@ -1689,6 +1737,7 @@ export type SiteWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -1768,7 +1817,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
@@ -1902,7 +1951,9 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -1947,7 +1998,9 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostCompletionMessagesResponse
@@ -2624,6 +2677,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3194,7 +3248,9 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse

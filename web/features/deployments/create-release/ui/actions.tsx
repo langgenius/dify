@@ -1,61 +1,26 @@
 'use client'
 
-import type { CreateReleaseFormValues } from '../state/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  closeCreateReleaseDialogAtom,
-  useCreateReleaseFormApi,
+  createReleaseContentReadyAtom,
+  createReleaseFormIsSubmittingAtom,
+  createReleaseHasNameConflictAtom,
+  createReleaseNameFieldAtom,
+  isCheckingCreateReleaseContentAtom,
+  requestCloseCreateReleaseDialogAtom,
 } from '../state'
-import {
-  createReleaseReadiness,
-  useCreateReleaseSourceSelection,
-  useReleaseContentCheck,
-} from './use-release-content-check'
 
 export function CreateReleaseActions() {
-  const form = useCreateReleaseFormApi()
-
-  return (
-    <form.Subscribe selector={state => ({
-      isSubmitting: state.isSubmitting,
-      values: state.values,
-    })}
-    >
-      {({ isSubmitting, values }) => (
-        <CreateReleaseActionsContent
-          formValues={values}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </form.Subscribe>
-  )
-}
-
-function CreateReleaseActionsContent({
-  formValues,
-  isSubmitting,
-}: {
-  formValues: CreateReleaseFormValues
-  isSubmitting: boolean
-}) {
   const { t } = useTranslation('deployments')
-  const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
-  const sourceSelection = useCreateReleaseSourceSelection(formValues)
-  const releaseContent = useReleaseContentCheck(sourceSelection)
-  const { canCreate, isCheckingReleaseContent } = createReleaseReadiness({
-    formValues,
-    isSubmitting,
-    releaseContent,
-  })
-
-  function requestClose() {
-    if (isSubmitting)
-      return
-
-    closeDialog()
-  }
+  const requestCloseDialog = useSetAtom(requestCloseCreateReleaseDialogAtom)
+  const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
+  const releaseContentReady = useAtomValue(createReleaseContentReadyAtom)
+  const isCheckingReleaseContent = useAtomValue(isCheckingCreateReleaseContentAtom)
+  const hasReleaseNameConflict = useAtomValue(createReleaseHasNameConflictAtom)
+  const releaseNameField = useAtomValue(createReleaseNameFieldAtom)
+  const hasReleaseName = Boolean(releaseNameField.value.trim())
 
   return (
     <div className="flex items-center justify-end gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
@@ -67,23 +32,24 @@ function CreateReleaseActionsContent({
           onPointerDown={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            requestClose()
+            requestCloseDialog()
           }}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            requestClose()
+            requestCloseDialog()
           }}
         >
-          {t('versions.cancelCreate')}
+          {t($ => $['versions.cancelCreate'])}
         </Button>
         <Button
           type="submit"
           variant="primary"
           className="min-w-22"
-          disabled={!canCreate}
+          disabled={!hasReleaseName || !releaseContentReady || hasReleaseNameConflict}
+          loading={isSubmitting}
         >
-          {isSubmitting ? t('versions.creating') : isCheckingReleaseContent ? t('versions.checkingReleaseContent') : t('versions.create')}
+          {isSubmitting ? t($ => $['versions.creating']) : isCheckingReleaseContent ? t($ => $['versions.checkingReleaseContent']) : t($ => $['versions.create'])}
         </Button>
       </div>
     </div>

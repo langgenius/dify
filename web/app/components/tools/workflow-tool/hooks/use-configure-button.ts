@@ -178,7 +178,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail(workflowAppId)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onConfigured?.()
     }
     catch (e) {

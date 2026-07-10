@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
@@ -9,8 +10,6 @@ import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workf
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
 type CreateWorkflowStreamHandlersParams = {
   getCompletionRes: () => string
   getWorkflowProcessData: () => WorkflowProcess | undefined
@@ -26,13 +25,14 @@ type CreateWorkflowStreamHandlersParams = {
   setMessageId: Dispatch<SetStateAction<string | null>>
   setRespondingFalse: () => void
   setWorkflowProcessData: (data: WorkflowProcess | undefined) => void
-  t: Translate
+  t: TextGenerationTranslate
   taskId?: number
 }
 
 const createInitialWorkflowProcess = (): WorkflowProcess => ({
   status: WorkflowRunningStatus.Running,
   tracing: [],
+  error: undefined,
   expand: false,
   resultText: '',
 })
@@ -148,9 +148,11 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
 const applyWorkflowFinishedState = (
   current: WorkflowProcess | undefined,
   status: WorkflowRunningStatus,
+  error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = status
+    draft.error = error
     if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
       markNodesStopped(draft.tracing)
   })
@@ -162,6 +164,7 @@ const applyWorkflowOutputs = (
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
+    draft.error = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
   })
 }
@@ -301,6 +304,7 @@ export const createWorkflowStreamHandlers = ({
         setWorkflowProcessData(updateWorkflowProcess(workflowProcessData, (draft) => {
           draft.expand = true
           draft.status = WorkflowRunningStatus.Running
+          draft.error = undefined
         }))
         return
       }
@@ -336,20 +340,24 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowFinished: ({ data }) => {
       if (isTimedOut()) {
-        notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+        notify({ type: 'warning', message: t($ => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }) })
         return
       }
 
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped, data.error),
+        )
         finishWithFailure()
         return
       }
 
       if (data.error) {
         notify({ type: 'error', message: data.error })
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed, data.error),
+        )
         finishWithFailure()
         return
       }

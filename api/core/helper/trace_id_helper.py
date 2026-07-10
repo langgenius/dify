@@ -61,7 +61,7 @@ def get_external_trace_id(request: Any) -> str | None:
     return None
 
 
-def extract_external_trace_id_from_args(args: Mapping[str, Any]):
+def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict[str, Any]:
     """
     Extract 'external_trace_id' from args.
 

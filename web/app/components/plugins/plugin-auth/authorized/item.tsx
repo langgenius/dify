@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import {
   RiInformationLine,
 } from '@remixicon/react'
+import { useAtomValue } from 'jotai'
 import {
   memo,
   useMemo,
@@ -15,8 +16,8 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { userProfileIdAtom } from '@/context/account-state'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
@@ -55,19 +56,17 @@ const Item = ({
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  const currentUserId = useAtomValue(userProfileIdAtom)
   // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
   // only_me credential, returned only because the current node still references it.
   // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
   // that don't yet emit the flag.
   const isSelected = showSelectedIcon && selectedCredentialId === credential.id
   const isConfiguredByOther
-    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+    = !!credential.created_by && !!currentUserId && credential.created_by !== currentUserId
   const isBorrowed
     = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
   const showSwitchAwayHint = isBorrowed
@@ -97,7 +96,7 @@ const Item = ({
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
-              placeholder={t('placeholder.input', { ns: 'common' })}
+              placeholder={t($ => $['placeholder.input'], { ns: 'common' })}
               onClick={e => e.stopPropagation()}
             />
             <Button
@@ -112,7 +111,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t($ => $['operation.save'], { ns: 'common' })}
             </Button>
             <Button
               size="small"
@@ -121,7 +120,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
           </div>
         )
@@ -153,7 +152,7 @@ const Item = ({
             {
               credential.is_default && (
                 <Badge className="shrink-0">
-                  {t('auth.default', { ns: 'plugin' })}
+                  {t($ => $['auth.default'], { ns: 'plugin' })}
                 </Badge>
               )
             }
@@ -171,7 +170,7 @@ const Item = ({
               )}
             />
             <TooltipContent>
-              {t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}
+              {t($ => $['auth.onlyAtCreationHintTooltip'], { ns: 'plugin' })}
             </TooltipContent>
           </Tooltip>
         )
@@ -179,7 +178,7 @@ const Item = ({
       {
         !showSwitchAwayHint && credential.from_enterprise && (
           <Badge className="shrink-0">
-            {t('auth.enterprise', { ns: 'plugin' })}
+            {t($ => $['auth.enterprise'], { ns: 'plugin' })}
           </Badge>
         )
       }
@@ -196,7 +195,7 @@ const Item = ({
                     onSetDefault?.(credential.id)
                   }}
                 >
-                  {t('auth.setDefault', { ns: 'plugin' })}
+                  {t($ => $['auth.setDefault'], { ns: 'plugin' })}
                 </Button>
               )
             }
@@ -218,7 +217,7 @@ const Item = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('operation.rename', { ns: 'common' })}
+                    {t($ => $['operation.rename'], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -247,7 +246,7 @@ const Item = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('operation.edit', { ns: 'common' })}
+                    {t($ => $['operation.edit'], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -270,7 +269,7 @@ const Item = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('operation.delete', { ns: 'common' })}
+                    {t($ => $['operation.delete'], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -286,7 +285,7 @@ const Item = ({
       <Tooltip>
         <TooltipTrigger render={CredentialItem} />
         <TooltipContent>
-          {t('auth.customCredentialUnavailable', { ns: 'plugin' })}
+          {t($ => $['auth.customCredentialUnavailable'], { ns: 'plugin' })}
         </TooltipContent>
       </Tooltip>
     )

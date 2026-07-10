@@ -177,7 +177,7 @@ def batch_create_segment_to_index_task(
     with session_factory.create_session() as session:
         dataset = session.get(Dataset, dataset_id)
         if dataset:
-            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"])
+            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"], session)
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/storage'
@@ -21,8 +22,9 @@ import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import SupportMenu from './support-menu'
@@ -51,11 +53,13 @@ const HelpMenu = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
+  const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
 
   if (systemFeatures.branding.enabled)
     return null
@@ -64,7 +68,7 @@ const HelpMenu = ({
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
+          aria-label={t($ => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
@@ -84,54 +88,56 @@ const HelpMenu = ({
               <DropdownMenuLinkItem href={docLink('/use-dify/getting-started/introduction')} target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
                 <MenuItemContent
                   iconClassName="i-ri-book-open-line"
-                  label={t('mainNav.help.docs', { ns: 'common' })}
+                  label={t($ => $['mainNav.help.docs'], { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
               <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
                 <MenuItemContent
                   iconClassName="i-ri-map-2-line"
-                  label={t('userProfile.roadmap', { ns: 'common' })}
+                  label={t($ => $['userProfile.roadmap'], { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
-              <DropdownMenuCheckboxItem
-                checked={!learnDifyHidden}
-                closeOnClick={false}
-                className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
-                onCheckedChange={checked => setLearnDifyHidden(!checked)}
-              >
-                <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
-                <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                  {t('mainNav.help.learnDify', { ns: 'common' })}
-                </span>
-                <span
-                  aria-hidden
-                  className={cn(
-                    'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
-                    !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
-                  )}
+              {shouldShowLearnDifySwitch && (
+                <DropdownMenuCheckboxItem
+                  checked={!learnDifyHidden}
+                  closeOnClick={false}
+                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  onCheckedChange={checked => setLearnDifyHidden(!checked)}
                 >
+                  <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
+                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                    {t($ => $['mainNav.help.learnDify'], { ns: 'common' })}
+                  </span>
                   <span
+                    aria-hidden
                     className={cn(
-                      'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
-                      !learnDifyHidden && 'translate-x-3.5',
+                      'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
+                      !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
                     )}
-                  />
-                </span>
-              </DropdownMenuCheckboxItem>
+                  >
+                    <span
+                      className={cn(
+                        'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
+                        !learnDifyHidden && 'translate-x-3.5',
+                      )}
+                    />
+                  </span>
+                </DropdownMenuCheckboxItem>
+              )}
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <SupportMenu />
+              <SupportMenu onContactUsClick={() => setOpen(false)} />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
               <DropdownMenuLinkItem href="https://github.com/langgenius/dify" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
                 <MenuItemContent
                   iconClassName="i-ri-github-line"
-                  label={t('userProfile.github', { ns: 'common' })}
+                  label={t($ => $['userProfile.github'], { ns: 'common' })}
                   trailing={(
                     <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
                       <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
@@ -150,10 +156,10 @@ const HelpMenu = ({
                 >
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
-                    label={t('userProfile.about', { ns: 'common' })}
+                    label={t($ => $['userProfile.about'], { ns: 'common' })}
                     trailing={(
                       <div className="flex shrink-0 items-center">
-                        <div className="system-xs-regular text-text-tertiary">{t('about.version', { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
+                        <div className="system-xs-regular text-text-tertiary">{t($ => $['about.version'], { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
                       </div>
                     )}
                   />

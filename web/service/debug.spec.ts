@@ -1,9 +1,22 @@
+import type { AppModeEnum } from '@/types/app'
 // service/base is the dependency we're mocking in this test; the
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
 // eslint-disable-next-line no-restricted-imports
-import { post } from './base'
-import { generateWorkflow } from './debug'
+import { get, post, sseGeneratorPost, ssePost } from './base'
+import {
+  fetchConversationMessages,
+  fetchPromptTemplate,
+  fetchSuggestedQuestions,
+  fetchTextGenerationMessage,
+  fetchWorkflowInstructionSuggestions,
+  generateBasicAppFirstTimeRule,
+  generateRule,
+  generateWorkflow,
+  generateWorkflowStream,
+  sendCompletionMessage,
+  stopChatMessageResponding,
+} from './debug'
 
 // Stub the shared `post` wrapper so tests verify only what `generateWorkflow`
 // composes on top of it — URL, body, and the typed response surface.
@@ -11,6 +24,7 @@ vi.mock('./base', () => ({
   post: vi.fn(),
   get: vi.fn(),
   ssePost: vi.fn(),
+  sseGeneratorPost: vi.fn(),
 }))
 
 describe('debug service — generateWorkflow', () => {
@@ -79,5 +93,87 @@ describe('debug service — generateWorkflow', () => {
 
     expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
     expect(vi.mocked(post).mock.calls[0]).toHaveLength(2)
+  })
+
+  describe('other endpoints', () => {
+    it('stopChatMessageResponding', async () => {
+      await stopChatMessageResponding('app-1', 'task-1')
+      expect(post).toHaveBeenCalledWith('apps/app-1/chat-messages/task-1/stop')
+    })
+
+    it('sendCompletionMessage', async () => {
+      const callbacks = { onData: vi.fn(), onCompleted: vi.fn(), onError: vi.fn(), onMessageReplace: vi.fn() }
+      await sendCompletionMessage('app-1', { text: 'hello' }, callbacks)
+      expect(ssePost).toHaveBeenCalledWith('apps/app-1/completion-messages', {
+        body: { text: 'hello', response_mode: 'streaming' },
+      }, callbacks)
+    })
+
+    it('fetchSuggestedQuestions', async () => {
+      const getAbortController = vi.fn()
+      await fetchSuggestedQuestions('app-1', 'msg-1', getAbortController)
+      expect(get).toHaveBeenCalledWith('apps/app-1/chat-messages/msg-1/suggested-questions', {}, { getAbortController })
+    })
+
+    it('fetchConversationMessages', async () => {
+      const getAbortController = vi.fn()
+      await fetchConversationMessages('app-1', 'conv-1', getAbortController)
+      expect(get).toHaveBeenCalledWith('apps/app-1/chat-messages', { params: { conversation_id: 'conv-1' } }, { getAbortController })
+    })
+
+    it('generateBasicAppFirstTimeRule', async () => {
+      await generateBasicAppFirstTimeRule({ mode: 'chat' })
+      expect(post).toHaveBeenCalledWith('/rule-generate', { body: { mode: 'chat' } })
+    })
+
+    it('generateRule', async () => {
+      await generateRule({ mode: 'chat' })
+      expect(post).toHaveBeenCalledWith('/instruction-generate', { body: { mode: 'chat' } })
+    })
+
+    it('generateWorkflowStream', async () => {
+      const body = { mode: 'workflow' as const, instruction: 'test', model_config: { provider: 'test', name: 'test', mode: 'chat' } }
+      const callbacks = { onPlan: vi.fn(), onResult: vi.fn(), onError: vi.fn(), onCompleted: vi.fn(), getAbortController: vi.fn() }
+
+      vi.mocked(sseGeneratorPost).mockImplementation((_url, _body, options) => {
+        options?.onPlan?.({ title: 'plan' })
+        options?.onResult?.({ graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } })
+        return Promise.resolve()
+      })
+
+      await generateWorkflowStream(body, callbacks)
+
+      expect(sseGeneratorPost).toHaveBeenCalled()
+      expect(callbacks.onPlan).toHaveBeenCalled()
+      expect(callbacks.onResult).toHaveBeenCalled()
+    })
+
+    it('fetchWorkflowInstructionSuggestions without getAbortController', async () => {
+      await fetchWorkflowInstructionSuggestions({ mode: 'workflow' })
+      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body: { mode: 'workflow' } })
+    })
+
+    it('fetchWorkflowInstructionSuggestions with getAbortController', async () => {
+      const getAbortController = vi.fn()
+      await fetchWorkflowInstructionSuggestions({ mode: 'workflow' }, { getAbortController })
+      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body: { mode: 'workflow' } }, { getAbortController })
+    })
+
+    it('fetchPromptTemplate', async () => {
+      await fetchPromptTemplate({ appMode: 'chat' as AppModeEnum, mode: 'chat', modelName: 'gpt-4', hasSetDataSet: true })
+      expect(get).toHaveBeenCalledWith('/app/prompt-templates', {
+        params: {
+          app_mode: 'chat',
+          model_mode: 'chat',
+          model_name: 'gpt-4',
+          has_context: true,
+        },
+      })
+    })
+
+    it('fetchTextGenerationMessage', async () => {
+      await fetchTextGenerationMessage({ appId: 'app-1', messageId: 'msg-1' })
+      expect(get).toHaveBeenCalledWith('/apps/app-1/messages/msg-1')
+    })
   })
 })

@@ -69,16 +69,16 @@ const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSel
               <div className={cn('grow', value.some(item => item.user_id === account.id) && 'opacity-50')}>
                 <div className="system-sm-medium text-text-secondary">
                   {account.name}
-                  {account.status === 'pending' && <span className="ml-1 system-xs-medium text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
-                  {email === account.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
+                  {account.status === 'pending' && <span className="ml-1 system-xs-medium text-text-warning">{t($ => $['members.pending'], { ns: 'common' })}</span>}
+                  {email === account.email && <span className="system-xs-regular text-text-tertiary">{t($ => $['members.you'], { ns: 'common' })}</span>}
                 </div>
                 <div className="system-xs-regular text-text-tertiary">{account.email}</div>
               </div>
               {!value.some(item => item.user_id === account.id) && (
-                <div className="hidden system-xs-medium text-text-accent group-hover:block">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`, { ns: 'workflow' })}</div>
+                <div className="hidden system-xs-medium text-text-accent group-hover:block">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.add`], { ns: 'workflow' })}</div>
               )}
               {value.some(item => item.user_id === account.id) && (
-                <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`, { ns: 'workflow' })}</div>
+                <div className="system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.added`], { ns: 'workflow' })}</div>
               )}
             </div>
           ))}
