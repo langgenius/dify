@@ -142,13 +142,9 @@ describe('SupportMenu', () => {
     expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass('system-xs-semibold-uppercase', 'text-saas-dify-blue-accessible')
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort' }))
-
-    expect(mockSetShowPricingModal).not.toHaveBeenCalled()
-    expect(onContactUsClick).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
     expect(openZendeskWindow).not.toHaveBeenCalled()

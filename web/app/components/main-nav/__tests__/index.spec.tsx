@@ -678,9 +678,12 @@ describe('MainNav', () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    expect(await screen.findByText('common.userProfile.contactUs')).toBeInTheDocument()
+    const contactUsItem = await screen.findByRole('menuitem', {
+      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    })
+    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
+    fireEvent.click(contactUsItem)
 
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()

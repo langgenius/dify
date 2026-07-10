@@ -29,9 +29,11 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
     <>
       {shouldShowUpgradeContact && (
         <DropdownMenuItem
-          className="mx-0 h-8 cursor-default gap-1 px-3 py-1"
-          onClick={(event) => {
-            event.preventDefault()
+          aria-label={`${t('userProfile.contactUs', { ns: 'common' })} ${t('upgradeBtn.encourageShort', { ns: 'billing' })}`}
+          className="mx-0 h-8 gap-1 px-3 py-1"
+          onClick={() => {
+            setShowPricingModal()
+            onContactUsClick?.()
           }}
         >
           <MenuItemContent
@@ -42,17 +44,12 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
               </span>
             )}
             trailing={(
-              <button
-                type="button"
-                className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setShowPricingModal()
-                  onContactUsClick?.()
-                }}
+              <span
+                aria-hidden
+                className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible"
               >
                 {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-              </button>
+              </span>
             )}
           />
         </DropdownMenuItem>
