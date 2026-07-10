@@ -94,5 +94,80 @@ describe('base', () => {
 
       expect(toast.error).not.toHaveBeenCalled()
     })
+
+    it('should not display an error toast when the response status is expected', async () => {
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'not_found',
+          message: 'Agent config version not found.',
+          status: 404,
+        }),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(base('/agent/agent-1/build-draft', {}, { expectedErrorStatuses: [404] }))
+        .rejects
+        .toBeInstanceOf(Response)
+
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('should display an error toast when the response status is not expected', async () => {
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'internal_server_error',
+          message: 'Server error',
+          status: 500,
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(base('/agent/agent-1/build-draft', {}, { expectedErrorStatuses: [404] }))
+        .rejects
+        .toBeInstanceOf(Response)
+
+      expect(toast.error).toHaveBeenCalledWith('Server error')
+    })
+
+    it('should preserve silent behavior when expected error statuses are configured', async () => {
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'internal_server_error',
+          message: 'Server error',
+          status: 500,
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(base('/agent/agent-1/build-draft', {}, {
+        expectedErrorStatuses: [404],
+        silent: true,
+      }))
+        .rejects
+        .toBeInstanceOf(Response)
+
+      expect(toast.error).not.toHaveBeenCalled()
+    })
   })
 })

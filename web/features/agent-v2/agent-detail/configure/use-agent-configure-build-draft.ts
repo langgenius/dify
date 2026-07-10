@@ -14,6 +14,7 @@ import { consoleQuery } from '@/service/client'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const BUILD_DRAFT_EXPECTED_ERROR_STATUSES = [404] as const
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 
@@ -147,7 +148,6 @@ export function useAgentConfigureBuildDraftData({
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
   soulSourceOverride: AgentConfigureSoulSource | null
 }) {
-  const shouldSilenceBuildDraftCheckRef = useRef(true)
   const buildDraftQueryInput = {
     params: {
       agent_id: agentId,
@@ -157,28 +157,16 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {},
-  })
-  const silentBuildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-    input: {
-      params: buildDraftQueryInput.params,
-    },
     context: {
-      silent: true,
+      expectedErrorStatuses: BUILD_DRAFT_EXPECTED_ERROR_STATUSES,
     },
-    queryKey: buildDraftQueryOptions.queryKey,
   })
   const buildDraftQuery = useQuery({
     ...buildDraftQueryOptions,
     enabled: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version',
     queryFn: async (context) => {
       try {
-        const queryOptions = shouldSilenceBuildDraftCheckRef.current
-          ? silentBuildDraftQueryOptions
-          : buildDraftQueryOptions
-
-        shouldSilenceBuildDraftCheckRef.current = false
-        return await queryOptions.queryFn(context)
+        return await buildDraftQueryOptions.queryFn(context)
       }
       catch (error) {
         if (isNotFoundResponse(error))

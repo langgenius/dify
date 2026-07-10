@@ -6,6 +6,11 @@ import { AgentConfigurePage } from '../page'
 
 const mocks = vi.hoisted(() => ({
   applyBuildDraft: vi.fn(),
+  buildDraftQueryOptions: vi.fn((options?: object) => ({
+    ...options,
+    queryFn: vi.fn(),
+    queryKey: ['build-draft'],
+  })),
   checkoutBuildDraft: vi.fn(),
   discardBuildDraft: vi.fn(),
   finalizeBuildChat: vi.fn(),
@@ -168,11 +173,7 @@ vi.mock('@/service/client', () => ({
         },
         buildDraft: {
           get: {
-            queryOptions: (options?: object) => ({
-              ...options,
-              queryFn: vi.fn(),
-              queryKey: ['build-draft'],
-            }),
+            queryOptions: mocks.buildDraftQueryOptions,
           },
           checkout: {
             post: {
@@ -732,6 +733,46 @@ describe('AgentConfigurePage', () => {
         refetchOnReconnect: false,
         refetchOnWindowFocus: false,
       })
+    })
+
+    it('should mark missing build drafts as expected without using blanket silence', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(mocks.buildDraftQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        context: {
+          expectedErrorStatuses: [404],
+        },
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }))
+      expect(mocks.buildDraftQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+        context: expect.objectContaining({
+          silent: true,
+        }),
+      }))
     })
 
     it('should enter build draft mode when build draft data exists', () => {

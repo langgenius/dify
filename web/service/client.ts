@@ -60,6 +60,7 @@ export function getBaseURL(path: string) {
 }
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
+  expectedErrorStatuses?: readonly number[]
   silent?: boolean
 }
 
@@ -73,6 +74,7 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
         normalizeConsoleOpenAPIURL(input.url),
         init,
         {
+          expectedErrorStatuses: options.context.expectedErrorStatuses,
           fetchCompat: true,
           request: input,
           silent: options.context.silent,
