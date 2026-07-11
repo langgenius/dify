@@ -11,6 +11,14 @@ export type DataSourceCredential = {
   id: string
   is_default: boolean
   avatar_url: string
+  // Sharing scope: 'only_me' | 'all_team_members' | 'partial_members'
+  visibility?: string
+  // Creator account id (null for legacy credentials)
+  user_id?: string | null
+  // Whether the current user may change this credential's visibility
+  is_editable?: boolean
+  // Account ids granted access when visibility is 'partial_members'
+  partial_member_list?: string[]
 }
 export type DataSourceAuth = {
   author: string

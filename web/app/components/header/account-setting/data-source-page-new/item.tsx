@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PermissionLevel } from '@/models/permission'
 import Operator from './operator'
 
 type ItemProps = {
@@ -79,6 +80,21 @@ const Item = ({
               credentialItem.is_default && (
                 <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium-uppercase text-text-tertiary">
                   {t($ => $['auth.default'], { ns: 'plugin' })}
+                </div>
+              )
+            }
+            {
+              // all_team_members is the default scope, so only restricted scopes get a badge.
+              credentialItem.visibility === PermissionLevel.onlyMe && (
+                <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium text-text-tertiary">
+                  {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
+                </div>
+              )
+            }
+            {
+              credentialItem.visibility === PermissionLevel.partialMembers && (
+                <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium text-text-tertiary">
+                  {t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}
                 </div>
               )
             }

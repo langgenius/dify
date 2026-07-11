@@ -15,6 +15,7 @@ import {
   memo,
   useCallback,
   useRef,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -32,6 +33,7 @@ import Configure from './configure'
 import { useDataSourceAuthUpdate } from './hooks'
 import Item from './item'
 import DataSourcePluginActions from './plugin-actions'
+import VisibilityModal from './visibility-modal'
 
 const getPluginVersion = (uniqueIdentifier?: string) => {
   return uniqueIdentifier?.match(/:([^:@]+)@/)?.[1]
@@ -84,6 +86,7 @@ const Card = ({
     pendingOperationCredentialId,
   } = usePluginAuthAction(pluginPayload, handleAuthUpdate)
   const changeCredentialIdRef = useRef<string | undefined>(undefined)
+  const [visibilityCredential, setVisibilityCredential] = useState<DataSourceCredential | null>(null)
   const {
     mutateAsync: getPluginOAuthUrl,
   } = useGetDataSourceOAuthUrl(pluginPayload.provider)
@@ -125,6 +128,9 @@ const Card = ({
       changeCredentialIdRef.current = credentialItem.id
       handleOAuth()
     }
+
+    if (action === 'visibility')
+      setVisibilityCredential(credentialItem)
   }, [
     openConfirm,
     handleEdit,
@@ -240,6 +246,17 @@ const Card = ({
             editValues={editValues}
             onRemove={handleRemove}
             disabled={disabled || doingAction || !canManageCredential}
+          />
+        )
+      }
+      {
+        !!visibilityCredential && (
+          <VisibilityModal
+            provider={pluginPayload.provider}
+            credentialItem={visibilityCredential}
+            onClose={() => setVisibilityCredential(null)}
+            onUpdate={handleAuthUpdate}
+            disabled={disabled || !canManageCredential}
           />
         )
       }

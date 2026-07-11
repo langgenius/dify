@@ -419,6 +419,87 @@ class TestDatasourceProviderService:
         assert target.is_default is True
 
     # -----------------------------------------------------------------------
+    # _resolve_visibility
+    # -----------------------------------------------------------------------
+
+    def test_should_default_to_all_team_when_visibility_is_none(self, service):
+        from models.enums import PermissionEnum
+
+        assert service._resolve_visibility(None) == PermissionEnum.ALL_TEAM
+
+    def test_should_use_explicit_default_when_visibility_is_none(self, service):
+        from models.enums import PermissionEnum
+
+        assert service._resolve_visibility(None, default=PermissionEnum.ONLY_ME) == PermissionEnum.ONLY_ME
+
+    def test_should_parse_valid_visibility_string(self, service):
+        from models.enums import PermissionEnum
+
+        assert service._resolve_visibility("only_me") == PermissionEnum.ONLY_ME
+        assert service._resolve_visibility("partial_members") == PermissionEnum.PARTIAL_TEAM
+
+    def test_should_raise_when_visibility_invalid(self, service):
+        with pytest.raises(ValueError, match="Invalid visibility"):
+            service._resolve_visibility("bogus")
+
+    # -----------------------------------------------------------------------
+    # update_datasource_credential_visibility
+    # -----------------------------------------------------------------------
+
+    def test_should_raise_when_visibility_target_provider_not_found(self, service, mock_db_session):
+        mock_db_session.scalar.return_value = None
+        user = MagicMock(id="u1")
+        with pytest.raises(ValueError, match="not found"):
+            service.update_datasource_credential_visibility("t1", make_id(), "cred-id", "only_me", user)
+
+    def test_should_forbid_non_creator_changing_visibility(self, service, mock_db_session):
+        from werkzeug.exceptions import Forbidden
+
+        target = MagicMock(spec=DatasourceProvider)
+        target.user_id = "creator"
+        mock_db_session.scalar.return_value = target
+        user = MagicMock(id="someone-else")
+        with pytest.raises(Forbidden):
+            service.update_datasource_credential_visibility("t1", make_id(), "cred-id", "only_me", user)
+
+    def test_should_require_member_list_for_partial_members(self, service, mock_db_session):
+        target = MagicMock(spec=DatasourceProvider)
+        target.user_id = "u1"
+        mock_db_session.scalar.return_value = target
+        user = MagicMock(id="u1")
+        with pytest.raises(ValueError, match="partial_member_list is required"):
+            service.update_datasource_credential_visibility(
+                "t1", make_id(), "cred-id", "partial_members", user, partial_member_list=[]
+            )
+
+    def test_should_claim_ownership_when_legacy_row_set_to_only_me(self, service, mock_db_session):
+        from models.enums import PermissionEnum
+
+        target = MagicMock(spec=DatasourceProvider)
+        target.user_id = None  # legacy row with no recorded creator
+        mock_db_session.scalar.return_value = target
+        user = MagicMock(id="u1")
+        with patch("services.datasource_provider_service.CredentialPermissionService") as mock_cps:
+            service.update_datasource_credential_visibility("t1", make_id(), "cred-id", "only_me", user)
+            mock_cps.clear_partial_member_list.assert_called_once()
+        assert target.user_id == "u1"
+        assert target.visibility == PermissionEnum.ONLY_ME
+
+    def test_should_replace_members_when_set_to_partial(self, service, mock_db_session):
+        from models.enums import PermissionEnum
+
+        target = MagicMock(spec=DatasourceProvider)
+        target.user_id = "u1"
+        mock_db_session.scalar.return_value = target
+        user = MagicMock(id="u1")
+        with patch("services.datasource_provider_service.CredentialPermissionService") as mock_cps:
+            service.update_datasource_credential_visibility(
+                "t1", make_id(), "cred-id", "partial_members", user, partial_member_list=["a", "b"]
+            )
+            mock_cps.replace_partial_member_list.assert_called_once()
+        assert target.visibility == PermissionEnum.PARTIAL_TEAM
+
+    # -----------------------------------------------------------------------
     # get_oauth_encrypter (lines 404-420)
     # -----------------------------------------------------------------------
 

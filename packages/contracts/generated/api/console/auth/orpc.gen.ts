@@ -28,6 +28,9 @@ import {
   zPostAuthPluginDatasourceByProviderIdUpdateNameResponse,
   zPostAuthPluginDatasourceByProviderIdUpdatePath,
   zPostAuthPluginDatasourceByProviderIdUpdateResponse,
+  zPostAuthPluginDatasourceByProviderIdVisibilityBody,
+  zPostAuthPluginDatasourceByProviderIdVisibilityPath,
+  zPostAuthPluginDatasourceByProviderIdVisibilityResponse,
 } from './zod.gen'
 
 export const get = oc
@@ -171,6 +174,26 @@ export const updateName = {
   post: post5,
 }
 
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAuthPluginDatasourceByProviderIdVisibility',
+    path: '/auth/plugin/datasource/{provider_id}/visibility',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAuthPluginDatasourceByProviderIdVisibilityBody,
+      params: zPostAuthPluginDatasourceByProviderIdVisibilityPath,
+    }),
+  )
+  .output(zPostAuthPluginDatasourceByProviderIdVisibilityResponse)
+
+export const visibility = {
+  post: post6,
+}
+
 export const get3 = oc
   .route({
     inputStructure: 'detailed',
@@ -182,7 +205,7 @@ export const get3 = oc
   .input(z.object({ params: zGetAuthPluginDatasourceByProviderIdPath }))
   .output(zGetAuthPluginDatasourceByProviderIdResponse)
 
-export const post6 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -200,12 +223,13 @@ export const post6 = oc
 
 export const byProviderId = {
   get: get3,
-  post: post6,
+  post: post7,
   customClient,
   default: default_,
   delete: delete2,
   update,
   updateName,
+  visibility,
 }
 
 export const datasource = {
