@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import { AppModeEnum, ModelModeType, type CompletionParams, type Model } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -63,6 +63,13 @@ type IGetAutomaticResProps = {
   isBasicMode?: boolean
 }
 
+const getInitialModelMode = (mode: AppModeEnum): ModelModeType => {
+  if (mode === AppModeEnum.COMPLETION)
+    return ModelModeType.completion
+
+  return ModelModeType.chat
+}
+
 const TryLabel: FC<{
   Icon: any
   text: string
@@ -95,7 +102,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const [model, setModel] = React.useState<Model>(storedModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType,
+    mode: getInitialModelMode(mode),
     completion_params: {} as CompletionParams,
   })
   const {
