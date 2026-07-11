@@ -6,7 +6,7 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
 const kbdVariants = cva(
-  'pointer-events-none inline-flex h-4 min-w-4 select-none items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic',
+  'pointer-events-none inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic select-none',
   {
     variants: {
       color: {

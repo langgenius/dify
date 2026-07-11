@@ -67,7 +67,7 @@ function NumberFieldExample({
 }: NumberFieldExampleProps) {
   return (
     <div className="grid w-80 gap-1">
-      <label htmlFor={id} className="text-text-secondary system-sm-medium">
+      <label htmlFor={id} className="system-sm-medium text-text-secondary">
         {label}
       </label>
       <NumberField
@@ -281,7 +281,7 @@ function FormDemo() {
         <Button type="submit" variant="primary">Save Settings</Button>
       </div>
       {savedValue && (
-        <div className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
+        <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary">
           Saved:
           {' '}
           {savedValue}

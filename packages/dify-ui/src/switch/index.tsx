@@ -50,8 +50,8 @@ const switchSpinnerVariants = cva(
   {
     variants: {
       size: {
-        md: 'size-2 left-[calc(50%+6px)] group-data-checked:left-[calc(50%-6px)]',
-        lg: 'size-2.5 left-[calc(50%+8px)] group-data-checked:left-[calc(50%-8px)]',
+        md: 'left-[calc(50%+6px)] size-2 group-data-checked:left-[calc(50%-6px)]',
+        lg: 'left-[calc(50%+8px)] size-2.5 group-data-checked:left-[calc(50%-8px)]',
       },
     },
   },

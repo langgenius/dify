@@ -68,7 +68,7 @@ function StorySection({
       <div className="space-y-1">
         <div className="system-xs-medium-uppercase text-text-tertiary">{eyebrow}</div>
         <h3 className="system-md-semibold text-text-primary">{title}</h3>
-        <p className="max-w-[72ch] text-pretty system-sm-regular text-text-secondary">{description}</p>
+        <p className="max-w-[72ch] system-sm-regular text-pretty text-text-secondary">{description}</p>
       </div>
       <div className="mt-5 flex justify-center">
         {children}
@@ -103,7 +103,7 @@ export const Anatomy: Story = {
     >
       <ScrollAreaRoot className="relative h-75 w-full max-w-105 min-w-0">
         <ScrollAreaViewport aria-label="Scrollable anatomy example" role="region" className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg">
-          <VerticalContent className="flex flex-col gap-4 py-2 pl-3 pr-5 text-text-secondary system-sm-regular leading-6">
+          <VerticalContent className="flex flex-col gap-4 py-2 pr-5 pl-3 system-sm-regular leading-6 text-text-secondary">
             {articleParagraphs.map(paragraph => (
               <p key={paragraph}>
                 {paragraph}
@@ -128,7 +128,7 @@ export const Vertical: Story = {
     >
       <ScrollAreaRoot className="relative h-90 w-full max-w-130 min-w-0">
         <ScrollAreaViewport aria-label="Long form content" role="region" className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg">
-          <VerticalContent className="flex flex-col gap-4 p-4 pr-6 text-text-secondary system-sm-regular leading-6">
+          <VerticalContent className="flex flex-col gap-4 p-4 pr-6 system-sm-regular leading-6 text-text-secondary">
             <div className="space-y-1">
               <div className="system-xs-medium-uppercase text-text-tertiary">Article</div>
               <div className="system-md-semibold text-text-primary">Scrollable text region</div>
@@ -201,7 +201,7 @@ export const ScrollFade: Story = {
             'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
-          <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 text-text-secondary system-sm-regular leading-6">
+          <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 system-sm-regular leading-6 text-text-secondary">
             {Array.from({ length: 5 }, (_, groupIndex) => (
               articleParagraphs.map(paragraph => (
                 <p key={`${groupIndex}-${paragraph}`}>
@@ -232,7 +232,7 @@ export const Horizontal: Story = {
           <ScrollAreaContent className="min-h-full min-w-max p-4 pb-6">
             <div className="grid grid-cols-[repeat(18,6.25rem)] gap-3">
               {gridCells.slice(0, 18).map(cell => (
-                <div key={cell} className="flex h-24 items-center justify-center rounded-xl border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
+                <div key={cell} className="flex h-24 items-center justify-center rounded-xl border border-divider-subtle bg-components-panel-bg-alt system-md-semibold text-text-secondary tabular-nums">
                   {cell}
                 </div>
               ))}
@@ -259,7 +259,7 @@ export const BothAxes: Story = {
           <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
             <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">
               {gridCells.map(cell => (
-                <div key={cell} className="flex items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
+                <div key={cell} className="flex items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-bg-alt system-md-semibold text-text-secondary tabular-nums">
                   {cell}
                 </div>
               ))}

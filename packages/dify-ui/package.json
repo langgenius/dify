@@ -151,6 +151,7 @@
     }
   },
   "scripts": {
+    "lint": "eslint --cache --max-warnings=0 .",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vp test --project unit",

@@ -30,7 +30,7 @@ type Story = StoryObj<typeof meta>
 export const Basic: Story = {
   render: () => (
     <div className="w-80">
-      <label htmlFor="workspace-name" className="mb-1 block w-fit py-1 text-text-secondary system-sm-medium">
+      <label htmlFor="workspace-name" className="mb-1 block w-fit py-1 system-sm-medium text-text-secondary">
         Workspace name
       </label>
       <Input
@@ -46,15 +46,15 @@ export const Basic: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="small-input">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="small-input">
         Small
         <Input id="small-input" size="small" name="smallInput" placeholder="e.g. tag…" autoComplete="off" />
       </label>
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="medium-input">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="medium-input">
         Medium
         <Input id="medium-input" name="mediumInput" placeholder="e.g. Production API…" autoComplete="off" />
       </label>
-      <label className="grid gap-1 text-text-secondary system-sm-medium" htmlFor="large-input">
+      <label className="grid gap-1 system-sm-medium text-text-secondary" htmlFor="large-input">
         Large
         <Input id="large-input" size="large" name="largeInput" placeholder="e.g. Customer portal…" autoComplete="off" />
       </label>
@@ -66,11 +66,11 @@ export const States: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
       <div className="grid gap-1">
-        <label className="text-text-secondary system-sm-medium" htmlFor="placeholder-state">Placeholder</label>
+        <label className="system-sm-medium text-text-secondary" htmlFor="placeholder-state">Placeholder</label>
         <Input id="placeholder-state" name="placeholderState" placeholder="e.g. Search datasets…" autoComplete="off" />
       </div>
       <div className="grid gap-1">
-        <label className="text-text-secondary system-sm-medium" htmlFor="filled-state">Filled</label>
+        <label className="system-sm-medium text-text-secondary" htmlFor="filled-state">Filled</label>
         <Input id="filled-state" name="filledState" defaultValue="Customer knowledge base" autoComplete="off" />
       </div>
       <div className="grid gap-1">
@@ -88,11 +88,11 @@ export const States: Story = {
         </Field>
       </div>
       <div className="grid gap-1">
-        <label className="text-text-secondary system-sm-medium" htmlFor="disabled-state">Disabled</label>
+        <label className="system-sm-medium text-text-secondary" htmlFor="disabled-state">Disabled</label>
         <Input id="disabled-state" disabled name="disabledEmail" type="email" inputMode="email" placeholder="name@example.com…" autoComplete="email" spellCheck={false} />
       </div>
       <div className="grid gap-1">
-        <label className="text-text-secondary system-sm-medium" htmlFor="readonly-state">Read-only</label>
+        <label className="system-sm-medium text-text-secondary" htmlFor="readonly-state">Read-only</label>
         <Input id="readonly-state" readOnly name="endpoint" type="url" inputMode="url" defaultValue="https://api.example.com" autoComplete="url" spellCheck={false} />
       </div>
     </div>
