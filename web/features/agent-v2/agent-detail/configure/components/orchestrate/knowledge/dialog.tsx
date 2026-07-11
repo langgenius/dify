@@ -18,7 +18,7 @@ import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
-import { useMemo, useLayoutEffect as useReactLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -69,11 +69,6 @@ type AgentKnowledgeRetrievalDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
-const noopLayoutEffect: typeof useReactLayoutEffect = () => {}
-const useIsoLayoutEffect = typeof document !== 'undefined'
-  ? useReactLayoutEffect
-  : noopLayoutEffect
 
 const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
 
@@ -243,7 +238,7 @@ function EditableKnowledgeRetrievalName({
   const inputRef = useRef<HTMLInputElement>(null)
   const restoreButtonFocusRef = useRef(false)
 
-  useIsoLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (editing) {
       inputRef.current?.focus()
       inputRef.current?.select()

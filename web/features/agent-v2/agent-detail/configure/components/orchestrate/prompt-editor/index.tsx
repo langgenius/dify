@@ -23,7 +23,7 @@ import {
   COMMAND_PRIORITY_LOW,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
-import { useCallback, useEffect, useMemo, useLayoutEffect as useReactLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -43,11 +43,6 @@ import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
-
-const noopLayoutEffect: typeof useReactLayoutEffect = () => {}
-const useIsoLayoutEffect = typeof document !== 'undefined'
-  ? useReactLayoutEffect
-  : noopLayoutEffect
 
 function AgentPromptPlaceholder({
   insertLabel,
@@ -870,7 +865,7 @@ export function AgentPromptEditor() {
     }
   }, [closeSlashMenu, isSlashMenuOpen])
 
-  useIsoLayoutEffect(() => {
+  useEffect(() => {
     if (!isSlashMenuOpen)
       return
 
@@ -948,7 +943,7 @@ export function AgentPromptEditor() {
     }
   }, [activateSlashMenuItem, closeSlashMenu, focusPromptEditor, getSlashMenuItems, isSlashMenuOpen, returnToSlashMenuMain, setActiveSlashMenuItem, slashMenuView])
 
-  useIsoLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen)
       return
 
