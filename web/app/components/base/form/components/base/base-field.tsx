@@ -491,6 +491,7 @@ const BaseField = ({
             className="mt-4 flex items-center system-xs-regular text-text-accent"
             href={url}
             target="_blank"
+            rel="noopener noreferrer"
           >
             <span className="break-all">
               {translatedHelp}
