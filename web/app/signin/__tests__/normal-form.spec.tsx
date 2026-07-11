@@ -49,6 +49,18 @@ const mockUseSearchParams = useSearchParams as unknown as ReturnType<typeof vi.f
 
 const loggedInQueryResult = {
   isPending: false,
+  isFetchedAfterMount: true,
+  data: {
+    profile: {
+      id: 'account-id',
+    },
+  },
+  error: null,
+}
+
+const staleLoggedInQueryResult = {
+  isPending: false,
+  isFetchedAfterMount: false,
   data: {
     profile: {
       id: 'account-id',
@@ -127,6 +139,30 @@ describe('NormalForm', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/signin/invite-settings?invite_token=invite-token')
       })
+    })
+
+    it('should not redirect from stale cached profile data before a post-mount probe completes', async () => {
+      mockUseQuery
+        .mockReturnValueOnce(staleLoggedInQueryResult as unknown as ReturnType<typeof useQuery>)
+        .mockReturnValueOnce(invitationQueryResult as unknown as ReturnType<typeof useQuery>)
+
+      render(<NormalForm />)
+
+      await waitFor(() => {
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should force a post-mount profile probe on signin even when cache exists', async () => {
+      mockUseQuery
+        .mockReturnValueOnce(staleLoggedInQueryResult as unknown as ReturnType<typeof useQuery>)
+        .mockReturnValueOnce(invitationQueryResult as unknown as ReturnType<typeof useQuery>)
+
+      render(<NormalForm />)
+
+      expect(mockUseQuery).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        refetchOnMount: 'always',
+      }))
     })
   })
 })

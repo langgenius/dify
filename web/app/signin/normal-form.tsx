@@ -28,12 +28,14 @@ function NormalForm() {
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
-  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
+  const { isPending: isCheckLoading, data: userResp, error: probeError, isFetchedAfterMount } = useQuery({
     ...userProfileQueryOptions(),
     throwOnError: err => !isLegacyBase401(err),
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   })
-  const isLoggedIn = !!userResp && !probeError
+  const isLoggedIn = !!userResp && !probeError && isFetchedAfterMount
+  const isVerifyingCachedSession = !!userResp && !probeError && !isFetchedAfterMount
   const message = decodeURIComponent(searchParams.get('message') || '')
   const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -68,7 +70,7 @@ function NormalForm() {
   const showORLine = (hasSocialLogin || hasSsoLogin) && hasEmailLogin
   const noLoginMethodsConfigured = !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const isLoading = isCheckLoading || isLoggedIn || (isInviteLink && isInviteCheckLoading)
+  const isLoading = isCheckLoading || isLoggedIn || isVerifyingCachedSession || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
     if (!isLoggedIn)
