@@ -452,13 +452,12 @@ export function PaginationPageList({
     )),
   }
 
-  const pageList = useRender({
+  return useRender({
     defaultTagName: 'ol',
     render,
     props: mergeProps<'ol'>(defaultProps, props),
+    enabled: pagination.hasPages,
   })
-
-  return pagination.hasPages ? pageList : null
 }
 
 export type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {

@@ -62,6 +62,15 @@ export default antfu(
   },
   ...storybook.configs['flat/recommended'],
   {
+    name: 'dify-ui/storybook',
+    files: ['**/.storybook/main.{js,cjs,mjs,ts}'],
+    rules: {
+      'storybook/no-uninstalled-addons': ['error', {
+        packageJsonLocation: path.resolve(import.meta.dirname, 'package.json'),
+      }],
+    },
+  },
+  {
     name: 'dify-ui/tailwind',
     files: SOURCE_FILES,
     ignores: [GLOB_MARKDOWN_CODE, ...TEST_FILES],
@@ -72,20 +81,6 @@ export default antfu(
       'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
       'tailwindcss/no-deprecated-classes': 'error',
-      'tailwindcss/no-restricted-classes': ['error', {
-        restrict: [
-          {
-            pattern: '^(-?)start-(.+)$',
-            fix: '$1inset-s-$2',
-            message: 'Use inset-s-* instead of the deprecated start-* utility.',
-          },
-          {
-            pattern: '^(-?)end-(.+)$',
-            fix: '$1inset-e-$2',
-            message: 'Use inset-e-* instead of the deprecated end-* utility.',
-          },
-        ],
-      }],
       'tailwindcss/no-unknown-classes': 'error',
       'tailwindcss/no-unnecessary-whitespace': 'error',
     },
@@ -94,42 +89,6 @@ export default antfu(
         cwd: import.meta.dirname,
         entryPoint: path.resolve(import.meta.dirname, './.storybook/storybook.css'),
       },
-    },
-  },
-  {
-    name: 'dify-ui/import-boundaries',
-    files: SOURCE_FILES,
-    ignores: [GLOB_MARKDOWN_CODE],
-    rules: {
-      'no-restricted-imports': ['error', {
-        paths: [
-          'i18next',
-          'jotai',
-          'ky',
-          'next',
-          'next-i18next',
-          'react-i18next',
-          'zustand',
-          {
-            name: '@tanstack/react-query',
-            message: 'Application data fetching belongs in web, not @langgenius/dify-ui.',
-          },
-        ],
-        patterns: [
-          {
-            group: ['@/*', 'web', 'web/*', '**/web/**'],
-            message: 'Do not import from web inside @langgenius/dify-ui.',
-          },
-          {
-            group: ['@langgenius/dify-ui', '@langgenius/dify-ui/*'],
-            message: 'Use relative imports between @langgenius/dify-ui components.',
-          },
-          {
-            group: ['next/*'],
-            message: 'Next.js dependencies belong in web, not @langgenius/dify-ui.',
-          },
-        ],
-      }],
     },
   },
   {

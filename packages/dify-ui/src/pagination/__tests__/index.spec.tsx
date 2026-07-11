@@ -255,6 +255,18 @@ describe('Pagination primitive', () => {
     expect(screen.container.querySelector('ol')).not.toBeInTheDocument()
   })
 
+  it('does not invoke a custom page list renderer when there are no pages', async () => {
+    const renderPageList = vi.fn(() => <ol />)
+
+    await render(
+      <PaginationRoot page={1} totalPages={0} onPageChange={vi.fn()}>
+        <PaginationPageList render={renderPageList} />
+      </PaginationRoot>,
+    )
+
+    expect(renderPageList).not.toHaveBeenCalled()
+  })
+
   it('allows custom page rendering while keeping the shared context', async () => {
     const onPageChange = vi.fn()
     const screen = await render(
