@@ -3,6 +3,7 @@ from typing import Literal
 from flask import request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -100,7 +101,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     return SetupResponse(result="success")
 
 
-def get_setup_status(*, session) -> DifySetup | bool | None:
+def get_setup_status(*, session: scoped_session) -> DifySetup | bool | None:
     if dify_config.EDITION == "SELF_HOSTED":
         return session.scalar(select(DifySetup).limit(1))
 
