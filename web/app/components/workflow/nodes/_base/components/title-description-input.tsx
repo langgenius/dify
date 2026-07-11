@@ -54,7 +54,8 @@ export const TitleInput = memo(({
       onKeyDown={handleKeyDown}
       className={`
         mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary
-        outline-hidden focus:shadow-xs
+        outline-hidden hover:border-components-input-border-hover hover:bg-components-input-bg-hover
+        focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs
       `}
       placeholder={t($ => $['common.addTitle'], { ns: 'workflow' }) || ''}
       onBlur={handleBlur}
