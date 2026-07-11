@@ -59,17 +59,16 @@ class TestWeaviateVector(unittest.TestCase):
         )
         return wv, mock_client
 
-    def test_shutdown_client_logs_debug_when_close_fails(self, caplog):
+    def test_shutdown_client_logs_debug_when_close_fails(self):
         mock_client = MagicMock()
         mock_client.close.side_effect = RuntimeError("close failed")
         weaviate_vector_module._weaviate_client = mock_client
 
-        with caplog.at_level(logging.DEBUG):
+        with self.assertLogs(weaviate_vector_module.logger.name, level=logging.DEBUG):
             weaviate_vector_module._shutdown_weaviate_client()
 
         assert weaviate_vector_module._weaviate_client is None
         mock_client.close.assert_called_once()
-        assert len(caplog.records) >= 1
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate.connect_to_custom")
     def test_init_client_reuses_cached_client_without_reconnect(self, mock_connect):
@@ -257,7 +256,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_redis.set.assert_not_called()
 
     @patch("dify_vdb_weaviate.weaviate_vector.redis_client")
-    def test_create_collection_logs_and_reraises_errors(self, mock_redis, caplog):
+    def test_create_collection_logs_and_reraises_errors(self, mock_redis):
         mock_lock = MagicMock()
         mock_lock.__enter__ = MagicMock()
         mock_lock.__exit__ = MagicMock(return_value=False)
@@ -270,12 +269,11 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client.collections.exists.side_effect = RuntimeError("create failed")
 
         with (
-            caplog.at_level(logging.ERROR),
+            self.assertLogs(weaviate_vector_module.logger.name, level=logging.ERROR),
             pytest.raises(RuntimeError, match="create failed"),
         ):
             wv._create_collection()
 
-        assert len(caplog.records) >= 1
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_ensure_properties_adds_missing_doc_type(self, mock_weaviate_module):
@@ -371,7 +369,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_col.config.add_property.assert_not_called()
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
-    def test_ensure_properties_logs_warning_when_property_addition_fails(self, mock_weaviate_module, caplog):
+    def test_ensure_properties_logs_warning_when_property_addition_fails(self, mock_weaviate_module):
         mock_client = MagicMock()
         mock_client.is_ready.return_value = True
         mock_weaviate_module.connect_to_custom.return_value = mock_client
@@ -389,10 +387,10 @@ class TestWeaviateVector(unittest.TestCase):
             attributes=self.attributes,
         )
 
-        with caplog.at_level(logging.WARNING):
+        with self.assertLogs(weaviate_vector_module.logger.name, level=logging.WARNING) as cm:
             wv._ensure_properties()
 
-        assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 6
+        assert len([r for r in cm.records if r.levelname == 'WARNING']) == 6
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_returns_doc_type_in_metadata(self, mock_weaviate_module):
