@@ -9,6 +9,7 @@ from models import App, AppMode
 from models.model import AppModelConfig, IconType
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
+from services.errors.app import WorkflowNotFoundError
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -166,3 +167,20 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
     session.get.assert_called_once_with(AppModelConfig, "config-1")
     load_annotation_reply_config.assert_called_once_with(session, "app-1")
     app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+
+
+def test_append_workflow_export_data_reports_missing_selected_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_id = "11111111-1111-4111-8111-111111111111"
+    workflow_service = Mock()
+    workflow_service.get_draft_workflow.return_value = None
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    app = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+
+    with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
+        AppDslService._append_workflow_export_data(
+            export_data={},
+            app_model=app,
+            include_secret=False,
+            session=Mock(),
+            workflow_id=workflow_id,
+        )

@@ -1305,7 +1305,7 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
             AppDslService.export_dsl(
                 app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers

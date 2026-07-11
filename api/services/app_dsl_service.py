@@ -649,10 +649,13 @@ class AppDslService:
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
+        :param workflow_id: Optional published workflow version to export
         """
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
         if not workflow:
+            if workflow_id:
+                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)

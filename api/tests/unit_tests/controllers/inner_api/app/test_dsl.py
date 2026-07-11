@@ -242,9 +242,7 @@ class TestEnterpriseAppDSLExport:
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     @patch("controllers.inner_api.app.dsl.db")
-    def test_export_selected_workflow_forwards_canonical_uuid(
-        self, mock_db, mock_dsl_cls, api_instance, app: Flask
-    ):
+    def test_export_selected_workflow_forwards_canonical_uuid(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_app = MagicMock()
         mock_db.session.get.return_value = mock_app
         mock_dsl_cls.export_dsl.return_value = "yaml-data"
@@ -265,9 +263,7 @@ class TestEnterpriseAppDSLExport:
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     @patch("controllers.inner_api.app.dsl.db")
-    def test_export_selected_workflow_with_secret(
-        self, mock_db, mock_dsl_cls, api_instance, app: Flask
-    ):
+    def test_export_selected_workflow_with_secret(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_app = MagicMock()
         mock_db.session.get.return_value = mock_app
         mock_dsl_cls.export_dsl.return_value = "yaml-data"
@@ -305,9 +301,7 @@ class TestEnterpriseAppDSLExport:
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     @patch("controllers.inner_api.app.dsl.db")
-    def test_export_selected_missing_workflow_returns_404(
-        self, mock_db, mock_dsl_cls, api_instance, app: Flask
-    ):
+    def test_export_selected_missing_workflow_returns_404(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_db.session.get.return_value = MagicMock()
         mock_dsl_cls.export_dsl.side_effect = WorkflowNotFoundError("selected workflow not found")
         workflow_id = "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
@@ -331,9 +325,7 @@ class TestEnterpriseAppDSLExport:
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     @patch("controllers.inner_api.app.dsl.db")
-    def test_export_selected_draft_workflow_returns_422(
-        self, mock_db, mock_dsl_cls, api_instance, app: Flask
-    ):
+    def test_export_selected_draft_workflow_returns_400(self, mock_db, mock_dsl_cls, api_instance, app: Flask):
         mock_db.session.get.return_value = MagicMock()
         mock_dsl_cls.export_dsl.side_effect = IsDraftWorkflowError("selected workflow is a draft")
         workflow_id = "f1fd7266-56fc-45c7-9d81-a72cd5a1b4f6"
@@ -342,11 +334,11 @@ class TestEnterpriseAppDSLExport:
         with app.test_request_context(f"?workflow_id={workflow_id}"):
             body, status_code = unwrapped(api_instance, app_id="app-123")
 
-        assert status_code == 422
+        assert status_code == 400
         assert body == {
             "code": "workflow_version_not_published",
             "message": "selected workflow is a draft",
-            "status": 422,
+            "status": 400,
         }
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
