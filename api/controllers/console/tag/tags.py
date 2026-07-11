@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -113,7 +114,7 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None) -> None:
     )
 
 
-def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, *, session) -> None:
+def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, *, session: scoped_session) -> None:
     if not dify_config.RBAC_ENABLED:
         return
 
