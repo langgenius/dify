@@ -87,9 +87,8 @@ class EnterpriseAppDSLExport(Resource):
         "enterprise_app_dsl_export",
         responses={
             200: "Export successful",
-            400: "Invalid workflow ID",
+            400: "Invalid workflow ID or unpublished workflow version",
             404: "App or workflow version not found",
-            422: "Workflow version is not published",
         },
     )
     def get(self, app_id: str):
@@ -127,7 +126,7 @@ class EnterpriseAppDSLExport(Resource):
             except WorkflowNotFoundError as exc:
                 return {"code": "workflow_version_not_found", "message": str(exc), "status": 404}, 404
             except IsDraftWorkflowError as exc:
-                return {"code": "workflow_version_not_published", "message": str(exc), "status": 422}, 422
+                return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
 
         return {"data": data}, 200
 
