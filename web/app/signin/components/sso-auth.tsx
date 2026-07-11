@@ -28,6 +28,8 @@ const SSOAuth: FC<SSOAuthProps> = ({
     if (protocol === SSOProtocol.SAML) {
       getUserSAMLSSOUrl(invite_token).then((res) => {
         router.push(res.url)
+      }).catch(() => {
+        toast.error(t('error.ssoFailed', { ns: 'login' }))
       }).finally(() => {
         setIsLoading(false)
       })
@@ -36,6 +38,8 @@ const SSOAuth: FC<SSOAuthProps> = ({
       getUserOIDCSSOUrl(invite_token).then((res) => {
         document.cookie = `user-oidc-state=${res.state};Path=/`
         router.push(res.url)
+      }).catch(() => {
+        toast.error(t('error.ssoFailed', { ns: 'login' }))
       }).finally(() => {
         setIsLoading(false)
       })
@@ -44,6 +48,8 @@ const SSOAuth: FC<SSOAuthProps> = ({
       getUserOAuth2SSOUrl(invite_token).then((res) => {
         document.cookie = `user-oauth2-state=${res.state};Path=/`
         router.push(res.url)
+      }).catch(() => {
+        toast.error(t('error.ssoFailed', { ns: 'login' }))
       }).finally(() => {
         setIsLoading(false)
       })
