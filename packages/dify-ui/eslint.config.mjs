@@ -56,7 +56,6 @@ export default antfu(
     rules: {
       ...jsxA11y.flatConfigs.recommended.rules,
       'jsx-a11y/anchor-has-content': 'off',
-      'jsx-a11y/heading-has-content': 'off',
       'jsx-a11y/label-has-associated-control': 'off',
     },
   },

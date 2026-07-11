@@ -24,14 +24,12 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
-    "@eslint-react/eslint-plugin": "catalog:",
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
     "eslint-plugin-no-barrel-files": "catalog:",
-    "eslint-plugin-react-refresh": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
