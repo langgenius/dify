@@ -4,12 +4,34 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
-let mockWorkspacePermissionKeys: string[] = ['tool.manage']
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 // Mock useLocale and useDocLink
@@ -81,7 +103,7 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['tool.manage']
+    mockAppContextState.workspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
@@ -94,7 +116,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not render anything when user does not have tool.manage', () => {
-      mockWorkspacePermissionKeys = []
+      mockAppContextState.workspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -132,7 +154,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#swagger-api')
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
@@ -146,7 +168,7 @@ describe('CustomCreateCard', () => {
     })
 
     it('should not render toolbar add button when user does not have tool.manage', () => {
-      mockWorkspacePermissionKeys = []
+      mockAppContextState.workspacePermissionKeys = []
 
       const { container } = render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 

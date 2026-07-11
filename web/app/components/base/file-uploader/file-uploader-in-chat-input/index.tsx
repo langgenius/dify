@@ -21,7 +21,7 @@ const FileUploaderInChatInput = ({
     return (
       <button
         type="button"
-        aria-label={t('fileUploader.uploadFromComputer', { ns: 'common' })}
+        aria-label={t($ => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
         className={cn(
           'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary outline-hidden',
           'hover:bg-state-base-hover hover:text-text-secondary',

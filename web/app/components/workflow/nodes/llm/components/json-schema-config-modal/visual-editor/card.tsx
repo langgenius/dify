@@ -29,7 +29,7 @@ const Card: FC<CardProps> = ({
         {
           required && (
             <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-              {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
+              {t($ => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
             </div>
           )
         }

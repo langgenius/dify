@@ -12,7 +12,7 @@ const Title = ({
 
   return (
     <div className="px-[5px] py-1 system-sm-medium text-text-secondary">
-      {t('onlineDocument.pageSelectorTitle', { ns: 'datasetPipeline', name })}
+      {t($ => $['onlineDocument.pageSelectorTitle'], { ns: 'datasetPipeline', name })}
     </div>
   )
 }

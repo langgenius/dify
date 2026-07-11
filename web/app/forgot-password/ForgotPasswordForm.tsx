@@ -88,10 +88,10 @@ const ForgotPasswordForm = () => {
           <>
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
               <h2 className="text-[32px] font-bold text-text-primary">
-                {isEmailSent ? t('resetLinkSent', { ns: 'login' }) : t('forgotPassword', { ns: 'login' })}
+                {isEmailSent ? t($ => $.resetLinkSent, { ns: 'login' }) : t($ => $.forgotPassword, { ns: 'login' })}
               </h2>
               <p className="mt-1 text-sm text-text-secondary">
-                {isEmailSent ? t('checkEmailForResetLink', { ns: 'login' }) : t('forgotPasswordDesc', { ns: 'login' })}
+                {isEmailSent ? t($ => $.checkEmailForResetLink, { ns: 'login' }) : t($ => $.forgotPasswordDesc, { ns: 'login' })}
               </p>
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
@@ -110,7 +110,7 @@ const ForgotPasswordForm = () => {
                           htmlFor="email"
                           className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
                         >
-                          {t('email', { ns: 'login' })}
+                          {t($ => $.email, { ns: 'login' })}
                         </label>
                         <div className="mt-1">
                           <form.AppField
@@ -122,13 +122,13 @@ const ForgotPasswordForm = () => {
                                 value={field.state.value}
                                 onChange={e => field.handleChange(e.target.value)}
                                 onBlur={field.handleBlur}
-                                placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+                                placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
                               />
                             )}
                           </form.AppField>
                           {emailErrors && emailErrors.length > 0 && (
                             <span className="text-sm text-red-400">
-                              {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
+                              {t($ => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
                             </span>
                           )}
                         </div>
@@ -136,7 +136,7 @@ const ForgotPasswordForm = () => {
                     )}
                     <div>
                       <Button variant="primary" className="w-full" disabled={isSubmitting} onClick={handleSendResetPasswordClick}>
-                        {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
+                        {isEmailSent ? t($ => $.backToSignIn, { ns: 'login' }) : t($ => $.sendResetLink, { ns: 'login' })}
                       </Button>
                     </div>
                   </form>

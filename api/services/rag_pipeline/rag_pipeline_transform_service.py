@@ -96,7 +96,7 @@ class RagPipelineTransformService:
         # deal document data
         self._deal_document_data(dataset, session)
 
-        session.flush()
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset_id,
@@ -194,6 +194,7 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        *,
         session: Session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
@@ -269,11 +270,13 @@ class RagPipelineTransformService:
 
         installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
         dependencies = pipeline_yaml.get("dependencies", [])
-        need_install_plugin_unique_identifiers = []
+        package_identifiers_to_install = []
         for dependency in dependencies:
             if dependency.get("type") == "marketplace":
-                plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
-                plugin_id = plugin_unique_identifier.split(":")[0]
+                package_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
+                if not package_identifier:
+                    continue
+                plugin_id = package_identifier.split(":", 1)[0]
                 if plugin_id not in installed_plugins_ids:
                     if not dify_config.MARKETPLACE_ENABLED:
                         logger.warning(
@@ -282,14 +285,14 @@ class RagPipelineTransformService:
                             plugin_id,
                         )
                         continue
-                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore
-                    if plugin_unique_identifier:
-                        need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
-        if need_install_plugin_unique_identifiers:
-            logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
-            PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
+                    latest_package_identifier = plugin_migration._fetch_latest_package_identifier(plugin_id)  # type: ignore
+                    if latest_package_identifier:
+                        package_identifiers_to_install.append(latest_package_identifier)
+        if package_identifiers_to_install:
+            logger.debug("Installing missing pipeline plugins %s", package_identifiers_to_install)
+            PluginService.install_from_marketplace_pkg(tenant_id, package_identifiers_to_install)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset, session: Session):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, *, session: Session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
@@ -304,7 +307,7 @@ class RagPipelineTransformService:
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(dataset)
-        session.flush()
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,

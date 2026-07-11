@@ -27,8 +27,8 @@ export function UpgradeModal({
       open={open}
       onOpenChange={onOpenChange}
       Icon={RiMailSendFill}
-      title={t('nodes.humanInput.deliveryMethod.upgradeTip', { ns: 'workflow' })}
-      description={t('nodes.humanInput.deliveryMethod.upgradeTipContent', { ns: 'workflow' })}
+      title={t($ => $['nodes.humanInput.deliveryMethod.upgradeTip'], { ns: 'workflow' })}
+      description={t($ => $['nodes.humanInput.deliveryMethod.upgradeTipContent'], { ns: 'workflow' })}
       classNames={{
         content: 'max-w-[580px]',
       }}
@@ -38,7 +38,7 @@ export function UpgradeModal({
             className="w-[72px]"
             onClick={() => onOpenChange(false)}
           >
-            {t('nodes.humanInput.deliveryMethod.upgradeTipHide', { ns: 'workflow' })}
+            {t($ => $['nodes.humanInput.deliveryMethod.upgradeTipHide'], { ns: 'workflow' })}
           </Button>
           {IS_CLOUD_EDITION && (
             <PremiumBadgeButton
@@ -50,7 +50,7 @@ export function UpgradeModal({
               <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
               <div className="system-sm-medium">
                 <span className="p-1">
-                  {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                  {t($ => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                 </span>
               </div>
             </PremiumBadgeButton>

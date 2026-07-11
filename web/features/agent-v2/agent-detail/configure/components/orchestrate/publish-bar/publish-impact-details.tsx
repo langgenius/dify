@@ -30,24 +30,24 @@ export function AgentPublishImpactDetails({
     >
       <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
         <h2 id={titleId} className="w-full px-1 pr-8 system-xl-semibold wrap-break-word text-text-primary">
-          {t('agentDetail.configure.publishImpact.title', {
+          {t($ => $['agentDetail.configure.publishImpact.title'], {
             action: publishActionLabel,
-            name: agentName || t('agentDetail.configure.publishImpact.fallbackAgentName'),
+            name: agentName || t($ => $['agentDetail.configure.publishImpact.fallbackAgentName']),
           })}
         </h2>
         <p className="px-1 system-xs-regular wrap-break-word text-text-warning">
-          {t('agentDetail.configure.publishImpact.descriptionPrefix')}
+          {t($ => $['agentDetail.configure.publishImpact.descriptionPrefix'])}
           {' '}
           <span className="system-xs-medium">
-            {t('agentDetail.configure.publishImpact.workflowCount', { count: references.length })}
+            {t($ => $['agentDetail.configure.publishImpact.workflowCount'], { count: references.length })}
           </span>
-          {t('agentDetail.configure.publishImpact.descriptionSuffix')}
+          {t($ => $['agentDetail.configure.publishImpact.descriptionSuffix'])}
         </p>
       </div>
 
       <div className="flex w-full flex-col gap-1 px-4 py-2">
         <div className="flex min-h-6 items-center system-sm-medium text-text-secondary">
-          {t('agentDetail.configure.publishImpact.affectedWorkflows')}
+          {t($ => $['agentDetail.configure.publishImpact.affectedWorkflows'])}
         </div>
         <div className="flex max-h-[123px] flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
           {references.map(reference => (

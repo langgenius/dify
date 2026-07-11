@@ -4,16 +4,16 @@ import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsibl
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
 
-export type CollapsibleRootProps
+export type CollapsibleProps
   = Omit<BaseCollapsibleNS.Root.Props, 'className'>
     & {
       className?: string
     }
 
-export function CollapsibleRoot({
+export function Collapsible({
   className,
   ...props
-}: CollapsibleRootProps) {
+}: CollapsibleProps) {
   return (
     <BaseCollapsible.Root
       className={cn('flex min-w-0 flex-col', className)}

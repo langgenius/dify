@@ -45,8 +45,6 @@ export type ChatMessagePayload = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type SimpleResultResponse = {
   result: string
 }
@@ -195,8 +193,10 @@ export type JsonValue
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -205,11 +205,15 @@ export type ExploreMessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type JsonObject = {
@@ -249,6 +253,7 @@ export type InstalledAppInfoResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -411,7 +416,11 @@ export type InstalledAppListResponseWritable = {
   installed_apps: Array<InstalledAppResponseWritable>
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type ExploreMessageInfiniteScrollPaginationWritable = {
+  data: Array<ExploreMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
 
 export type InstalledAppResponseWritable = {
   app: InstalledAppInfoResponseWritable
@@ -421,6 +430,31 @@ export type InstalledAppResponseWritable = {
   is_pinned: boolean
   last_used_at?: number | null
   uninstallable: boolean
+}
+
+export type ExploreMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
 }
 
 export type InstalledAppInfoResponseWritable = {
@@ -520,7 +554,9 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
@@ -553,7 +589,9 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
@@ -714,7 +752,9 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
@@ -847,7 +887,9 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse

@@ -34,7 +34,7 @@ const useSingleRunFormParams = ({
     return [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })!,
           variable: 'files',
           type: InputVarType.multiFiles,
           required: true,

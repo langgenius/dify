@@ -44,7 +44,7 @@ function AgentConfigurePageContent({
 
   if (configureData.isPending) {
     return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
+      <AgentConfigurePageLoading label={t($ => $['agentDetail.sections.configure'])} />
     )
   }
 

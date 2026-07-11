@@ -2,8 +2,7 @@
 
 import type { Permissions } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useTranslation } from 'react-i18next'
 import { PluginSidecarPanel } from '@/app/components/plugins/plugin-page/plugin-sidecar-panel'
 import { PermissionType } from '@/app/components/plugins/types'
@@ -40,18 +39,18 @@ export function PermissionQuickPanel({
   }> = [
     {
       key: 'install_permission',
-      label: t('privilege.quickWhoCanInstall', { ns: 'plugin' }),
+      label: t($ => $['privilege.quickWhoCanInstall'], { ns: 'plugin' }),
       value: permission.install_permission || PermissionType.noOne,
     },
     {
       key: 'debug_permission',
-      label: t('privilege.quickWhoCanDebug', { ns: 'plugin' }),
+      label: t($ => $['privilege.quickWhoCanDebug'], { ns: 'plugin' }),
       value: permission.debug_permission || PermissionType.noOne,
     },
   ]
 
   return (
-    <PluginSidecarPanel title={t('privilege.permissions', { ns: 'plugin' })}>
+    <PluginSidecarPanel title={t($ => $['privilege.permissions'], { ns: 'plugin' })}>
       <div className="flex w-full shrink-0 flex-col items-start justify-center gap-3 px-4 pt-2 pb-4">
         {rows.map(row => (
           <div key={row.key} className="flex w-full shrink-0 flex-col items-start gap-1">
@@ -68,19 +67,18 @@ export function PermissionQuickPanel({
               className="w-full gap-2"
             >
               {permissionSettingOptions.map((option) => {
-                const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
+                const optionLabel = t($ => $[`privilege.${option}`], { ns: 'plugin' })
 
                 return (
-                  <RadioRoot
+                  <RadioItem<PermissionType>
                     key={option}
                     value={option}
-                    variant="unstyled"
                     nativeButton
                     render={<button type="button" className={permissionOptionCardClassName} />}
                     aria-label={`${row.label}: ${optionLabel}`}
                   >
                     <span className="min-w-0 truncate">{optionLabel}</span>
-                  </RadioRoot>
+                  </RadioItem>
                 )
               })}
             </RadioGroup>

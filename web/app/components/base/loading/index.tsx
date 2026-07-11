@@ -22,7 +22,7 @@ const Loading = (props?: ILoadingProps) => {
       )}
       role="status"
       aria-live="polite"
-      aria-label={t('loading', { ns: 'appApi' })}
+      aria-label={t($ => $.loading, { ns: 'appApi' })}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="spin-animation">
         <g clipPath="url(#clip0_324_2488)">

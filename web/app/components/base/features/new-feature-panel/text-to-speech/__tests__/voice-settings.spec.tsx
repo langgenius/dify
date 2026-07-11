@@ -123,7 +123,7 @@ describe('VoiceSettings', () => {
       </VoiceSettings>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /voice\.voiceSettings\.close/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onOpen).toHaveBeenCalledWith(false)
   })

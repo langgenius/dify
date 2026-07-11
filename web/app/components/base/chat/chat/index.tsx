@@ -72,9 +72,17 @@ export type ChatProps = {
   inputPlaceholder?: string
   inputPlaceholderBotName?: string
   sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  footerNotice?: ReactNode
+  footerNoticeTooltip?: ReactNode
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
+  renderAgentContent?: (props: {
+    item: ChatItem
+    responding?: boolean
+    content?: string
+  }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
@@ -121,9 +129,13 @@ const Chat: FC<ChatProps> = ({
   inputPlaceholder,
   inputPlaceholderBotName,
   sendButtonLabel,
+  sendButtonLoading,
+  footerNotice,
+  footerNoticeTooltip,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
+  renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -198,6 +210,7 @@ const Chat: FC<ChatProps> = ({
                       noChatInput={noChatInput}
                       switchSibling={switchSibling}
                       hideAvatar={hideAvatar}
+                      renderAgentContent={renderAgentContent}
                       onHumanInputFormSubmit={onHumanInputFormSubmit}
                     />
                   )
@@ -234,7 +247,7 @@ const Chat: FC<ChatProps> = ({
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
                   <Button className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
-                    <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+                    <span className="text-xs font-normal">{t($ => $['operation.stopResponding'], { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
               )
@@ -267,6 +280,9 @@ const Chat: FC<ChatProps> = ({
                   isResponding={isResponding}
                   readonly={readonly}
                   sendButtonLabel={sendButtonLabel}
+                  sendButtonLoading={sendButtonLoading}
+                  footerNotice={footerNotice}
+                  footerNoticeTooltip={footerNoticeTooltip}
                   sendOnEnter={sendOnEnter}
                 />
               )

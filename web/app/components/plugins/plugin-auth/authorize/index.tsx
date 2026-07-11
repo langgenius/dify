@@ -44,7 +44,7 @@ const Authorize = ({
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
-        buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
+        buttonText: !canApiKey ? t($ => $['auth.useOAuthAuth'], { ns: 'plugin' }) : t($ => $['auth.addOAuth'], { ns: 'plugin' }),
         buttonVariant: 'secondary',
         className: 'hover:bg-components-button-secondary-bg',
         buttonLeftClassName: 'hover:bg-components-button-secondary-bg-hover',
@@ -55,7 +55,7 @@ const Authorize = ({
     }
 
     return {
-      buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
+      buttonText: !canApiKey ? t($ => $['auth.useOAuthAuth'], { ns: 'plugin' }) : t($ => $['auth.addOAuth'], { ns: 'plugin' }),
       pluginPayload,
     }
   }, [canApiKey, theme, pluginPayload, t])
@@ -65,13 +65,13 @@ const Authorize = ({
       return {
         pluginPayload,
         buttonVariant: 'secondary',
-        buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+        buttonText: !canOAuth ? t($ => $['auth.useApiAuth'], { ns: 'plugin' }) : t($ => $['auth.addApi'], { ns: 'plugin' }),
         onClick: onApiKeyClick,
       }
     }
     return {
       pluginPayload,
-      buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+      buttonText: !canOAuth ? t($ => $['auth.useApiAuth'], { ns: 'plugin' }) : t($ => $['auth.addApi'], { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
       onClick: onApiKeyClick,
     }
@@ -93,7 +93,7 @@ const Authorize = ({
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t($ => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )
@@ -117,7 +117,7 @@ const Authorize = ({
         <Tooltip>
           <TooltipTrigger render={Item} />
           <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+            {t($ => $['auth.credentialUnavailable'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )

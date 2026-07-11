@@ -1,5 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,7 @@ import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XC
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
-const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
+const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 
@@ -52,7 +52,7 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const placeholderLabel = t('tag.placeholder', { ns: 'common' })
+  const placeholderLabel = t($ => $['tag.placeholder'], { ns: 'common' })
   const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : placeholderLabel
   const handleValueChange = useCallback((nextTags: Tag[]) => {
     const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
@@ -106,7 +106,7 @@ export const TagFilter = ({
         {!!value.length && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
+            aria-label={t($ => $['operation.clear'], { ns: 'common' })}
             className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={(event) => {
               event.stopPropagation()

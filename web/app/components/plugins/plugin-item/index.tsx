@@ -11,12 +11,13 @@ import {
   RiLoginCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
@@ -69,7 +70,7 @@ const PluginItem: FC<Props> = ({
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
 
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
@@ -110,7 +111,7 @@ const PluginItem: FC<Props> = ({
         setCurrentPluginID(plugin.plugin_id)
       }}
     >
-      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
+      <div className={cn('relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
         {/* Header */}
         <div className="flex">
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
@@ -123,18 +124,18 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 size-4" text={t($ => $['marketplace.verifiedTip'], { ns: 'plugin' })} />}
               {!isDifyVersionCompatible && (
                 <Popover>
                   <PopoverTrigger
                     openOnHover
-                    aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    aria-label={t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
                     className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
                   <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-                    {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    {t($ => $.difyVersionNotCompatible, { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
                   </PopoverContent>
                 </Popover>
               )}
@@ -183,9 +184,9 @@ const PluginItem: FC<Props> = ({
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
-                  title={t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
+                  title={t($ => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 >
-                  {t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
+                  {t($ => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 </span>
               </div>
             </>
@@ -197,7 +198,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $.from, { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="size-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
@@ -211,7 +212,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
                   <div className="system-2xs-medium-uppercase text-text-tertiary">
-                    {t('from', { ns: 'plugin' })}
+                    {t($ => $.from, { ns: 'plugin' })}
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
@@ -243,7 +244,7 @@ const PluginItem: FC<Props> = ({
           <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">
-              {t('deprecated', { ns: 'plugin' })}
+              {t($ => $.deprecated, { ns: 'plugin' })}
             </span>
           </div>
         )}

@@ -121,13 +121,13 @@ const ToolItem = ({
       {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
-          {t('notAuthorized', { ns: 'tools' })}
+          {t($ => $.notAuthorized, { ns: 'tools' })}
           <StatusDot className="ml-2" status="warning" />
         </Button>
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
         <Button variant="secondary" size="small">
-          {t('auth.authRemoved', { ns: 'plugin' })}
+          {t($ => $['auth.authRemoved'], { ns: 'plugin' })}
           <StatusDot className="ml-2" status="error" />
         </Button>
       )}
@@ -139,10 +139,10 @@ const ToolItem = ({
             tooltip={(
               <div className="w-45" data-testid="tooltip-content">
                 <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">
-                  {t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+                  {t($ => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
                 </div>
                 <div className="mb-1.5 text-text-tertiary" data-testid="tooltip-content-body">
-                  {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
+                  {`${t($ => $['detailPanel.toolSelector.unsupportedContent'], { ns: 'plugin' })} ${t($ => $['detailPanel.toolSelector.unsupportedContent2'], { ns: 'plugin' })}`}
                 </div>
               </div>
             )}
@@ -166,7 +166,7 @@ const ToolItem = ({
         <Popover>
           <PopoverTrigger
             openOnHover
-            aria-label={typeof errorTip === 'string' ? errorTip : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+            aria-label={typeof errorTip === 'string' ? errorTip : t($ => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })}
             className="inline-flex border-0 bg-transparent p-0"
           >
             <span className="i-ri-error-warning-fill size-4 text-text-destructive" />

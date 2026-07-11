@@ -20,12 +20,12 @@ def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker: MockerFix
     retrieval = RemotePipelineTemplateRetrieval()
     session = mocker.Mock()
 
-    result = retrieval.get_pipeline_templates(session, "en-US")
+    result = retrieval.get_pipeline_templates("en-US", session=session)
 
     assert retrieval.get_type() == PipelineTemplateType.REMOTE
     assert result == {"pipeline_templates": [{"id": "db-1"}]}
     fetch_mock.assert_called_once_with("en-US")
-    fallback_mock.assert_called_once_with(session, "en-US")
+    fallback_mock.assert_called_once_with("en-US", session=session)
 
 
 def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker: MockerFixture) -> None:
@@ -42,11 +42,11 @@ def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker: Moc
     retrieval = RemotePipelineTemplateRetrieval()
     session = mocker.Mock()
 
-    result = retrieval.get_pipeline_template_detail(session, "tpl-1")
+    result = retrieval.get_pipeline_template_detail("tpl-1", session=session)
 
     assert result == {"id": "db-1"}
     fetch_mock.assert_called_once_with("tpl-1")
-    fallback_mock.assert_called_once_with(session, "tpl-1")
+    fallback_mock.assert_called_once_with("tpl-1", session=session)
 
 
 def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture) -> None:

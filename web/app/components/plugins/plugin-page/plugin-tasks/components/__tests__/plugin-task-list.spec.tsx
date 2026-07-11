@@ -16,11 +16,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 vi.mock('@/service/plugins', () => ({
   fetchPluginInfoFromMarketPlace: vi.fn(),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 const mockGetIconUrl = vi.fn((icon: string) => `https://icons/${icon}`)
 
 const createPlugin = (id: string, name: string, overrides: Partial<PluginStatus> = {}): PluginStatus => ({

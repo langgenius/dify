@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })}
           required
         >
           <>
@@ -65,8 +65,8 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
               typePlaceHolder="File | Array[File]"
             />
             <div className="mt-1 py-0.5 body-xs-regular text-text-tertiary">
-              {t(`${i18nPrefix}.supportFileTypes`, { ns: 'workflow', types: supportTypesShowNames })}
-              <a className="text-text-accent" href={link} target="_blank" rel="noopener noreferrer">{t(`${i18nPrefix}.learnMore`, { ns: 'workflow' })}</a>
+              {t($ => $[`${i18nPrefix}.supportFileTypes`], { ns: 'workflow', types: supportTypesShowNames })}
+              <a className="text-text-accent" href={link} target="_blank" rel="noopener noreferrer">{t($ => $[`${i18nPrefix}.learnMore`], { ns: 'workflow' })}</a>
             </div>
           </>
         </Field>
@@ -77,7 +77,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
           <VarItem
             name="text"
             type={inputs.is_array_file ? 'array[string]' : 'string'}
-            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+            description={t($ => $[`${i18nPrefix}.outputVars.text`], { ns: 'workflow' })}
           />
         </OutputVars>
       </div>

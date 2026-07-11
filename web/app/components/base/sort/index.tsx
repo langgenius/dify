@@ -41,7 +41,7 @@ function Sort({
             className="flex min-h-8 cursor-pointer items-center rounded-l-lg border-none bg-components-input-bg-normal px-2 py-1 outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt"
           >
             <div className="flex items-center gap-0.5 px-1">
-              <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
+              <div className="system-sm-regular text-text-tertiary">{t($ => $['filter.sortBy'], { ns: 'appLog' })}</div>
               <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                 {triggerContent}
               </div>
@@ -75,7 +75,7 @@ function Sort({
       </DropdownMenu>
       <button
         type="button"
-        aria-label={t(`filter.${order ? 'ascending' : 'descending'}`, { ns: 'appLog' })}
+        aria-label={t($ => $[`filter.${order ? 'ascending' : 'descending'}`], { ns: 'appLog' })}
         className="ml-px cursor-pointer rounded-r-lg border-none bg-components-button-tertiary-bg p-2 outline-hidden hover:bg-components-button-tertiary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={() => onSelect(`${order ? '' : '-'}${value}`)}
       >

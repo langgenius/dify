@@ -109,10 +109,10 @@ export const useDatasourceUIState = ({
   // Tip message for selection
   const tip = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
-      return t('addDocuments.selectOnlineDocumentTip', { ns: 'datasetPipeline', count: 50 })
+      return t($ => $['addDocuments.selectOnlineDocumentTip'], { ns: 'datasetPipeline', count: 50 })
 
     if (datasourceType === DatasourceType.onlineDrive) {
-      return t('addDocuments.selectOnlineDriveTip', {
+      return t($ => $['addDocuments.selectOnlineDriveTip'], {
         ns: 'datasetPipeline',
         count: fileUploadConfig.batch_count_limit,
         fileSize: fileUploadConfig.file_size_limit,

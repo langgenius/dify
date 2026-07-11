@@ -101,10 +101,6 @@
       "types": "./src/radio/index.tsx",
       "import": "./src/radio/index.tsx"
     },
-    "./radio-group": {
-      "types": "./src/radio-group/index.tsx",
-      "import": "./src/radio-group/index.tsx"
-    },
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
@@ -160,7 +156,7 @@
     "test": "vp test --project unit",
     "test:storybook": "vp test --project storybook --run",
     "test:watch": "vp test --project unit --watch",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "peerDependencies": {
     "@base-ui/react": "catalog:",
@@ -190,7 +186,7 @@
     "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",

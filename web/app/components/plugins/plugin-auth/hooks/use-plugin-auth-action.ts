@@ -47,7 +47,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
@@ -71,7 +71,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
     }
     finally {
@@ -88,7 +88,7 @@ export const usePluginAuthAction = (
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
     }
     finally {

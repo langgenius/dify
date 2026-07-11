@@ -2,6 +2,7 @@ import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { pick } from 'es-toolkit/object'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,8 +10,9 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -62,8 +64,8 @@ const DocumentTableRow = React.memo(({
   const searchParams = useSearchParams()
   const documentNameId = React.useId()
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
@@ -137,7 +139,7 @@ const DocumentTableRow = React.memo(({
                   )}
                 />
                 <TooltipContent>
-                  {t('list.table.rename', { ns: 'datasetDocuments' })}
+                  {t($ => $['list.table.rename'], { ns: 'datasetDocuments' })}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -153,7 +155,7 @@ const DocumentTableRow = React.memo(({
       <td>{renderCount(doc.word_count)}</td>
       <td>{renderCount(doc.hit_count)}</td>
       <td className="text-[13px] text-text-secondary">
-        {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
+        {formatTime(doc.created_at, t($ => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string)}
       </td>
       <td>
         <StatusItem status={doc.display_status} />

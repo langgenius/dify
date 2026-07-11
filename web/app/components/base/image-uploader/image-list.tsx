@@ -43,7 +43,7 @@ const ImageList: FC<ImageListProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap" role="list" aria-label={t('imageUploader.imageList', { ns: 'common' })}>
+    <div className="flex flex-wrap" role="list" aria-label={t($ => $['imageUploader.imageList'], { ns: 'common' })}>
       {list.map(item => (
         <div
           key={item._id}
@@ -59,7 +59,7 @@ const ImageList: FC<ImageListProps> = ({
                 {item.progress === -1 && (
                   <button
                     type="button"
-                    aria-label={t('operation.retry', { ns: 'common' })}
+                    aria-label={t($ => $['operation.retry'], { ns: 'common' })}
                     className="size-5 border-none bg-transparent p-0 text-white focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-hidden"
                     onClick={() => onReUpload?.(item._id)}
                   >
@@ -97,7 +97,7 @@ const ImageList: FC<ImageListProps> = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
+                    {t($ => $['imageUploader.pasteImageLinkInvalid'], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -130,7 +130,7 @@ const ImageList: FC<ImageListProps> = ({
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove?.(item._id)}
-              aria-label={t('operation.remove', { ns: 'common' })}
+              aria-label={t($ => $['operation.remove'], { ns: 'common' })}
             >
               <span className="i-ri-close-line size-3 text-text-tertiary" aria-hidden="true" />
             </button>

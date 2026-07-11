@@ -9,9 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useMembers } from '@/service/use-common'
 
 type CreatorsFilterProps = {
@@ -33,12 +34,11 @@ const CreatorsFilter = ({
   onChange,
 }: CreatorsFilterProps) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
   const { data: membersData } = useMembers()
   const [keywords, setKeywords] = useState('')
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
-    const currentUserId = userProfile?.id
     const members = membersData?.accounts ?? []
 
     return [...members]
@@ -56,7 +56,7 @@ const CreatorsFilter = ({
         avatarUrl: member.avatar_url,
         isYou: member.id === currentUserId,
       }))
-  }, [membersData?.accounts, userProfile?.id])
+  }, [currentUserId, membersData?.accounts])
 
   const filteredCreators = useMemo(() => {
     const normalizedKeywords = keywords.trim().toLowerCase()
@@ -111,13 +111,13 @@ const CreatorsFilter = ({
       >
         {!isSelected && (
           <>
-            <span className="px-1 text-text-tertiary">{t('studio.filters.creators', { ns: 'app' })}</span>
+            <span className="px-1 text-text-tertiary">{t($ => $['studio.filters.creators'], { ns: 'app' })}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
           </>
         )}
         {isSelected && (
           <>
-            <span className="px-1 text-text-tertiary">{t('studio.filters.creators', { ns: 'app' })}</span>
+            <span className="px-1 text-text-tertiary">{t($ => $['studio.filters.creators'], { ns: 'app' })}</span>
             <span className="flex items-center pr-1">
               {selectedAvatarCreators.map((creator, index) => (
                 <Avatar
@@ -136,7 +136,7 @@ const CreatorsFilter = ({
             <span
               role="button"
               tabIndex={0}
-              aria-label={t('studio.filters.reset', { ns: 'app' })}
+              aria-label={t($ => $['studio.filters.reset'], { ns: 'app' })}
               className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-xs text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={(event) => {
                 event.stopPropagation()
@@ -164,12 +164,12 @@ const CreatorsFilter = ({
               className={cn('pl-6.5', keywords && 'pr-6.5')}
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
-              placeholder={t('studio.filters.searchCreators', { ns: 'app' })}
+              placeholder={t($ => $['studio.filters.searchCreators'], { ns: 'app' })}
             />
             {!!keywords && (
               <button
                 type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
+                aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                 className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
                 onClick={() => setKeywords('')}
               >
@@ -183,7 +183,7 @@ const CreatorsFilter = ({
               className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={resetCreators}
             >
-              {t('studio.filters.reset', { ns: 'app' })}
+              {t($ => $['studio.filters.reset'], { ns: 'app' })}
             </button>
           )}
         </div>
@@ -213,7 +213,7 @@ const CreatorsFilter = ({
                   <div className="flex min-w-0 grow items-center justify-between gap-2">
                     <span className="truncate text-sm text-text-secondary">{creator.name}</span>
                     {creator.isYou && (
-                      <span className="shrink-0 text-sm text-text-quaternary">{t('studio.filters.you', { ns: 'app' })}</span>
+                      <span className="shrink-0 text-sm text-text-quaternary">{t($ => $['studio.filters.you'], { ns: 'app' })}</span>
                     )}
                   </div>
                 </div>

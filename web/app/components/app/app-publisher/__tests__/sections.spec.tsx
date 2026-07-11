@@ -5,12 +5,6 @@ import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { AccessModeDisplay, PublisherAccessSection, PublisherActionsSection, PublisherSummarySection } from '../sections'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({ onSelect }: { onSelect: (item: Record<string, unknown>) => void }) => (
     <button type="button" onClick={() => onSelect({ model: 'gpt-4o' })}>publish-multiple-model</button>
@@ -78,7 +72,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.restore'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
   })
 
@@ -93,8 +87,8 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
-    expect(screen.getByText('publishApp.notSetDesc')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishApp\.notSetDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render the publish update action when the draft has not been published yet', () => {
@@ -116,7 +110,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('common.publishUpdate')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)common\.publishUpdate(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render multiple-model publishing', () => {
@@ -164,7 +158,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('publishLimit.startNodeDesc')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishLimit\.startNodeDesc(?=$|:)/)).toBeInTheDocument()
   })
 
   it('should render loading access state and access mode labels when enabled', () => {
@@ -190,7 +184,7 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('accessControlDialog.accessItems.anyone')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/)).toBeInTheDocument()
     expect(render(<AccessModeDisplay />).container).toBeEmptyDOMElement()
   })
 
@@ -205,8 +199,8 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
-    expect(screen.queryByText('accessControlDialog.accessItems.anyone')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)publishApp\.title(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should render workflow actions, batch run links, and workflow tool configuration', () => {
@@ -248,12 +242,12 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText('common.batchRunApp')).toHaveAttribute('data-link', 'https://example.com/app?mode=batch')
-    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[0]!)
+    expect(screen.getByText(/(?:^|\.)common\.batchRunApp(?=$|:)/)).toHaveAttribute('data-link', 'https://example.com/app?mode=batch')
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[0]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
-    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[1]!)
+    fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[1]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app?mode=batch')
-    fireEvent.click(screen.getByText('common.openInExplore'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.openInExplore(?=$|:)/))
     expect(handleOpenInExplore).toHaveBeenCalled()
     expect(screen.getByText('workflow-tool-configure')).toBeInTheDocument()
     expect(screen.getByText('workflow-disabled')).toBeInTheDocument()
@@ -285,9 +279,9 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('common.embedIntoSite'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.embedIntoSite(?=$|:)/))
     expect(handleEmbed).toHaveBeenCalled()
-    expect(screen.getByText('common.accessAPIReference')).toBeDisabled()
+    expect(screen.getByText(/(?:^|\.)common\.accessAPIReference(?=$|:)/)).toBeDisabled()
 
     rerender(
       <PublisherActionsSection
@@ -311,6 +305,6 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.queryByText('common.runApp')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)common\.runApp(?=$|:)/)).not.toBeInTheDocument()
   })
 })

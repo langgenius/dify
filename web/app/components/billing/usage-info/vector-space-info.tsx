@@ -58,15 +58,15 @@ const VectorSpaceInfo: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={RiHardDrive3Line}
-      name={t('usagePage.vectorSpace', { ns: 'billing' })}
-      tooltip={t('usagePage.vectorSpaceTooltip', { ns: 'billing' }) as string}
+      name={t($ => $['usagePage.vectorSpace'], { ns: 'billing' })}
+      tooltip={t($ => $['usagePage.vectorSpaceTooltip'], { ns: 'billing' }) as string}
       usage={usage.vectorSpace}
       total={totalInMB}
       unit="MB"
       unitPosition="inline"
       storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
-      storageTooltip={t('usagePage.storageThresholdTooltip', { ns: 'billing' }) as string}
+      storageTooltip={t($ => $['usagePage.storageThresholdTooltip'], { ns: 'billing' }) as string}
       isSandboxPlan={isSandbox}
     />
   )

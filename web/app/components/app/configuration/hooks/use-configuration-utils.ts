@@ -1,3 +1,4 @@
+import type { SelectorTranslate } from '../utils'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
@@ -20,7 +21,7 @@ import {
 } from '@/utils'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
-import { withCollectionIconBasePath } from '../utils'
+import { getStringSelectorTranslate, withCollectionIconBasePath } from '../utils'
 
 type BackendAgentTool = ModelConfig['agentConfig']['tools'][number] & {
   dataset?: {
@@ -499,7 +500,7 @@ export const createPublishHandler = ({
   setPublishedConfig,
   speechToTextConfig,
   suggestedQuestionsAfterAnswerConfig,
-  t,
+  t: rawTranslate,
   textToSpeechConfig,
 }: {
   appId: string
@@ -526,36 +527,37 @@ export const createPublishHandler = ({
   setPublishedConfig: (config: { modelConfig: ModelConfig, completionParams: FormValue }) => void
   speechToTextConfig: ModelConfig['speech_to_text']
   suggestedQuestionsAfterAnswerConfig: ModelConfig['suggested_questions_after_answer']
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: SelectorTranslate<'appDebug' | 'common'>
   textToSpeechConfig: ModelConfig['text_to_speech']
 }) => async (
   updateAppModelConfig: (params: { url: string, body: BackendModelConfig }) => Promise<unknown>,
   modelAndParameter?: { model: string, provider: string, parameters: FormValue },
   features?: FeaturesData,
 ) => {
+  const t = getStringSelectorTranslate(rawTranslate)
   const modelId = modelAndParameter?.model || modelConfig.model_id
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
 
   if (promptEmpty) {
-    toast.error(t('otherError.promptNoBeEmpty', { ns: 'appDebug' }))
+    toast.error(t($ => $['otherError.promptNoBeEmpty'], { ns: 'appDebug' }))
     return
   }
 
   if (isAdvancedMode && mode !== AppModeEnum.COMPLETION && resolvedModelModeType === ModelModeType.completion) {
     if (!hasSetBlockStatus.history) {
-      toast.error(t('otherError.historyNoBeEmpty', { ns: 'appDebug' }))
+      toast.error(t($ => $['otherError.historyNoBeEmpty'], { ns: 'appDebug' }))
       return
     }
 
     if (!hasSetBlockStatus.query) {
-      toast.error(t('otherError.queryNoBeEmpty', { ns: 'appDebug' }))
+      toast.error(t($ => $['otherError.queryNoBeEmpty'], { ns: 'appDebug' }))
       return
     }
   }
 
   if (contextVarEmpty) {
-    toast.error(t('feature.dataSet.queryVariable.contextVarNotEmpty', { ns: 'appDebug' }))
+    toast.error(t($ => $['feature.dataSet.queryVariable.contextVarNotEmpty'], { ns: 'appDebug' }))
     return
   }
 
@@ -595,7 +597,7 @@ export const createPublishHandler = ({
     modelConfig: nextModelConfig,
     completionParams: completionParamsState,
   })
-  toast.success(t('api.success', { ns: 'common' }))
+  toast.success(t($ => $['api.success'], { ns: 'common' }))
   setCanReturnToSimpleMode(false)
   return true
 }
@@ -612,7 +614,7 @@ export const createModelChangeHandler = ({
   resolvedModelModeType,
   setCompletionParams,
   setModelConfig,
-  t,
+  t: rawTranslate,
   visionConfig,
 }: {
   chatPromptLength: number
@@ -634,7 +636,7 @@ export const createModelChangeHandler = ({
   resolvedModelModeType: ModelModeType
   setCompletionParams: (value: FormValue) => void
   setModelConfig: (config: ModelConfig) => void
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: SelectorTranslate<'appDebug' | 'common'>
   visionConfig: VisionSettings
 }) => async ({
   features = [],
@@ -642,6 +644,7 @@ export const createModelChangeHandler = ({
   modelId,
   provider,
 }: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
+  const t = getStringSelectorTranslate(rawTranslate)
   if (isAdvancedMode) {
     if (nextModelMode === ModelModeType.completion) {
       if (mode !== AppModeEnum.COMPLETION) {
@@ -677,12 +680,12 @@ export const createModelChangeHandler = ({
     )
 
     if (Object.keys(removedDetails).length)
-      toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${Object.entries(removedDetails).map(([key, reason]) => `${key} (${reason})`).join(', ')}`)
+      toast.warning(`${t($ => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${Object.entries(removedDetails).map(([key, reason]) => `${key} (${reason})`).join(', ')}`)
 
     setCompletionParams(filtered)
   }
   catch {
-    toast.error(t('error', { ns: 'common' }))
+    toast.error(t($ => $.error, { ns: 'common' }))
     setCompletionParams({})
   }
 }

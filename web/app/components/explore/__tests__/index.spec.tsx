@@ -1,6 +1,4 @@
-import type { Mock } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { useAppContext } from '@/context/app-context'
+import { render, screen } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
 import Explore from '../index'
 
@@ -42,17 +40,10 @@ vi.mock('@/service/use-explore', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
 describe('Explore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMediaType = MediaType.pc
-    ;(useAppContext as Mock).mockReturnValue({
-      isCurrentWorkspaceDatasetOperator: false,
-    })
   })
 
   describe('Rendering', () => {
@@ -90,23 +81,19 @@ describe('Explore', () => {
   })
 
   describe('Effects', () => {
-    it('should not redirect dataset operators at component level', async () => {
-      ;(useAppContext as Mock).mockReturnValue({
-        isCurrentWorkspaceDatasetOperator: true,
-      })
-
+    it('should not redirect at component level', () => {
       render((
         <Explore>
           <div>child</div>
         </Explore>
       ))
 
-      await waitFor(() => {
-        expect(mockReplace).not.toHaveBeenCalled()
-      })
+      expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('should not redirect non dataset operators', () => {
+    it('should not redirect on mobile', () => {
+      mockMediaType = MediaType.mobile
+
       render((
         <Explore>
           <div>child</div>

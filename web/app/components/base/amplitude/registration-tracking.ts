@@ -31,7 +31,7 @@ const getSessionStorage = (): Storage | null => {
  * Amplitude attributes events to whatever identity is active when `track` runs. At
  * registration time the client does not yet know the user ID, so firing the event
  * immediately records it under an anonymous profile. We persist the event here and
- * replay it once `setUserId` runs in the app context provider after the redirect.
+ * replay it once `setUserId` runs in the bootstrap effects after the redirect.
  */
 export const rememberRegistrationSuccess = (
   { method, utmInfo }: { method: RegistrationMethod, utmInfo?: Record<string, unknown> | null },

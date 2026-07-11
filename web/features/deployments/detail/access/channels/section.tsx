@@ -12,7 +12,11 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../shared/components/empty-state'
 import { CopyPill, EndpointRow } from '../../../shared/components/endpoint'
 import { Section } from '../../../shared/components/section'
-import { accessSettingsQueryAtom } from '../state'
+import {
+  accessSettingsAtom,
+  accessSettingsIsErrorAtom,
+  accessSettingsIsLoadingAtom,
+} from '../state'
 import { getUrlOrigin } from './url'
 
 const ACCESS_CHANNEL_SKELETON_SECTIONS = [
@@ -31,7 +35,7 @@ function AccessChannelsSwitch({ checked, accessChannels, disabled }: {
 
   return (
     <Switch
-      aria-label={t('access.channels.title')}
+      aria-label={t($ => $['access.channels.title'])}
       checked={checked}
       disabled={disabled || !appInstanceId}
       loading={toggleAccessChannel.isPending}
@@ -115,12 +119,12 @@ function ChannelRow({ info, children }: {
 export function AccessChannelsSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const accessSettingsQuery = useAtomValue(accessSettingsQueryAtom)
-  const accessChannels = accessSettingsQuery.data?.accessChannels
-  const webAppEndpoints: AccessEndpoint[] | undefined = accessSettingsQuery.data?.webAppEndpoints
-  const cliEndpoint: AccessEndpoint | undefined = accessSettingsQuery.data?.cliEndpoint
-  const isLoading = accessSettingsQuery.isLoading
-  const isError = accessSettingsQuery.isError
+  const accessSettings = useAtomValue(accessSettingsAtom)
+  const isLoading = useAtomValue(accessSettingsIsLoadingAtom)
+  const isError = useAtomValue(accessSettingsIsErrorAtom)
+  const accessChannels = accessSettings?.accessChannels
+  const webAppEndpoints: AccessEndpoint[] | undefined = accessSettings?.webAppEndpoints
+  const cliEndpoint: AccessEndpoint | undefined = accessSettings?.cliEndpoint
   const runEnabled = accessChannels?.webAppEnabled ?? false
   const webappRows = webAppEndpoints?.flatMap((endpoint) => {
     const endpointUrl = endpoint.endpointUrl
@@ -137,14 +141,14 @@ export function AccessChannelsSection() {
 
   return (
     <Section
-      title={t('access.channels.title')}
+      title={t($ => $['access.channels.title'])}
       action={(
         isLoading
           ? <SwitchSkeleton />
           : (
               <div className="flex items-center gap-2">
                 <span className="system-xs-medium text-text-tertiary">
-                  {runEnabled ? t('overview.enabled') : t('overview.disabled')}
+                  {runEnabled ? t($ => $['overview.enabled']) : t($ => $['overview.disabled'])}
                 </span>
                 <AccessChannelsSwitch
                   checked={runEnabled}
@@ -158,7 +162,7 @@ export function AccessChannelsSection() {
       {isLoading
         ? <AccessChannelsSkeleton />
         : isError || !appInstanceId
-          ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
+          ? <DeploymentStateMessage variant="section">{t($ => $['common.loadFailed'])}</DeploymentStateMessage>
           : runEnabled
             ? (
                 <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
@@ -166,8 +170,8 @@ export function AccessChannelsSection() {
                     info={(
                       <ChannelInfo
                         icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
-                        title={t('access.runAccess.webapp')}
-                        description={t('access.runAccess.webappDesc')}
+                        title={t($ => $['access.runAccess.webapp'])}
+                        description={t($ => $['access.runAccess.webappDesc'])}
                       />
                     )}
                   >
@@ -178,16 +182,16 @@ export function AccessChannelsSection() {
                               <EndpointRow
                                 key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
                                 envName={endpoint.environment?.displayName ?? '—'}
-                                label={t('access.runAccess.urlLabel')}
+                                label={t($ => $['access.runAccess.urlLabel'])}
                                 value={endpointUrl}
-                                openLabel={t('access.runAccess.openWebapp')}
+                                openLabel={t($ => $['access.runAccess.openWebapp'])}
                               />
                             ))}
                           </div>
                         )
                       : (
                           <DeploymentNoticeState>
-                            {t('access.runAccess.webappEmpty')}
+                            {t($ => $['access.runAccess.webappEmpty'])}
                           </DeploymentNoticeState>
                         )}
                   </ChannelRow>
@@ -195,8 +199,8 @@ export function AccessChannelsSection() {
                     info={(
                       <ChannelInfo
                         icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
-                        title={t('access.cli.title')}
-                        description={t('access.cli.description')}
+                        title={t($ => $['access.cli.title'])}
+                        description={t($ => $['access.cli.description'])}
                       />
                     )}
                   >
@@ -204,7 +208,7 @@ export function AccessChannelsSection() {
                       ? (
                           <div className="flex flex-wrap items-center gap-2">
                             <CopyPill
-                              label={t('access.cli.domain')}
+                              label={t($ => $['access.cli.domain'])}
                               value={cliDomain}
                               className="min-w-0 flex-1"
                             />
@@ -215,7 +219,7 @@ export function AccessChannelsSection() {
                               className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
                             >
                               <span className="i-ri-download-cloud-2-line size-3.5" />
-                              {t('access.cli.install')}
+                              {t($ => $['access.cli.install'])}
                             </a>
                             <a
                               href={cliDocsUrl}
@@ -224,13 +228,13 @@ export function AccessChannelsSection() {
                               className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
                             >
                               <span className="i-ri-book-open-line size-3.5" />
-                              {t('access.cli.docs')}
+                              {t($ => $['access.cli.docs'])}
                             </a>
                           </div>
                         )
                       : (
                           <DeploymentNoticeState>
-                            {t('access.cli.empty')}
+                            {t($ => $['access.cli.empty'])}
                           </DeploymentNoticeState>
                         )}
                   </ChannelRow>
@@ -240,8 +244,8 @@ export function AccessChannelsSection() {
                 <DeploymentEmptyState
                   variant="section"
                   icon="i-ri-toggle-line"
-                  title={t('access.channels.disabled')}
-                  description={t('access.channels.disabledHint')}
+                  title={t($ => $['access.channels.disabled'])}
+                  description={t($ => $['access.channels.disabledHint'])}
                 />
               )}
     </Section>

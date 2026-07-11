@@ -2,7 +2,7 @@
 import type { MeterTone } from '@langgenius/dify-ui/meter'
 import type { ComponentType, FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { MeterIndicator, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
+import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -63,11 +63,11 @@ const UsageInfo: FC<Props> = ({
         : 'neutral'
 
   const isUnlimited = total === NUM_INFINITE
-  let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
+  let totalDisplay: string | number = isUnlimited ? t($ => $['plansCommon.unlimited'], { ns: 'billing' }) : total
   if (!isUnlimited && unit && unitPosition === 'inline')
     totalDisplay = `${total}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
-  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('usagePage.resetsIn', { ns: 'billing', count: resetInDays }) : undefined)
+  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t($ => $['usagePage.resetsIn'], { ns: 'billing', count: resetInDays }) : undefined)
 
   const rightInfo: ReactNode = resetText
     ? (
@@ -150,11 +150,11 @@ const UsageInfo: FC<Props> = ({
         </div>
       )
     : (
-        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
+        <Meter value={effectivePercent} max={100} aria-label={name}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
-        </MeterRoot>
+        </Meter>
       )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {

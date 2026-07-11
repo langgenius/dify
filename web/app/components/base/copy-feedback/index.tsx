@@ -25,8 +25,8 @@ const CopyFeedback = ({ content }: Props) => {
   const { copied, copy } = useClipboard({ timeout: 2000 })
 
   const tooltipText = copied
-    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+    ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+    : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeText = tooltipText || ''
 
@@ -58,8 +58,8 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
   const { copied, copy } = useClipboard({ timeout: 2000 })
 
   const tooltipText = copied
-    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+    ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+    : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeText = tooltipText || ''
 

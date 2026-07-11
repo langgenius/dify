@@ -7,53 +7,56 @@ import Status from '../status'
 const mockDocLink = createDocLinkMock()
 const mockUseWorkflowPausedDetails = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      if (fullKey === 'workflow.nodes.common.errorHandle.partialSucceeded.tip')
-        return 'There are {{num}} nodes in the process running abnormally, please go to TRACING to check the logs.'
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const fullKey = options?.ns ? `${options.ns}.${key}` : key
+        if (fullKey === 'workflow.nodes.common.errorHandle.partialSucceeded.tip')
+          return 'There are {{num}} nodes in the process running abnormally, please go to TRACING to check the logs.'
 
-      const params = { ...options }
-      delete params.ns
-      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
-      return `${fullKey}${suffix}`
-    },
-  }),
-  Trans: ({
-    i18nKey,
-    values,
-    components,
-  }: {
-    i18nKey: string
-    values?: {
-      num?: string | number
-    }
-    components?: Record<string, React.ReactNode>
-  }) => {
-    if (i18nKey !== 'nodes.common.errorHandle.partialSucceeded.tip')
-      return <span>{i18nKey}</span>
+        const params = { ...options }
+        delete params.ns
+        const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+        return `${fullKey}${suffix}`
+      }),
+    }),
+    Trans: withSelectorKeyProps(({
+      i18nKey,
+      values,
+      components,
+    }: {
+      i18nKey: string
+      values?: {
+        num?: string | number
+      }
+      components?: Record<string, React.ReactNode>
+    }) => {
+      if (i18nKey !== 'nodes.common.errorHandle.partialSucceeded.tip')
+        return <span>{i18nKey}</span>
 
-    const tracingLink = components?.tracingLink
-    const tracingNode = isValidElement(tracingLink)
-      ? cloneElement(tracingLink, undefined, 'TRACING')
-      : 'TRACING'
+      const tracingLink = components?.tracingLink
+      const tracingNode = isValidElement(tracingLink)
+        ? cloneElement(tracingLink, undefined, 'TRACING')
+        : 'TRACING'
 
-    return (
-      <span>
-        There are
-        {' '}
-        {values?.num}
-        {' '}
-        nodes in the process running abnormally, please go to
-        {' '}
-        {tracingNode}
-        {' '}
-        to check the logs.
-      </span>
-    )
-  },
-}))
+      return (
+        <span>
+          There are
+          {' '}
+          {values?.num}
+          {' '}
+          nodes in the process running abnormally, please go to
+          {' '}
+          {tracingNode}
+          {' '}
+          to check the logs.
+        </span>
+      )
+    }),
+  })
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,

@@ -4,18 +4,21 @@ import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-syste
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from '../empty-element'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey, components }: { i18nKey: string, components: Record<string, React.ReactNode> }) => (
-    <span>
-      {i18nKey}
-      {components.shareLink}
-      {components.testLink}
-    </span>
-  ),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey, components }: { i18nKey: string, components: Record<string, React.ReactNode> }) => (
+      <span>
+        {i18nKey}
+        {components.shareLink}
+        {components.testLink}
+      </span>
+    )),
+  })
+})
 
 vi.mock('@/utils/app-redirection', () => ({
   getRedirectionPath: (isTest: boolean, _app: App) => isTest ? '/test-path' : '/prod-path',

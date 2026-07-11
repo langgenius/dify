@@ -42,6 +42,7 @@ export type PopupProps = {
   hideProviderSettingsFooter?: boolean
   providerSettingsSource?: 'agent'
   modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onOpenMarketplace?: () => void
@@ -55,6 +56,7 @@ function Popup({
   hideProviderSettingsFooter,
   providerSettingsSource,
   modelPredicate,
+  modelSuggestionPredicate,
   onConfigureEmptyState,
   onInputValueChange,
   onOpenMarketplace,
@@ -203,7 +205,7 @@ function Popup({
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
-      <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+      <ModelSelectorScrollBody label={t($ => $['modelProvider.models'], { ns: 'common' })}>
         <ComboboxList className="max-h-none overflow-visible p-0">
           <div className="pb-1">
             {
@@ -212,6 +214,8 @@ function Popup({
                   key={model.provider}
                   defaultModel={defaultModel}
                   model={model}
+                  modelPredicate={modelPredicate}
+                  modelSuggestionPredicate={modelSuggestionPredicate}
                   previewCardHandle={previewCardHandle}
                   onPreviewCardClose={handleClosePreviewCard}
                   onHide={onHide}
@@ -228,7 +232,7 @@ function Popup({
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
             <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-              {t('modelProvider.selector.noModelFoundForSearch', { ns: 'common', query: inputValue })}
+              {t($ => $['modelProvider.selector.noModelFoundForSearch'], { ns: 'common', query: inputValue })}
             </div>
           )}
           {scopeFeatures.length > 0 && (
@@ -258,7 +262,7 @@ function Popup({
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
           <ModelSelectorPreviewCard
-            capabilitiesLabel={t('model.capabilities', { ns: 'common' })}
+            capabilitiesLabel={t($ => $['model.capabilities'], { ns: 'common' })}
             language={language}
             payload={payload as ModelSelectorPreviewPayload | undefined}
           />

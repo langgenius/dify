@@ -12,6 +12,7 @@ import { consoleQuery } from '@/service/client'
 
 type WorkflowReferencesTableProps = {
   agentId: string
+  enabled?: boolean
 }
 
 const workflowTableColSpan = 5
@@ -20,6 +21,7 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
 
 export function WorkflowReferencesTable({
   agentId,
+  enabled = true,
 }: WorkflowReferencesTableProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -29,6 +31,7 @@ export function WorkflowReferencesTable({
         agent_id: agentId,
       },
     },
+    enabled,
   }))
   const workflowReferences = workflowReferencesQuery.data?.data ?? []
 
@@ -45,32 +48,32 @@ export function WorkflowReferencesTable({
         <thead>
           <tr className="h-7 rounded-lg bg-background-section-burn text-left system-xs-semibold-uppercase text-text-tertiary">
             <th scope="col" className="rounded-l-lg px-3 font-semibold">
-              {t('agentDetail.access.workflow.table.name')}
+              {t($ => $['agentDetail.access.workflow.table.name'])}
             </th>
             <th scope="col" className="px-3 font-semibold">
-              {t('agentDetail.access.workflow.table.version')}
+              {t($ => $['agentDetail.access.workflow.table.version'])}
             </th>
             <th scope="col" className="px-3 font-semibold">
-              {t('agentDetail.access.workflow.table.nodes')}
+              {t($ => $['agentDetail.access.workflow.table.nodes'])}
             </th>
             <th scope="col" className="px-3 font-semibold">
-              {t('agentDetail.access.workflow.table.lastUpdated')}
+              {t($ => $['agentDetail.access.workflow.table.lastUpdated'])}
             </th>
             <th scope="col" className="rounded-r-lg px-3 font-semibold">
-              {t('agentDetail.access.workflow.table.actions')}
+              {t($ => $['agentDetail.access.workflow.table.actions'])}
             </th>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {workflowReferencesQuery.isPending && (
+          {enabled && workflowReferencesQuery.isPending && (
             <WorkflowAccessStateRow>
-              {t('agentDetail.access.workflow.loading')}
+              {t($ => $['agentDetail.access.workflow.loading'])}
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isError && (
+          {enabled && workflowReferencesQuery.isError && (
             <WorkflowAccessStateRow>
               <div className="flex items-center justify-center gap-2">
-                <span>{t('agentDetail.access.workflow.loadFailed')}</span>
+                <span>{t($ => $['agentDetail.access.workflow.loadFailed'])}</span>
                 <Button
                   variant="secondary"
                   size="small"
@@ -78,17 +81,17 @@ export function WorkflowReferencesTable({
                     void workflowReferencesQuery.refetch()
                   }}
                 >
-                  {tCommon('operation.retry')}
+                  {tCommon($ => $['operation.retry'])}
                 </Button>
               </div>
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isSuccess && workflowReferences.length === 0 && (
+          {enabled && workflowReferencesQuery.isSuccess && workflowReferences.length === 0 && (
             <WorkflowAccessStateRow>
-              {t('agentDetail.access.workflow.empty')}
+              {t($ => $['agentDetail.access.workflow.empty'])}
             </WorkflowAccessStateRow>
           )}
-          {workflowReferencesQuery.isSuccess && workflowReferences.map(reference => (
+          {enabled && workflowReferencesQuery.isSuccess && workflowReferences.map(reference => (
             <WorkflowAccessRow
               key={`${reference.app_id}:${reference.workflow_id}`}
               reference={reference}
@@ -110,8 +113,8 @@ function WorkflowAccessRow({
   const imageUrl = (reference.app_icon_type === 'image' || reference.app_icon_type === 'link') ? reference.app_icon : undefined
   const iconType = (imageUrl ? 'image' : reference.app_icon_type) as AgentIconType | null | undefined
   const updatedAt = reference.app_updated_at != null
-    ? formatTime(reference.app_updated_at, t('roster.dateTimeFormat'))
-    : t('agentDetail.access.workflow.notAvailable')
+    ? formatTime(reference.app_updated_at, t($ => $['roster.dateTimeFormat']))
+    : t($ => $['agentDetail.access.workflow.notAvailable'])
   const nodeCount = reference.node_ids?.length ?? 0
 
   return (
@@ -137,7 +140,7 @@ function WorkflowAccessRow({
         {reference.workflow_version}
       </td>
       <td className="px-3 tabular-nums">
-        {t('agentDetail.access.workflow.nodeCount', { count: nodeCount })}
+        {t($ => $['agentDetail.access.workflow.nodeCount'], { count: nodeCount })}
       </td>
       <td className="px-3 tabular-nums" translate="no">
         {updatedAt}
@@ -147,10 +150,10 @@ function WorkflowAccessRow({
           href={getWorkflowReferenceHref(reference)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={t('agentDetail.access.workflow.openInStudioFor', { name: reference.app_name })}
+          aria-label={t($ => $['agentDetail.access.workflow.openInStudioFor'], { name: reference.app_name })}
           className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
-          {t('agentDetail.access.workflow.openInStudio')}
+          {t($ => $['agentDetail.access.workflow.openInStudio'])}
           <span aria-hidden className="i-ri-external-link-line size-4" />
         </Link>
       </td>

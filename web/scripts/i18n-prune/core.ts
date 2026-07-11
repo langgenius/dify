@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import * as ts from 'typescript'
 
 const DEFAULT_LOCALE = 'en-US'
+const DEFAULT_NAMESPACE = 'app'
 const MAX_EXPANDED_VALUES = 200
 const SOURCE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx'])
 const PLURAL_SUFFIXES = ['_zero', '_one', '_two', '_few', '_many', '_other']
@@ -21,20 +22,23 @@ const SKIPPED_DIRECTORIES = new Set([
 
 type StaticValue
   = | { kind: 'strings', values: string[] }
-    | { kind: 'object', properties: Map<string, StaticValue> }
+    | { kind: 'object', properties: Map<string, StaticValue>, unknownKeyValues: StaticValue[], complete: boolean }
     | { kind: 'array', elements: StaticValue[] }
     | { kind: 'identityFunction' }
+    | { kind: 'selector', expression: ts.Expression }
+    | { kind: 'selectors', expressions: ts.Expression[] }
     | { kind: 'unknown' }
 
 type KeyExpressionUsage
   = | { kind: 'keys', keys: string[] }
     | { kind: 'patterns', patterns: Array<{ prefix: string, suffix: string }> }
     | { kind: 'mixed', keys: string[], patterns: Array<{ prefix: string, suffix: string }> }
-    | { kind: 'unknown' }
+    | { kind: 'unknown', namespace?: string }
 
 type TranslationFunctionInfo = {
   namespaces: string[]
   keyPrefix?: string
+  selectorArgumentIndex?: number
 }
 
 type UsageLocation = {
@@ -208,18 +212,18 @@ function getTranslationFunctionInfoFromType(typeNode: ts.TypeNode | undefined, c
   if (ts.isTypeReferenceNode(typeNode) && /(?:^|\.)TFunction$/.test(typeNode.typeName.getText())) {
     const namespace = getStringLiteralTypeValue(typeNode.typeArguments?.[0])
     return {
-      namespaces: namespace ? [normalizeNamespace(namespace, catalog)] : [],
+      namespaces: [namespace ? normalizeNamespace(namespace, catalog) : DEFAULT_NAMESPACE],
       keyPrefix: undefined,
     }
   }
 
   if (isLikelyTranslationFunctionType(typeNode))
-    return { namespaces: [], keyPrefix: undefined }
+    return { namespaces: [DEFAULT_NAMESPACE], keyPrefix: undefined }
 
   return undefined
 }
 
-function addTranslationFunction(scope: Scope, name: string, info: TranslationFunctionInfo = { namespaces: [], keyPrefix: undefined }) {
+function addTranslationFunction(scope: Scope, name: string, info: TranslationFunctionInfo = { namespaces: [DEFAULT_NAMESPACE], keyPrefix: undefined }) {
   scope.translationFunctions.set(name, info)
 }
 
@@ -289,6 +293,12 @@ function evaluateStaticExpression(expression: ts.Expression, scopes: Scope[]): S
     const whenFalse = evaluateStaticExpression(unwrapped.whenFalse, scopes)
     if (whenTrue.kind === 'strings' && whenFalse.kind === 'strings')
       return staticStrings([...whenTrue.values, ...whenFalse.values])
+    const trueExpression = unwrapExpression(unwrapped.whenTrue)
+    const falseExpression = unwrapExpression(unwrapped.whenFalse)
+    if (ts.isIdentifier(falseExpression) && falseExpression.text === 'undefined' && (whenTrue.kind === 'selector' || whenTrue.kind === 'selectors'))
+      return whenTrue
+    if (ts.isIdentifier(trueExpression) && trueExpression.text === 'undefined' && (whenFalse.kind === 'selector' || whenFalse.kind === 'selectors'))
+      return whenFalse
     return unknownStaticValue()
   }
 
@@ -297,8 +307,13 @@ function evaluateStaticExpression(expression: ts.Expression, scopes: Scope[]): S
 
   if (ts.isPropertyAccessExpression(unwrapped)) {
     const container = evaluateStaticExpression(unwrapped.expression, scopes)
-    if (container.kind === 'object')
-      return container.properties.get(unwrapped.name.text) ?? unknownStaticValue()
+    if (container.kind === 'object') {
+      const value = container.properties.get(unwrapped.name.text)
+      if (value && container.complete && !container.unknownKeyValues.length)
+        return value
+      if (value || !container.complete || container.unknownKeyValues.length)
+        return unknownStaticValue()
+    }
     return unknownStaticValue()
   }
 
@@ -307,51 +322,72 @@ function evaluateStaticExpression(expression: ts.Expression, scopes: Scope[]): S
     const argument = evaluateStaticExpression(unwrapped.argumentExpression, scopes)
     if (container.kind === 'object') {
       if (argument.kind !== 'strings') {
-        const values = collectStringValues(container)
-        return values.length ? staticStrings(values) : unknownStaticValue()
+        if (!container.complete)
+          return unknownStaticValue()
+        return collectIndexedValues([...container.properties.values(), ...container.unknownKeyValues])
       }
 
-      const values = argument.values.flatMap((key) => {
+      const selectedValues: StaticValue[] = []
+      for (const key of argument.values) {
         const value = container.properties.get(key)
-        return value ? collectStringValues(value) : []
-      })
-      return values.length ? staticStrings(values) : unknownStaticValue()
+        if (value && container.complete && !container.unknownKeyValues.length)
+          selectedValues.push(value)
+        else
+          return unknownStaticValue()
+      }
+      return collectIndexedValues(selectedValues)
     }
 
     if (container.kind === 'array') {
-      if (argument.kind !== 'strings') {
-        const values = collectStringValues(container)
-        return values.length ? staticStrings(values) : unknownStaticValue()
-      }
+      if (argument.kind !== 'strings')
+        return collectIndexedValues(container.elements)
 
-      if (argument.values.length !== 1)
-        return unknownStaticValue()
-
-      const key = argument.values[0]!
-      const index = Number(key)
-      return Number.isInteger(index) ? container.elements[index] ?? unknownStaticValue() : unknownStaticValue()
+      return collectIndexedValues(argument.values.flatMap((key) => {
+        const index = Number(key)
+        return Number.isInteger(index) ? container.elements[index] ?? [] : []
+      }))
     }
   }
 
   if (ts.isObjectLiteralExpression(unwrapped)) {
     const properties = new Map<string, StaticValue>()
+    const unknownKeyValues: StaticValue[] = []
+    let complete = true
     for (const property of unwrapped.properties) {
-      if (!ts.isPropertyAssignment(property))
+      if (!ts.isPropertyAssignment(property)) {
+        complete = false
         continue
+      }
+
+      const propertyValue = evaluateStaticExpression(property.initializer, scopes)
+      if (ts.isComputedPropertyName(property.name)) {
+        const propertyNames = evaluateStaticExpression(property.name.expression, scopes)
+        if (propertyNames.kind === 'strings') {
+          for (const propertyName of propertyNames.values)
+            properties.set(propertyName, propertyValue)
+        }
+        else {
+          unknownKeyValues.push(propertyValue)
+        }
+        continue
+      }
 
       const propertyName = getPropertyNameText(property.name)
-      if (!propertyName)
-        continue
-
-      properties.set(propertyName, evaluateStaticExpression(property.initializer, scopes))
+      if (propertyName)
+        properties.set(propertyName, propertyValue)
+      else
+        complete = false
     }
-    return { kind: 'object', properties }
+    return { kind: 'object', properties, unknownKeyValues, complete }
   }
 
   if (ts.isArrayLiteralExpression(unwrapped))
     return { kind: 'array', elements: unwrapped.elements.map(element => evaluateStaticExpression(element, scopes)) }
 
   if (ts.isArrowFunction(unwrapped)) {
+    if (getSelectorKeyExpression(unwrapped))
+      return { kind: 'selector', expression: unwrapped }
+
     const parameter = unwrapped.parameters[0]
     const body = ts.isBlock(unwrapped.body) ? undefined : unwrapExpression(unwrapped.body)
     if (
@@ -382,9 +418,69 @@ function collectStringValues(value: StaticValue): string[] {
     return uniqueSorted(value.elements.flatMap(element => collectStringValues(element)))
 
   if (value.kind === 'object')
-    return uniqueSorted(Array.from(value.properties.values()).flatMap(property => collectStringValues(property)))
+    return uniqueSorted([...value.properties.values(), ...value.unknownKeyValues].flatMap(property => collectStringValues(property)))
 
   return []
+}
+
+function collectSelectorExpressions(value: StaticValue): ts.Expression[] {
+  if (value.kind === 'selector')
+    return [value.expression]
+  if (value.kind === 'selectors')
+    return value.expressions
+  if (value.kind === 'array')
+    return value.elements.flatMap(element => collectSelectorExpressions(element))
+  if (value.kind === 'object')
+    return [...value.properties.values(), ...value.unknownKeyValues].flatMap(property => collectSelectorExpressions(property))
+  return []
+}
+
+function hasUnknownAggregateValue(value: StaticValue): boolean {
+  if (value.kind === 'unknown' || value.kind === 'identityFunction')
+    return true
+  if (value.kind === 'array')
+    return value.elements.some(element => hasUnknownAggregateValue(element))
+  if (value.kind === 'object')
+    return !value.complete || [...value.properties.values(), ...value.unknownKeyValues].some(property => hasUnknownAggregateValue(property))
+  return false
+}
+
+function collectIndexedValues(values: StaticValue[]): StaticValue {
+  if (!values.length)
+    return unknownStaticValue()
+
+  if (values.every((value): value is Extract<StaticValue, { kind: 'object' }> => value.kind === 'object')) {
+    const propertyNames = Array.from(values[0]!.properties.keys())
+    const haveMatchingShape = values.every((value) => {
+      return value.complete
+        && !value.unknownKeyValues.length
+        && value.properties.size === propertyNames.length
+        && propertyNames.every(propertyName => value.properties.has(propertyName))
+    })
+    if (!haveMatchingShape)
+      return unknownStaticValue()
+
+    return {
+      kind: 'object',
+      properties: new Map(propertyNames.map((propertyName) => {
+        return [propertyName, collectIndexedValues(values.map(value => value.properties.get(propertyName)!))]
+      })),
+      unknownKeyValues: [],
+      complete: true,
+    }
+  }
+
+  if (values.some(value => hasUnknownAggregateValue(value)))
+    return unknownStaticValue()
+
+  const selectors = values.flatMap(value => collectSelectorExpressions(value))
+  const strings = values.flatMap(value => collectStringValues(value))
+  if (selectors.length && strings.length)
+    return unknownStaticValue()
+  if (selectors.length)
+    return selectors.length === 1 ? { kind: 'selector', expression: selectors[0]! } : { kind: 'selectors', expressions: selectors }
+
+  return strings.length ? staticStrings(strings) : unknownStaticValue()
 }
 
 function getObjectProperty(objectLiteral: ts.ObjectLiteralExpression, name: string) {
@@ -493,6 +589,84 @@ function evaluateCheckerKeyUsage(expression: ts.Expression, checker?: ts.TypeChe
   return { kind: 'keys', keys: values }
 }
 
+function isSelectorParamType(type: ts.Type, checker: ts.TypeChecker, seen = new Set<ts.Type>()): boolean {
+  if (seen.has(type))
+    return false
+  seen.add(type)
+
+  if (type.aliasSymbol?.getName() === 'SelectorParam')
+    return true
+
+  const constraint = checker.getBaseConstraintOfType(type)
+  return Boolean(constraint && constraint !== type && isSelectorParamType(constraint, checker, seen))
+}
+
+function selectorNamespacesFromTypes(types: Array<ts.Type | undefined>, catalog: Catalog) {
+  for (const type of types) {
+    const namespaceType = type?.aliasTypeArguments?.[0]
+    if (!namespaceType)
+      continue
+
+    const namespaces = extractStringValuesFromType(namespaceType)
+      ?.map(namespace => normalizeNamespace(namespace, catalog))
+      .filter(namespace => catalog.keysByNamespace.has(namespace))
+    if (namespaces?.length && namespaces.length < catalog.keysByNamespace.size)
+      return uniqueSorted(namespaces)
+  }
+
+  return []
+}
+
+function selectorNamespacesFromTFunctionBrand(
+  type: ts.Type,
+  expression: ts.Node,
+  checker: ts.TypeChecker,
+  catalog: Catalog,
+) {
+  const brand = type.getProperty('$TFunctionBrand')
+  if (!brand)
+    return []
+
+  const brandType = checker.getTypeOfSymbolAtLocation(brand, expression)
+  return uniqueSorted(
+    (extractStringValuesFromType(brandType) ?? [])
+      .map(namespace => normalizeNamespace(namespace, catalog))
+      .filter(namespace => catalog.keysByNamespace.has(namespace)),
+  )
+}
+
+function getCheckerTranslationFunctionInfo(expression: ts.Node, checker: ts.TypeChecker | undefined, catalog: Catalog): TranslationFunctionInfo | undefined {
+  if (!checker)
+    return undefined
+
+  const calleeType = checker.getTypeAtLocation(expression)
+  const brandedNamespaces = selectorNamespacesFromTFunctionBrand(calleeType, expression, checker, catalog)
+  if (brandedNamespaces.length) {
+    return {
+      namespaces: brandedNamespaces,
+      keyPrefix: undefined,
+      selectorArgumentIndex: 0,
+    }
+  }
+
+  for (const signature of calleeType.getCallSignatures()) {
+    for (const [parameterIndex, parameter] of signature.parameters.entries()) {
+      const parameterType = checker.getTypeOfSymbolAtLocation(parameter, expression)
+      const constraint = checker.getBaseConstraintOfType(parameterType)
+      if (!isSelectorParamType(parameterType, checker))
+        continue
+
+      return {
+        namespaces: selectorNamespacesFromTypes([calleeType, parameterType, constraint], catalog),
+        keyPrefix: undefined,
+        selectorArgumentIndex: parameterIndex,
+      }
+    }
+  }
+
+  return undefined
+}
+
 function combineKeyExpressionUsages(left: KeyExpressionUsage, right: KeyExpressionUsage): KeyExpressionUsage {
   if (left.kind === 'unknown' || right.kind === 'unknown')
     return { kind: 'unknown' }
@@ -515,10 +689,118 @@ function combineKeyExpressionUsages(left: KeyExpressionUsage, right: KeyExpressi
   return { kind: 'patterns', patterns }
 }
 
+function getSelectorNamespace(source: ts.Expression, parameterName: string) {
+  const unwrapped = unwrapExpression(source)
+  if (
+    ts.isPropertyAccessExpression(unwrapped)
+    && ts.isIdentifier(unwrapped.expression)
+    && unwrapped.expression.text === parameterName
+  ) {
+    return unwrapped.name.text
+  }
+
+  if (
+    ts.isElementAccessExpression(unwrapped)
+    && ts.isIdentifier(unwrapped.expression)
+    && unwrapped.expression.text === parameterName
+    && unwrapped.argumentExpression
+    && isStringNode(unwrapExpression(unwrapped.argumentExpression))
+  ) {
+    return (unwrapExpression(unwrapped.argumentExpression) as ts.StringLiteralLike).text
+  }
+
+  return undefined
+}
+
+function getSelectorKeyExpression(expression: ts.Expression) {
+  const selector = unwrapExpression(expression)
+  if (!ts.isArrowFunction(selector) || ts.isBlock(selector.body))
+    return undefined
+
+  const parameter = selector.parameters[0]
+  if (!parameter || !ts.isIdentifier(parameter.name))
+    return undefined
+
+  const body = unwrapExpression(selector.body)
+  let keyExpression: ts.Expression | undefined
+  let sourceExpression: ts.Expression | undefined
+  if (ts.isPropertyAccessExpression(body)) {
+    keyExpression = ts.factory.createStringLiteral(body.name.text)
+    sourceExpression = body.expression
+  }
+  else if (ts.isElementAccessExpression(body) && body.argumentExpression) {
+    keyExpression = body.argumentExpression
+    sourceExpression = body.expression
+  }
+
+  if (!keyExpression || !sourceExpression)
+    return undefined
+
+  const source = unwrapExpression(sourceExpression)
+  if (ts.isIdentifier(source) && source.text === parameter.name.text)
+    return { keyExpression }
+
+  const namespace = getSelectorNamespace(source, parameter.name.text)
+  if (namespace) {
+    return {
+      keyExpression,
+      namespace,
+    }
+  }
+
+  return undefined
+}
+
+function prependNamespace(usage: KeyExpressionUsage, namespace?: string): KeyExpressionUsage {
+  if (!namespace)
+    return usage
+
+  if (usage.kind === 'unknown')
+    return { kind: 'unknown', namespace }
+
+  const prefix = `${namespace}:`
+  if (usage.kind === 'keys')
+    return { kind: 'keys', keys: usage.keys.map(key => `${prefix}${key}`) }
+
+  if (usage.kind === 'patterns') {
+    return {
+      kind: 'patterns',
+      patterns: usage.patterns.map(pattern => ({
+        prefix: `${prefix}${pattern.prefix}`,
+        suffix: pattern.suffix,
+      })),
+    }
+  }
+
+  return {
+    kind: 'mixed',
+    keys: usage.keys.map(key => `${prefix}${key}`),
+    patterns: usage.patterns.map(pattern => ({
+      prefix: `${prefix}${pattern.prefix}`,
+      suffix: pattern.suffix,
+    })),
+  }
+}
+
 function evaluateKeyExpression(expression: ts.Expression, scopes: Scope[], checker?: ts.TypeChecker): KeyExpressionUsage {
+  const selector = getSelectorKeyExpression(expression)
+  if (selector) {
+    return prependNamespace(
+      evaluateKeyExpression(selector.keyExpression, scopes, checker),
+      selector.namespace,
+    )
+  }
+
   const value = evaluateStaticExpression(expression, scopes)
   if (value.kind === 'strings')
     return { kind: 'keys', keys: value.values }
+  if (value.kind === 'selector')
+    return evaluateKeyExpression(value.expression, scopes, checker)
+  if (value.kind === 'selectors') {
+    return value.expressions
+      .map(selectorExpression => evaluateKeyExpression(selectorExpression, scopes, checker))
+      .reduce(combineKeyExpressionUsages)
+  }
 
   const assertedTypeUsage = evaluateAssertedTypeKeyUsage(expression)
   if (assertedTypeUsage)
@@ -627,7 +909,7 @@ function getUseTranslationInfo(callExpression: ts.CallExpression, scopes: Scope[
     : undefined
 
   return {
-    namespaces,
+    namespaces: callExpression.arguments[0] ? namespaces : [DEFAULT_NAMESPACE],
     keyPrefix: keyPrefixValue?.kind === 'strings' && keyPrefixValue.values.length === 1
       ? keyPrefixValue.values[0]
       : undefined,
@@ -737,7 +1019,10 @@ function recordKeyUsage(
   location: UsageLocation,
 ) {
   if (usage.kind === 'unknown') {
-    recordUnknownUsage(collector, namespaces, catalog, location, 'Unable to statically resolve translation key')
+    const targetNamespaces = usage.namespace
+      ? [normalizeNamespace(usage.namespace, catalog)]
+      : namespaces
+    recordUnknownUsage(collector, targetNamespaces, catalog, location, 'Unable to statically resolve translation key')
     return
   }
 
@@ -800,6 +1085,42 @@ function getJsxAttributeExpression(attribute: ts.JsxAttribute | undefined) {
     return attribute.initializer.expression
 
   return undefined
+}
+
+function isSelectorTranslationForwarder(
+  node: ts.CallExpression,
+  keyExpression: ts.Expression,
+  isRegisteredSelectorCallable: boolean,
+  checker: ts.TypeChecker | undefined,
+  catalog: Catalog,
+) {
+  if (!ts.isIdentifier(keyExpression))
+    return false
+
+  let current: ts.Node | undefined = node.parent
+  let functionLike: ts.FunctionLikeDeclaration | undefined
+  while (current && !ts.isSourceFile(current)) {
+    if (isFunctionLikeWithParameters(current)) {
+      functionLike = current
+      break
+    }
+    current = current.parent
+  }
+
+  const selectorParameter = functionLike?.parameters.find((parameter) => {
+    return ts.isIdentifier(parameter.name) && parameter.name.text === keyExpression.text
+  })
+  const forwardsSelectorParameter = Boolean(
+    selectorParameter
+    && checker
+    && isSelectorParamType(checker.getTypeAtLocation(selectorParameter), checker),
+  )
+  const calleeIsSelectorCallable = isRegisteredSelectorCallable
+    || Boolean(getCheckerTranslationFunctionInfo(node.expression, checker, catalog))
+  return Boolean(
+    forwardsSelectorParameter
+    && calleeIsSelectorCallable,
+  )
 }
 
 function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageCollector, checker?: ts.TypeChecker, sourceFileFromProgram?: ts.SourceFile) {
@@ -873,8 +1194,10 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
   function handleFunctionParameter(node: ts.ParameterDeclaration, scope: Scope) {
     const translationInfoFromType = getTranslationFunctionInfoFromType(node.type, catalog)
     if (ts.isIdentifier(node.name)) {
-      if (node.name.text === 't' || translationInfoFromType)
-        addTranslationFunction(scope, node.name.text, translationInfoFromType)
+      const checkerTranslationInfo = getCheckerTranslationFunctionInfo(node.name, checker, catalog)
+      const translationInfo = checkerTranslationInfo ?? translationInfoFromType
+      if (node.name.text === 't' || translationInfo)
+        addTranslationFunction(scope, node.name.text, translationInfo)
       return
     }
 
@@ -888,8 +1211,10 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
       const propertyName = element.propertyName && ts.isIdentifier(element.propertyName)
         ? element.propertyName.text
         : undefined
-      if (propertyName === 't' || element.name.text === 't')
-        addTranslationFunction(scope, element.name.text)
+      if (propertyName === 't' || element.name.text === 't') {
+        const translationInfo = getCheckerTranslationFunctionInfo(element.name, checker, catalog)
+        addTranslationFunction(scope, element.name.text, translationInfo)
+      }
     }
   }
 
@@ -899,6 +1224,9 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
 
     const contextualType = checker.getContextualType(node)
     if (!contextualType)
+      return
+
+    if (!/\bI18nKeys?\b|\bI18nKeys?(?:By|With)Prefix\b/.test(checker.typeToString(contextualType)))
       return
 
     const contextualKeys = extractStringValuesFromType(contextualType)
@@ -934,7 +1262,9 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
     const translationInfo = calleeName === 'useTranslation'
       ? getUseTranslationInfo(callExpression, scopes, catalog)
       : {
-          namespaces: evaluateNamespaceExpression(callExpression.arguments[1] as ts.Expression | undefined, scopes, catalog),
+          namespaces: callExpression.arguments[1]
+            ? evaluateNamespaceExpression(callExpression.arguments[1] as ts.Expression, scopes, catalog)
+            : [DEFAULT_NAMESPACE],
           keyPrefix: undefined,
         }
 
@@ -950,11 +1280,15 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
   }
 
   function handleCallExpression(node: ts.CallExpression) {
-    const translationInfo = ts.isIdentifier(node.expression)
+    const registeredIdentifierTranslationInfo = ts.isIdentifier(node.expression)
       ? lookupTranslationFunction(node.expression.text, scopes)
-      : ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 't'
-        ? { namespaces: [], keyPrefix: undefined }
-        : undefined
+      : undefined
+    const registeredTranslationInfo = registeredIdentifierTranslationInfo
+      ?? (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 't'
+        ? { namespaces: [DEFAULT_NAMESPACE], keyPrefix: undefined }
+        : undefined)
+    const translationInfo = registeredTranslationInfo
+      ?? getCheckerTranslationFunctionInfo(node.expression, checker, catalog)
     if (!translationInfo || !node.arguments.length)
       return
 
@@ -964,8 +1298,17 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
       ? evaluateNamespaceExpression(namespaceProperty.initializer, scopes, catalog)
       : []
     const namespaces = optionNamespaces.length ? optionNamespaces : translationInfo.namespaces
-    const keyExpression = node.arguments[0]! as ts.Expression
+    const keyExpression = node.arguments[translationInfo.selectorArgumentIndex ?? 0] as ts.Expression | undefined
+    if (!keyExpression)
+      return
     const keyUsage = prependKeyPrefix(evaluateKeyExpression(keyExpression, scopes, checker), translationInfo.keyPrefix)
+
+    if (
+      keyUsage.kind === 'unknown'
+      && isSelectorTranslationForwarder(node, keyExpression, Boolean(registeredIdentifierTranslationInfo), checker, catalog)
+    ) {
+      return
+    }
 
     recordKeyUsage(collector, keyUsage, namespaces, catalog, locationFor(node, sourceFile))
   }
@@ -979,7 +1322,9 @@ function analyzeSourceFile(filePath: string, catalog: Catalog, collector: UsageC
       return
 
     const namespaceExpression = getJsxAttributeExpression(getJsxAttribute(node, 'ns'))
-    const namespaces = evaluateNamespaceExpression(namespaceExpression, scopes, catalog)
+    const namespaces = namespaceExpression
+      ? evaluateNamespaceExpression(namespaceExpression, scopes, catalog)
+      : [DEFAULT_NAMESPACE]
     const keyUsage = evaluateKeyExpression(keyExpression, scopes, checker)
 
     recordKeyUsage(collector, keyUsage, namespaces, catalog, locationFor(node, sourceFile))

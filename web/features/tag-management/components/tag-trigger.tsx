@@ -12,8 +12,8 @@ export const TagTrigger = ({
 }: TriggerProps) => {
   const { t } = useTranslation()
   const emptyTagLabel = canBindOrUnbindTags
-    ? t('tag.addTag', { ns: 'common' })
-    : t('tag.noTag', { ns: 'common' })
+    ? t($ => $['tag.addTag'], { ns: 'common' })
+    : t($ => $['tag.noTag'], { ns: 'common' })
 
   return (
     <div

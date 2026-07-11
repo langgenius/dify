@@ -42,10 +42,10 @@ export function ServiceApiAccessCard({
             }
           : agentDetail,
       )
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     },
   }))
   const isBusy = apiAccessQuery.isPending || toggleServiceApiMutation.isPending
@@ -64,14 +64,14 @@ export function ServiceApiAccessCard({
   return (
     <>
       <AccessSurfaceCard
-        title={t('agentDetail.access.serviceApi.title')}
+        title={t($ => $['agentDetail.access.serviceApi.title'])}
         icon="i-ri-node-tree"
         iconClassName="bg-state-accent-solid text-text-primary-on-surface"
-        endpointLabel={t('agentDetail.access.serviceApi.endpoint')}
+        endpointLabel={t($ => $['agentDetail.access.serviceApi.endpoint'])}
         endpoint={apiAccess?.service_api_base_url ?? ''}
         enabled={Boolean(apiAccess?.enabled)}
         onEnabledChange={handleEnabledChange}
-        copyLabel={t('agentDetail.access.copyServiceEndpoint')}
+        copyLabel={t($ => $['agentDetail.access.copyServiceEndpoint'])}
         disabled={apiAccessQuery.isPending || apiAccessQuery.isError}
         busy={toggleServiceApiMutation.isPending}
       >
@@ -83,20 +83,20 @@ export function ServiceApiAccessCard({
           onClick={() => setApiKeyModalOpen(true)}
         >
           <span aria-hidden className="i-ri-key-2-line size-4" />
-          {t('agentDetail.access.serviceApi.actions.apiKey')}
+          {t($ => $['agentDetail.access.serviceApi.actions.apiKey'])}
           <span className="rounded-md bg-components-badge-bg-gray-soft px-1.5 code-xs-regular text-text-tertiary">
             {apiAccess?.api_key_count ?? 0}
           </span>
         </Button>
         <a
-          href={docLink('/use-dify/publish/developing-with-apis')}
+          href={docLink('/api-reference/guides/get-started')}
           target="_blank"
           rel="noreferrer"
-          aria-label={t('agentDetail.access.serviceApi.actions.apiReference')}
+          aria-label={t($ => $['agentDetail.access.serviceApi.actions.apiReference'])}
           className={accessSurfaceActionClassName}
         >
           <span aria-hidden className="i-ri-book-open-line size-4" />
-          {t('agentDetail.access.serviceApi.actions.apiReference')}
+          {t($ => $['agentDetail.access.serviceApi.actions.apiReference'])}
         </a>
         {apiAccessQuery.isError && (
           <Button
@@ -108,7 +108,7 @@ export function ServiceApiAccessCard({
             }}
           >
             <span aria-hidden className="i-ri-refresh-line size-4" />
-            {tCommon('operation.retry')}
+            {tCommon($ => $['operation.retry'])}
           </Button>
         )}
       </AccessSurfaceCard>

@@ -87,10 +87,10 @@ function RevokeApiKeyButton({ apiKey }: {
       {
         onSuccess: () => {
           setShowRevokeConfirm(false)
-          toast.success(t('access.api.revokeSuccess'))
+          toast.success(t($ => $['access.api.revokeSuccess']))
         },
         onError: () => {
-          toast.error(t('access.api.revokeFailed'))
+          toast.error(t($ => $['access.api.revokeFailed']))
         },
       },
     )
@@ -108,7 +108,7 @@ function RevokeApiKeyButton({ apiKey }: {
       <button
         type="button"
         onClick={() => setShowRevokeConfirm(true)}
-        aria-label={t('access.revoke')}
+        aria-label={t($ => $['access.revoke'])}
         aria-busy={isRevoking}
         disabled={isRevoking}
         className={cn(
@@ -124,18 +124,18 @@ function RevokeApiKeyButton({ apiKey }: {
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('access.api.revokeConfirmTitle')}
+              {t($ => $['access.api.revokeConfirmTitle'])}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('access.api.revokeConfirmDescription', { name: apiKeyName })}
+              {t($ => $['access.api.revokeConfirmDescription'], { name: apiKeyName })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={isRevoking}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isRevoking} disabled={isRevoking} onClick={handleRevoke}>
-              {t('access.revoke')}
+              {t($ => $['access.revoke'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
@@ -165,7 +165,7 @@ function ApiKeyMobileRow({ apiKey, environment }: {
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('access.api.table.key')}
+            {t($ => $['access.api.table.key'])}
           </span>
           <ApiKeyValue value={displayValue} />
         </div>
@@ -206,10 +206,10 @@ function ApiKeyTableHeader() {
   return (
     <DetailTableHeader>
       <DetailTableRow>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.name}>{t('access.api.table.name')}</DetailTableHead>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.api.table.environment')}</DetailTableHead>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.key}>{t('access.api.table.key')}</DetailTableHead>
-        <DetailTableHead className={`${API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('access.api.table.action')}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.name}>{t($ => $['access.api.table.name'])}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t($ => $['access.api.table.environment'])}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.key}>{t($ => $['access.api.table.key'])}</DetailTableHead>
+        <DetailTableHead className={`${API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t($ => $['access.api.table.action'])}</DetailTableHead>
       </DetailTableRow>
     </DetailTableHeader>
   )

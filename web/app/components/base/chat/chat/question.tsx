@@ -52,8 +52,8 @@ const Question: FC<QuestionProps> = ({
   const {
     onRegenerate,
   } = useChatContext()
-  const copyLabel = t('operation.copy', { ns: 'common' })
-  const editLabel = t('operation.edit', { ns: 'common' })
+  const copyLabel = t($ => $['operation.copy'], { ns: 'common' })
+  const editLabel = t($ => $['operation.edit'], { ns: 'common' })
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
@@ -173,7 +173,7 @@ const Question: FC<QuestionProps> = ({
               aria-label={copyLabel}
               onClick={() => {
                 copy(content)
-                toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
               }}
             >
               <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
@@ -224,8 +224,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                    <Button className="min-w-24" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t('operation.save', { ns: 'common' })}</Button>
+                    <Button className="min-w-24" onClick={handleCancelEditing}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
+                    <Button className="min-w-24" variant="primary" onClick={handleResend}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}

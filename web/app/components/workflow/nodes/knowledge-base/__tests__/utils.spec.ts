@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from '../types'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -5,6 +6,7 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
@@ -189,7 +191,7 @@ describe('knowledge-base validation issue', () => {
 })
 
 describe('knowledge-base validation messaging', () => {
-  const t = (key: string) => key
+  const t = withSelectorKey((key: string, _options?: Record<string, unknown>) => key) as unknown as TFunction
 
   it.each([
     [KnowledgeBaseValidationIssueCode.chunkStructureRequired, 'nodes.knowledgeBase.chunkIsRequired'],
@@ -205,10 +207,10 @@ describe('knowledge-base validation messaging', () => {
     [KnowledgeBaseValidationIssueCode.rerankingModelRequired, 'nodes.knowledgeBase.rerankingModelIsRequired'],
     [KnowledgeBaseValidationIssueCode.rerankingModelInvalid, 'nodes.knowledgeBase.rerankingModelIsInvalid'],
   ] as const)('maps %s to the expected translation key', (code, expectedKey) => {
-    expect(getKnowledgeBaseValidationMessage({ code }, t as never)).toBe(expectedKey)
+    expect(getKnowledgeBaseValidationMessage({ code }, t)).toBe(expectedKey)
   })
 
   it('returns an empty string when there is no issue', () => {
-    expect(getKnowledgeBaseValidationMessage(undefined, t as never)).toBe('')
+    expect(getKnowledgeBaseValidationMessage(undefined, t)).toBe('')
   })
 })

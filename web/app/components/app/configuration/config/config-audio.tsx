@@ -56,12 +56,12 @@ const ConfigAudio: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">{t($ => $['feature.audioUpload.title'], { ns: 'appDebug' })}</div>
         <Infotip
-          aria-label={t('feature.audioUpload.description', { ns: 'appDebug' })}
+          aria-label={t($ => $['feature.audioUpload.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('feature.audioUpload.description', { ns: 'appDebug' })}
+          {t($ => $['feature.audioUpload.description'], { ns: 'appDebug' })}
         </Infotip>
       </div>
       {!readonly && (

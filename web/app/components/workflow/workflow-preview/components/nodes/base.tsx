@@ -94,16 +94,16 @@ const BaseCard = ({
                 <Popover>
                   <PopoverTrigger
                     openOnHover
-                    aria-label={t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+                    aria-label={t($ => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
                     className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning"
                   >
-                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+                    {t($ => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
                   </PopoverTrigger>
                   <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
                     <div className="font-extrabold">
-                      {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+                      {t($ => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
                     </div>
-                    {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
+                    {t($ => $['nodes.iteration.parallelModeEnableDesc'], { ns: 'workflow' })}
                   </PopoverContent>
                 </Popover>
               )

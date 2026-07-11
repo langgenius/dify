@@ -36,12 +36,12 @@ export function ReadmeDialog({
           detail={detail}
           title={(
             <DialogTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
-              {t('readmeInfo.title', { ns: 'plugin' })}
+              {t($ => $['readmeInfo.title'], { ns: 'plugin' })}
             </DialogTitle>
           )}
           closeButton={(
             <DialogCloseButton
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="static size-8 rounded-lg"
             />
           )}

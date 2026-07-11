@@ -4,10 +4,11 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNeedRefreshAppList } from '@/app/components/apps/storage'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { CheckModal } from '@/hooks/use-pay'
@@ -43,7 +44,7 @@ function List({
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { onPlanInfoChanged } = useProviderContext()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
@@ -230,7 +231,7 @@ function List({
         <StudioListHeader
           title={(
             <div className="flex items-center">
-              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
+              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $['menus.apps'], { ns: 'common' })}</h1>
             </div>
           )}
         >
@@ -298,10 +299,10 @@ function List({
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
+            aria-label={t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
           >
             <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
+            <span className="system-xs-regular">{t($ => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}</span>
           </div>
         )}
         <CheckModal />

@@ -173,7 +173,7 @@ const TextGeneration: FC<Props> = ({
       )}
       >
         {isCompleted && !isHideTryNotice && (
-          <Alert className="mb-3 shrink-0" message={t('tryApp.tryInfo', { ns: 'explore' })} onHide={hideTryNotice} />
+          <Alert className="mb-3 shrink-0" message={t($ => $['tryApp.tryInfo'], { ns: 'explore' })} onHide={hideTryNotice} />
         )}
         {renderRes()}
       </div>
@@ -241,13 +241,13 @@ const TextGeneration: FC<Props> = ({
                     ? (
                         <>
                           <RiArrowUpSLine className="size-3" />
-                          {t('chat.collapse', { ns: 'share' })}
+                          {t($ => $['chat.collapse'], { ns: 'share' })}
                         </>
                       )
                     : (
                         <>
                           <RiArrowDownSLine className="size-3" />
-                          {t('chat.expand', { ns: 'share' })}
+                          {t($ => $['chat.expand'], { ns: 'share' })}
                         </>
                       )}
                 </button>

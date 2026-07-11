@@ -44,7 +44,7 @@ const Configure = ({
   const canOAuth = oAuthData.client_schema?.length
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     return {
-      buttonText: t('auth.addOAuth', { ns: 'plugin' }),
+      buttonText: t($ => $['auth.addOAuth'], { ns: 'plugin' }),
       pluginPayload,
     }
   }, [pluginPayload, t])
@@ -52,7 +52,7 @@ const Configure = ({
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     return {
       pluginPayload,
-      buttonText: t('auth.addApi', { ns: 'plugin' }),
+      buttonText: t($ => $['auth.addApi'], { ns: 'plugin' }),
     }
   }, [pluginPayload, t])
 
@@ -74,7 +74,7 @@ const Configure = ({
               variant="secondary-accent"
             >
               <RiAddLine className="size-4" />
-              {t('dataSource.configure', { ns: 'common' })}
+              {t($ => $['dataSource.configure'], { ns: 'common' })}
             </Button>
           )}
         />

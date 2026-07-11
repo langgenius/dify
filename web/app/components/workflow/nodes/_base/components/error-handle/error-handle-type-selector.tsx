@@ -25,18 +25,18 @@ const ErrorHandleTypeSelector = ({
   const options = [
     {
       value: ErrorHandleTypeEnum.none,
-      label: t('nodes.common.errorHandle.none.title', { ns: 'workflow' }),
-      description: t('nodes.common.errorHandle.none.desc', { ns: 'workflow' }),
+      label: t($ => $['nodes.common.errorHandle.none.title'], { ns: 'workflow' }),
+      description: t($ => $['nodes.common.errorHandle.none.desc'], { ns: 'workflow' }),
     },
     {
       value: ErrorHandleTypeEnum.defaultValue,
-      label: t('nodes.common.errorHandle.defaultValue.title', { ns: 'workflow' }),
-      description: t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' }),
+      label: t($ => $['nodes.common.errorHandle.defaultValue.title'], { ns: 'workflow' }),
+      description: t($ => $['nodes.common.errorHandle.defaultValue.desc'], { ns: 'workflow' }),
     },
     {
       value: ErrorHandleTypeEnum.failBranch,
-      label: t('nodes.common.errorHandle.failBranch.title', { ns: 'workflow' }),
-      description: t('nodes.common.errorHandle.failBranch.desc', { ns: 'workflow' }),
+      label: t($ => $['nodes.common.errorHandle.failBranch.title'], { ns: 'workflow' }),
+      description: t($ => $['nodes.common.errorHandle.failBranch.desc'], { ns: 'workflow' }),
     },
   ]
   const selectedOption = options.find(option => option.value === value)

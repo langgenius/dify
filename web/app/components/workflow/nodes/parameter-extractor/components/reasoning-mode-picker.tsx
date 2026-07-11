@@ -28,17 +28,17 @@ const ReasoningModePicker: FC<Props> = ({
 
   return (
     <Field
-      title={t(`${i18nPrefix}.reasoningMode`, { ns: 'workflow' })}
-      tooltip={t(`${i18nPrefix}.reasoningModeTip`, { ns: 'workflow' })!}
+      title={t($ => $[`${i18nPrefix}.reasoningMode`], { ns: 'workflow' })}
+      tooltip={t($ => $[`${i18nPrefix}.reasoningModeTip`], { ns: 'workflow' })!}
     >
       <div className="grid grid-cols-2 gap-x-1">
         <OptionCard
-          title={t(`${i18nPrefix}.reasoningModeFunctionToolCalling`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.reasoningModeFunctionToolCalling`], { ns: 'workflow' })}
           onSelect={handleChange(ReasoningModeType.functionCall)}
           selected={type === ReasoningModeType.functionCall}
         />
         <OptionCard
-          title={t(`${i18nPrefix}.reasoningModePrompt`, { ns: 'workflow' })}
+          title={t($ => $[`${i18nPrefix}.reasoningModePrompt`], { ns: 'workflow' })}
           selected={type === ReasoningModeType.prompt}
           onSelect={handleChange(ReasoningModeType.prompt)}
         />

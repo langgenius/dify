@@ -2,12 +2,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Uploader from '../uploader'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
@@ -63,7 +57,7 @@ describe('Uploader', () => {
       },
     })
 
-    expect(toast.error).toHaveBeenCalledWith('stepOne.uploader.validation.count')
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)stepOne\.uploader\.validation\.count(?=$|:)/))
     expect(updateFile).not.toHaveBeenCalled()
   })
 
@@ -79,7 +73,7 @@ describe('Uploader', () => {
       />,
     )
 
-    expect(screen.getByText('demo.yml')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('DSL')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button'))
@@ -157,7 +151,7 @@ describe('Uploader', () => {
     const hiddenInput = getHiddenInput()
     const clickSpy = vi.spyOn(hiddenInput, 'click')
 
-    fireEvent.click(screen.getByRole('button', { name: 'dslUploader.browse' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)dslUploader\.browse(?=$|:)/ }))
 
     expect(clickSpy).toHaveBeenCalled()
 

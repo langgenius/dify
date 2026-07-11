@@ -6,13 +6,15 @@ import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@
 import type { UpdateDatasetSettingBody } from '@/service/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -31,8 +33,8 @@ export const useFormState = () => {
   const { t } = useTranslation()
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
       currentUserId,
@@ -133,7 +135,7 @@ export const useFormState = () => {
       return
 
     if (!name?.trim()) {
-      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
+      toast.error(t($ => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
 
@@ -144,7 +146,7 @@ export const useFormState = () => {
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+      toast.error(t($ => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
 
@@ -192,7 +194,7 @@ export const useFormState = () => {
       }
 
       await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
 
       if (mutateDatasets) {
         await mutateDatasets()
@@ -200,7 +202,7 @@ export const useFormState = () => {
       }
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
     finally {
       setLoading(false)

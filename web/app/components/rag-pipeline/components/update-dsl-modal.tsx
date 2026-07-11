@@ -49,11 +49,11 @@ const UpdateDSLModal = ({
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
 
           <div className="mb-3 flex items-center justify-between">
-            <div className="title-2xl-semi-bold text-text-primary">{t('common.importDSL', { ns: 'workflow' })}</div>
+            <div className="title-2xl-semi-bold text-text-primary">{t($ => $['common.importDSL'], { ns: 'workflow' })}</div>
             <button
               type="button"
               className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
               <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
@@ -65,7 +65,7 @@ const UpdateDSLModal = ({
               <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
             </div>
             <div className="flex grow flex-col items-start gap-0.5 py-1">
-              <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
+              <div className="system-xs-medium whitespace-pre-line text-text-primary">{t($ => $['common.importDSLTip'], { ns: 'workflow' })}</div>
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
                 <Button
                   size="small"
@@ -75,7 +75,7 @@ const UpdateDSLModal = ({
                 >
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
-                    {t('common.backupCurrentDraft', { ns: 'workflow' })}
+                    {t($ => $['common.backupCurrentDraft'], { ns: 'workflow' })}
                   </div>
                 </Button>
               </div>
@@ -83,7 +83,7 @@ const UpdateDSLModal = ({
           </div>
           <div>
             <div className="pt-2 system-md-semibold text-text-primary">
-              {t('common.chooseDSL', { ns: 'workflow' })}
+              {t($ => $['common.chooseDSL'], { ns: 'workflow' })}
             </div>
             <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
               <Uploader
@@ -96,7 +96,7 @@ const UpdateDSLModal = ({
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-            <Button onClick={onCancel}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button onClick={onCancel}>{t($ => $['newApp.Cancel'], { ns: 'app' })}</Button>
             <Button
               disabled={!currentFile || loading}
               variant="primary"
@@ -104,7 +104,7 @@ const UpdateDSLModal = ({
               onClick={handleImport}
               loading={loading}
             >
-              {t('common.overwriteAndImport', { ns: 'workflow' })}
+              {t($ => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
           </div>
         </DialogContent>

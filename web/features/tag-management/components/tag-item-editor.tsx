@@ -50,12 +50,12 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         setIsEditing(false)
         onTagsChange?.()
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
         setIsEditing(false)
       },
     })
@@ -71,11 +71,11 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         onTagsChange?.()
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     })
   }
@@ -94,11 +94,11 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
               <TooltipTrigger>
                 <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
               </TooltipTrigger>
-              <TooltipContent>{t('common.tagBound', { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t($ => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"
-              aria-label={`${t('operation.edit', { ns: 'common' })} ${tag.name}`}
+              aria-label={`${t($ => $['operation.edit'], { ns: 'common' })} ${tag.name}`}
               className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => setIsEditing(true)}
             >
@@ -106,7 +106,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             </button>
             <button
               type="button"
-              aria-label={`${t('operation.remove', { ns: 'common' })} ${tag.name}`}
+              aria-label={`${t($ => $['operation.remove'], { ns: 'common' })} ${tag.name}`}
               className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
                 if (Number(tag.binding_count ?? 0) > 0)
@@ -121,7 +121,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         )}
         {isEditing && (
           <input
-            aria-label={`${t('operation.rename', { ns: 'common' })} ${tag.name}`}
+            aria-label={`${t($ => $['operation.rename'], { ns: 'common' })} ${tag.name}`}
             className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary"
             autoFocus
             defaultValue={tag.name}
@@ -140,18 +140,18 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle
-              title={`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
+              title={`${t($ => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
               className="w-full truncate title-2xl-semi-bold text-text-primary"
             >
-              {`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
+              {`${t($ => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('tag.deleteTip', { ns: 'common' })}
+              {t($ => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               onClick={() => {
@@ -159,7 +159,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                 setShowRemoveModal(false)
               }}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

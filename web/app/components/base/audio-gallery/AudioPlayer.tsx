@@ -23,7 +23,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
   const { theme } = useTheme()
-  const playPauseLabel = t(isPlaying ? 'operation.pause' : 'operation.play', { ns: 'common' })
+  const playPauseLabel = t($ => $[isPlaying ? 'operation.pause' : 'operation.play'], { ns: 'common' })
   useEffect(() => {
     const audio = audioRef.current
     /* v8 ignore next 2 - @preserve */
@@ -260,7 +260,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
           </div>
         </div>
       </div>
-      <div className="absolute top-0 left-0 flex size-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
+      <div className="absolute top-0 left-0 flex size-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t($ => $['operation.audioSourceUnavailable'], { ns: 'common' })}</div>
     </div>
   )
 }

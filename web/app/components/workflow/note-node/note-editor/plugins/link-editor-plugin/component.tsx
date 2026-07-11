@@ -114,7 +114,7 @@ const LinkEditorComponent = ({
                           handleCancelLinkEdit()
                         }
                       }}
-                      placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
+                      placeholder={t($ => $['nodes.note.editor.enterUrl'], { ns: 'workflow' }) || ''}
                       autoFocus
                     />
                     <Button
@@ -123,7 +123,7 @@ const LinkEditorComponent = ({
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >
-                      {t('operation.ok', { ns: 'common' })}
+                      {t($ => $['operation.ok'], { ns: 'common' })}
                     </Button>
                   </>
                 )
@@ -139,7 +139,7 @@ const LinkEditorComponent = ({
                     >
                       <RiExternalLinkLine className="mr-1 size-3" />
                       <div className="mr-1">
-                        {t('nodes.note.editor.openLink', { ns: 'workflow' })}
+                        {t($ => $['nodes.note.editor.openLink'], { ns: 'workflow' })}
                       </div>
                       <div
                         title={escape(url)}
@@ -157,14 +157,14 @@ const LinkEditorComponent = ({
                       }}
                     >
                       <RiEditLine className="mr-1 size-3" />
-                      {t('operation.edit', { ns: 'common' })}
+                      {t($ => $['operation.edit'], { ns: 'common' })}
                     </div>
                     <div
                       className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
                       <RiLinkUnlinkM className="mr-1 size-3" />
-                      {t('nodes.note.editor.unlink', { ns: 'workflow' })}
+                      {t($ => $['nodes.note.editor.unlink'], { ns: 'workflow' })}
                     </div>
                   </>
                 )

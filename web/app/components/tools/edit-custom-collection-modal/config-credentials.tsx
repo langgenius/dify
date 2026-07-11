@@ -12,11 +12,10 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,13 +29,13 @@ type Props = Readonly<{
   onHide: () => void
 }>
 
-type ItemProps = {
+type ItemProps<Value = string> = {
   text: string
-  value: AuthType | AuthHeaderPrefix
+  value: Value
   isChecked: boolean
 }
 
-function SelectItem({ text, value, isChecked }: ItemProps) {
+function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>) {
   return (
     <FieldItem>
       <FieldLabel
@@ -45,7 +44,7 @@ function SelectItem({ text, value, isChecked }: ItemProps) {
           'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
-        <Radio value={value} />
+        <Radio<Value> value={value} />
         <div className="min-w-0 truncate system-sm-regular text-text-primary">{text}</div>
       </FieldLabel>
     </FieldItem>
@@ -109,10 +108,10 @@ export default function ConfigCredential({
               <div className="shrink-0 border-b border-divider-regular py-4">
                 <div className="flex h-6 items-center justify-between pr-5 pl-6">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                    {t('createTool.authMethod.title', { ns: 'tools' })}
+                    {t($ => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
                   <DrawerCloseButton
-                    aria-label={t('operation.close', { ns: 'common' })}
+                    aria-label={t($ => $['operation.close'], { ns: 'common' })}
                     className="size-6 rounded-md"
                   />
                 </div>
@@ -124,8 +123,8 @@ export default function ConfigCredential({
                   content: 'space-y-4 pt-2 pr-8 pl-6',
                 }}
               >
-                <FieldRoot name="auth_type" className="contents">
-                  <FieldsetRoot
+                <Field name="auth_type" className="contents">
+                  <Fieldset
                     render={(
                       <RadioGroup<AuthType>
                         className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
@@ -135,29 +134,29 @@ export default function ConfigCredential({
                     )}
                   >
                     <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                      {t('createTool.authMethod.type', { ns: 'tools' })}
+                      {t($ => $['createTool.authMethod.type'], { ns: 'tools' })}
                     </FieldsetLegend>
-                    <SelectItem
-                      text={t('createTool.authMethod.types.none', { ns: 'tools' })}
+                    <SelectItem<AuthType>
+                      text={t($ => $['createTool.authMethod.types.none'], { ns: 'tools' })}
                       value={AuthType.none}
                       isChecked={tempCredential.auth_type === AuthType.none}
                     />
-                    <SelectItem
-                      text={t('createTool.authMethod.types.api_key_header', { ns: 'tools' })}
+                    <SelectItem<AuthType>
+                      text={t($ => $['createTool.authMethod.types.api_key_header'], { ns: 'tools' })}
                       value={AuthType.apiKeyHeader}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                     />
-                    <SelectItem
-                      text={t('createTool.authMethod.types.api_key_query', { ns: 'tools' })}
+                    <SelectItem<AuthType>
+                      text={t($ => $['createTool.authMethod.types.api_key_query'], { ns: 'tools' })}
                       value={AuthType.apiKeyQuery}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
                     />
-                  </FieldsetRoot>
-                </FieldRoot>
+                  </Fieldset>
+                </Field>
                 {tempCredential.auth_type === AuthType.apiKeyHeader && (
                   <>
-                    <FieldRoot name="api_key_header_prefix" className="contents">
-                      <FieldsetRoot
+                    <Field name="api_key_header_prefix" className="contents">
+                      <Fieldset
                         render={(
                           <RadioGroup<AuthHeaderPrefix>
                             className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
@@ -167,48 +166,48 @@ export default function ConfigCredential({
                         )}
                       >
                         <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                          {t('createTool.authHeaderPrefix.title', { ns: 'tools' })}
+                          {t($ => $['createTool.authHeaderPrefix.title'], { ns: 'tools' })}
                         </FieldsetLegend>
-                        <SelectItem
-                          text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
+                        <SelectItem<AuthHeaderPrefix>
+                          text={t($ => $['createTool.authHeaderPrefix.types.basic'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.basic}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
                         />
-                        <SelectItem
-                          text={t('createTool.authHeaderPrefix.types.bearer', { ns: 'tools' })}
+                        <SelectItem<AuthHeaderPrefix>
+                          text={t($ => $['createTool.authHeaderPrefix.types.bearer'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.bearer}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
                         />
-                        <SelectItem
-                          text={t('createTool.authHeaderPrefix.types.custom', { ns: 'tools' })}
+                        <SelectItem<AuthHeaderPrefix>
+                          text={t($ => $['createTool.authHeaderPrefix.types.custom'], { ns: 'tools' })}
                           value={AuthHeaderPrefix.custom}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
                         />
-                      </FieldsetRoot>
-                    </FieldRoot>
+                      </Fieldset>
+                    </Field>
                     <div>
                       <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t('createTool.authMethod.key', { ns: 'tools' })}
+                        {t($ => $['createTool.authMethod.key'], { ns: 'tools' })}
                         <Infotip
-                          aria-label={t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                          aria-label={t($ => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                           className="ml-0.5 size-4"
                           popupClassName="w-[261px] text-text-tertiary"
                         >
-                          {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                          {t($ => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                         </Infotip>
                       </div>
                       <Input
                         value={tempCredential.api_key_header}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiKeyPlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiKeyPlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.value'], { ns: 'tools' })}</div>
                       <Input
                         value={tempCredential.api_key_value}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiValuePlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                   </>
@@ -217,34 +216,34 @@ export default function ConfigCredential({
                   <>
                     <div>
                       <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t('createTool.authMethod.queryParam', { ns: 'tools' })}
+                        {t($ => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                         <Infotip
-                          aria-label={t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                          aria-label={t($ => $['createTool.authMethod.queryParamTooltip'], { ns: 'tools' })}
                           className="ml-0.5 size-4"
                           popupClassName="w-[261px] text-text-tertiary"
                         >
-                          {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                          {t($ => $['createTool.authMethod.queryParamTooltip'], { ns: 'tools' })}
                         </Infotip>
                       </div>
                       <Input
                         value={tempCredential.api_key_query_param}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_query_param: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.queryParamPlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.queryParamPlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">{t($ => $['createTool.authMethod.value'], { ns: 'tools' })}</div>
                       <Input
                         value={tempCredential.api_key_value}
                         onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        placeholder={t($ => $['createTool.authMethod.types.apiValuePlaceholder'], { ns: 'tools' })!}
                       />
                     </div>
                   </>
                 )}
               </ScrollArea>
               <div className="mt-4 flex shrink-0 justify-end space-x-2 px-6 py-4">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
                 <Button
                   variant="primary"
                   onClick={() => {
@@ -252,7 +251,7 @@ export default function ConfigCredential({
                     onHide()
                   }}
                 >
-                  {t('operation.save', { ns: 'common' })}
+                  {t($ => $['operation.save'], { ns: 'common' })}
                 </Button>
               </div>
             </DrawerContent>

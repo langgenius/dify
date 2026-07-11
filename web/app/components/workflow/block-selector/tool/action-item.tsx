@@ -111,7 +111,7 @@ const ToolItem: FC<Props> = ({
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">{t($ => $['addToolModal.added'], { ns: 'tools' })}</div>
       )}
     </button>
   )

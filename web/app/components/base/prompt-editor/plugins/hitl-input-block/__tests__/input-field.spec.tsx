@@ -429,13 +429,13 @@ describe('InputField', () => {
       />,
     )
 
-    expect(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'select-file' }))
     expect(screen.queryByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'select-paragraph' }))
-    expect(screen.getByText(/workflow\.nodes\.humanInput\.insertInputField\.prePopulateField/i)).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.prePopulateField')).toBeInTheDocument()
   })
 
   it('should save constant select options', async () => {

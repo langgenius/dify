@@ -354,7 +354,7 @@ class TestGetBuiltinToolProviderCredentialInfo:
     def test_returns_credential_info(self, mock_tm, mock_creds, mock_oauth):
         mock_tm.get_builtin_provider.return_value.get_supported_credential_types.return_value = ["api-key"]
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info("t", "google", session=MagicMock())
 
         assert result.credentials == []
         assert result.supported_credential_types == ["api-key"]
@@ -368,7 +368,7 @@ class TestGetBuiltinToolProviderCredentials:
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
         mock_db.session.scalars.return_value.all.return_value = []
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=mock_db.session)
 
         assert result == []
 
@@ -391,7 +391,7 @@ class TestGetBuiltinToolProviderCredentials:
         credential_entity = MagicMock()
         mock_transform.convert_builtin_provider_to_credential_entity.return_value = credential_entity
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google")
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=mock_db.session)
 
         assert len(result) == 1
         assert result[0] is credential_entity

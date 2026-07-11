@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { BlockEnum } from '../../types'
 import { useDynamicTestRunOptions } from '../use-dynamic-test-run-options'
 
@@ -38,7 +39,7 @@ describe('useDynamicTestRunOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseStore.mockImplementation((selector: (state: {
       buildInTools: unknown[]

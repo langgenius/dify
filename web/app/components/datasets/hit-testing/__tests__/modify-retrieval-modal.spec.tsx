@@ -54,10 +54,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => 'model-name',
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 vi.mock('../../settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))

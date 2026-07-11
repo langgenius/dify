@@ -20,7 +20,7 @@ export const useBlocks = () => {
   return BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
+      title: t($ => $[`blocks.${block.type}`], { ns: 'workflow' }),
     }
   })
 }
@@ -50,33 +50,33 @@ export const useTabs = ({
   const shouldShowStartTab = !noStart
   const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasStartPlaceholderNode)
   const startDisabledTip: ReactNode = disableStartTab
-    ? t('tabs.startNotSupportedTip', { ns: 'workflow' })
+    ? t($ => $['tabs.startNotSupportedTip'], { ns: 'workflow' })
     : hasStartPlaceholderNode
-      ? t('tabs.unconfiguredStartDisabledTip', { ns: 'workflow' })
-      : t('tabs.startDisabledTip', { ns: 'workflow' })
+      ? t($ => $['tabs.unconfiguredStartDisabledTip'], { ns: 'workflow' })
+      : t($ => $['tabs.startDisabledTip'], { ns: 'workflow' })
   const tabs = useMemo(() => {
     const tabConfigs = [{
       key: TabsEnum.Blocks,
-      name: t('tabs.blocks', { ns: 'workflow' }),
+      name: t($ => $['tabs.blocks'], { ns: 'workflow' }),
       show: !noBlocks,
     }, {
       key: TabsEnum.Sources,
-      name: t('tabs.sources', { ns: 'workflow' }),
+      name: t($ => $['tabs.sources'], { ns: 'workflow' }),
       show: !noSources,
     }, {
       key: TabsEnum.Tools,
-      name: t('tabs.tools', { ns: 'workflow' }),
+      name: t($ => $['tabs.tools'], { ns: 'workflow' }),
       show: !noTools,
     }, {
       key: TabsEnum.Start,
-      name: t('tabs.start', { ns: 'workflow' }),
+      name: t($ => $['tabs.start'], { ns: 'workflow' }),
       show: shouldShowStartTab,
       disabled: shouldDisableStartTab,
       disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
       disabledTipLinkKey: shouldDisableStartTab && !disableStartTab && hasStartPlaceholderNode ? startNodesDocsTipLinkKey : undefined,
     }, {
       key: TabsEnum.Snippets,
-      name: t('tabs.snippets', { ns: 'workflow' }),
+      name: t($ => $['tabs.snippets'], { ns: 'workflow' }),
       show: !noSnippets,
     }]
 
@@ -142,19 +142,19 @@ export const useToolTabs = (isHideMCPTools?: boolean) => {
   const tabs = [
     {
       key: ToolTypeEnum.All,
-      name: t('tabs.allTool', { ns: 'workflow' }),
+      name: t($ => $['tabs.allTool'], { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.BuiltIn,
-      name: t('tabs.plugin', { ns: 'workflow' }),
+      name: t($ => $['tabs.plugin'], { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.Custom,
-      name: t('tabs.customTool', { ns: 'workflow' }),
+      name: t($ => $['tabs.customTool'], { ns: 'workflow' }),
     },
     {
       key: ToolTypeEnum.Workflow,
-      name: t('tabs.workflowTool', { ns: 'workflow' }),
+      name: t($ => $['tabs.workflowTool'], { ns: 'workflow' }),
     },
   ]
   if (!isHideMCPTools) {

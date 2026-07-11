@@ -56,10 +56,10 @@ const PluginAuth = ({
                     <span aria-hidden className="mt-0.5 i-ri-lock-2-line size-3.5 shrink-0 text-text-tertiary" />
                     <div className="min-w-0 grow">
                       <div className="system-xs-medium text-text-secondary">
-                        {t('auth.permissionHint.title', { ns: 'plugin' })}
+                        {t($ => $['auth.permissionHint.title'], { ns: 'plugin' })}
                       </div>
                       <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                        {t('auth.permissionHint.description', { ns: 'plugin' })}
+                        {t($ => $['auth.permissionHint.description'], { ns: 'plugin' })}
                       </div>
                       <div className="mt-1.5">
                         <button
@@ -67,7 +67,7 @@ const PluginAuth = ({
                           className="-ml-1.5 rounded-md px-1.5 py-0.5 system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                           onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
                         >
-                          {t('auth.permissionHint.action', { ns: 'plugin' })}
+                          {t($ => $['auth.permissionHint.action'], { ns: 'plugin' })}
                         </button>
                       </div>
                     </div>

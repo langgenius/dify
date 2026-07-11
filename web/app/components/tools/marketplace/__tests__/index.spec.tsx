@@ -214,7 +214,7 @@ describe('Marketplace', () => {
       // Assert
       expect(showMarketplacePanel).toHaveBeenCalledTimes(1)
       expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('', {
-        language: 'en',
+        language: 'en-US',
         q: 'vector',
         tags: 'tag-a,tag-b',
         theme: undefined,

@@ -20,7 +20,7 @@ const ScrollToSelectedNodeButton: FC = () => {
       )}
       onClick={() => scrollToWorkflowNode(selectedNode.id)}
     >
-      {t('panel.scrollToSelectedNode', { ns: 'workflow' })}
+      {t($ => $['panel.scrollToSelectedNode'], { ns: 'workflow' })}
     </div>
   )
 }

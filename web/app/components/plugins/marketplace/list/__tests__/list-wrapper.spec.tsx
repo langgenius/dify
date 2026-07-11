@@ -14,14 +14,17 @@ const mockMarketplaceData = vi.hoisted(() => ({
   page: 1,
 }))
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, num?: number }) =>
-      key === 'marketplace.pluginsResult' && options?.ns === 'plugin'
-        ? `${options.num} plugins found`
-        : options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string, num?: number }) =>
+        key === 'marketplace.pluginsResult' && options?.ns === 'plugin'
+          ? `${options.num} plugins found`
+          : options?.ns ? `${options.ns}.${key}` : key),
+    }),
+  })
+})
 
 vi.mock('../../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,

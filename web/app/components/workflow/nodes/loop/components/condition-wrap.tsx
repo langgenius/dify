@@ -129,7 +129,7 @@ const ConditionWrap: FC<Props> = ({
                         disabled={readOnly}
                       >
                         <RiAddLine className="mr-1 size-3.5" />
-                        {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+                        {t($ => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                       </Button>
                     </SelectTrigger>
                     <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">

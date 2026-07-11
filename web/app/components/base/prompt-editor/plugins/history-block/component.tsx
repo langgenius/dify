@@ -48,7 +48,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       ref={ref}
     >
       <MessageClockCircle className="mr-1 h-[14px] w-[14px]" />
-      <div className="mr-1 text-xs font-medium">{t('promptEditor.history.item.title', { ns: 'common' })}</div>
+      <div className="mr-1 text-xs font-medium">{t($ => $['promptEditor.history.item.title'], { ns: 'common' })}</div>
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -76,21 +76,21 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
         >
           <div className="w-[360px] rounded-xl bg-white shadow-lg">
             <div className="p-4">
-              <div className="mb-2 text-xs font-medium text-gray-500">{t('promptEditor.history.modal.title', { ns: 'common' })}</div>
+              <div className="mb-2 text-xs font-medium text-gray-500">{t($ => $['promptEditor.history.modal.title'], { ns: 'common' })}</div>
               <div className="flex items-center text-sm text-gray-700">
                 <div className="mr-1 w-20 text-xs font-semibold">{localRoleName?.user}</div>
-                {t('promptEditor.history.modal.user', { ns: 'common' })}
+                {t($ => $['promptEditor.history.modal.user'], { ns: 'common' })}
               </div>
               <div className="flex items-center text-sm text-gray-700">
                 <div className="mr-1 w-20 text-xs font-semibold">{localRoleName?.assistant}</div>
-                {t('promptEditor.history.modal.assistant', { ns: 'common' })}
+                {t($ => $['promptEditor.history.modal.assistant'], { ns: 'common' })}
               </div>
             </div>
             <div
               className="cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-[#155EEF]"
               onClick={onEditRole}
             >
-              {t('promptEditor.history.modal.edit', { ns: 'common' })}
+              {t($ => $['promptEditor.history.modal.edit'], { ns: 'common' })}
             </div>
           </div>
         </PopoverContent>

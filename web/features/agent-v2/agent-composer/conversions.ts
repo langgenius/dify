@@ -174,6 +174,12 @@ const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) => `${tool.provider_
 const toCredentialVariant = (tool: AgentSoulDifyToolConfig) => {
   const credentialType = tool.credential_type
 
+  if (credentialType === 'api-key')
+    return 'authorized' as const
+
+  if (credentialType === 'oauth2')
+    return tool.credential_ref?.id ? 'authorized' as const : 'unauthorized' as const
+
   if (credentialType === 'unauthorized')
     return 'unauthorized' as const
 
@@ -221,9 +227,9 @@ const toProviderToolFormState = (config?: AgentSoulConfig): {
       kind: 'provider',
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
-      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'unauthorized',
+      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'oauth2' || tool.credential_type === 'unauthorized',
       credentialId: tool.credential_ref?.id ?? undefined,
-      credentialKey: tool.credential_type === 'api-key'
+      credentialKey: tool.credential_type === 'api-key' || tool.credential_type === 'oauth2'
         ? 'agentDetail.configure.tools.credential.authOne'
         : undefined,
       credentialType: tool.credential_type,
@@ -544,7 +550,7 @@ export const formStateToAgentSoulConfig = ({
     env: toEnvConfig(formState.envVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
     config_files: toConfigFileConfigs(formState.files, baseConfig),
-    config_note: baseConfig?.config_note ?? '',
+    config_note: formState.configNote,
   }
 }
 
@@ -556,6 +562,7 @@ export const agentSoulConfigToFormState = (
 
   return {
     ...baseDraft,
+    configNote: config?.config_note ?? '',
     prompt: config?.prompt?.system_prompt ?? '',
     model: toDraftModel(config),
     appFeatures: config?.app_features,

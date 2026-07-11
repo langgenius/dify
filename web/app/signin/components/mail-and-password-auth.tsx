@@ -1,5 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
@@ -51,15 +51,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      toast.error(t('error.emailEmpty', { ns: 'login' }))
+      toast.error(t($ => $['error.emailEmpty'], { ns: 'login' }))
       return
     }
     if (!emailRegex.test(email)) {
-      toast.error(t('error.emailInValid', { ns: 'login' }))
+      toast.error(t($ => $['error.emailInValid'], { ns: 'login' }))
       return
     }
     if (!password?.trim()) {
-      toast.error(t('error.passwordEmpty', { ns: 'login' }))
+      toast.error(t($ => $['error.passwordEmpty'], { ns: 'login' }))
       return
     }
 
@@ -102,7 +102,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
     }
     catch (error) {
       if (hasErrorCode(error, 'authentication_failed')) {
-        toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
+        toast.error(t($ => $['error.invalidEmailOrPassword'], { ns: 'login' }))
       }
     }
     finally {
@@ -116,9 +116,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         void handleEmailPasswordLogin()
       }}
     >
-      <FieldRoot name="email" disabled={isInvite} className="mb-3">
+      <Field name="email" disabled={isInvite} className="mb-3">
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
-          {t('email', { ns: 'login' })}
+          {t($ => $.email, { ns: 'login' })}
         </FieldLabel>
         <FieldControl
           value={email}
@@ -127,20 +127,20 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           type="email"
           autoComplete="email"
           spellCheck={false}
-          placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+          placeholder={t($ => $.emailPlaceholder, { ns: 'login' }) || ''}
         />
-      </FieldRoot>
+      </Field>
 
-      <FieldRoot name="password" className="mb-3">
+      <Field name="password" className="mb-3">
         <div className="my-2 flex items-center justify-between">
-          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</FieldLabel>
+          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t($ => $.password, { ns: 'login' })}</FieldLabel>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
             tabIndex={isEmailSetup ? 0 : -1}
             aria-disabled={!isEmailSetup}
           >
-            {t('forget', { ns: 'login' })}
+            {t($ => $.forget, { ns: 'login' })}
           </Link>
         </div>
         <div className="relative mt-1">
@@ -150,14 +150,14 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             spellCheck={false}
-            placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+            placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
             className="pr-10"
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
             <Button
               type="button"
               variant="ghost"
-              aria-label={t(showPassword ? 'hidePassword' : 'showPassword', { ns: 'login' })}
+              aria-label={t($ => $[showPassword ? 'hidePassword' : 'showPassword'], { ns: 'login' })}
               aria-pressed={showPassword}
               className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
               onClick={() => setShowPassword(!showPassword)}
@@ -168,7 +168,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             </Button>
           </div>
         </div>
-      </FieldRoot>
+      </Field>
 
       <div className="mb-2">
         <Button
@@ -178,7 +178,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           disabled={isLoading || !email || !password}
           className="w-full"
         >
-          {t('signBtn', { ns: 'login' })}
+          {t($ => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
     </Form>

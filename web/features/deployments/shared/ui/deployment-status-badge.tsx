@@ -98,7 +98,7 @@ export function EnvironmentDeploymentBadge({
   const toneClassNames = deploymentStatusToneClassNames(status)
   const dotStatus = deploymentStatusDotStatus(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
-  const statusLabel = t(deploymentStatusLabelKey(status))
+  const statusLabel = t($ => $[deploymentStatusLabelKey(status)])
   const label = summaryLabel ?? `${name} · ${statusLabel}`
   const visibleLabel = showStatus ? `${name} · ${statusLabel}` : name
 

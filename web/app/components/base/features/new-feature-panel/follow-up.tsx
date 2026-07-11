@@ -78,7 +78,7 @@ const FollowUp = ({
             <VirtualAssistant className="size-4 text-text-primary-on-surface" />
           </div>
         )}
-        title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
+        title={t($ => $['feature.suggestedQuestionsAfterAnswer.title'], { ns: 'appDebug' })}
         value={!!suggested?.enabled}
         onChange={state => handleChange(FeatureEnum.suggested, state)}
         onMouseEnter={() => setIsHovering(true)}
@@ -88,20 +88,20 @@ const FollowUp = ({
         <>
           {!suggested?.enabled && (
             <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-              {t('feature.suggestedQuestionsAfterAnswer.description', { ns: 'appDebug' })}
+              {t($ => $['feature.suggestedQuestionsAfterAnswer.description'], { ns: 'appDebug' })}
             </div>
           )}
           {!!suggested?.enabled && (
             <>
               {!isHovering && (
                 <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                  {suggested.model?.name || t('feature.suggestedQuestionsAfterAnswer.modal.defaultModel', { ns: 'appDebug' })}
+                  {suggested.model?.name || t($ => $['feature.suggestedQuestionsAfterAnswer.modal.defaultModel'], { ns: 'appDebug' })}
                 </div>
               )}
               {isHovering && (
                 <Button className="w-full" onClick={handleOpenSettingModal} disabled={disabled}>
                   <RiEqualizer2Line className="mr-1 size-4" />
-                  {t('operation.settings', { ns: 'common' })}
+                  {t($ => $['operation.settings'], { ns: 'common' })}
                 </Button>
               )}
             </>

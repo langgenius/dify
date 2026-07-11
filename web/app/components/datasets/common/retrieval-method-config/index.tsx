@@ -100,8 +100,8 @@ const RetrievalMethodConfig: FC<Props> = ({
           disabled={disabled}
           icon={<VectorSearch className="size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
-          title={t('retrieval.semantic_search.title', { ns: 'dataset' })}
-          description={t('retrieval.semantic_search.description', { ns: 'dataset' })}
+          title={t($ => $['retrieval.semantic_search.title'], { ns: 'dataset' })}
+          description={t($ => $['retrieval.semantic_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.semantic}
           onClick={onSwitch}
           effectColor={EffectColor.purple}
@@ -124,8 +124,8 @@ const RetrievalMethodConfig: FC<Props> = ({
           disabled={disabled}
           icon={<FullTextSearch className="size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
-          title={t('retrieval.full_text_search.title', { ns: 'dataset' })}
-          description={t('retrieval.full_text_search.description', { ns: 'dataset' })}
+          title={t($ => $['retrieval.full_text_search.title'], { ns: 'dataset' })}
+          description={t($ => $['retrieval.full_text_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.fullText}
           onClick={onSwitch}
           effectColor={EffectColor.purple}
@@ -148,8 +148,8 @@ const RetrievalMethodConfig: FC<Props> = ({
           disabled={disabled}
           icon={<HybridSearch className="size-4" />}
           iconActiveColor="text-util-colors-purple-purple-600"
-          title={t('retrieval.hybrid_search.title', { ns: 'dataset' })}
-          description={t('retrieval.hybrid_search.description', { ns: 'dataset' })}
+          title={t($ => $['retrieval.hybrid_search.title'], { ns: 'dataset' })}
+          description={t($ => $['retrieval.hybrid_search.description'], { ns: 'dataset' })}
           isActive={value.search_method === RETRIEVE_METHOD.hybrid}
           onClick={onSwitch}
           effectColor={EffectColor.purple}

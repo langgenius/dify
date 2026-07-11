@@ -38,7 +38,7 @@ const ConditionDate = ({
     const hasValue = Boolean(value)
     const triggerText = value
       ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-      : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
+      : t($ => $['nodes.knowledgeRetrieval.metadata.panel.datePlaceholder'], { ns: 'workflow' })
 
     return (
       <div className="group flex items-center">
@@ -64,7 +64,7 @@ const ConditionDate = ({
           ? (
               <button
                 type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
+                aria-label={t($ => $['operation.clear'], { ns: 'common' })}
                 className="hidden size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={(e) => {
                   e.stopPropagation()

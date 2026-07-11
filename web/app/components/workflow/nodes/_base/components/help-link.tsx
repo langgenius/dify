@@ -16,7 +16,7 @@ const HelpLink = ({
   if (!link)
     return null
 
-  const label = t('userProfile.helpCenter', { ns: 'common' })
+  const label = t($ => $['userProfile.helpCenter'], { ns: 'common' })
 
   return (
     <Tooltip>

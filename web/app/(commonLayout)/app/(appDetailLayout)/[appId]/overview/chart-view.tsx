@@ -3,6 +3,7 @@ import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,8 +11,9 @@ import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/component
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
@@ -39,8 +41,8 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canMonitor = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
@@ -49,8 +51,8 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
-    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
-    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
+    ? { name: t($ => $['filter.period.today'], { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
+    : { name: t($ => $['filter.period.last7days'], { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
   )
 
   if (!appDetail || !canMonitor)
@@ -61,17 +63,17 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
       <div className="h-[106px] shrink-0">
         <div className="px-6 pt-3">
           <div className="flex h-6 items-center">
-            <h1 className="title-2xl-semi-bold text-text-primary">{t('appMenus.overview', { ns: 'common' })}</h1>
+            <h1 className="title-2xl-semi-bold text-text-primary">{t($ => $['appMenus.overview'], { ns: 'common' })}</h1>
           </div>
           <div className="mt-0.5 flex h-4 min-w-0 items-start gap-0.5 system-xs-regular text-text-tertiary">
-            <p className="min-w-0 truncate">{t('monitoring.description', { ns: 'appLog' })}</p>
+            <p className="min-w-0 truncate">{t($ => $['monitoring.description'], { ns: 'appLog' })}</p>
             <a
               href={docLink('/use-dify/monitor/analysis')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex shrink-0 items-center text-text-accent hover:underline"
             >
-              <span>{t('operation.learnMore', { ns: 'common' })}</span>
+              <span>{t($ => $['operation.learnMore'], { ns: 'common' })}</span>
               <span className="i-ri-external-link-line size-3" aria-hidden="true" />
             </a>
           </div>

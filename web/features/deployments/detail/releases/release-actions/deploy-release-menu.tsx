@@ -28,8 +28,10 @@ import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
 import {
   deleteReleaseDialogOpenAtom,
-  deployReleaseMenuAppInstanceQueryAtom,
-  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  deployReleaseMenuAppInstanceNameAtom,
+  deployReleaseMenuEnvironmentDeploymentsAtom,
+  deployReleaseMenuEnvironmentDeploymentsIsErrorAtom,
+  deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom,
   deployReleaseMenuOpenAtom,
   openDeleteReleaseDialogAtom,
   openEditReleaseDialogAtom,
@@ -54,19 +56,21 @@ function DeployReleaseMenuContent({ onDeleted }: {
   const setDeleteReleaseDialogOpen = useSetAtom(deleteReleaseDialogOpenAtom)
   const openEditReleaseDialog = useSetAtom(openEditReleaseDialogAtom)
   const openDeleteReleaseDialog = useSetAtom(openDeleteReleaseDialogAtom)
-  const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
-  const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
+  const environmentDeployments = useAtomValue(deployReleaseMenuEnvironmentDeploymentsAtom)
+  const environmentDeploymentsIsLoading = useAtomValue(deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom)
+  const environmentDeploymentsIsError = useAtomValue(deployReleaseMenuEnvironmentDeploymentsIsErrorAtom)
+  const appInstanceName = useAtomValue(deployReleaseMenuAppInstanceNameAtom)
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
   const exportReleaseDslMutation = useMutation(mutationOptions({
     mutationKey: ['deployments', 'release-dsl-export'],
     mutationFn: (input: ExportReleaseDslInput) => exportReleaseDsl(input),
   }))
 
-  const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
+  const deploymentEnvironmentRows = environmentDeployments?.environmentDeployments ?? []
+  const environments = deploymentEnvironmentRows
     .map(row => row.environment)
-  const deploymentRows = environmentDeploymentsQuery.data?.environmentDeployments.filter(row => !isUndeployedDeploymentRow(row)) ?? []
+  const deploymentRows = deploymentEnvironmentRows.filter(row => !isUndeployedDeploymentRow(row))
   const targetRelease = releaseRows.find(release => release.id === releaseId)
-  const appInstanceName = appInstanceQuery.data?.appInstance.displayName
 
   if (!targetRelease)
     return null
@@ -74,17 +78,17 @@ function DeployReleaseMenuContent({ onDeleted }: {
   const release = targetRelease
   const targetReleaseName = release.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
-  const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
-  const hasDeleteUsageCheckFailed = open && environmentDeploymentsQuery.isError
+  const isCheckingDeleteUsage = open && environmentDeploymentsIsLoading
+  const hasDeleteUsageCheckFailed = open && environmentDeploymentsIsError
   const isReleaseInUse = deleteUsageCount > 0
   const isDeletingRelease = deleteRelease.isPending
   const isExportingDsl = exportReleaseDslMutation.isPending
   const deleteDisabledReason = isCheckingDeleteUsage
-    ? t('versions.disabledReason.checkingDeployments')
+    ? t($ => $['versions.disabledReason.checkingDeployments'])
     : hasDeleteUsageCheckFailed
-      ? t('versions.disabledReason.checkDeploymentsFailed')
+      ? t($ => $['versions.disabledReason.checkDeploymentsFailed'])
       : isReleaseInUse
-        ? t('versions.disabledReason.releaseInUse', { count: deleteUsageCount })
+        ? t($ => $['versions.disabledReason.releaseInUse'], { count: deleteUsageCount })
         : undefined
   const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || hasDeleteUsageCheckFailed || isReleaseInUse
 
@@ -99,7 +103,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
           setOpen(false)
         },
         onError: () => {
-          toast.error(t('versions.exportDslFailed'))
+          toast.error(t($ => $['versions.exportDslFailed']))
         },
       },
     )
@@ -118,11 +122,11 @@ function DeployReleaseMenuContent({ onDeleted }: {
       {
         onSuccess: () => {
           setDeleteReleaseDialogOpen(false)
-          toast.success(t('versions.deleteSuccess', { name: targetReleaseName }))
+          toast.success(t($ => $['versions.deleteSuccess'], { name: targetReleaseName }))
           onDeleted?.()
         },
         onError: () => {
-          toast.error(t('versions.deleteFailed'))
+          toast.error(t($ => $['versions.deleteFailed']))
         },
       },
     )
@@ -130,18 +134,18 @@ function DeployReleaseMenuContent({ onDeleted }: {
 
   const groupedRows = buildDeployMenuSections({
     environments,
-    environmentDeployments: environmentDeploymentsQuery.data?.environmentDeployments ?? [],
+    environmentDeployments: deploymentEnvironmentRows,
     releaseRows,
     releaseId,
     targetRelease: release,
-    t,
+    t: (selector, options) => t(selector, options),
   })
 
   return (
     <>
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          aria-label={t('versions.moreActions')}
+          aria-label={t($ => $['versions.moreActions'])}
           className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
@@ -154,7 +158,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
             >
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">
-                {t('versions.editRelease')}
+                {t($ => $['versions.editRelease'])}
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -168,7 +172,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
             >
               <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">
-                {isExportingDsl ? t('versions.exportingDsl') : t('versions.exportDsl')}
+                {isExportingDsl ? t($ => $['versions.exportingDsl']) : t($ => $['versions.exportDsl'])}
               </span>
             </DropdownMenuItem>
             {groupedRows.length > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
@@ -176,7 +180,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
               <div key={section.group}>
                 {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
                 <div className="px-3 pt-1.5 pb-1 system-2xs-medium-uppercase text-text-quaternary">
-                  {t(`versions.groupHeader.${section.group}`)}
+                  {t($ => $[`versions.groupHeader.${section.group}`])}
                 </div>
                 {section.rows.map((row) => {
                   const isDisabled = row.state === 'current' || row.state === 'deploying'
@@ -222,7 +226,7 @@ function DeployReleaseMenuContent({ onDeleted }: {
                 }}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
+                <span className="system-sm-regular">{t($ => $['versions.deleteRelease'])}</span>
               </DropdownMenuItem>
             </TitleTooltip>
           </DropdownMenuContent>

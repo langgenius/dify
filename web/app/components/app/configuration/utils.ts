@@ -1,9 +1,38 @@
+import type { Namespace, SelectorParam, TFunction } from 'i18next'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { BlockStatus, ChatPromptConfig, CompletionPromptConfig, ModelConfig } from '@/models/debug'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
+
+export type SelectorTranslate<Ns extends Namespace> = <
+  const TargetNs extends Ns,
+  const Selector extends SelectorParam<TargetNs>,
+>(
+  selector: Selector,
+  options: { ns: TargetNs } & Record<string, unknown>,
+) => ReturnType<TFunction>
+
+type StringSelectorTranslate<Ns extends Namespace> = <
+  const TargetNs extends Ns,
+  const Selector extends SelectorParam<TargetNs>,
+>(
+  selector: Selector,
+  options: { ns: TargetNs } & Record<string, unknown>,
+) => string
+
+export const getStringSelectorTranslate = <Ns extends Namespace>(
+  translate: SelectorTranslate<Ns>,
+): StringSelectorTranslate<Ns> => {
+  return (selector, options) => {
+    const result = translate(selector, options)
+    if (typeof result !== 'string')
+      throw new TypeError('Expected translation selector to return a string')
+
+    return result
+  }
+}
 
 export const withCollectionIconBasePath = (collectionList: Collection[], prefix?: string) => {
   if (!prefix)

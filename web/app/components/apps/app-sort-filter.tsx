@@ -33,13 +33,13 @@ export function AppSortFilter({
   const { t } = useTranslation()
 
   const options = useMemo(() => ([
-    { value: 'last_modified', text: t('studio.sort.lastModified', { ns: 'app' }) },
-    { value: 'recently_created', text: t('studio.sort.recentlyCreated', { ns: 'app' }) },
-    { value: 'earliest_created', text: t('studio.sort.earliestCreated', { ns: 'app' }) },
+    { value: 'last_modified', text: t($ => $['studio.sort.lastModified'], { ns: 'app' }) },
+    { value: 'recently_created', text: t($ => $['studio.sort.recentlyCreated'], { ns: 'app' }) },
+    { value: 'earliest_created', text: t($ => $['studio.sort.earliestCreated'], { ns: 'app' }) },
   ] satisfies Array<{ value: AppListSortBy, text: string }>), [t])
 
   const activeOption = options.find(option => option.value === value) ?? options[0]!
-  const sortByLabel = t('studio.sort.sortBy', { ns: 'app' })
+  const sortByLabel = t($ => $['studio.sort.sortBy'], { ns: 'app' })
 
   return (
     <DropdownMenu>

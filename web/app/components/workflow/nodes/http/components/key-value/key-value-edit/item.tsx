@@ -98,7 +98,7 @@ const KeyValueItem: FC<Props> = ({
                 value={payload.key}
                 onChange={handleChange('key')}
                 hasRemove={false}
-                placeholder={t(`${i18nPrefix}.key`, { ns: 'workflow' })!}
+                placeholder={t($ => $[`${i18nPrefix}.key`], { ns: 'workflow' })!}
                 readOnly={readonly}
                 insertVarTipToLeft={insertVarTipToLeft}
               />
@@ -119,7 +119,7 @@ const KeyValueItem: FC<Props> = ({
             readOnly={readonly}
           >
             <SelectTrigger
-              aria-label={t(`${i18nPrefix}.type`, { ns: 'workflow' })}
+              aria-label={t($ => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
               className="h-7 rounded-none bg-transparent text-text-primary hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
             >
               <SelectValue />
@@ -161,7 +161,7 @@ const KeyValueItem: FC<Props> = ({
                 onChange={handleChange('value')}
                 hasRemove={!readonly && canRemove}
                 onRemove={onRemove}
-                placeholder={t(`${i18nPrefix}.value`, { ns: 'workflow' })!}
+                placeholder={t($ => $[`${i18nPrefix}.value`], { ns: 'workflow' })!}
                 readOnly={readonly}
                 isSupportFile={isSupportFile}
                 insertVarTipToLeft={insertVarTipToLeft}

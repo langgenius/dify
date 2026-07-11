@@ -76,7 +76,7 @@ const LearnDifyContent = ({
   }
 
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
-  const sectionTitle = title ?? t('learnDify.title', { ns: 'explore' })
+  const sectionTitle = title ?? t($ => $['learnDify.title'], { ns: 'explore' })
 
   if (isLoading)
     return loadingFallback
@@ -102,7 +102,7 @@ const LearnDifyContent = ({
             </h2>
             {showDescription && (
               <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-                {t('learnDify.description', { ns: 'explore' })}
+                {t($ => $['learnDify.description'], { ns: 'explore' })}
               </p>
             )}
           </div>
@@ -110,7 +110,7 @@ const LearnDifyContent = ({
             <button
               type="button"
               className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
-              aria-label={t('learnDify.hide', { ns: 'explore' })}
+              aria-label={t($ => $['learnDify.hide'], { ns: 'explore' })}
               onClick={handleHide}
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />

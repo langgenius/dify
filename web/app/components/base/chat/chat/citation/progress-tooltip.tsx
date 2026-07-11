@@ -36,7 +36,7 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
         placement="top-start"
         className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
       >
-        {t('chat.citation.hitScore', { ns: 'common' })}
+        {t($ => $['chat.citation.hitScore'], { ns: 'common' })}
         {' '}
         {data}
       </TooltipContent>

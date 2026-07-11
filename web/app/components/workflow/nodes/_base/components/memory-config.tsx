@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
@@ -70,7 +70,7 @@ const MemoryConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const payload = config.data
-  const windowSizeLabel = t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })
+  const windowSizeLabel = t($ => $[`${i18nPrefix}.windowSize`], { ns: 'workflow' })
   const handleMemoryEnabledChange = useCallback((enabled: boolean) => {
     onChange(enabled ? defaultMemory : undefined)
   }, [defaultMemory, onChange])
@@ -136,8 +136,8 @@ const MemoryConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.memory`, { ns: 'workflow' })}
-        tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
+        title={t($ => $[`${i18nPrefix}.memory`], { ns: 'workflow' })}
+        tooltip={t($ => $[`${i18nPrefix}.memoryTip`], { ns: 'workflow' })!}
         operations={(
           <Switch
             checked={!!payload}
@@ -160,7 +160,7 @@ const MemoryConfig: FC<Props> = ({
                 />
                 <div className="system-xs-medium-uppercase text-text-tertiary">{windowSizeLabel}</div>
               </div>
-              <FieldsetRoot className="flex h-8 items-center space-x-2">
+              <Fieldset className="flex h-8 items-center space-x-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
                   className="w-[144px]"
@@ -185,21 +185,21 @@ const MemoryConfig: FC<Props> = ({
                   onBlur={handleBlur}
                   disabled={readonly || !payload.window?.enabled}
                 />
-              </FieldsetRoot>
+              </Fieldset>
             </div>
             {canSetRoleName && (
               <div className="mt-4">
-                <div className="text-xs/6 font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
+                <div className="text-xs/6 font-medium text-text-tertiary uppercase">{t($ => $[`${i18nPrefix}.conversationRoleName`], { ns: 'workflow' })}</div>
                 <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.user`, { ns: 'workflow' })}
+                    title={t($ => $[`${i18nPrefix}.user`], { ns: 'workflow' })}
                     value={payload.role_prefix?.user || ''}
                     onChange={handleRolePrefixChange(MemoryRole.user)}
                   />
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.assistant`, { ns: 'workflow' })}
+                    title={t($ => $[`${i18nPrefix}.assistant`], { ns: 'workflow' })}
                     value={payload.role_prefix?.assistant || ''}
                     onChange={handleRolePrefixChange(MemoryRole.assistant)}
                   />

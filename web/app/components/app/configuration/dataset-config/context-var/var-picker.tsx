@@ -70,7 +70,7 @@ const VarPicker: FC<Props> = ({
                     )
                   : (
                       <div>
-                        {notSelectedVarTip || t('feature.dataSet.queryVariable.choosePlaceholder', { ns: 'appDebug' })}
+                        {notSelectedVarTip || t($ => $['feature.dataSet.queryVariable.choosePlaceholder'], { ns: 'appDebug' })}
                       </div>
                     )}
               </div>
@@ -103,8 +103,8 @@ const VarPicker: FC<Props> = ({
             )
           : (
               <div className="w-[240px] rounded-lg border border-components-panel-border bg-components-panel-bg p-6 shadow-lg">
-                <div className="mb-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.noVar', { ns: 'appDebug' })}</div>
-                <div className="text-xs/normal text-text-tertiary">{t('feature.dataSet.queryVariable.noVarTip', { ns: 'appDebug' })}</div>
+                <div className="mb-1 text-sm font-medium text-text-secondary">{t($ => $['feature.dataSet.queryVariable.noVar'], { ns: 'appDebug' })}</div>
+                <div className="text-xs/normal text-text-tertiary">{t($ => $['feature.dataSet.queryVariable.noVarTip'], { ns: 'appDebug' })}</div>
               </div>
             )}
       </PopoverContent>

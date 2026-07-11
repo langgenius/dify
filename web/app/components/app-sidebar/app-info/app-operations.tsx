@@ -151,7 +151,7 @@ const AppOperations = ({
         >
           <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
           <span className="system-xs-medium text-components-button-secondary-text">
-            {t('operation.more', { ns: 'common' })}
+            {t($ => $['operation.more'], { ns: 'common' })}
           </span>
         </Button>
       </div>
@@ -185,7 +185,7 @@ const AppOperations = ({
               <>
                 <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
                 <span className="system-xs-medium text-components-button-secondary-text">
-                  {t('operation.more', { ns: 'common' })}
+                  {t($ => $['operation.more'], { ns: 'common' })}
                 </span>
               </>
             </DropdownMenuTrigger>

@@ -58,7 +58,7 @@ function DeploymentActionsMenuContent({
     >
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
-          aria-label={t('card.moreActions')}
+          aria-label={t($ => $['card.moreActions'])}
           className={cn(ACTION_TRIGGER_CLASS_NAME, triggerClassName)}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
@@ -66,7 +66,7 @@ function DeploymentActionsMenuContent({
         <DropdownMenuContent placement={placement} sideOffset={sideOffset} popupClassName="min-w-44">
           <DropdownMenuItem className="gap-2 px-3" onClick={openEditDialog}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span className="system-sm-regular text-text-secondary">{t('card.menu.editInfo')}</span>
+            <span className="system-sm-regular text-text-secondary">{t($ => $['card.menu.editInfo'])}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -75,7 +75,7 @@ function DeploymentActionsMenuContent({
             onClick={openDeleteDialog}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span className="system-sm-regular">{t('card.menu.delete')}</span>
+            <span className="system-sm-regular">{t($ => $['card.menu.delete'])}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

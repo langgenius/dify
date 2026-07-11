@@ -21,7 +21,7 @@ const HistoryPanel: FC<Props> = ({
       className="mt-2"
       title={(
         <div className="flex items-center gap-2">
-          <div>{t('feature.conversationHistory.title', { ns: 'appDebug' })}</div>
+          <div>{t($ => $['feature.conversationHistory.title'], { ns: 'appDebug' })}</div>
         </div>
       )}
       headerIcon={(
@@ -31,7 +31,7 @@ const HistoryPanel: FC<Props> = ({
       )}
       headerRight={(
         <div className="flex items-center">
-          <div className="text-xs text-text-tertiary">{t('feature.conversationHistory.description', { ns: 'appDebug' })}</div>
+          <div className="text-xs text-text-tertiary">{t($ => $['feature.conversationHistory.description'], { ns: 'appDebug' })}</div>
           <div className="ml-3 h-[14px] w-px bg-divider-regular"></div>
           <OperationBtn type="edit" onClick={onShowEditModal} />
         </div>
@@ -41,7 +41,7 @@ const HistoryPanel: FC<Props> = ({
       {showWarning && (
         <div className="flex justify-between rounded-b-xl bg-background-section-burn px-3 py-2 text-xs text-text-secondary">
           <div>
-            {t('feature.conversationHistory.tip', { ns: 'appDebug' })}
+            {t($ => $['feature.conversationHistory.tip'], { ns: 'appDebug' })}
           </div>
         </div>
       )}

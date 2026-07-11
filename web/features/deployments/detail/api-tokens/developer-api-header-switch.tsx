@@ -7,7 +7,11 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
-import { developerApiSettingsQueryAtom } from './state'
+import {
+  developerApiSettingsAtom,
+  developerApiSettingsIsErrorAtom,
+  developerApiSettingsIsLoadingAtom,
+} from './state'
 
 function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
   checked: boolean
@@ -20,7 +24,7 @@ function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
 
   return (
     <Switch
-      aria-label={t('access.api.developerTitle')}
+      aria-label={t($ => $['access.api.developerTitle'])}
       checked={checked}
       disabled={disabled || !appInstanceId}
       loading={toggleDeveloperAPI.isPending}
@@ -43,22 +47,24 @@ function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
 
 export function DeveloperApiHeaderSwitch() {
   const { t } = useTranslation('deployments')
-  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const developerApiSettings = useAtomValue(developerApiSettingsAtom)
+  const isLoading = useAtomValue(developerApiSettingsIsLoadingAtom)
+  const isError = useAtomValue(developerApiSettingsIsErrorAtom)
+  const accessChannels = developerApiSettings?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
-  if (developerApiSettingsQuery.isLoading)
+  if (isLoading)
     return <SwitchSkeleton />
 
   return (
     <div className="flex items-center gap-2">
       <span className="system-xs-medium text-text-tertiary">
-        {apiEnabled ? t('overview.enabled') : t('overview.disabled')}
+        {apiEnabled ? t($ => $['overview.enabled']) : t($ => $['overview.disabled'])}
       </span>
       <DeveloperApiSwitch
         checked={apiEnabled}
         accessChannels={accessChannels}
-        disabled={developerApiSettingsQuery.isError}
+        disabled={isError}
       />
     </div>
   )

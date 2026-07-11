@@ -2,11 +2,12 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
@@ -28,7 +29,7 @@ function ApiBasedExtensionListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <div key={index} className="rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs">
           <SkeletonContainer className="h-16">
@@ -51,7 +52,7 @@ export function ApiBasedExtensionPage({
   layout,
 }: ApiBasedExtensionPageProps = {}) {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
@@ -108,7 +109,7 @@ export function ApiBasedExtensionPage({
         onClick={handleOpenApiBasedExtensionModal}
       >
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
-        {t('apiBasedExtension.add', { ns: 'common' })}
+        {t($ => $['apiBasedExtension.add'], { ns: 'common' })}
       </Button>
     </div>
   )
@@ -128,7 +129,7 @@ export function ApiBasedExtensionPage({
       {
         !isLoading && hasApiBasedExtensions && hasSearchKeywords && !filteredApiBasedExtensions.length && (
           <div className="py-10 text-center system-sm-regular text-text-tertiary">
-            {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
+            {t($ => $['dataSource.notion.selector.noSearchResult'], { ns: 'common' })}
           </div>
         )
       }

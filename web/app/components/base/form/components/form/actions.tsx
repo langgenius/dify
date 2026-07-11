@@ -35,7 +35,7 @@ const Actions = ({
       loading={isSubmitting}
       onClick={() => form.handleSubmit()}
     >
-      {t('operation.submit', { ns: 'common' })}
+      {t($ => $['operation.submit'], { ns: 'common' })}
     </Button>
   )
 }

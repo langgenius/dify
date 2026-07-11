@@ -71,44 +71,44 @@ const Marketplace = ({
         )}
         <div className={cn('pt-4 pb-3', marketplaceFrameClassName)}>
           <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">
-            {t('marketplace.moreFrom', { ns: 'plugin' })}
+            {t($ => $['marketplace.moreFrom'], { ns: 'plugin' })}
           </div>
           <div className="flex items-center text-center body-md-regular text-text-tertiary">
-            {t('marketplace.discover', { ns: 'plugin' })}
+            {t($ => $['marketplace.discover'], { ns: 'plugin' })}
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.models', { ns: 'plugin' })}
+              {t($ => $['category.models'], { ns: 'plugin' })}
             </span>
             ,
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.tools', { ns: 'plugin' })}
+              {t($ => $['category.tools'], { ns: 'plugin' })}
             </span>
             ,
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.datasources', { ns: 'plugin' })}
+              {t($ => $['category.datasources'], { ns: 'plugin' })}
             </span>
             ,
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.triggers', { ns: 'plugin' })}
+              {t($ => $['category.triggers'], { ns: 'plugin' })}
             </span>
             ,
             <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.agents', { ns: 'plugin' })}
+              {t($ => $['category.agents'], { ns: 'plugin' })}
             </span>
             ,
             <span className="relative mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.extensions', { ns: 'plugin' })}
+              {t($ => $['category.extensions'], { ns: 'plugin' })}
             </span>
-            {t('marketplace.and', { ns: 'plugin' })}
+            {t($ => $['marketplace.and'], { ns: 'plugin' })}
             <span className="relative mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
-              {t('category.bundles', { ns: 'plugin' })}
+              {t($ => $['category.bundles'], { ns: 'plugin' })}
             </span>
-            {t('operation.in', { ns: 'common' })}
+            {t($ => $['operation.in'], { ns: 'common' })}
             <a
               href={getMarketplaceUrl('', { language: locale, q: searchPluginText, tags: filterPluginTags.join(','), theme })}
               className="ml-1 flex items-center system-sm-medium text-text-accent"
               target="_blank"
             >
-              {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+              {t($ => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
               <RiArrowRightUpLine className="size-4" />
             </a>
           </div>

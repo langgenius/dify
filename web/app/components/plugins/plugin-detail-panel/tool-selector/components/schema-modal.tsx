@@ -35,11 +35,11 @@ const SchemaModal: FC<Props> = ({
           {/* Header */}
           <div className="relative flex p-6 pr-14 pb-3">
             <DialogTitle className="grow truncate title-2xl-semi-bold text-text-primary">
-              {t('nodes.agent.parameterSchema', { ns: 'workflow' })}
+              {t($ => $['nodes.agent.parameterSchema'], { ns: 'workflow' })}
             </DialogTitle>
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
               onClick={onClose}
             >

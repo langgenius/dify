@@ -56,7 +56,7 @@ export const TitleInput = memo(({
         mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary
         outline-hidden focus:shadow-xs
       `}
-      placeholder={t('common.addTitle', { ns: 'workflow' }) || ''}
+      placeholder={t($ => $['common.addTitle'], { ns: 'workflow' }) || ''}
       onBlur={handleBlur}
     />
   )
@@ -99,7 +99,7 @@ export const DescriptionInput = memo(({
           leading-[18px] text-text-primary caret-[#295EFF]
           outline-hidden placeholder:text-text-quaternary
         `}
-        placeholder={t('common.addDescription', { ns: 'workflow' }) || ''}
+        placeholder={t($ => $['common.addDescription'], { ns: 'workflow' }) || ''}
       />
     </div>
   )

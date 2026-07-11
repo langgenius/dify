@@ -2,8 +2,9 @@
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 
 type AccountSectionProps = {
   compact?: boolean
@@ -12,7 +13,7 @@ type AccountSectionProps = {
 const AccountSection = ({
   compact = false,
 }: AccountSectionProps) => {
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
 
   return (
     <AccountDropdown

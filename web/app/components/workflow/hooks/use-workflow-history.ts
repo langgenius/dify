@@ -112,33 +112,33 @@ export const useWorkflowHistory = () => {
   const getHistoryLabel = useCallback((event: WorkflowHistoryEventT) => {
     switch (event) {
       case WorkflowHistoryEvent.NodeTitleChange:
-        return t('changeHistory.nodeTitleChange', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeTitleChange'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeDescriptionChange:
-        return t('changeHistory.nodeDescriptionChange', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeDescriptionChange'], { ns: 'workflow' })
       case WorkflowHistoryEvent.LayoutOrganize:
       case WorkflowHistoryEvent.NodeDragStop:
-        return t('changeHistory.nodeDragStop', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeDragStop'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeChange:
-        return t('changeHistory.nodeChange', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeChange'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeConnect:
-        return t('changeHistory.nodeConnect', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeConnect'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodePaste:
-        return t('changeHistory.nodePaste', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodePaste'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeDelete:
-        return t('changeHistory.nodeDelete', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeDelete'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeAdd:
-        return t('changeHistory.nodeAdd', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeAdd'], { ns: 'workflow' })
       case WorkflowHistoryEvent.EdgeDelete:
       case WorkflowHistoryEvent.EdgeDeleteByDeleteBranch:
-        return t('changeHistory.edgeDelete', { ns: 'workflow' })
+        return t($ => $['changeHistory.edgeDelete'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeResize:
-        return t('changeHistory.nodeResize', { ns: 'workflow' })
+        return t($ => $['changeHistory.nodeResize'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteAdd:
-        return t('changeHistory.noteAdd', { ns: 'workflow' })
+        return t($ => $['changeHistory.noteAdd'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteChange:
-        return t('changeHistory.noteChange', { ns: 'workflow' })
+        return t($ => $['changeHistory.noteChange'], { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteDelete:
-        return t('changeHistory.noteDelete', { ns: 'workflow' })
+        return t($ => $['changeHistory.noteDelete'], { ns: 'workflow' })
       default:
         return 'Unknown Event'
     }

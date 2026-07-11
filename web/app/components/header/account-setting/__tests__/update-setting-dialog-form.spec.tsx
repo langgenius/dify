@@ -13,28 +13,31 @@ vi.mock('@/context/modal-context', () => ({
   },
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: (defaultNs?: string) => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const ns = (options?.ns as string | undefined) ?? defaultNs
-      return `${ns ? `${ns}.` : ''}${key}`
-    },
-    i18n: {
-      language: 'en',
-      changeLanguage: vi.fn(),
-    },
-  }),
-  Trans: ({ i18nKey, components }: {
-    i18nKey: string
-    components?: Record<string, React.ReactElement>
-  }) => {
-    const setTimezone = components?.setTimezone
-    if (setTimezone)
-      return React.cloneElement(setTimezone, undefined, i18nKey)
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: (defaultNs?: string) => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const ns = (options?.ns as string | undefined) ?? defaultNs
+        return `${ns ? `${ns}.` : ''}${key}`
+      }),
+      i18n: {
+        language: 'en',
+        changeLanguage: vi.fn(),
+      },
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey, components }: {
+      i18nKey: string
+      components?: Record<string, React.ReactElement>
+    }) => {
+      const setTimezone = components?.setTimezone
+      if (setTimezone)
+        return React.cloneElement(setTimezone, undefined, i18nKey)
 
-    return <span>{i18nKey}</span>
-  },
-}))
+      return <span>{i18nKey}</span>
+    }),
+  })
+})
 
 vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
   default: () => <div data-testid="time-picker" />,

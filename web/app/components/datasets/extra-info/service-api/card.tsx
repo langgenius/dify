@@ -31,7 +31,7 @@ const Card = ({
               <span className="i-custom-vender-knowledge-api-aggregate size-4 text-text-primary-on-surface" />
             </div>
             <div className="grow truncate system-sm-semibold text-text-secondary">
-              {t('serviceApi.card.title', { ns: 'dataset' })}
+              {t($ => $['serviceApi.card.title'], { ns: 'dataset' })}
             </div>
           </div>
           <div className="flex items-center gap-x-1">
@@ -44,13 +44,13 @@ const Card = ({
             <div
               className="system-xs-semibold-uppercase text-text-success"
             >
-              {t('serviceApi.enabled', { ns: 'dataset' })}
+              {t($ => $['serviceApi.enabled'], { ns: 'dataset' })}
             </div>
           </div>
         </div>
         <div className="flex flex-col">
           <div className="system-xs-regular leading-6 text-text-tertiary">
-            {t('serviceApi.card.endpoint', { ns: 'dataset' })}
+            {t($ => $['serviceApi.card.endpoint'], { ns: 'dataset' })}
           </div>
           <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -77,7 +77,7 @@ const Card = ({
             >
               <span className="i-ri-key-2-line size-3.5 shrink-0" />
               <span className="px-[3px] system-xs-medium">
-                {t('serviceApi.card.apiKey', { ns: 'dataset' })}
+                {t($ => $['serviceApi.card.apiKey'], { ns: 'dataset' })}
               </span>
             </Button>
           )}
@@ -94,7 +94,7 @@ const Card = ({
           >
             <span className="i-ri-book-open-line size-3.5 shrink-0" />
             <span className="px-[3px] system-xs-medium">
-              {t('serviceApi.card.apiReference', { ns: 'dataset' })}
+              {t($ => $['serviceApi.card.apiReference'], { ns: 'dataset' })}
             </span>
           </Button>
         </Link>

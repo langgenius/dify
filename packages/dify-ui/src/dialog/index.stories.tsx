@@ -14,7 +14,7 @@ import {
   DialogViewport,
 } from '.'
 import { Button } from '../button'
-import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import { Input } from '../input'
 import {
@@ -251,12 +251,12 @@ const FormDialogDemo = () => {
           className="grid gap-4 pt-5"
           onFormSubmit={() => setOpen(false)}
         >
-          <FieldRoot name="name">
+          <Field name="name">
             <FieldLabel>Name</FieldLabel>
             <FieldControl required placeholder="Production API" />
             <FieldError match="valueMissing">Name is required.</FieldError>
-          </FieldRoot>
-          <FieldRoot name="endpoint">
+          </Field>
+          <Field name="endpoint">
             <FieldLabel>Endpoint</FieldLabel>
             <FieldControl type="url" required placeholder="https://api.example.com" />
             <FieldDescription>
@@ -271,8 +271,8 @@ const FormDialogDemo = () => {
             </FieldDescription>
             <FieldError match="valueMissing">Endpoint is required.</FieldError>
             <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-          </FieldRoot>
-          <FieldRoot
+          </Field>
+          <Field
             name="apiKey"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && value.length < 5)
@@ -285,7 +285,7 @@ const FormDialogDemo = () => {
             <FieldControl required placeholder="sk-..." />
             <FieldError match="valueMissing">API key is required.</FieldError>
             <FieldError match="customError" />
-          </FieldRoot>
+          </Field>
           <div className="mt-2 flex items-center justify-end gap-2">
             <Button type="button" onClick={() => setOpen(false)}>
               Cancel

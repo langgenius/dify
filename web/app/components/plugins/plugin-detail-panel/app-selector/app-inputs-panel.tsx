@@ -38,13 +38,13 @@ const AppInputsPanel = ({
       {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
         <div className="mt-3 mb-2 flex h-6 shrink-0 items-center px-4 system-sm-semibold text-text-secondary">
-          {t('appSelector.params', { ns: 'app' })}
+          {t($ => $['appSelector.params'], { ns: 'app' })}
         </div>
       )}
       {!isLoading && !hasInputs && (
         <div className="flex h-16 flex-col items-center justify-center">
           <div className="system-sm-regular text-text-tertiary">
-            {t('appSelector.noParams', { ns: 'app' })}
+            {t($ => $['appSelector.noParams'], { ns: 'app' })}
           </div>
         </div>
       )}

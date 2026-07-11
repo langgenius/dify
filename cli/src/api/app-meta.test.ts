@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import yaml from 'js-yaml'
+import { dump, load } from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { ENV_CACHE_DIR } from '@/store/dir'
@@ -109,11 +109,11 @@ describe('AppMetaClient', () => {
     await new AppMetaClient({ apps, host: mock.url, cache: seed }).get('app-1', [FieldInfo])
 
     // Reuse that serialized entry as a valid sibling; corrupt the app-1 slot.
-    const file = yaml.load(await readFile(path, 'utf8')) as { entries: Record<string, unknown> }
+    const file = load(await readFile(path, 'utf8')) as { entries: Record<string, unknown> }
     const validEntry = file.entries[`${mock.url}::app-1`]
     await writeFile(
       path,
-      yaml.dump({ entries: {
+      dump({ entries: {
         [`${mock.url}::app-1`]: 'corrupted-string',
         [`${mock.url}::sibling`]: validEntry,
       } }),

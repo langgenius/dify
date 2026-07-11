@@ -88,7 +88,7 @@ const ViewWorkflowHistory = () => {
       return
 
     const count = index < 0 ? index * -1 : index
-    return `${index > 0 ? t('changeHistory.stepForward', { ns: 'workflow', count }) : t('changeHistory.stepBackward', { ns: 'workflow', count })}`
+    return `${index > 0 ? t($ => $['changeHistory.stepForward'], { ns: 'workflow', count }) : t($ => $['changeHistory.stepBackward'], { ns: 'workflow', count })}`
   }, [t])
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
@@ -154,7 +154,7 @@ const ViewWorkflowHistory = () => {
           render={(
             <button
               type="button"
-              aria-label={t('changeHistory.title', { ns: 'workflow' })}
+              aria-label={t($ => $['changeHistory.title'], { ns: 'workflow' })}
               disabled={nodesReadOnly}
               className={
                 cn('box-border inline-flex size-8 max-h-8 min-h-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
@@ -167,7 +167,7 @@ const ViewWorkflowHistory = () => {
               }}
             >
               <TipPopup
-                title={t('changeHistory.title', { ns: 'workflow' })}
+                title={t($ => $['changeHistory.title'], { ns: 'workflow' })}
               >
                 <span className="flex size-full shrink-0 items-center justify-center">
                   <span className="i-ri-history-line size-4 shrink-0" />
@@ -184,12 +184,12 @@ const ViewWorkflowHistory = () => {
             className="flex max-w-[360px] min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
           >
             <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
-              <div className="system-mg-regular grow text-text-secondary">{t('changeHistory.title', { ns: 'workflow' })}</div>
+              <div className="system-mg-regular grow text-text-secondary">{t($ => $['changeHistory.title'], { ns: 'workflow' })}</div>
               <PopoverClose
                 render={(
                   <button
                     type="button"
-                    aria-label={t('operation.close', { ns: 'common' })}
+                    aria-label={t($ => $['operation.close'], { ns: 'common' })}
                     className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
                   >
                     <RiCloseLine className="size-4 text-text-secondary" />
@@ -212,7 +212,7 @@ const ViewWorkflowHistory = () => {
                   <div className="py-12">
                     <RiHistoryLine className="mx-auto mb-2 size-8 text-text-tertiary" />
                     <div className="text-center text-[13px] text-text-tertiary">
-                      {t('changeHistory.placeholder', { ns: 'workflow' })}
+                      {t($ => $['changeHistory.placeholder'], { ns: 'workflow' })}
                     </div>
                   </div>
                 )
@@ -239,12 +239,12 @@ const ViewWorkflowHistory = () => {
                         >
                           {composeHistoryItemLabel(
                             item?.state?.workflowHistoryEventMeta?.nodeTitle,
-                            item?.label || t('changeHistory.sessionStart', { ns: 'workflow' }),
+                            item?.label || t($ => $['changeHistory.sessionStart'], { ns: 'workflow' }),
                           )}
                           {' '}
                           (
                           {calculateStepLabel(item?.index)}
-                          {item?.index === currentHistoryStateIndex && t('changeHistory.currentState', { ns: 'workflow' })}
+                          {item?.index === currentHistoryStateIndex && t($ => $['changeHistory.currentState'], { ns: 'workflow' })}
                           )
                         </div>
                       </div>
@@ -272,7 +272,7 @@ const ViewWorkflowHistory = () => {
                         >
                           {composeHistoryItemLabel(
                             item?.state?.workflowHistoryEventMeta?.nodeTitle,
-                            item?.label || t('changeHistory.sessionStart', { ns: 'workflow' }),
+                            item?.label || t($ => $['changeHistory.sessionStart'], { ns: 'workflow' }),
                           )}
                           {' '}
                           (
@@ -305,7 +305,7 @@ const ViewWorkflowHistory = () => {
                           'flex items-center text-[13px] leading-[18px] font-medium',
                         )}
                       >
-                        {t('changeHistory.clearHistory', { ns: 'workflow' })}
+                        {t($ => $['changeHistory.clearHistory'], { ns: 'workflow' })}
                       </div>
                     </div>
                   </div>
@@ -313,8 +313,8 @@ const ViewWorkflowHistory = () => {
               )
             }
             <div className="w-[240px] px-3 py-2 text-xs text-text-tertiary">
-              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t('changeHistory.hint', { ns: 'workflow' })}</div>
-              <div className="mb-1 leading-[18px] text-text-tertiary">{t('changeHistory.hintText', { ns: 'workflow' })}</div>
+              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t($ => $['changeHistory.hint'], { ns: 'workflow' })}</div>
+              <div className="mb-1 leading-[18px] text-text-tertiary">{t($ => $['changeHistory.hintText'], { ns: 'workflow' })}</div>
             </div>
           </div>
         </PopoverContent>

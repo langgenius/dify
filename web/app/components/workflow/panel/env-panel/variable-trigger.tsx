@@ -38,7 +38,7 @@ const VariableTrigger = ({
         render={(
           <Button variant="primary">
             <RiAddLine className="mr-1 size-4" />
-            <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
+            <span className="system-sm-medium">{t($ => $['env.envPanelButton'], { ns: 'workflow' })}</span>
           </Button>
         )}
       />

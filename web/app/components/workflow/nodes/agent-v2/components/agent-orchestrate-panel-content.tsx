@@ -257,6 +257,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const composerState = inlineComposerState
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
   const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
@@ -347,6 +348,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
   const resetBuildChatSession = useCallback(async () => {
     await refreshDebugConversationAsync().catch(() => undefined)
+    setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
     setWorkflowRunId(null)
     setClearPreviewChat(true)
@@ -431,10 +433,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig)
-      toast.success(t('api.actionSuccess'))
+      toast.success(t($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(t('api.actionFailed'))
+      toast.error(t($ => $['api.actionFailed']))
     }
     finally {
       setIsApplyingInlineBuildDraft(false)
@@ -454,10 +456,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(agentSoulConfig)
-      toast.success(t('api.actionSuccess'))
+      toast.success(t($ => $['api.actionSuccess']))
     }
     catch {
-      toast.error(t('api.actionFailed'))
+      toast.error(t($ => $['api.actionFailed']))
     }
   }
   const hasRestartCurrentChatTarget = (inlineComposerState?.debug_conversation_has_messages ?? false)
@@ -467,6 +469,14 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     || isApplyingInlineBuildDraft
     || discardBuildDraftMutation.isPending
     || isRefreshingDebugConversation
+  const buildConversationHasAgentResponse = !!conversationIds.build && (
+    conversationIds.build === completedBuildConversationId
+    || (
+      conversationIds.build === inlineComposerState?.debug_conversation_id
+      && (inlineComposerState?.debug_conversation_has_messages ?? false)
+    )
+  )
+  const showWorkingDirectoryAction = rightPanelChatMode === 'build' && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -539,13 +549,14 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
               showChatFeaturesAction={false}
               trailingAction={(
                 <button
                   type="button"
                   onClick={onClose}
                   className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  aria-label={t('operation.close')}
+                  aria-label={t($ => $['operation.close'])}
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </button>
@@ -567,6 +578,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
                 if (mode === 'build') {
+                  setCompletedBuildConversationId(completedConversationId)
                   setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
                     agentId,
@@ -623,7 +635,7 @@ function WorkflowInlineAgentConfigureMoreAction({
           <button
             type="button"
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            aria-label={t('operation.more')}
+            aria-label={t($ => $['operation.more'])}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </button>
@@ -632,7 +644,7 @@ function WorkflowInlineAgentConfigureMoreAction({
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
         <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span aria-hidden className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary" />
-          <span>{t('roster.saveToRoster', { ns: 'agentV2' })}</span>
+          <span>{t($ => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

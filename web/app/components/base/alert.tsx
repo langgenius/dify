@@ -46,7 +46,7 @@ const Alert: React.FC<Props> = ({
         </div>
         <button
           type="button"
-          aria-label={t('operation.close', { ns: 'common' })}
+          aria-label={t($ => $['operation.close'], { ns: 'common' })}
           className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
           onClick={onHide}
         >

@@ -5,13 +5,6 @@ import TextGeneration from '@/app/components/share/text-generation'
 const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 const mockUseTextGenerationAppState = vi.fn()
 const mockUseTextGenerationBatch = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => useSearchParamsMock(),
 }))

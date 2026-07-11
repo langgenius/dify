@@ -30,7 +30,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
   return (
     <div className="flex items-center gap-x-1">
       <Button size="small" variant="secondary" onClick={onCancel}>
-        {t('operation.cancel', { ns: 'common' })}
+        {t($ => $['operation.cancel'], { ns: 'common' })}
       </Button>
       <Button
         className="flex items-center gap-x-1"
@@ -39,7 +39,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
         variant="primary"
         onClick={onConfirm}
       >
-        <span>{t('operation.confirm', { ns: 'common' })}</span>
+        <span>{t($ => $['operation.confirm'], { ns: 'common' })}</span>
         <ShortcutKbd hotkey={JSON_SCHEMA_CONFIRM_HOTKEY} bgColor="white" />
       </Button>
     </div>

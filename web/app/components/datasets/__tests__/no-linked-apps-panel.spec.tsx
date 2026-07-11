@@ -2,10 +2,11 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import NoLinkedAppsPanel from '../no-linked-apps-panel'
 
-// Mock useDocLink
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
+
+// Mock useDocLink
 
 afterEach(() => {
   cleanup()

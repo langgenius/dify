@@ -11,25 +11,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AuthCategory, CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'plugin.auth.setUpTip': 'Set up your credentials',
-        'plugin.auth.authorized': 'Authorized',
-        'plugin.auth.apiKey': 'API Key',
-        'plugin.auth.oauth': 'OAuth',
-      }
-      return map[key] ?? key
-    },
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'plugin.auth.setUpTip': 'Set up your credentials',
+          'plugin.auth.authorized': 'Authorized',
+          'plugin.auth.apiKey': 'API Key',
+          'plugin.auth.oauth': 'OAuth',
+        }
+        return map[key] ?? key
+      }),
+    }),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),

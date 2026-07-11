@@ -37,7 +37,7 @@ const FormStatusCard = ({
           </div>
           {submissionID && (
             <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">
-              {t('humanInput.submissionID', { id: submissionID, ns: 'share' })}
+              {t($ => $['humanInput.submissionID'], { id: submissionID, ns: 'share' })}
             </div>
           )}
         </div>

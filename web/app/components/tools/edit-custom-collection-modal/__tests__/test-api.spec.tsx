@@ -9,10 +9,6 @@ vi.mock('@/service/tools', () => ({
   testAPIAvailable: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
-}))
-
 const testAPIAvailableMock = vi.mocked(testAPIAvailable)
 
 describe('TestApi', () => {

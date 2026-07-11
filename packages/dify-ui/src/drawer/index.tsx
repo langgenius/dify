@@ -16,13 +16,13 @@ export const DrawerDescription = BaseDrawer.Description
 export const DrawerClose = BaseDrawer.Close
 export const createDrawerHandle = BaseDrawer.createHandle
 
-export type DrawerRootProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
-export type DrawerRootActions = BaseDrawer.Root.Actions
-export type DrawerRootChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
-export type DrawerRootChangeEventReason = BaseDrawer.Root.ChangeEventReason
-export type DrawerRootSnapPoint = BaseDrawer.Root.SnapPoint
-export type DrawerRootSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
-export type DrawerRootSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
+export type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
+export type DrawerActions = BaseDrawer.Root.Actions
+export type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
+export type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
+export type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
+export type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
+export type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
 export type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
 
 export function DrawerBackdrop({

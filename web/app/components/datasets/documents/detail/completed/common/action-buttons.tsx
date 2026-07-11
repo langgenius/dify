@@ -53,7 +53,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         onClick={handleCancel}
       >
         <div className="flex items-center gap-x-1">
-          <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
+          <span className="system-sm-medium text-components-button-secondary-text">{t($ => $['operation.cancel'], { ns: 'common' })}</span>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
       </Button>
@@ -64,7 +64,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
               disabled={loading}
             >
               <span className="system-sm-medium text-components-button-secondary-text">
-                {t('operation.saveAndRegenerate', { ns: 'common' })}
+                {t($ => $['operation.saveAndRegenerate'], { ns: 'common' })}
               </span>
             </Button>
           )
@@ -75,7 +75,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         disabled={loading}
       >
         <div className="flex items-center gap-x-1">
-          <span className="text-components-button-primary-text">{t('operation.save', { ns: 'common' })}</span>
+          <span className="text-components-button-primary-text">{t($ => $['operation.save'], { ns: 'common' })}</span>
           <KbdGroup>
             {['Mod', 'S'].map(key => (
               <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>

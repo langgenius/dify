@@ -103,16 +103,16 @@ export function DeveloperApiDocsDrawer({
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[840px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px]">
             <DrawerCloseButton
-              aria-label={t('access.api.docsClose')}
+              aria-label={t($ => $['access.api.docsClose'])}
               className="absolute top-4 right-5 size-6 rounded-md"
             />
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle px-6 py-5 pr-14">
                 <DrawerTitle className="title-xl-semi-bold text-text-primary">
-                  {t('access.api.docsTitle')}
+                  {t($ => $['access.api.docsTitle'])}
                 </DrawerTitle>
                 <DrawerDescription className="mt-1 system-sm-regular text-text-tertiary">
-                  {t('access.api.docsDescription')}
+                  {t($ => $['access.api.docsDescription'])}
                 </DrawerDescription>
               </div>
 

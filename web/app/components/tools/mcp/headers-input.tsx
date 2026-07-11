@@ -52,7 +52,7 @@ const HeadersInput = ({
     return (
       <div className="space-y-2">
         <div className="body-xs-regular text-text-tertiary">
-          {t('mcp.modal.noHeaders', { ns: 'tools' })}
+          {t($ => $['mcp.modal.noHeaders'], { ns: 'tools' })}
         </div>
         {!readonly && (
           <Button
@@ -62,7 +62,7 @@ const HeadersInput = ({
             className="w-full"
           >
             <RiAddLine className="mr-1 size-4" />
-            {t('mcp.modal.addHeader', { ns: 'tools' })}
+            {t($ => $['mcp.modal.addHeader'], { ns: 'tools' })}
           </Button>
         )}
       </div>
@@ -73,13 +73,13 @@ const HeadersInput = ({
     <div className="space-y-2">
       {isMasked && (
         <div className="body-xs-regular text-text-tertiary">
-          {t('mcp.modal.maskedHeadersTip', { ns: 'tools' })}
+          {t($ => $['mcp.modal.maskedHeadersTip'], { ns: 'tools' })}
         </div>
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
         <div className="bg-background-secondary flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
-          <div className="h-full w-1/2 border-r border-divider-regular pl-3">{t('mcp.modal.headerKey', { ns: 'tools' })}</div>
-          <div className="h-full w-1/2 pr-1 pl-3">{t('mcp.modal.headerValue', { ns: 'tools' })}</div>
+          <div className="h-full w-1/2 border-r border-divider-regular pl-3">{t($ => $['mcp.modal.headerKey'], { ns: 'tools' })}</div>
+          <div className="h-full w-1/2 pr-1 pl-3">{t($ => $['mcp.modal.headerValue'], { ns: 'tools' })}</div>
         </div>
         {headersItems.map((item, index) => (
           <div
@@ -93,7 +93,7 @@ const HeadersInput = ({
               <Input
                 value={item.key}
                 onChange={e => handleItemChange(index, 'key', e.target.value)}
-                placeholder={t('mcp.modal.headerKeyPlaceholder', { ns: 'tools' })}
+                placeholder={t($ => $['mcp.modal.headerKeyPlaceholder'], { ns: 'tools' })}
                 className="rounded-none border-0"
                 readOnly={readonly}
               />
@@ -102,7 +102,7 @@ const HeadersInput = ({
               <Input
                 value={item.value}
                 onChange={e => handleItemChange(index, 'value', e.target.value)}
-                placeholder={t('mcp.modal.headerValuePlaceholder', { ns: 'tools' })}
+                placeholder={t($ => $['mcp.modal.headerValuePlaceholder'], { ns: 'tools' })}
                 className="flex-1 rounded-none border-0"
                 readOnly={readonly}
               />
@@ -126,7 +126,7 @@ const HeadersInput = ({
           className="w-full"
         >
           <RiAddLine className="mr-1 size-4" />
-          {t('mcp.modal.addHeader', { ns: 'tools' })}
+          {t($ => $['mcp.modal.addHeader'], { ns: 'tools' })}
         </Button>
       )}
     </div>

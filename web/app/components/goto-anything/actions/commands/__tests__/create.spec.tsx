@@ -7,13 +7,6 @@ vi.mock('@remixicon/react', () => ({
   RiNodeTree: () => null,
   RiSparkling2Line: () => null,
 }))
-
-// search() localises its labels via getI18n(); echo the key back so the
-// filtering/payload assertions stay deterministic without a real i18n init.
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({ t: (key: string) => key }),
-}))
-
 // We spy on the store at module scope so the `create.open` handler that
 // register() pushes into the command bus can be observed by the tests.
 const mockOpenGenerator = vi.fn()

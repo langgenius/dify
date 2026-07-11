@@ -59,12 +59,12 @@ const Add = ({
 
   const tip = useMemo(() => {
     if (isFailBranch)
-      return t('common.addFailureBranch', { ns: 'workflow' })
+      return t($ => $['common.addFailureBranch'], { ns: 'workflow' })
 
     if (isParallel)
-      return t('common.addParallelNode', { ns: 'workflow' })
+      return t($ => $['common.addParallelNode'], { ns: 'workflow' })
 
-    return t('panel.selectNextStep', { ns: 'workflow' })
+    return t($ => $['panel.selectNextStep'], { ns: 'workflow' })
   }, [isFailBranch, isParallel, t])
   const renderTrigger = useCallback((open: boolean) => {
     return (

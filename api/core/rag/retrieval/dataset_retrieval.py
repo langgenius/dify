@@ -1159,6 +1159,39 @@ class DatasetRetrieval:
 
                         all_documents.extend(documents)
 
+    def _run_retriever_thread(
+        self,
+        *,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str | None,
+        top_k: int,
+        all_documents: list[Document],
+        document_ids_filter: list[str] | None,
+        metadata_condition: MetadataFilteringCondition | None,
+        attachment_ids: list[str] | None,
+        cancel_event: threading.Event | None,
+        thread_exceptions: list[Exception] | None,
+    ) -> None:
+        try:
+            with session_factory.create_session() as session:
+                self._retriever(
+                    flask_app=flask_app,
+                    session=session,
+                    dataset_id=dataset_id,
+                    query=query or "",
+                    top_k=top_k,
+                    all_documents=all_documents,
+                    document_ids_filter=document_ids_filter,
+                    metadata_condition=metadata_condition,
+                    attachment_ids=attachment_ids,
+                )
+        except Exception as e:
+            if cancel_event:
+                cancel_event.set()
+            if thread_exceptions is not None:
+                thread_exceptions.append(e)
+
     def to_dataset_retriever_tool(
         self,
         session: Session,
@@ -1797,7 +1830,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=self._retriever,
+                        target=self._run_retriever_thread,
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,
@@ -1807,6 +1840,8 @@ class DatasetRetrieval:
                             "document_ids_filter": document_ids_filter,
                             "metadata_condition": metadata_condition,
                             "attachment_ids": [attachment_id] if attachment_id else None,
+                            "cancel_event": cancel_event,
+                            "thread_exceptions": thread_exceptions,
                         },
                     )
                     threads.append(retrieval_thread)

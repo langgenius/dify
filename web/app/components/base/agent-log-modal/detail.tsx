@@ -73,7 +73,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
           data-active={currentTab === 'DETAIL'}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('detail', { ns: 'runLog' })}
+          {t($ => $.detail, { ns: 'runLog' })}
         </button>
         <button
           type="button"
@@ -81,7 +81,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
           data-active={currentTab === 'TRACING'}
           onClick={() => switchTab('TRACING')}
         >
-          {t('tracing', { ns: 'runLog' })}
+          {t($ => $.tracing, { ns: 'runLog' })}
         </button>
       </div>
       {/* panel detail */}

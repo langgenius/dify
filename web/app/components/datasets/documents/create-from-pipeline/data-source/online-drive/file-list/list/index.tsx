@@ -1,5 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
@@ -97,7 +97,7 @@ const List = ({
             ? fileItems
             : (
                 <RadioGroup
-                  aria-label={t('onlineDrive.breadcrumbs.allFiles', { ns: 'datasetPipeline' })}
+                  aria-label={t($ => $['onlineDrive.breadcrumbs.allFiles'], { ns: 'datasetPipeline' })}
                   value={selectedFileId}
                   onValueChange={handleRadioChange}
                   className="contents"
@@ -111,7 +111,7 @@ const List = ({
                 className="flex items-center justify-center py-2"
                 role="status"
                 aria-live="polite"
-                aria-label={t('loading', { ns: 'appApi' })}
+                aria-label={t($ => $.loading, { ns: 'appApi' })}
               >
                 <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
               </div>

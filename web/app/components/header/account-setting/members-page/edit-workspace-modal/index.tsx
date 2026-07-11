@@ -2,11 +2,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useAppContext } from '@/context/app-context'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
 type IEditWorkspaceModalProps = {
@@ -14,7 +15,8 @@ type IEditWorkspaceModalProps = {
 }
 const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputId = useId()
@@ -26,9 +28,9 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
   const nameErrorMessage = useMemo(() => {
     if (!hasError)
       return ''
-    return t('errorMsg.fieldRequired', {
+    return t($ => $['errorMsg.fieldRequired'], {
       ns: 'common',
-      field: t('account.workspaceName', { ns: 'common' }),
+      field: t($ => $['account.workspaceName'], { ns: 'common' }),
     })
   }, [hasError, t])
   const changeWorkspaceInfo = async () => {
@@ -42,11 +44,11 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           name: normalizedName,
         },
       })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}`)
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
     finally {
       setIsSubmitting(false)
@@ -72,19 +74,18 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
         >
           <div className="mb-4 pr-8">
             <DialogTitle className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">
-              {t('account.editWorkspaceInfo', { ns: 'common' })}
+              {t($ => $['account.editWorkspaceInfo'], { ns: 'common' })}
             </DialogTitle>
           </div>
 
           <div className="space-y-2">
             <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
-              {t('account.workspaceName', { ns: 'common' })}
+              {t($ => $['account.workspaceName'], { ns: 'common' })}
             </label>
             <Input
               id={inputId}
-              autoFocus
               value={name}
-              placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
+              placeholder={t($ => $['account.workspaceNamePlaceholder'], { ns: 'common' })}
               onChange={(e) => {
                 setName(e.target.value)
               }}
@@ -103,10 +104,10 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
             <Button size="large" type="button" onClick={onCancel}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t($ => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button size="large" type="submit" variant="primary" disabled={isSaveDisabled} loading={isSubmitting}>
-              {t(isSubmitting ? 'operation.saving' : 'operation.save', { ns: 'common' })}
+              {t($ => $[isSubmitting ? 'operation.saving' : 'operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </form>

@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { ApiBasedExtensionModal } from '../modal'
 
 const { mockCreateApiBasedExtension, mockUpdateApiBasedExtension, mockToast } = vi.hoisted(() => {
@@ -307,19 +308,19 @@ describe('ApiBasedExtensionModal', () => {
         t: (key: string) => key,
         i18n: { language: 'en', changeLanguage: vi.fn() },
       }
+      const missingKeys = [
+        'apiBasedExtension.modal.name.placeholder',
+        'apiBasedExtension.modal.apiEndpoint.placeholder',
+        'apiBasedExtension.modal.apiKey.placeholder',
+      ]
 
       useTranslationSpy.mockReturnValue({
         ...originalValue,
-        t: vi.fn().mockImplementation((key: string) => {
-          const missingKeys = [
-            'apiBasedExtension.modal.name.placeholder',
-            'apiBasedExtension.modal.apiEndpoint.placeholder',
-            'apiBasedExtension.modal.apiKey.placeholder',
-          ]
-          if (missingKeys.some(k => key.includes(k)))
+        t: withSelectorKey((key: string) => {
+          if (missingKeys.includes(key))
             return ''
-          return key
-        }) as unknown as TFunction,
+          return `common.${key}`
+        }, 'common') as unknown as TFunction,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

@@ -3,8 +3,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldDescription, FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -69,8 +69,8 @@ export const CheckboxList = ({
   )
 
   return (
-    <FieldRoot name={name} className={cn('flex w-full flex-col gap-1', containerClassName)}>
-      <FieldsetRoot
+    <Field name={name} className={cn('flex w-full flex-col gap-1', containerClassName)}>
+      <Fieldset
         render={(
           <CheckboxGroup
             aria-label={!label && title ? title : undefined}
@@ -103,7 +103,7 @@ export const CheckboxList = ({
                       parent
                       disabled={disabled}
                     />
-                    <span className="sr-only">{t('operation.selectAll', { ns: 'common' })}</span>
+                    <span className="sr-only">{t($ => $['operation.selectAll'], { ns: 'common' })}</span>
                   </FieldLabel>
                 </FieldItem>
               )}
@@ -117,7 +117,7 @@ export const CheckboxList = ({
                       )}
                       {showCount && selectedCount > 0 && (
                         <Badge uppercase>
-                          {t('operation.selectCount', { ns: 'common', count: selectedCount })}
+                          {t($ => $['operation.selectCount'], { ns: 'common', count: selectedCount })}
                         </Badge>
                       )}
                     </div>
@@ -126,8 +126,8 @@ export const CheckboxList = ({
                     <div className="flex-1 system-sm-medium-uppercase leading-6 text-text-secondary">
                       {
                         filteredOptions.length > 0
-                          ? t('operation.searchCount', { ns: 'common', count: filteredOptions.length, content: title })
-                          : t('operation.noSearchCount', { ns: 'common', content: title })
+                          ? t($ => $['operation.searchCount'], { ns: 'common', count: filteredOptions.length, content: title })
+                          : t($ => $['operation.noSearchCount'], { ns: 'common', content: title })
                       }
                     </div>
                   )}
@@ -135,7 +135,7 @@ export const CheckboxList = ({
                 <SearchInput
                   value={searchQuery}
                   onValueChange={setSearchQuery}
-                  placeholder={t('placeholder.search', { ns: 'common' })}
+                  placeholder={t($ => $['placeholder.search'], { ns: 'common' })}
                   className="w-40"
                 />
               )}
@@ -154,11 +154,11 @@ export const CheckboxList = ({
                       ? (
                           <div className="flex flex-col items-center justify-center gap-2">
                             <img alt="search menu" src={SearchMenu.src} width={32} />
-                            <span className="system-sm-regular text-text-secondary">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
-                            <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
+                            <span className="system-sm-regular text-text-secondary">{t($ => $['operation.noSearchResults'], { ns: 'common', content: title })}</span>
+                            <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t($ => $['operation.resetKeywords'], { ns: 'common' })}</Button>
                           </div>
                         )
-                      : t('noData', { ns: 'common' })}
+                      : t($ => $.noData, { ns: 'common' })}
                   </div>
                 )
               : (
@@ -191,7 +191,7 @@ export const CheckboxList = ({
                 )}
           </div>
         </div>
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }

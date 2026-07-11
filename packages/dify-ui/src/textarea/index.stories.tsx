@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { Button } from '../button'
 import {
+  Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldRoot,
 } from '../field'
 import { Form } from '../form'
 import { Textarea } from './index'
@@ -17,7 +17,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Multiline text control built on Base UI Field.Control. Use it with FieldRoot for labelled, described, and validated form fields.',
+        component: 'Multiline text control built on Base UI Field.Control. Use it with Field for labelled, described, and validated form fields.',
       },
     },
   },
@@ -65,27 +65,27 @@ export const Sizes: Story = {
 export const States: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
-      <FieldRoot name="placeholderState">
+      <Field name="placeholderState">
         <FieldLabel>Placeholder</FieldLabel>
         <Textarea placeholder="Add a description..." rows={3} />
-      </FieldRoot>
-      <FieldRoot name="filledState">
+      </Field>
+      <Field name="filledState">
         <FieldLabel>Filled</FieldLabel>
         <Textarea defaultValue="Use this dataset for support articles and product FAQs." rows={3} />
-      </FieldRoot>
-      <FieldRoot name="invalidState" invalid>
+      </Field>
+      <Field name="invalidState" invalid>
         <FieldLabel>Invalid</FieldLabel>
         <Textarea defaultValue="Too short" rows={3} />
         <FieldError match>Use at least 20 characters.</FieldError>
-      </FieldRoot>
-      <FieldRoot name="disabledState">
+      </Field>
+      <Field name="disabledState">
         <FieldLabel>Disabled</FieldLabel>
         <Textarea disabled placeholder="Editing is unavailable..." rows={3} />
-      </FieldRoot>
-      <FieldRoot name="readonlyState">
+      </Field>
+      <Field name="readonlyState">
         <FieldLabel>Read-only</FieldLabel>
         <Textarea readOnly defaultValue="Generated from the published workflow configuration." rows={3} />
-      </FieldRoot>
+      </Field>
     </div>
   ),
 }
@@ -101,7 +101,7 @@ const FormDemo = () => {
         setSavedDescription(String(values.description ?? ''))
       }}
     >
-      <FieldRoot name="description">
+      <Field name="description">
         <FieldLabel>Description</FieldLabel>
         <Textarea
           required
@@ -114,7 +114,7 @@ const FormDemo = () => {
         <FieldDescription>Shown to teammates when they choose a knowledge source.</FieldDescription>
         <FieldError match="valueMissing">Description is required.</FieldError>
         <FieldError match="tooShort">Use at least 20 characters.</FieldError>
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">Save Settings</Button>
       </div>
@@ -137,7 +137,7 @@ const ControlledDemo = () => {
   const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
 
   return (
-    <FieldRoot name="prompt">
+    <Field name="prompt">
       <FieldLabel>Prompt</FieldLabel>
       <Textarea
         value={value}
@@ -146,7 +146,7 @@ const ControlledDemo = () => {
         className="resize-y"
       />
       <FieldDescription>The saved value is updated from the controlled state.</FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -163,7 +163,7 @@ const CharacterCounterDemo = () => {
   const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
 
   return (
-    <FieldRoot name="limitedPrompt">
+    <Field name="limitedPrompt">
       <FieldLabel>Prompt</FieldLabel>
       <div className="relative">
         <Textarea
@@ -180,7 +180,7 @@ const CharacterCounterDemo = () => {
         </div>
       </div>
       <FieldDescription>Character counters are composed at the usage site when the workflow needs one.</FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 

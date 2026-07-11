@@ -5,7 +5,7 @@ import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -77,31 +77,31 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
-      remove_extra_spaces: t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' }),
-      remove_urls_emails: t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' }),
-      remove_stopwords: t('stepTwo.removeStopwords', { ns: 'datasetCreation' }),
+      remove_extra_spaces: t($ => $['stepTwo.removeExtraSpaces'], { ns: 'datasetCreation' }),
+      remove_urls_emails: t($ => $['stepTwo.removeUrlEmails'], { ns: 'datasetCreation' }),
+      remove_stopwords: t($ => $['stepTwo.removeStopwords'], { ns: 'datasetCreation' }),
     }
     return ruleNameMap[key] ?? key
   }
 
   return (
     <OptionCard
-      title={t('stepTwo.parentChild', { ns: 'datasetCreation' })}
+      title={t($ => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
       icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
       effectImg={BlueEffect.src}
       className="text-util-colors-blue-light-blue-light-500"
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
-      description={t('stepTwo.parentChildTip', { ns: 'datasetCreation' })}
+      description={t($ => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
       onSwitched={() => onDocFormChange(ChunkingMode.parentChild)}
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
             <RiSearchEyeLine className="mr-0.5 size-4" />
-            {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
+            {t($ => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
-            {t('stepTwo.reset', { ns: 'datasetCreation' })}
+            {t($ => $['stepTwo.reset'], { ns: 'datasetCreation' })}
           </Button>
         </>
       )}
@@ -112,26 +112,26 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
         <div>
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.parentChunkForContext', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>{t($ => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
           <RadioGroup<ParentMode>
-            aria-label={t('stepTwo.parentChunkForContext', { ns: 'datasetCreation' })}
+            aria-label={t($ => $['stepTwo.parentChunkForContext'], { ns: 'datasetCreation' })}
             value={parentChildConfig.chunkForContext}
             onValueChange={value => onChunkForContextChange(value)}
             className="mt-1 flex-col items-stretch gap-2"
           >
-            <RadioCard
+            <RadioCard<ParentMode>
               value="paragraph"
               icon={<img src={Note.src} alt="" />}
-              title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
-              description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
+              title={t($ => $['stepTwo.paragraph'], { ns: 'datasetCreation' })}
+              description={t($ => $['stepTwo.paragraphTip'], { ns: 'datasetCreation' })}
               chosenConfig={(
                 <div className="flex gap-3">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
-                    tooltip={t('stepTwo.parentChildDelimiterTip', { ns: 'datasetCreation' })!}
+                    tooltip={t($ => $['stepTwo.parentChildDelimiterTip'], { ns: 'datasetCreation' })!}
                     onChange={e => onParentDelimiterChange(e.target.value)}
                   />
                   <MaxLengthInput
@@ -142,11 +142,11 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </div>
               )}
             />
-            <RadioCard
+            <RadioCard<ParentMode>
               value="full-doc"
               icon={<img src={FileList.src} alt="" />}
-              title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}
-              description={t('stepTwo.fullDocTip', { ns: 'datasetCreation' })}
+              title={t($ => $['stepTwo.fullDoc'], { ns: 'datasetCreation' })}
+              description={t($ => $['stepTwo.fullDocTip'], { ns: 'datasetCreation' })}
             />
           </RadioGroup>
         </div>
@@ -155,14 +155,14 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
         <div>
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.childChunkForRetrieval', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>{t($ => $['stepTwo.childChunkForRetrieval'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
           <div className="mt-1 flex gap-3">
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
-              tooltip={t('stepTwo.parentChildChunkDelimiterTip', { ns: 'datasetCreation' })!}
+              tooltip={t($ => $['stepTwo.parentChildChunkDelimiterTip'], { ns: 'datasetCreation' })!}
               onChange={e => onChildDelimiterChange(e.target.value)}
             />
             <MaxLengthInput
@@ -177,7 +177,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
         <div>
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.rules', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>{t($ => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>

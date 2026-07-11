@@ -24,21 +24,6 @@ let mockShowPromptLogModal = false
 let mockShowAgentLogModal = false
 let mockCurrentLogItem: Record<string, unknown> | undefined
 let mockCurrentLogModalActiveTab = 'messages'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      timezone: 'Asia/Shanghai',
-    },
-  }),
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,
@@ -316,7 +301,7 @@ describe('ConversationList', () => {
       searchParams: '?page=2&conversation_id=conversation-1',
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: 'operation.close' }))
+    fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
     expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
@@ -641,7 +626,7 @@ describe('ConversationList', () => {
     await waitFor(() => {
       expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
       expect(screen.getByTestId('chat-panel')).toHaveTextContent('8')
-      expect(screen.getByText('detail.loading...')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.loading\.\.\.(?=$|:)/)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByText('chat-add-annotation'))

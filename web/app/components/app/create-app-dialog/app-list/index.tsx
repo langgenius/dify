@@ -7,6 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiRobot2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +18,8 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
@@ -48,7 +50,8 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
@@ -156,18 +159,24 @@ const Apps = ({
       trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
+      toast.success(t($ => $['newApp.appCreated'], { ns: 'app' }))
       if (onSuccess)
         onSuccess()
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
       invalidateAppList()
-      if (app.app_id)
-        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, { isRbacEnabled })
+      if (app.app_id) {
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, {
+          currentUserId,
+          resourceMaintainer: currentUserId,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
+      }
     }
     catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      toast.error(t($ => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
@@ -183,7 +192,7 @@ const Apps = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
         <div className="min-w-[180px] pl-5">
-          <span className="title-xl-semi-bold text-text-primary">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
+          <span className="title-xl-semi-bold text-text-primary">{t($ => $['newApp.startFromTemplate'], { ns: 'app' })}</span>
         </div>
         <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
@@ -194,7 +203,7 @@ const Apps = ({
             showClearIcon
             wrapperClassName="w-full flex-1"
             className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
-            placeholder={t('newAppFromTemplate.searchAllTemplate', { ns: 'app' }) as string}
+            placeholder={t($ => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' }) as string}
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
@@ -213,7 +222,7 @@ const Apps = ({
             <>
               <div className="pt-4 pb-1">
                 {searchKeywords
-                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
+                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t($ => $['newApp.foundResults'], { ns: 'app', count: searchFilteredList.length }) : t($ => $['newApp.foundResult'], { ns: 'app', count: searchFilteredList.length })}</p>
                   : (
                       <div className="flex h-[22px] items-center">
                         <AppCategoryLabel category={activeCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
@@ -268,8 +277,8 @@ function NoTemplateFound() {
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
         <RiRobot2Line className="size-5 text-text-tertiary" />
       </div>
-      <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
-      <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>
+      <p className="title-md-semi-bold text-text-primary">{t($ => $['newApp.noTemplateFound'], { ns: 'app' })}</p>
+      <p className="system-sm-regular text-text-tertiary">{t($ => $['newApp.noTemplateFoundTip'], { ns: 'app' })}</p>
     </div>
   )
 }

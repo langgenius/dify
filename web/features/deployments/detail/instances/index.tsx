@@ -14,7 +14,8 @@ import {
 } from '../../shared/components/detail-table'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import {
-  deploymentEnvironmentDeploymentsQueryAtom,
+  deploymentEnvironmentDeploymentsIsErrorAtom,
+  deploymentEnvironmentDeploymentsIsLoadingAtom,
   deploymentRuntimeInstanceRowsAtom,
 } from '../state'
 import { DeploymentEnvironmentList } from './environment-list/deployment-environment-list'
@@ -52,10 +53,10 @@ function DeploymentEnvironmentListSkeleton() {
         <DetailTable>
           <DetailTableHeader>
             <DetailTableRow>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('deployTab.col.environment')}</DetailTableHead>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t('deployTab.col.status')}</DetailTableHead>
-              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t('deployTab.col.currentRelease')}</DetailTableHead>
-              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t('deployTab.col.actions')}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t($ => $['deployTab.col.environment'])}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.status}>{t($ => $['deployTab.col.status'])}</DetailTableHead>
+              <DetailTableHead className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.currentRelease}>{t($ => $['deployTab.col.currentRelease'])}</DetailTableHead>
+              <DetailTableHead className={`${DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions} text-right`}>{t($ => $['deployTab.col.actions'])}</DetailTableHead>
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>
@@ -89,23 +90,22 @@ function DeploymentEnvironmentListSkeleton() {
 
 export function DeploymentInstances() {
   const { t } = useTranslation('deployments')
-  const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
+  const isLoading = useAtomValue(deploymentEnvironmentDeploymentsIsLoadingAtom)
+  const hasError = useAtomValue(deploymentEnvironmentDeploymentsIsErrorAtom)
   const rows = useAtomValue(deploymentRuntimeInstanceRowsAtom)
-  const isLoading = environmentDeploymentsQuery.isLoading
-  const hasError = environmentDeploymentsQuery.isError
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-6 py-6">
       {isLoading
         ? <DeploymentEnvironmentListSkeleton />
         : hasError
-          ? <DeploymentStateMessage variant="list">{t('common.loadFailed')}</DeploymentStateMessage>
+          ? <DeploymentStateMessage variant="list">{t($ => $['common.loadFailed'])}</DeploymentStateMessage>
           : rows.length === 0
             ? (
                 <DeploymentEmptyState
                   icon="i-ri-server-line"
-                  title={t('deployTab.emptyTitle')}
-                  description={t('deployTab.emptyDescription')}
+                  title={t($ => $['deployTab.emptyTitle'])}
+                  description={t($ => $['deployTab.emptyDescription'])}
                   action={<NewDeploymentButton />}
                 />
               )

@@ -51,7 +51,7 @@ function LabelSelector({
           )}
         >
           <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
-            {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+            {!value.length && t($ => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
             {!!value.length && selectedLabels}
           </div>
           <div className="ml-1 shrink-0 text-text-secondary opacity-60">
@@ -74,7 +74,7 @@ function LabelSelector({
               />
             </div>
             <CheckboxGroup
-              aria-label={t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+              aria-label={t($ => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
               value={value}
               onValueChange={nextValue => onChange(nextValue)}
               className="max-h-[264px] overflow-y-auto p-1"
@@ -94,7 +94,7 @@ function LabelSelector({
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="size-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
+                  <div className="text-xs leading-[14px] text-text-tertiary">{t($ => $['tag.noTag'], { ns: 'common' })}</div>
                 </div>
               )}
             </CheckboxGroup>

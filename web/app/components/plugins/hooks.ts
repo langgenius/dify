@@ -22,7 +22,7 @@ export const useTags = () => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`tags.${tag}`, { ns: 'pluginTags' }),
+        label: t($ => $[`tags.${tag}`], { ns: 'pluginTags' }),
       }
     })
   }, [t])
@@ -62,12 +62,12 @@ export const useCategories = (isSingle?: boolean) => {
       if (category === PluginCategoryEnum.agent) {
         return {
           name: PluginCategoryEnum.agent,
-          label: isSingle ? t('categorySingle.agent', { ns: 'plugin' }) : t('category.agents', { ns: 'plugin' }),
+          label: isSingle ? t($ => $['categorySingle.agent'], { ns: 'plugin' }) : t($ => $['category.agents'], { ns: 'plugin' }),
         }
       }
       return {
         name: category,
-        label: isSingle ? t(`categorySingle.${category}`, { ns: 'plugin' }) : t(`category.${category}s`, { ns: 'plugin' }),
+        label: isSingle ? t($ => $[`categorySingle.${category}`], { ns: 'plugin' }) : t($ => $[`category.${category}s`], { ns: 'plugin' }),
       }
     })
   }, [t, isSingle])
@@ -93,8 +93,8 @@ export const PLUGIN_PAGE_TABS_MAP = {
 export const usePluginPageTabs = () => {
   const { t } = useTranslation()
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('menus.plugins', { ns: 'common' }) },
-    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
+    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t($ => $['menus.plugins'], { ns: 'common' }) },
+    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t($ => $['menus.exploreMarketplace'], { ns: 'common' }) },
   ]
   return tabs
 }

@@ -15,8 +15,9 @@ import {
   ComboboxItem,
   ComboboxItemText,
 } from '@langgenius/dify-ui/combobox'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 
 export function SubjectItem({
@@ -77,11 +78,11 @@ export function SelectedGroupsBreadCrumb({
               className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleReset}
             >
-              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
+              {t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
             </button>
           )
         : (
-            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+            <span className="system-xs-regular text-text-tertiary">{t($ => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}</span>
           )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
         const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
@@ -140,7 +141,7 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         onPointerDown={event => event.preventDefault()}
         onClick={() => onExpandGroup(group)}
       >
-        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
+        <span className="px-[3px]">{t($ => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}</span>
         <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />
       </Button>
     </div>
@@ -154,7 +155,7 @@ type MemberItemProps = {
 }
 
 function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
-  const currentUser = useSelector(s => s.userProfile)
+  const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
   const isChecked = selectedMembers.some(selectedMember => selectedMember.id === member.id)
   return (
@@ -170,7 +171,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
             (
-            {t('you', { ns: 'common' })}
+            {t($ => $.you, { ns: 'common' })}
             )
           </span>
         )}

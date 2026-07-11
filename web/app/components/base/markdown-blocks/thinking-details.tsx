@@ -36,7 +36,7 @@ const ThinkingDetails = ({ isComplete, elapsedTime, className, open, children, .
               d="M9 5l7 7-7 7"
             />
           </svg>
-          {isComplete ? `${t('chat.thought', { ns: 'common' })}(${elapsedTime.toFixed(1)}s)` : `${t('chat.thinking', { ns: 'common' })}(${elapsedTime.toFixed(1)}s)`}
+          {isComplete ? `${t($ => $['chat.thought'], { ns: 'common' })}(${elapsedTime.toFixed(1)}s)` : `${t($ => $['chat.thinking'], { ns: 'common' })}(${elapsedTime.toFixed(1)}s)`}
         </div>
       </summary>
       <div className="ml-2 border-l border-components-panel-border bg-components-panel-bg-alt p-3 text-text-secondary">

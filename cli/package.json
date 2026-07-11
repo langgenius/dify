@@ -1,13 +1,13 @@
 {
   "name": "@langgenius/difyctl",
   "type": "module",
-  "version": "0.1.0-alpha",
+  "version": "0.2.0-alpha",
   "description": "Dify command-line interface",
   "difyctl": {
     "channel": "alpha",
     "compat": {
-      "minDify": "1.15.0",
-      "maxDify": "1.15.0"
+      "minDify": "1.16.0",
+      "maxDify": "1.16.0"
     },
     "release": {
       "tagPrefix": "difyctl-v",
@@ -67,7 +67,7 @@
     "test:e2e:local": "DIFY_E2E_MODE=local vp test --config vitest.e2e.config.ts",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "type-check": "tsgo",
+    "type-check": "tsc",
     "tree:gen": "bun scripts/generate-command-tree.ts",
     "tree:check": "bun scripts/generate-command-tree.ts --check",
     "prebuild": "pnpm tree:gen",
@@ -98,10 +98,9 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@hono/node-server": "catalog:",
-    "@types/js-yaml": "catalog:",
     "@types/lockfile": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "hono": "catalog:",

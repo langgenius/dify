@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DebugInfo from '../debug-info'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 const mockDebugKey = vi.hoisted(() => ({
   data: null as null | { key: string, host: string, port: number },
   isLoading: false,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/service/use-plugins', () => ({

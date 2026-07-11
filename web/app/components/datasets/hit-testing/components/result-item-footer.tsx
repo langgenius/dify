@@ -33,7 +33,7 @@ const ResultItemFooter: FC<Props> = ({
         className="flex cursor-pointer items-center space-x-1 border-none bg-transparent p-0 text-left text-text-tertiary"
         onClick={showDetailModal}
       >
-        <div className="text-xs uppercase">{t(`${i18nPrefix}open`, { ns: 'datasetHitTesting' })}</div>
+        <div className="text-xs uppercase">{t($ => $[`${i18nPrefix}open`], { ns: 'datasetHitTesting' })}</div>
         <RiArrowRightUpLine className="size-3.5" aria-hidden />
       </button>
     </div>

@@ -258,7 +258,7 @@ const Authorized = ({
                   className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <span className="mr-1 i-ri-add-line size-4" />
-                  {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
+                  {t($ => $['modelProvider.auth.addModelCredential'], { ns: 'common' })}
                 </div>
               )
             }
@@ -269,7 +269,7 @@ const Authorized = ({
                     onClick={() => handleEdit()}
                     className="w-full"
                   >
-                    {t('modelProvider.auth.addApiKey', { ns: 'common' })}
+                    {t($ => $['modelProvider.auth.addApiKey'], { ns: 'common' })}
                   </Button>
                 </div>
               )
@@ -281,13 +281,13 @@ const Authorized = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
+              {t($ => $['modelProvider.confirmDelete'], { ns: 'common' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

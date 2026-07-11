@@ -47,7 +47,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
   }
   const handleSave = async () => {
     if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)) {
-      toast.error(t('modelProvider.embeddingModel.required', { ns: 'common' }))
+      toast.error(t($ => $['modelProvider.embeddingModel.required'], { ns: 'common' }))
       return
     }
     setLoading(true)
@@ -68,11 +68,11 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
       <DialogContent className="mt-14! w-[640px]! max-w-none! border-none p-6! text-left align-middle">
 
         <div className="mb-2 title-2xl-semi-bold text-text-primary">
-          {t(`initSetup.${isInit ? 'title' : 'configTitle'}`, { ns: 'appAnnotation' })}
+          {t($ => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
         </div>
 
         <div className="mt-6 space-y-3">
-          <Item title={t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })} tooltip={t('feature.annotation.scoreThreshold.description', { ns: 'appDebug' })}>
+          <Item title={t($ => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })} tooltip={t($ => $['feature.annotation.scoreThreshold.description'], { ns: 'appDebug' })}>
             <ScoreSlider
               className="mt-1"
               value={(annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold) * 100}
@@ -85,7 +85,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
             />
           </Item>
 
-          <Item title={t('modelProvider.embeddingModel.key', { ns: 'common' })} tooltip={t('embeddingModelSwitchTip', { ns: 'appAnnotation' })}>
+          <Item title={t($ => $['modelProvider.embeddingModel.key'], { ns: 'common' })} tooltip={t($ => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}>
             <div className="pt-1">
               <ModelSelector
                 defaultModel={embeddingModel && {
@@ -105,10 +105,10 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
-          <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button onClick={onHide}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
             <div></div>
-            <div>{t(`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`, { ns: 'appAnnotation' })}</div>
+            <div>{t($ => $[`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`], { ns: 'appAnnotation' })}</div>
           </Button>
         </div>
       </DialogContent>

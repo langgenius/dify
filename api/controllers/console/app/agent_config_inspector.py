@@ -253,6 +253,7 @@ def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             node_id=node_id,
+            session=db.session(),
         )
     return app_model.bound_agent_id
 
@@ -288,13 +289,16 @@ def _resolve_console_version(
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 account_id=account_id,
+                session=db.session(),
             )
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
             if isinstance(draft_id, str) and draft_id:
                 return draft_id, AgentConfigVersionKind.BUILD_DRAFT
         else:
-            state = AgentComposerService.load_agent_composer(tenant_id=tenant_id, agent_id=agent_id)
+            state = AgentComposerService.load_agent_composer(
+                tenant_id=tenant_id, agent_id=agent_id, session=db.session()
+            )
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
             if isinstance(draft_id, str) and draft_id:

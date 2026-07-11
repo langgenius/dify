@@ -46,11 +46,11 @@ export function ReadmeDrawer({
                 detail={detail}
                 title={(
                   <DrawerTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
-                    {t('readmeInfo.title', { ns: 'plugin' })}
+                    {t($ => $['readmeInfo.title'], { ns: 'plugin' })}
                   </DrawerTitle>
                 )}
                 closeButton={(
-                  <DrawerCloseButton aria-label={t('operation.close', { ns: 'common' })} />
+                  <DrawerCloseButton aria-label={t($ => $['operation.close'], { ns: 'common' })} />
                 )}
               />
             </DrawerContent>

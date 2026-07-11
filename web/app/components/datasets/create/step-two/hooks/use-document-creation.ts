@@ -56,16 +56,16 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   const validateParams = useCallback((params: ValidationParams): boolean => {
     const { segmentationType, maxChunkLength, limitMaxChunkLength, overlap, indexType, embeddingModel, rerankModelList, retrievalConfig } = params
     if (segmentationType === 'general' && overlap > maxChunkLength) {
-      toast.error(t('stepTwo.overlapCheck', { ns: 'datasetCreation' }))
+      toast.error(t($ => $['stepTwo.overlapCheck'], { ns: 'datasetCreation' }))
       return false
     }
     if (segmentationType === 'general' && maxChunkLength > limitMaxChunkLength) {
-      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: limitMaxChunkLength }))
+      toast.error(t($ => $['stepTwo.maxLengthCheck'], { ns: 'datasetCreation', limit: limitMaxChunkLength }))
       return false
     }
     if (!isSetting) {
       if (indexType === IndexingType.QUALIFIED && (!embeddingModel.model || !embeddingModel.provider)) {
-        toast.error(t('datasetConfig.embeddingModelRequired', { ns: 'appDebug' }))
+        toast.error(t($ => $['datasetConfig.embeddingModelRequired'], { ns: 'appDebug' }))
         return false
       }
       if (!isReRankModelSelected({
@@ -73,7 +73,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         retrievalConfig,
         indexMethod: indexType,
       })) {
-        toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+        toast.error(t($ => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
         return false
       }
     }
@@ -189,7 +189,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   // Validate preview params
   const validatePreviewParams = useCallback((maxChunkLength: number): boolean => {
     if (maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
+      toast.error(t($ => $['stepTwo.maxLengthCheck'], { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return false
     }
     return true

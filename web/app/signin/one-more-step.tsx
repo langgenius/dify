@@ -106,7 +106,7 @@ const OneMoreStep = () => {
     }
     catch (error: unknown) {
       if (hasStatus(error) && error.status === 400)
-        toast.error(t('invalidInvitationCode', { ns: 'login' }))
+        toast.error(t($ => $.invalidInvitationCode, { ns: 'login' }))
       dispatch({ type: 'failed', payload: null })
     }
   }
@@ -114,8 +114,8 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
-        <p className="mt-1 body-md-regular text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">{t($ => $.oneMoreStep, { ns: 'login' })}</h2>
+        <p className="mt-1 body-md-regular text-text-tertiary">{t($ => $.createSample, { ns: 'login' })}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
@@ -123,7 +123,7 @@ const OneMoreStep = () => {
           <div className="mb-5">
             <div className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
               <label htmlFor="invitation_code">
-                {t('invitationCode', { ns: 'login' })}
+                {t($ => $.invitationCode, { ns: 'login' })}
               </label>
               <Popover>
                 <PopoverTrigger
@@ -133,7 +133,7 @@ const OneMoreStep = () => {
                       type="button"
                       className="cursor-pointer rounded-sm text-text-accent-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                     >
-                      {t('dontHave', { ns: 'login' })}
+                      {t($ => $.dontHave, { ns: 'login' })}
                     </button>
                   )}
                 />
@@ -142,7 +142,7 @@ const OneMoreStep = () => {
                   popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>
-                    <div className="font-medium">{t('sendUsMail', { ns: 'login' })}</div>
+                    <div className="font-medium">{t($ => $.sendUsMail, { ns: 'login' })}</div>
                     <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
@@ -155,7 +155,7 @@ const OneMoreStep = () => {
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
-                placeholder={t('invitationCodePlaceholder', { ns: 'login' }) || ''}
+                placeholder={t($ => $.invitationCodePlaceholder, { ns: 'login' }) || ''}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
@@ -164,7 +164,7 @@ const OneMoreStep = () => {
           </div>
           <div className="mb-5">
             <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
-              {t('interfaceLanguage', { ns: 'login' })}
+              {t($ => $.interfaceLanguage, { ns: 'login' })}
             </label>
             <div className="mt-1">
               <Select
@@ -172,7 +172,7 @@ const OneMoreStep = () => {
                 onValueChange={handleLanguageChange}
               >
                 <SelectTrigger id="interface_language" size="large">
-                  {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+                  {selectedLanguage?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
                   {LANGUAGE_OPTIONS.map(item => (
@@ -187,7 +187,7 @@ const OneMoreStep = () => {
           </div>
           <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
-              {t('timezone', { ns: 'login' })}
+              {t($ => $.timezone, { ns: 'login' })}
             </label>
             <div className="mt-1">
               <Select
@@ -195,7 +195,7 @@ const OneMoreStep = () => {
                 onValueChange={handleTimezoneChange}
               >
                 <SelectTrigger id="timezone" size="large">
-                  {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+                  {selectedTimezone?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
                   {TIMEZONE_OPTIONS.map(item => (
@@ -215,11 +215,11 @@ const OneMoreStep = () => {
               disabled={isPending}
               onClick={handleSubmit}
             >
-              {t('go', { ns: 'login' })}
+              {t($ => $.go, { ns: 'login' })}
             </Button>
           </div>
           <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-            {t('license.tip', { ns: 'login' })}
+            {t($ => $['license.tip'], { ns: 'login' })}
             &nbsp;
             <Link
               className="system-xs-medium text-text-accent-secondary"
@@ -227,7 +227,7 @@ const OneMoreStep = () => {
               rel="noopener noreferrer"
               href={LICENSE_LINK}
             >
-              {t('license.link', { ns: 'login' })}
+              {t($ => $['license.link'], { ns: 'login' })}
             </Link>
           </div>
         </div>

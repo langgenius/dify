@@ -11,6 +11,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PlainLayer
 from dify_agent.agent_stub.cli.main import render_agent_stub_cli_help
+from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
     DIFY_CONFIG_LAYER_TYPE_ID,
     DifyConfigLayerConfig,
@@ -18,19 +19,24 @@ from dify_agent.layers.config.configs import (
 )
 from dify_agent.layers.shell.layer import DifyShellLayer
 
-_CONFIG_CONTEXT_HEADING = "Agent config context from the current Agent Soul:"
-_CONFIG_CLI_USAGE_PROMPT = """Agent config CLI usage is available inside shell jobs. The command help below is generated
-from the same `dify-agent` CLI definitions available in shell jobs.
+_CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
+_CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
+_CONFIG_CLI_USAGE_PROMPT = """`dify-agent` is an installed CLI tool in the shell environment. Use it directly in shell_run scripts.
 
-Local edits to config files, skills, env, or notes are not saved by themselves. Config changes are saved only by a
-matching resource mutation command. Those commands are available only when the Agent config context reports
-`config_version.kind` as `build_draft` and `config_version.writable` as true."""
+The command outputs below are generated from the `dify-agent` CLI available in this run. Use them as the source of truth
+for command names, arguments, and options.
+
+Config persistence rules:
+
+- Local shell edits to config files, skills, env, or notes are not saved by themselves.
+- To persist an Agent config change, run the matching `dify-agent config ...` mutation command.
+- Mutation commands are available only when the manifest shows `config_version.kind` as `build_draft` and
+  `config_version.writable` as true."""
 _CONFIG_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config --help": ("config",),
     "dify-agent config manifest --help": ("config", "manifest"),
     "dify-agent config skills pull --help": ("config", "skills", "pull"),
     "dify-agent config files pull --help": ("config", "files", "pull"),
-    "dify-agent config env pull --help": ("config", "env", "pull"),
     "dify-agent config note pull --help": ("config", "note", "pull"),
 }
 _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
@@ -40,6 +46,10 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config files delete --help": ("config", "files", "delete"),
     "dify-agent config skills push --help": ("config", "skills", "push"),
     "dify-agent config skills delete --help": ("config", "skills", "delete"),
+}
+_AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
+    "dify-agent file upload --help": ("file", "upload"),
+    "dify-agent file download --help": ("file", "download"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
 
@@ -91,6 +101,7 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         command_paths = dict(_CONFIG_CLI_HELP_COMMANDS)
         if self._config_writable:
             command_paths.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
+        command_paths.update(_AGENT_FILE_CLI_HELP_COMMANDS)
         self.runtime_state.config_context_json = self._format_config_context_json()
         self.runtime_state.config_cli_help = {
             command: render_agent_stub_cli_help(args) for command, args in command_paths.items()
@@ -107,15 +118,22 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
             output = self.runtime_state.pulled_skill_outputs.get(name)
             if output is None:
                 continue
-            loaded_skill_sections.append(f"Name: {name}\nPull output:\n{output}")
+            command = f"dify-agent config skills pull {shlex.quote(name)}"
+            loaded_skill_sections.append(
+                f"Name: {name}\nPull command output for this run:\n{_format_command_output(command, output)}"
+            )
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
 
-        mentioned_file_sections = [
-            f"Name: {name}\nPull output:\n{self.runtime_state.pulled_file_outputs[name]}"
-            for name in self.config.mentioned_file_names
-            if name in self.runtime_state.pulled_file_outputs
-        ]
+        mentioned_file_sections = []
+        for name in self.config.mentioned_file_names:
+            output = self.runtime_state.pulled_file_outputs.get(name)
+            if output is None:
+                continue
+            command = f"dify-agent config files pull {shlex.quote(name)}"
+            mentioned_file_sections.append(
+                f"Name: {name}\nPull command output for this run:\n{_format_command_output(command, output)}"
+            )
         if mentioned_file_sections:
             sections.append("Mentioned files pulled locally:\n\n" + "\n\n".join(mentioned_file_sections))
 
@@ -124,10 +142,15 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
     def build_suffix_prompt(self) -> str:
         sections: list[str] = []
         if self.runtime_state.config_context_json:
-            sections.append(f"{_CONFIG_CONTEXT_HEADING}\n{self.runtime_state.config_context_json}")
+            sections.append(
+                f"{_CONFIG_CONTEXT_HEADING}\n"
+                f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self.runtime_state.config_context_json)}"
+            )
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
+        if file_cli_help := self._format_agent_file_cli_help():
+            usage_lines.append(file_cli_help)
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
 
@@ -140,13 +163,27 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         if self._config_writable:
             commands.extend(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
         command_sections = [
-            f"$ {command}\n{self.runtime_state.config_cli_help[command]}"
+            _format_command_output(command, self.runtime_state.config_cli_help[command])
             for command in commands
             if command in self.runtime_state.config_cli_help
         ]
         if not command_sections:
             return ""
-        return "Agent config CLI help:\n" + "\n\n".join(command_sections)
+        return "Agent config CLI reference for installed `dify-agent`:\n" + "\n\n".join(command_sections)
+
+    def _format_agent_file_cli_help(self) -> str:
+        command_sections = [
+            _format_command_output(command, self.runtime_state.config_cli_help[command])
+            for command in _AGENT_FILE_CLI_HELP_COMMANDS
+            if command in self.runtime_state.config_cli_help
+        ]
+        if not command_sections:
+            return ""
+        return (
+            "Agent file CLI reference for installed `dify-agent`:\n"
+            + "\n\n".join(command_sections)
+            + f"\n\n{_AGENT_FILE_UPLOAD_REPLY_HINT}"
+        )
 
     def _format_config_context_json(self) -> str:
         return self.config.model_dump_json(exclude=_CONFIG_CONTEXT_EXCLUDE, exclude_none=True)
@@ -222,6 +259,10 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
             f"dify-agent config files pull {shlex.quote(name)}",
         ]
         return "\n".join(lines)
+
+
+def _format_command_output(command: str, output: str) -> str:
+    return f"Command:\n$ {command}\nOutput:\n{output}"
 
 
 __all__ = ["DifyConfigLayer", "DifyConfigLayerError"]

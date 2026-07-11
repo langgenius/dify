@@ -222,7 +222,7 @@ const EditCard: FC<EditCardProps> = ({
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
-            placeholder={t('nodes.llm.jsonSchema.fieldNamePlaceholder', { ns: 'workflow' })}
+            placeholder={t($ => $['nodes.llm.jsonSchema.fieldNamePlaceholder'], { ns: 'workflow' })}
             minWidth={80}
             maxWidth={300}
             onChange={handlePropertyNameChange}
@@ -236,7 +236,7 @@ const EditCard: FC<EditCardProps> = ({
           {
             currentFields.required && (
               <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-                {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
+                {t($ => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
               </div>
             )
           }
@@ -269,7 +269,7 @@ const EditCard: FC<EditCardProps> = ({
           <input
             value={currentFields.description}
             className="h-4 w-full p-0 system-xs-regular text-text-tertiary caret-[#295EFF] outline-hidden placeholder:system-xs-regular placeholder:text-text-placeholder"
-            placeholder={t('nodes.llm.jsonSchema.descriptionPlaceholder', { ns: 'workflow' })}
+            placeholder={t($ => $['nodes.llm.jsonSchema.descriptionPlaceholder'], { ns: 'workflow' })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
             onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}

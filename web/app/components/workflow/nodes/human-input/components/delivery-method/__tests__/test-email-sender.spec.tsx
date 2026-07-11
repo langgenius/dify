@@ -1,4 +1,3 @@
-/* eslint-disable react/no-context-provider -- use-context-selector contexts require .Provider in tests. */
 import type { ReactNode } from 'react'
 import type { EmailConfig, FormInputItem, ParagraphFormInput, SelectFormInput } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
@@ -12,7 +11,6 @@ import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provide
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppContext, initialLangGeniusVersionInfo, initialWorkspaceInfo, userProfilePlaceholder } from '@/context/app-context'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -20,6 +18,44 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: vi.fn(),
   },
 }))
+
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    email: 'owner@example.com',
+    name: 'Owner',
+  },
+  currentWorkspace: {
+    id: 'workspace-1',
+    name: 'Product Team',
+  },
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 type RecordedRequest = {
   url: string
@@ -44,59 +80,9 @@ const renderWithProviders = (ui: ReactNode) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AppContext.Provider
-        value={{
-          userProfile: {
-            ...userProfilePlaceholder,
-            id: 'user-1',
-            email: 'owner@example.com',
-            name: 'Owner',
-          },
-          currentWorkspace: {
-            ...initialWorkspaceInfo,
-            id: 'workspace-1',
-            name: 'Product Team',
-          },
-          isCurrentWorkspaceManager: true,
-          isCurrentWorkspaceOwner: true,
-          isCurrentWorkspaceEditor: true,
-          isCurrentWorkspaceDatasetOperator: true,
-          mutateUserProfile: vi.fn(),
-          mutateCurrentWorkspace: vi.fn(),
-          langGeniusVersionInfo: initialLangGeniusVersionInfo,
-          useSelector: selector => selector({
-            userProfile: {
-              ...userProfilePlaceholder,
-              id: 'user-1',
-              email: 'owner@example.com',
-              name: 'Owner',
-            },
-            currentWorkspace: {
-              ...initialWorkspaceInfo,
-              id: 'workspace-1',
-              name: 'Product Team',
-            },
-            isCurrentWorkspaceManager: true,
-            isCurrentWorkspaceOwner: true,
-            isCurrentWorkspaceEditor: true,
-            isCurrentWorkspaceDatasetOperator: true,
-            mutateUserProfile: vi.fn(),
-            mutateCurrentWorkspace: vi.fn(),
-            langGeniusVersionInfo: initialLangGeniusVersionInfo,
-            useSelector: vi.fn(),
-            isLoadingCurrentWorkspace: false,
-            isValidatingCurrentWorkspace: false,
-            workspacePermissionKeys: [],
-          }),
-          isLoadingCurrentWorkspace: false,
-          isValidatingCurrentWorkspace: false,
-          workspacePermissionKeys: [],
-        }}
-      >
-        <HooksStoreContext.Provider value={hooksStore}>
-          {ui}
-        </HooksStoreContext.Provider>
-      </AppContext.Provider>
+      <HooksStoreContext.Provider value={hooksStore}>
+        {ui}
+      </HooksStoreContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -390,7 +376,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     )
 
     expect(screen.getByText('external@example.com')).toBeInTheDocument()
-    expect(screen.getByText('nodes.humanInput.deliveryMethod.emailSender.tip')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.tip')).toBeInTheDocument()
   })
 
   it('should show a validation toast when generated JSON input is invalid', async () => {
@@ -477,7 +463,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' }))
 
-    await waitFor(() => expect(screen.getByText('nodes.humanInput.deliveryMethod.emailSender.debugDone')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugDone')).toBeInTheDocument())
   })
 
   it('should show specific-recipient success copy after sending', async () => {

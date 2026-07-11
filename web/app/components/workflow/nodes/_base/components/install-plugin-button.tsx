@@ -102,7 +102,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       onClick={handleInstall}
       className={cn('flex items-center', className)}
     >
-      {!isLoading ? t('nodes.agent.pluginInstaller.install', { ns: 'workflow' }) : t('nodes.agent.pluginInstaller.installing', { ns: 'workflow' })}
+      {!isLoading ? t($ => $['nodes.agent.pluginInstaller.install'], { ns: 'workflow' }) : t($ => $['nodes.agent.pluginInstaller.installing'], { ns: 'workflow' })}
       {!isLoading ? <span className="ml-1 i-ri-install-line size-3.5" /> : <span className="ml-1 i-ri-loader-2-line size-3.5 animate-spin" />}
     </Button>
   )

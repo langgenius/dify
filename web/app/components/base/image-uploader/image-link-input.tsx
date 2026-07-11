@@ -17,7 +17,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
   const { t } = useTranslation()
   const [imageLink, setImageLink] = useState('')
 
-  const placeholder = t('imageUploader.pasteImageLinkInputPlaceholder', { ns: 'common' })
+  const placeholder = t($ => $['imageUploader.pasteImageLinkInputPlaceholder'], { ns: 'common' })
   /* v8 ignore next -- defensive i18n fallback; translation key resolves to non-empty text in normal runtime/test setup, so empty-placeholder branch is not exercised without forcing i18n internals. @preserve */
   const safeText = placeholder || ''
 
@@ -53,7 +53,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         disabled={!imageLink || disabled}
         onClick={handleClick}
       >
-        {t('operation.ok', { ns: 'common' })}
+        {t($ => $['operation.ok'], { ns: 'common' })}
       </Button>
     </div>
   )

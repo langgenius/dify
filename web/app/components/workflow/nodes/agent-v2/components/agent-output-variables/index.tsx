@@ -47,7 +47,7 @@ function OutputRow({
           <span className="flex h-5 shrink-0 items-center px-1 system-xs-medium text-text-tertiary">{getOutputDisplayType(output)}</span>
           {output.required && (
             <span className="flex h-3 shrink-0 items-center px-1 system-2xs-medium-uppercase text-text-warning">
-              {t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
+              {t($ => $['nodes.agent.outputVars.requiredLabel'], { ns: 'workflow' })}
             </span>
           )}
         </div>
@@ -56,7 +56,7 @@ function OutputRow({
             {onAddChild && (
               <button
                 type="button"
-                aria-label={`${t('operation.add', { ns: 'common' })} ${output.name}`}
+                aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${output.name}`}
                 className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={onAddChild}
               >
@@ -65,7 +65,7 @@ function OutputRow({
             )}
             <button
               type="button"
-              aria-label={t('nodes.agent.outputVars.edit', { ns: 'workflow', name: output.name })}
+              aria-label={t($ => $['nodes.agent.outputVars.edit'], { ns: 'workflow', name: output.name })}
               className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={onEdit}
             >
@@ -73,7 +73,7 @@ function OutputRow({
             </button>
             <button
               type="button"
-              aria-label={t('nodes.agent.outputVars.delete', { ns: 'workflow', name: output.name })}
+              aria-label={t($ => $['nodes.agent.outputVars.delete'], { ns: 'workflow', name: output.name })}
               className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={onDelete}
             >
@@ -109,10 +109,14 @@ function ChildOutputFrame({ children, depth }: { children: ReactNode, depth: num
 export function AgentOutputVariables({
   outputs,
   onChange,
+  collapsed,
+  onCollapse,
 }: AgentOutputVariablesProps) {
   const { t } = useTranslation()
   const [editingState, setEditingState] = useState<EditingState | null>(null)
-  const [collapsed, setCollapsed] = useState(true)
+  const [internalCollapsed, setInternalCollapsed] = useState(true)
+  const isCollapsed = collapsed ?? internalCollapsed
+  const handleCollapseChange = onCollapse ?? setInternalCollapsed
   function handleNewOutput() {
     setEditingState({ draft: createDraft() })
   }
@@ -214,7 +218,7 @@ export function AgentOutputVariables({
     )
   }
   return (
-    <OutputVars collapsed={collapsed} onCollapse={setCollapsed}>
+    <OutputVars collapsed={isCollapsed} onCollapse={handleCollapseChange}>
       <div className="pb-2">
         <div className="flex flex-col">
           {outputs.map((output, index) => {
@@ -279,7 +283,7 @@ export function AgentOutputVariables({
                     onClick={handleNewOutput}
                   >
                     <span aria-hidden="true" className="i-ri-add-line size-3.5" />
-                    {t('nodes.agent.outputVars.newOutput', { ns: 'workflow' })}
+                    {t($ => $['nodes.agent.outputVars.newOutput'], { ns: 'workflow' })}
                   </Button>
                 </div>
               )}

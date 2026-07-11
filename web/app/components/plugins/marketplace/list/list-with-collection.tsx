@@ -117,7 +117,7 @@ const ListWithCollection = ({
                           rel="noopener noreferrer"
                           className="flex items-center gap-x-0.5 text-text-accent hover:underline"
                         >
-                          <span>{t('marketplace.becomePartner', { ns: 'plugin' })}</span>
+                          <span>{t($ => $['marketplace.becomePartner'], { ns: 'plugin' })}</span>
                           <span aria-hidden className="i-ri-external-link-line size-3" />
                         </a>
                       </>
@@ -130,7 +130,7 @@ const ListWithCollection = ({
                       className="flex cursor-pointer items-center system-xs-medium text-text-accent"
                       onClick={() => handleMoreClick(collection.search_params)}
                     >
-                      {t('marketplace.viewMore', { ns: 'plugin' })}
+                      {t($ => $['marketplace.viewMore'], { ns: 'plugin' })}
                       <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
                     </div>
                   )

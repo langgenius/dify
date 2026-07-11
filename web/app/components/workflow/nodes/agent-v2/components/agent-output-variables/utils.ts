@@ -40,6 +40,8 @@ export type EditingState = {
 export type AgentOutputVariablesProps = {
   outputs: DeclaredOutputConfig[]
   onChange: (outputs: DeclaredOutputConfig[]) => void
+  collapsed?: boolean
+  onCollapse?: (collapsed: boolean) => void
 }
 
 export const OUTPUT_NAME_PATTERN = /^[a-z_]\w*$/i
@@ -288,11 +290,11 @@ export function isDefaultOutput(output: DeclaredOutputConfig) {
 
 export function getOutputDescription(output: EditableOutputConfig, t: TFunction) {
   if (output.name === 'text')
-    return t('nodes.agent.outputVars.text', { ns: 'workflow' })
+    return t($ => $['nodes.agent.outputVars.text'], { ns: 'workflow' })
   if (output.name === 'files')
-    return t('nodes.agent.outputVars.files.title', { ns: 'workflow' })
+    return t($ => $['nodes.agent.outputVars.files.title'], { ns: 'workflow' })
   if (output.name === 'json')
-    return t('nodes.agent.outputVars.json', { ns: 'workflow' })
+    return t($ => $['nodes.agent.outputVars.json'], { ns: 'workflow' })
   return output.description || ''
 }
 

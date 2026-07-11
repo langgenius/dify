@@ -29,13 +29,13 @@ const ExpirationTime = ({
           ? (
               <>
                 <div className="i-ri-time-line size-3.5" />
-                <span>{t('humanInput.expirationTimeNowOrFuture', { relativeTime, ns: 'share' })}</span>
+                <span>{t($ => $['humanInput.expirationTimeNowOrFuture'], { relativeTime, ns: 'share' })}</span>
               </>
             )
           : (
               <>
                 <div className="i-ri-alert-fill size-3.5" />
-                <span>{t('humanInput.expiredTip', { ns: 'share' })}</span>
+                <span>{t($ => $['humanInput.expiredTip'], { ns: 'share' })}</span>
               </>
             )
       }

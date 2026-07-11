@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
@@ -198,10 +199,10 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string, options?: { ns?: string }) => {
+  const t = withSelectorKey((key: string, options?: { ns?: string }) => {
     const prefix = options?.ns ? `${options.ns}.` : ''
     return `${prefix}${key}`
-  }
+  }, 'datasetSettings')
   const rowClass = 'row'
   const labelClass = 'label'
 

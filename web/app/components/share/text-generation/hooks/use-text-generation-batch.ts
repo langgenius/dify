@@ -1,16 +1,14 @@
-import type { Task } from '../types'
+import type { Task, TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { BATCH_CONCURRENCY } from '@/config'
 import { TaskStatus } from '../types'
 
 type BatchNotify = (payload: { type: 'error' | 'info', message: string }) => void
-type BatchTranslate = (key: string, options?: Record<string, unknown>) => string
-
 type UseTextGenerationBatchOptions = {
   promptConfig: PromptConfig | null
   notify: BatchNotify
-  t: BatchTranslate
+  t: TextGenerationTranslate
 }
 
 type RunBatchCallbacks = {
@@ -50,7 +48,7 @@ export const useTextGenerationBatch = ({
 
   const checkBatchInputs = useCallback((data: string[][]) => {
     if (!data || data.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
+      notify({ type: 'error', message: t($ => $['generation.errorMsg.empty'], { ns: 'share' }) })
       return false
     }
 
@@ -66,13 +64,13 @@ export const useTextGenerationBatch = ({
     })
 
     if (!isMapVarName) {
-      notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
+      notify({ type: 'error', message: t($ => $['generation.errorMsg.fileStructNotMatch'], { ns: 'share' }) })
       return false
     }
 
     let payloadData = data.slice(1)
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
+      notify({ type: 'error', message: t($ => $['generation.errorMsg.atLeastOne'], { ns: 'share' }) })
       return false
     }
 
@@ -93,14 +91,14 @@ export const useTextGenerationBatch = ({
       })
 
       if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
+        notify({ type: 'error', message: t($ => $['generation.errorMsg.emptyLine'], { ns: 'share', rowIndex: startIndex + 2 }) })
         return false
       }
     }
 
     payloadData = payloadData.filter(item => !item.every(value => value === ''))
     if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
+      notify({ type: 'error', message: t($ => $['generation.errorMsg.atLeastOne'], { ns: 'share' }) })
       return false
     }
 
@@ -135,14 +133,14 @@ export const useTextGenerationBatch = ({
       if (requiredVarName) {
         notify({
           type: 'error',
-          message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }),
+          message: t($ => $['generation.errorMsg.invalidLine'], { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }),
         })
       }
 
       if (tooLongVarName) {
         notify({
           type: 'error',
-          message: t('generation.errorMsg.moreThanMaxLengthLine', {
+          message: t($ => $['generation.errorMsg.moreThanMaxLengthLine'], {
             ns: 'share',
             rowIndex: errorRowIndex + 1,
             varName: tooLongVarName,
@@ -164,7 +162,7 @@ export const useTextGenerationBatch = ({
     const latestTaskList = allTaskListRef.current
     const allTasksFinished = latestTaskList.every(task => task.status === TaskStatus.completed)
     if (!allTasksFinished && latestTaskList.length > 0) {
-      notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t($ => $['errorMessage.waitForBatchResponse'], { ns: 'appDebug' }) })
       return false
     }
 
@@ -242,7 +240,7 @@ export const useTextGenerationBatch = ({
       })
 
       const completionValue = batchCompletionMap[String(task.id)] ?? ''
-      result[t('generation.completionResult', { ns: 'share' })] = completionValue
+      result[t($ => $['generation.completionResult'], { ns: 'share' })] = completionValue
       return result
     })
   }, [allTaskList, batchCompletionMap, promptConfig, t])

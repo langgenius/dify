@@ -3,12 +3,12 @@ import * as React from 'react'
 import { CheckboxGroup } from '.'
 import { Checkbox } from '../checkbox'
 import {
+  Field,
   FieldDescription,
   FieldItem,
   FieldLabel,
-  FieldRoot,
 } from '../field'
-import { FieldsetLegend, FieldsetRoot } from '../fieldset'
+import { Fieldset, FieldsetLegend } from '../fieldset'
 
 const meta = {
   title: 'Base/Form/CheckboxGroup',
@@ -80,11 +80,11 @@ function DynamicFormFieldDemo() {
   const [selected, setSelected] = React.useState<string[]>(['markdown'])
 
   return (
-    <FieldRoot name="allowed_file_types" className="flex w-80 flex-col gap-2">
+    <Field name="allowed_file_types" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
         This mirrors Dify dynamic form fields where checkbox options are controlled by schema and persisted as a string array.
       </FieldDescription>
-      <FieldsetRoot
+      <Fieldset
         render={(
           <CheckboxGroup
             value={selected}
@@ -104,8 +104,8 @@ function DynamicFormFieldDemo() {
             </FieldLabel>
           </FieldItem>
         ))}
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 

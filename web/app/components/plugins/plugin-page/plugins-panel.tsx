@@ -165,13 +165,13 @@ const PluginsPanel = ({
         ? 'integrationsExtension'
         : 'default'
   const scrollAreaLabel = isTriggerIntegrationPage
-    ? t('categorySingle.trigger', { ns: 'plugin' })
+    ? t($ => $['categorySingle.trigger'], { ns: 'plugin' })
     : isAgentStrategyIntegrationPage
-      ? t('categorySingle.agent', { ns: 'plugin' })
+      ? t($ => $['categorySingle.agent'], { ns: 'plugin' })
       : isExtensionIntegrationPage
-        ? t('categorySingle.extension', { ns: 'plugin' })
+        ? t($ => $['categorySingle.extension'], { ns: 'plugin' })
         : isToolIntegrationPage
-          ? t('categorySingle.tool', { ns: 'plugin' })
+          ? t($ => $['categorySingle.tool'], { ns: 'plugin' })
           : undefined
 
   const toolbar = (

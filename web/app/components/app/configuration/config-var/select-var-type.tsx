@@ -61,15 +61,15 @@ const SelectVarType: FC<Props> = ({
         popupClassName="min-w-[192px] rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
       >
         <div className="p-1">
-          <SelectItem type={InputVarType.textInput} value="string" text={t('variableConfig.string', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
-          <SelectItem type={InputVarType.paragraph} value="paragraph" text={t('variableConfig.paragraph', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
-          <SelectItem type={InputVarType.select} value="select" text={t('variableConfig.select', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
-          <SelectItem type={InputVarType.number} value="number" text={t('variableConfig.number', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
-          <SelectItem type={InputVarType.checkbox} value="checkbox" text={t('variableConfig.checkbox', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem type={InputVarType.textInput} value="string" text={t($ => $['variableConfig.string'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem type={InputVarType.paragraph} value="paragraph" text={t($ => $['variableConfig.paragraph'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem type={InputVarType.select} value="select" text={t($ => $['variableConfig.select'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem type={InputVarType.number} value="number" text={t($ => $['variableConfig.number'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem type={InputVarType.checkbox} value="checkbox" text={t($ => $['variableConfig.checkbox'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
         </div>
         <DropdownMenuSeparator className="my-0" />
         <div className="p-1">
-          <SelectItem Icon={ApiConnection} value="api" text={t('variableConfig.apiBasedVar', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+          <SelectItem Icon={ApiConnection} value="api" text={t($ => $['variableConfig.apiBasedVar'], { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

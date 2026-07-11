@@ -13,7 +13,7 @@ describe('SelfHostedPlanItem/List', () => {
   it('should render plan info', () => {
     render(<List plan={SelfHostedPlan.community} />)
 
-    expect(screen.getByText('plans.community.includesTitle')).toBeInTheDocument()
+    expect(screen.getByText('billing.plans.community.includesTitle')).toBeInTheDocument()
     expect(screen.getByText('Feature A')).toBeInTheDocument()
     expect(screen.getByText('Feature B')).toBeInTheDocument()
   })

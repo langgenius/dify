@@ -3,13 +3,6 @@ import userEvent from '@testing-library/user-event'
 import DuplicateAppModal from '../index'
 
 const toastErrorMock = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: {
@@ -91,9 +84,9 @@ describe('DuplicateAppModal', () => {
     expect(input).toHaveValue('Updated App')
 
     await user.clear(input)
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
-    expect(toastErrorMock).toHaveBeenCalledWith('appCustomize.nameRequired')
+    expect(toastErrorMock).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)appCustomize\.nameRequired(?=$|:)/))
     expect(onConfirm).not.toHaveBeenCalled()
     expect(onHide).not.toHaveBeenCalled()
   })
@@ -124,7 +117,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: 'Demo App',
@@ -151,7 +144,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'operation.close' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(onHide).toHaveBeenCalledTimes(1)
   })
@@ -192,7 +185,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Image App',

@@ -3,6 +3,7 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
+import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -71,10 +72,10 @@ export function WebAppAccessCard({
             }
           : agentDetail,
       )
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     },
   }))
   const resetAccessTokenMutation = useMutation(consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
@@ -95,10 +96,10 @@ export function WebAppAccessCard({
           }
         },
       )
-      toast.success(tCommon('actionMsg.generatedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.generatedSuccessfully']))
     },
     onError: () => {
-      toast.error(tCommon('actionMsg.generatedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.generatedUnsuccessfully']))
     },
   }))
   const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
@@ -156,29 +157,29 @@ export function WebAppAccessCard({
                 access_token: updatedSite.code ?? agentDetail.site?.access_token ?? agentDetail.site?.code ?? null,
                 code: updatedSite.code ?? agentDetail.site?.code ?? agentDetail.site?.access_token ?? null,
                 app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
-                icon_url: agentDetail.site?.icon_url ?? null,
+                icon_url: null,
               },
             }
           : agentDetail,
       )
       await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
+      toast.success(tCommon($ => $['actionMsg.modifiedSuccessfully']))
     }
     catch {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.error(tCommon($ => $['actionMsg.modifiedUnsuccessfully']))
     }
   }
 
   return (
     <AccessSurfaceCard
-      title={t('agentDetail.access.webApp.title')}
+      title={t($ => $['agentDetail.access.webApp.title'])}
       icon="i-ri-window-line"
       iconClassName="bg-state-accent-solid text-text-primary-on-surface"
-      endpointLabel={t('agentDetail.access.webApp.accessUrl')}
+      endpointLabel={t($ => $['agentDetail.access.webApp.accessUrl'])}
       endpoint={webAppUrl}
       enabled={isEnabled}
       onEnabledChange={handleEnabledChange}
-      copyLabel={t('agentDetail.access.copyAccessUrl')}
+      copyLabel={t($ => $['agentDetail.access.copyAccessUrl'])}
       badge={showSsoBadge ? <SsoBadge /> : undefined}
       endpointActions={webAppUrl
         ? (
@@ -189,7 +190,7 @@ export function WebAppAccessCard({
                 variant="ghost"
                 size="small"
                 className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
-                aria-label={t('agentDetail.access.webApp.refreshUrl')}
+                aria-label={t($ => $['agentDetail.access.webApp.refreshUrl'])}
                 disabled={!canManageWebApp || isBusy}
                 onClick={handleRefreshUrl}
               >
@@ -207,17 +208,17 @@ export function WebAppAccessCard({
               href={webAppUrl}
               target="_blank"
               rel="noreferrer"
-              aria-label={t('agentDetail.access.webApp.actions.launch')}
+              aria-label={t($ => $['agentDetail.access.webApp.actions.launch'])}
               className={accessSurfaceActionClassName}
             >
               <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
+              {t($ => $['agentDetail.access.webApp.actions.launch'])}
             </a>
           )
         : (
             <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
               <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
+              {t($ => $['agentDetail.access.webApp.actions.launch'])}
             </Button>
           )}
       <Button
@@ -228,7 +229,7 @@ export function WebAppAccessCard({
         onClick={() => setShowEmbeddedModal(true)}
       >
         <span aria-hidden className="i-ri-window-line size-4" />
-        {t('agentDetail.access.webApp.actions.embedded')}
+        {t($ => $['agentDetail.access.webApp.actions.embedded'])}
       </Button>
       <Button
         variant="secondary"
@@ -238,7 +239,7 @@ export function WebAppAccessCard({
         onClick={() => setShowCustomizeModal(true)}
       >
         <span aria-hidden className="i-ri-paint-brush-line size-4" />
-        {t('agentDetail.access.webApp.actions.customize')}
+        {t($ => $['agentDetail.access.webApp.actions.customize'])}
       </Button>
       <Button
         variant="secondary"
@@ -247,8 +248,8 @@ export function WebAppAccessCard({
         disabled={!settingsAppInfo || updateSiteMutation.isPending}
         onClick={() => setShowSettingsModal(true)}
       >
-        <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-        {t('agentDetail.access.webApp.actions.settings')}
+        <span aria-hidden className="i-ri-palette-line size-4" />
+        {t($ => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
       {settingsAppInfo && (
         <SettingsModal
@@ -287,6 +288,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
   const appId = agent.app_id
   if (!site || !appId)
     return null
+  const icon = getSettingsIcon(agent)
 
   return {
     id: appId,
@@ -301,15 +303,47 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
       privacy_policy: site.privacy_policy ?? '',
       custom_disclaimer: site.custom_disclaimer ?? '',
       input_placeholder: site.input_placeholder ?? '',
-      icon_type: site.icon_type === 'image' || site.icon_type === 'emoji' || site.icon_type === 'link'
-        ? site.icon_type
-        : 'emoji',
-      icon: site.icon ?? agent.icon ?? '',
-      icon_background: site.icon_background ?? agent.icon_background ?? null,
-      icon_url: site.icon_url ?? null,
+      icon_type: icon.icon_type,
+      icon: icon.icon,
+      icon_background: icon.icon_background,
+      icon_url: icon.icon_url,
       show_workflow_steps: site.show_workflow_steps ?? false,
       use_icon_as_answer_icon: site.use_icon_as_answer_icon ?? false,
     },
+  }
+}
+
+function isAppIconType(iconType: unknown): iconType is AppIconType {
+  return iconType === 'image' || iconType === 'emoji' || iconType === 'link'
+}
+
+function getSettingsIcon(agent: AgentAppDetailWithSite) {
+  const site = agent.site
+  if (site && isAppIconType(site.icon_type) && site.icon) {
+    return {
+      icon_type: site.icon_type,
+      icon: site.icon,
+      icon_background: site.icon_background ?? null,
+      icon_url: site.icon_url ?? null,
+    }
+  }
+
+  if (isAppIconType(agent.icon_type) && agent.icon) {
+    return {
+      icon_type: agent.icon_type,
+      icon: agent.icon,
+      icon_background: agent.icon_background ?? null,
+      icon_url: agent.icon_type === 'image' || agent.icon_type === 'link'
+        ? agent.icon_url
+        : null,
+    }
+  }
+
+  return {
+    icon_type: 'emoji' as const,
+    icon: '',
+    icon_background: null,
+    icon_url: null,
   }
 }
 
@@ -329,7 +363,7 @@ function SsoBadge() {
   return (
     <span className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-sm border border-divider-deep px-1.5 system-2xs-semibold-uppercase text-text-tertiary">
       <span aria-hidden className="i-ri-shield-check-line size-3" />
-      {t('agentDetail.access.webApp.ssoEnabled')}
+      {t($ => $['agentDetail.access.webApp.ssoEnabled'])}
     </span>
   )
 }

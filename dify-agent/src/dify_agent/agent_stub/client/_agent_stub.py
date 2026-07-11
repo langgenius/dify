@@ -97,6 +97,7 @@ def request_agent_stub_file_download_sync(
     url: str,
     auth_jwe: str,
     file: AgentStubFileMapping,
+    for_external: bool = True,
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ):
@@ -109,12 +110,14 @@ def request_agent_stub_file_download_sync(
             url=endpoint.url,
             auth_jwe=auth_jwe,
             file=file,
+            for_external=for_external,
             timeout=timeout,
         )
     return request_agent_stub_file_download_http_sync(
         base_url=endpoint.url,
         auth_jwe=auth_jwe,
         file=file,
+        for_external=for_external,
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
@@ -289,7 +292,7 @@ def request_agent_stub_config_env_update_sync(
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ):
-    """Replace or delete config env entries through the HTTP transport."""
+    """Set or delete config env entries through the HTTP transport."""
     endpoint = _parse_endpoint(url)
     if endpoint.is_grpc:
         raise AgentStubValidationError("Agent Stub config operations require an HTTP Agent Stub URL")

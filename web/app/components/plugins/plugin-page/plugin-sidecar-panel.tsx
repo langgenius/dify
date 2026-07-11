@@ -31,7 +31,7 @@ export function PluginSidecarPanel({
           render={(
             <button
               type="button"
-              aria-label={t('operation.close', { ns: 'common' })}
+              aria-label={t($ => $['operation.close'], { ns: 'common' })}
               className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-close-line size-4" />

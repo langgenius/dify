@@ -15,6 +15,7 @@ import {
 } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { initialNodes, preprocessNodesAndEdges } from '@/app/components/workflow/utils/workflow-init'
+import { withSelectorKey } from '@/test/i18n-mock'
 
 // Mock reactflow which is needed by initialNodes and NodeSourceHandle
 vi.mock('reactflow', async () => {
@@ -415,7 +416,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that delivery methods are required', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [],
@@ -428,7 +429,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that at least one delivery method is enabled', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -445,7 +446,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that enabled email delivery methods have complete configuration', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -467,7 +468,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate email delivery config fields before user actions', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -495,7 +496,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate enabled email subject and body content', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const createPayload = (body: string, subject = 'Review request') => ({
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -527,7 +528,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that user actions are required', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -542,7 +543,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that user action IDs are not duplicated', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -560,7 +561,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should validate that user action ids and titles are not empty', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const createPayload = (userActions: HumanInputNodeType['user_actions']) => ({
         ...humanInputDefault.defaultValue,
         delivery_methods: [
@@ -584,7 +585,7 @@ describe('DSL Import with Human Input Node', () => {
     })
 
     it('should pass validation with correct configuration', () => {
-      const t = (key: string) => key
+      const t = withSelectorKey((key: string) => key, 'workflow')
       const payload = {
         ...humanInputDefault.defaultValue,
         delivery_methods: [

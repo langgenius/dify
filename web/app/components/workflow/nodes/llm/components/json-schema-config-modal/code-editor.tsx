@@ -130,7 +130,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                   render={(
                     <button
                       type="button"
-                      aria-label={t('operation.format', { ns: 'common' })}
+                      aria-label={t($ => $['operation.format'], { ns: 'common' })}
                       className="flex size-6 items-center justify-center"
                       onClick={formatJsonContent}
                     >
@@ -138,7 +138,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                     </button>
                   )}
                 />
-                <TooltipContent>{t('operation.format', { ns: 'common' })}</TooltipContent>
+                <TooltipContent>{t($ => $['operation.format'], { ns: 'common' })}</TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
@@ -146,7 +146,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                 render={(
                   <button
                     type="button"
-                    aria-label={t('operation.copy', { ns: 'common' })}
+                    aria-label={t($ => $['operation.copy'], { ns: 'common' })}
                     className="flex size-6 items-center justify-center"
                     onClick={() => copy(value)}
                   >
@@ -154,7 +154,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                   </button>
                 )}
               />
-              <TooltipContent>{t('operation.copy', { ns: 'common' })}</TooltipContent>
+              <TooltipContent>{t($ => $['operation.copy'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
           </div>
         </div>

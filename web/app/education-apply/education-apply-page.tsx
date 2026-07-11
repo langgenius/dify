@@ -8,14 +8,16 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import {
   useRouter,
@@ -52,7 +54,8 @@ const EducationApplyAgeContent = () => {
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
-  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -87,7 +90,7 @@ const EducationApplyAgeContent = () => {
         setHasSubmittedEducation(true)
       }
       else {
-        toast.error(t('submitError', { ns: 'education' }))
+        toast.error(t($ => $.submitError, { ns: 'education' }))
       }
     })
   }
@@ -119,7 +122,7 @@ const EducationApplyAgeContent = () => {
   const renderBackToDifyButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
       <span className="mr-1 i-ri-arrow-left-line size-4" />
-      {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
+      {t($ => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
     </Button>
   )
   const handleSwitchWorkspace = async (tenantId: string) => {
@@ -136,7 +139,7 @@ const EducationApplyAgeContent = () => {
       updateEducationStatus()
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }
 
@@ -144,7 +147,7 @@ const EducationApplyAgeContent = () => {
     if (appliedEducationCase === AppliedEducationCase.eligible) {
       return (
         <Button variant="primary" onClick={handleEducationDiscount}>
-          {t('useEducationDiscount', { ns: 'education' })}
+          {t($ => $.useEducationDiscount, { ns: 'education' })}
         </Button>
       )
     }
@@ -156,7 +159,7 @@ const EducationApplyAgeContent = () => {
             <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
               <Trans
-                i18nKey="applied.activeSubscription.description"
+                i18nKey={$ => $['applied.activeSubscription.description']}
                 ns="education"
                 components={{
                   stripeLink: (
@@ -181,7 +184,7 @@ const EducationApplyAgeContent = () => {
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
           <div className="system-md-regular text-text-warning">
-            {t('applied.noPaymentPermission.description', { ns: 'education' })}
+            {t($ => $['applied.noPaymentPermission.description'], { ns: 'education' })}
           </div>
         </div>
         {renderBackToDifyButton()}
@@ -204,13 +207,13 @@ const EducationApplyAgeContent = () => {
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
-            <div className="mb-2 title-5xl-bold shadow-xs">{t('toVerified', { ns: 'education' })}</div>
+            <div className="mb-2 title-5xl-bold shadow-xs">{t($ => $.toVerified, { ns: 'education' })}</div>
             <div className="system-md-medium shadow-xs">
-              {t('toVerifiedTip.front', { ns: 'education' })}
+              {t($ => $['toVerifiedTip.front'], { ns: 'education' })}
               &nbsp;
-              <span className="system-md-semibold underline">{t('toVerifiedTip.coupon', { ns: 'education' })}</span>
+              <span className="system-md-semibold underline">{t($ => $['toVerifiedTip.coupon'], { ns: 'education' })}</span>
               &nbsp;
-              {t('toVerifiedTip.end', { ns: 'education' })}
+              {t($ => $['toVerifiedTip.end'], { ns: 'education' })}
             </div>
           </div>
           <div className="mb-7">
@@ -233,7 +236,7 @@ const EducationApplyAgeContent = () => {
                 <>
                   <div className="mb-7">
                     <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.schoolName.title', { ns: 'education' })}
+                      {t($ => $['form.schoolName.title'], { ns: 'education' })}
                     </div>
                     <SearchInput
                       value={schoolName}
@@ -242,7 +245,7 @@ const EducationApplyAgeContent = () => {
                   </div>
                   <div className="mb-7">
                     <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.schoolRole.title', { ns: 'education' })}
+                      {t($ => $['form.schoolRole.title'], { ns: 'education' })}
                     </div>
                     <RoleSelector
                       value={role}
@@ -251,17 +254,17 @@ const EducationApplyAgeContent = () => {
                   </div>
                   <div className="mb-7">
                     <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.terms.title', { ns: 'education' })}
+                      {t($ => $['form.terms.title'], { ns: 'education' })}
                     </div>
                     <div className="mb-1 system-md-regular text-text-tertiary">
-                      {t('form.terms.desc.front', { ns: 'education' })}
+                      {t($ => $['form.terms.desc.front'], { ns: 'education' })}
                       &nbsp;
-                      <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
+                      <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t($ => $['form.terms.desc.termsOfService'], { ns: 'education' })}</a>
                       &nbsp;
-                      {t('form.terms.desc.and', { ns: 'education' })}
+                      {t($ => $['form.terms.desc.and'], { ns: 'education' })}
                       &nbsp;
-                      <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
-                      {t('form.terms.desc.end', { ns: 'education' })}
+                      <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t($ => $['form.terms.desc.privacyPolicy'], { ns: 'education' })}</a>
+                      {t($ => $['form.terms.desc.end'], { ns: 'education' })}
                     </div>
                     <div className="py-2 system-md-regular text-text-primary">
                       <label className="mb-2 flex">
@@ -270,7 +273,7 @@ const EducationApplyAgeContent = () => {
                           checked={ageChecked}
                           onCheckedChange={setAgeChecked}
                         />
-                        {t('form.terms.option.age', { ns: 'education' })}
+                        {t($ => $['form.terms.option.age'], { ns: 'education' })}
                       </label>
                       <label className="flex">
                         <Checkbox
@@ -278,7 +281,7 @@ const EducationApplyAgeContent = () => {
                           checked={inSchoolChecked}
                           onCheckedChange={setInSchoolChecked}
                         />
-                        {t('form.terms.option.inSchool', { ns: 'education' })}
+                        {t($ => $['form.terms.option.inSchool'], { ns: 'education' })}
                       </label>
                     </div>
                   </div>
@@ -287,7 +290,7 @@ const EducationApplyAgeContent = () => {
                     disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
                     onClick={handleSubmit}
                   >
-                    {t('submit', { ns: 'education' })}
+                    {t($ => $.submit, { ns: 'education' })}
                   </Button>
                   <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
                   <a
@@ -295,7 +298,7 @@ const EducationApplyAgeContent = () => {
                     href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
                     target="_blank"
                   >
-                    {t('learn', { ns: 'education' })}
+                    {t($ => $.learn, { ns: 'education' })}
                     <span className="ml-1 i-ri-external-link-line size-3" />
                   </a>
                 </>

@@ -5,8 +5,8 @@ import type { AgentProviderTool, AgentToolAction } from '@/features/agent-v2/age
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 import {
@@ -16,11 +16,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AuthCategory,
 } from '@/app/components/plugins/plugin-auth'
+import AddOAuthButton from '@/app/components/plugins/plugin-auth/authorize/add-oauth-button'
 import ApiKeyModal from '@/app/components/plugins/plugin-auth/authorize/api-key-modal'
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
 import { useInvalidPluginCredentialInfoHook } from '@/app/components/plugins/plugin-auth/hooks/use-credential'
@@ -60,7 +61,7 @@ function UnauthorizedCredentialStatus({
   onCredentialChange,
 }: {
   tool: AgentProviderTool
-  onCredentialChange: (credentialId?: string) => void
+  onCredentialChange: (credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => void
 }) {
   const { t } = useTranslation()
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
@@ -78,8 +79,29 @@ function UnauthorizedCredentialStatus({
   }, [])
   const handleCredentialUpdate = useCallback(() => {
     invalidPluginCredentialInfo()
-    onCredentialChange()
-  }, [invalidPluginCredentialInfo, onCredentialChange])
+    onCredentialChange(undefined, tool.credentialType)
+  }, [invalidPluginCredentialInfo, onCredentialChange, tool.credentialType])
+
+  if (tool.credentialType === 'oauth2') {
+    return (
+      <AddOAuthButton
+        pluginPayload={pluginPayload}
+        onUpdate={handleCredentialUpdate}
+        renderTrigger={({ disabled, onClick }) => (
+          <Button
+            variant="secondary"
+            size="small"
+            className="shrink-0"
+            disabled={disabled}
+            onClick={onClick}
+          >
+            {t($ => $.notAuthorized, { ns: 'tools' })}
+            <StatusDot className="ml-2" status="warning" />
+          </Button>
+        )}
+      />
+    )
+  }
 
   return (
     <>
@@ -89,7 +111,7 @@ function UnauthorizedCredentialStatus({
         className="shrink-0"
         onClick={handleApiKeyModalOpen}
       >
-        {t('notAuthorized', { ns: 'tools' })}
+        {t($ => $.notAuthorized, { ns: 'tools' })}
         <StatusDot className="ml-2" status="warning" />
       </Button>
       <ApiKeyModal
@@ -108,16 +130,16 @@ function CredentialStatus({
   onCredentialChange,
 }: {
   tool: AgentProviderTool
-  onCredentialChange: (credentialId?: string) => void
+  onCredentialChange: (credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => void
 }) {
   const canSwitchCredential = (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn && tool.allowDelete
   const handleAuthorizationItemClick = useCallback((id: string) => {
-    onCredentialChange(id === '__workspace_default__' ? undefined : id || undefined)
-  }, [onCredentialChange])
+    onCredentialChange(id === '__workspace_default__' ? undefined : id || undefined, tool.credentialType)
+  }, [onCredentialChange, tool.credentialType])
   const handleDefaultCredentialChange = useCallback((id?: string) => {
     if (!tool.credentialId && id)
-      onCredentialChange(id)
-  }, [onCredentialChange, tool.credentialId])
+      onCredentialChange(id, tool.credentialType)
+  }, [onCredentialChange, tool.credentialId, tool.credentialType])
 
   if (tool.credentialVariant === 'none')
     return null
@@ -150,7 +172,7 @@ function CredentialStatus({
   )
 }
 
-function ProviderToolActionItem({
+const ProviderToolActionItem = memo(({
   action,
   tool,
   onConfigureAction,
@@ -160,12 +182,12 @@ function ProviderToolActionItem({
   tool: AgentProviderTool
   onConfigureAction: (target: ToolSettingTarget) => void
   onRemoveAction: (actionId: string) => void
-}) {
+}) => {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const handleConfigureAction = useCallback(() => {
-    onConfigureAction({ action, tool })
-  }, [action, onConfigureAction, tool])
+    onConfigureAction({ actionId: action.id, toolId: tool.id })
+  }, [action.id, onConfigureAction, tool.id])
   const handleRemoveAction = useCallback(() => {
     onRemoveAction(action.id)
   }, [action.id, onRemoveAction])
@@ -182,7 +204,7 @@ function ProviderToolActionItem({
         <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
           <button
             type="button"
-            aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
+            aria-label={t($ => $['agentDetail.configure.tools.editAction'], { name: action.name })}
             onClick={handleConfigureAction}
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -190,7 +212,7 @@ function ProviderToolActionItem({
           </button>
           <button
             type="button"
-            aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
+            aria-label={t($ => $['agentDetail.configure.tools.removeAction'], { name: action.name })}
             onClick={handleRemoveAction}
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -200,9 +222,9 @@ function ProviderToolActionItem({
       )}
     </div>
   )
-}
+})
 
-export function AgentProviderToolItem({
+export const AgentProviderToolItem = memo(({
   tool,
   isExpanded,
   onOpenChange,
@@ -217,8 +239,8 @@ export function AgentProviderToolItem({
   onConfigureAction: (target: ToolSettingTarget) => void
   onRemoveAction: (actionId: string) => void
   onRemoveProvider: () => void
-  onCredentialChange: (credentialId?: string) => void
-}) {
+  onCredentialChange: (credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => void
+}) => {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const { theme } = useTheme()
@@ -226,7 +248,7 @@ export function AgentProviderToolItem({
   const displayName = tool.displayName ?? tool.name
 
   return (
-    <CollapsibleRoot
+    <Collapsible
       open={isExpanded}
       onOpenChange={onOpenChange}
       className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
@@ -252,10 +274,10 @@ export function AgentProviderToolItem({
           <>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+                aria-label={t($ => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
               >
-                <span className="sr-only">{t('agentDetail.configure.tools.moreActions', { name: tool.name })}</span>
+                <span className="sr-only">{t($ => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}</span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
@@ -265,7 +287,7 @@ export function AgentProviderToolItem({
                   onClick={onRemoveProvider}
                 >
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                  <span>{t('agentDetail.configure.tools.removeProvider')}</span>
+                  <span>{t($ => $['agentDetail.configure.tools.removeProvider'])}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -275,18 +297,20 @@ export function AgentProviderToolItem({
       </div>
 
       <CollapsiblePanel>
-        <div className="flex flex-col">
-          {tool.actions.map(action => (
-            <ProviderToolActionItem
-              key={action.id}
-              action={action}
-              tool={tool}
-              onConfigureAction={onConfigureAction}
-              onRemoveAction={onRemoveAction}
-            />
-          ))}
-        </div>
+        {isExpanded && (
+          <div className="flex flex-col">
+            {tool.actions.map(action => (
+              <ProviderToolActionItem
+                key={action.id}
+                action={action}
+                tool={tool}
+                onConfigureAction={onConfigureAction}
+                onRemoveAction={onRemoveAction}
+              />
+            ))}
+          </div>
+        )}
       </CollapsiblePanel>
-    </CollapsibleRoot>
+    </Collapsible>
   )
-}
+})

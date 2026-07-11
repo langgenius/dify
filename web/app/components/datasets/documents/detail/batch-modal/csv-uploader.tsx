@@ -63,7 +63,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
+        const errorMessage = getFileUploadErrorMessage(e, t($ => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }), t)
         toast.error(errorMessage)
         const errorFile = {
           ...fileItem,
@@ -112,7 +112,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      toast.error(t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }))
+      toast.error(t($ => $['stepOne.uploader.validation.count'], { ns: 'datasetCreation' }))
       return
     }
     initialUpload(files[0])
@@ -139,10 +139,10 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     const ext = `.${getFileType(file)}`
     const isValidType = ext.toLowerCase() === '.csv'
     if (!isValidType)
-      toast.error(t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }))
+      toast.error(t($ => $['stepOne.uploader.validation.typeError'], { ns: 'datasetCreation' }))
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      toast.error(t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
+      toast.error(t($ => $['stepOne.uploader.validation.size'], { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
     return isValidType && isValidSize
   }, [fileUploadConfig, t])
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,13 +174,13 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-secondary">
-                {t('list.batchModal.csvUploadTitle', { ns: 'datasetDocuments' })}
+                {t($ => $['list.batchModal.csvUploadTitle'], { ns: 'datasetDocuments' })}
                 <button
                   type="button"
                   className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
-                  {t('list.batchModal.browse', { ns: 'datasetDocuments' })}
+                  {t($ => $['list.batchModal.browse'], { ns: 'datasetDocuments' })}
                 </button>
               </div>
             </div>
@@ -201,12 +201,12 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
                   <div className="mx-2 h-4 w-px bg-text-secondary" />
                 </>
               )}
-              <Button onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
+              <Button onClick={selectHandle}>{t($ => $['stepOne.uploader.change'], { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-text-secondary" />
               <button
                 type="button"
                 className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                aria-label={t('operation.delete', { ns: 'common' })}
+                aria-label={t($ => $['operation.delete'], { ns: 'common' })}
                 onClick={removeFile}
               >
                 <RiDeleteBinLine className="size-4 text-text-secondary" aria-hidden="true" />

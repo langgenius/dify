@@ -16,12 +16,6 @@ import type { MetadataItemWithValueLength } from '@/app/components/datasets/meta
 import { renderHook } from '@testing-library/react'
 import { DataType } from '@/app/components/datasets/metadata/types'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const { default: useCheckMetadataName } = await import(
   '@/app/components/datasets/metadata/hooks/use-check-metadata-name',
 )

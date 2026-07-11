@@ -69,7 +69,7 @@ When(
     const agent = getPreseededAgent(this, agentName)
     const copyName = createE2EResourceName('Agent', 'copy')
 
-    await page.goto('/roster')
+    await page.goto('/agents')
     const card = page.locator('article').filter({
       has: page.getByRole('link', { name: agentName }),
     }).first()

@@ -184,7 +184,7 @@ const Install: FC<Props> = ({
     <div className="flex min-h-0 flex-1 flex-col self-stretch overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-4 self-stretch overflow-hidden px-6 py-3">
         <div className="system-md-regular text-text-secondary">
-          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { ns: 'plugin', num: selectedPluginsNum })}</p>
+          <p>{t($ => $[`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`], { ns: 'plugin', num: selectedPluginsNum })}</p>
         </div>
         <div className="flex min-h-0 w-full flex-1 flex-col gap-1 overflow-y-auto rounded-2xl bg-background-section-burn p-2">
           <InstallMulti
@@ -206,14 +206,14 @@ const Install: FC<Props> = ({
             {canInstall && (
               <label className="flex cursor-pointer items-center gap-x-2">
                 <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} onCheckedChange={() => handleClickSelectAll()} />
-                <span className="system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</span>
+                <span className="system-sm-medium text-text-secondary">{isSelectAll ? t($ => $['operation.deSelectAll'], { ns: 'common' }) : t($ => $['operation.selectAll'], { ns: 'common' })}</span>
               </label>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
               <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
             )}
             <Button
@@ -223,7 +223,7 @@ const Install: FC<Props> = ({
               onClick={handleInstall}
             >
               {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
-              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+              <span>{t($ => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], { ns: 'plugin' })}</span>
             </Button>
           </div>
         </div>

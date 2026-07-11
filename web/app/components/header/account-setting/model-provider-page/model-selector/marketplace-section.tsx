@@ -46,7 +46,7 @@ function MarketplaceSection({
             className="flex flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left system-sm-medium text-text-primary"
             onClick={() => onMarketplaceCollapsedChange(!marketplaceCollapsed)}
           >
-            {t('modelProvider.selector.fromMarketplace', { ns: 'common' })}
+            {t($ => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
             <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill size-4 text-text-quaternary', marketplaceCollapsed && '-rotate-90')} />
           </button>
         </div>
@@ -77,8 +77,8 @@ function MarketplaceSection({
                     >
                       {isInstalling && <span className="i-ri-loader-2-line size-3.5 animate-spin" />}
                       {isInstalling
-                        ? t('installModal.installing', { ns: 'plugin' })
-                        : t('modelProvider.selector.install', { ns: 'common' })}
+                        ? t($ => $['installModal.installing'], { ns: 'plugin' })
+                        : t($ => $['modelProvider.selector.install'], { ns: 'common' })}
                     </Button>
                   )}
                 </div>
@@ -92,7 +92,7 @@ function MarketplaceSection({
                     onClick={onOpenMarketplace}
                   >
                     <span className="flex-1 system-xs-regular text-text-accent">
-                      {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
+                      {t($ => $['modelProvider.selector.discoverMoreInMarketplace'], { ns: 'common' })}
                     </span>
                     <span className="i-ri-arrow-right-up-line size-3! text-text-accent" aria-hidden="true" />
                   </button>
@@ -105,7 +105,7 @@ function MarketplaceSection({
                     rel="noopener noreferrer"
                   >
                     <span className="flex-1 system-xs-regular text-text-accent">
-                      {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
+                      {t($ => $['modelProvider.selector.discoverMoreInMarketplace'], { ns: 'common' })}
                     </span>
                     <span className="i-ri-arrow-right-up-line size-3! text-text-accent" aria-hidden="true" />
                   </a>

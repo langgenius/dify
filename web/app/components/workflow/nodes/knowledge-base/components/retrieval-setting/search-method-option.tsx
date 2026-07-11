@@ -12,10 +12,9 @@ import type {
   Option,
 } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
@@ -150,9 +149,8 @@ function SearchMethodRadioCard({
         readonly && 'cursor-not-allowed',
       )}
     >
-      <RadioRoot
+      <RadioItem<RetrievalSearchMethodEnum>
         value={option.id}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         disabled={readonly}
@@ -172,7 +170,7 @@ function SearchMethodRadioCard({
               {isRecommended
                 ? (
                     <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
-                      {t('stepTwo.recommend', { ns: 'datasetCreation' })}
+                      {t($ => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                     </Badge>
                   )
                 : null}
@@ -186,7 +184,7 @@ function SearchMethodRadioCard({
               )
             : null}
         </div>
-      </RadioRoot>
+      </RadioItem>
       {!!(children && isActive) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-3">
           <div className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape h-4 w-4 text-components-panel-bg" />
@@ -206,9 +204,8 @@ function HybridSearchModeRadioCard({
 }) {
   return (
     <FieldItem>
-      <RadioRoot
+      <RadioItem<HybridSearchModeEnum>
         value={option.id}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         disabled={readonly}
@@ -230,7 +227,7 @@ function HybridSearchModeRadioCard({
           </div>
           <RadioControl className="mt-0.5" aria-hidden="true" />
         </div>
-      </RadioRoot>
+      </RadioItem>
     </FieldItem>
   )
 }
@@ -248,15 +245,15 @@ export function SearchMethodOption({
   const isHybridSearchWeightedScoreMode = hybridSearch.mode === HybridSearchModeEnum.WeightedScore
   const showRerankModelSelectorSwitch = shouldShowRerankModelSelectorSwitch(option.id)
   const showRerankModelSelector = shouldShowRerankModelSelector(option.id, hybridSearch.mode)
-  const rerankModelLabel = t('modelProvider.rerankModel.key', { ns: 'common' })
-  const rerankModelTip = t('modelProvider.rerankModel.tip', { ns: 'common' })
+  const rerankModelLabel = t($ => $['modelProvider.rerankModel.key'], { ns: 'common' })
+  const rerankModelTip = t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })
   const scoreThresholdHidden = option.id === RetrievalSearchMethodEnum.keywordSearch
   const config = (
     <div className="space-y-3">
       {isHybridSearch
         ? (
-            <FieldRoot name="hybrid_search_mode" className="gap-0">
-              <FieldsetRoot
+            <Field name="hybrid_search_mode" className="gap-0">
+              <Fieldset
                 render={(
                   <RadioGroup<HybridSearchModeEnum>
                     value={hybridSearch.mode}
@@ -274,8 +271,8 @@ export function SearchMethodOption({
                     readonly={readonly}
                   />
                 ))}
-              </FieldsetRoot>
-            </FieldRoot>
+              </Fieldset>
+            </Field>
           )
         : null}
       {isHybridSearch && isHybridSearchWeightedScoreMode
@@ -292,7 +289,7 @@ export function SearchMethodOption({
             <div>
               {showRerankModelSelectorSwitch
                 ? (
-                    <FieldRoot name="reranking_model_enabled" className="mb-1 gap-0">
+                    <Field name="reranking_model_enabled" className="mb-1 gap-0">
                       <div className="flex items-center">
                         <FieldLabel className="flex min-w-0 items-center py-0 system-sm-semibold text-text-secondary">
                           <Switch
@@ -306,12 +303,11 @@ export function SearchMethodOption({
                         <Infotip
                           aria-label={rerankModelTip}
                           className="ml-0.5 size-3.5 shrink-0"
-                          iconClassName="h-3.5 w-3.5"
                         >
                           {rerankModelTip}
                         </Infotip>
                       </div>
-                    </FieldRoot>
+                    </Field>
                   )
                 : null}
               <RerankingModelSelector
@@ -327,7 +323,7 @@ export function SearchMethodOption({
                         <div className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary" />
                       </div>
                       <span className="system-xs-medium text-text-primary">
-                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                        {t($ => $['form.retrievalSetting.multiModalTip'], { ns: 'datasetSettings' })}
                       </span>
                     </div>
                   )

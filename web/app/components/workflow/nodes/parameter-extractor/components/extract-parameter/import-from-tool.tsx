@@ -82,7 +82,7 @@ const ImportFromTool: FC<Props> = ({
           open && 'bg-state-base-hover',
         )}
         >
-          {t(`${i18nPrefix}.importFromTool`, { ns: 'workflow' })}
+          {t($ => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
         </div>
       </div>
     )

@@ -97,7 +97,7 @@ const AppAccessRuleSection = ({
         resourceType: 'app',
       }, {
         onSuccess: () => {
-          toast.success(t('accessRule.created', { ns: 'permission' }))
+          toast.success(t($ => $['accessRule.created'], { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
@@ -111,7 +111,7 @@ const AppAccessRuleSection = ({
         resourceType: 'app',
       }, {
         onSuccess: () => {
-          toast.success(t('accessRule.updated', { ns: 'permission' }))
+          toast.success(t($ => $['accessRule.updated'], { ns: 'permission' }))
           closePermissionSetModal()
         },
       })
@@ -121,7 +121,7 @@ const AppAccessRuleSection = ({
   return (
     <>
       <AccessRuleSection
-        title={t('accessRule.appTitle', { ns: 'permission' })}
+        title={t($ => $['accessRule.appTitle'], { ns: 'permission' })}
         rules={appAccessRules}
         totalCount={totalCount}
         isLoadingRules={isLoading}

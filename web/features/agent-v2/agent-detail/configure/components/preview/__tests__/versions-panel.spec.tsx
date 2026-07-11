@@ -58,16 +58,67 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { userProfile: { id: string, name: string, email: string } }) => T) =>
-    selector({
-      userProfile: {
-        id: 'user-1',
-        name: 'Alice',
-        email: 'alice@example.com',
-      },
-    }),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {
