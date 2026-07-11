@@ -81,6 +81,59 @@ class AppListResponse(BaseModel):
     data: list[AppListRow]
 
 
+class AppDiscoveryTool(BaseModel):
+    """Non-secret identity of a tool configured on an app or Agent Soul."""
+
+    provider_id: str | None = None
+    provider_type: str | None = None
+    plugin_id: str | None = None
+    provider: str | None = None
+    tool_name: str | None = None
+    enabled: bool = True
+
+
+class AppDiscoveryModel(BaseModel):
+    """Model identity only; credentials and provider settings stay private."""
+
+    provider: str | None = None
+    name: str | None = None
+    plugin_id: str | None = None
+
+
+class AppDiscoveryItem(BaseModel):
+    """A safe, observability-oriented projection of an app configuration.
+
+    This endpoint deliberately omits prompts, credentials, API keys, and tool
+    parameters. Those values can contain customer data or secrets and are not
+    needed to correlate an ``app_id`` in a trace with its configured runtime.
+    """
+
+    id: str
+    name: str
+    description: str | None = None
+    mode: AppMode
+    icon: str | None = None
+    icon_background: str | None = None
+    updated_at: str | None = None
+    model: AppDiscoveryModel | None = None
+    agent_strategy: str | None = None
+    tools: list[AppDiscoveryTool] = Field(default_factory=list)
+
+
+class AppDiscoveryResponse(PaginationEnvelope[AppDiscoveryItem]):
+    """Paginated response for workspace-scoped runtime discovery."""
+
+
+class AppDiscoveryQuery(BaseModel):
+    """Workspace and pagination inputs for ``GET /apps/discovery``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: UUIDStr
+    page: int = Field(1, ge=1)
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+
+
 class PermittedExternalAppsListResponse(BaseModel):
     page: int
     limit: int

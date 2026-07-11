@@ -45,7 +45,9 @@ AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
+    mode: Literal[
+        "completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all", "discovery"
+    ] = "all"
     sort_by: AppListSortBy = "last_modified"
     name: str | None = None
     tag_ids: list[str] | None = None

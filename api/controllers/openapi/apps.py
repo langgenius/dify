@@ -6,6 +6,7 @@ import uuid as _uuid
 from typing import Any, cast
 
 from flask_restx import Resource
+from sqlalchemy import select
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from configs import dify_config
@@ -20,6 +21,11 @@ from controllers.openapi._models import (
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
+    AppDiscoveryItem,
+    AppDiscoveryModel,
+    AppDiscoveryQuery,
+    AppDiscoveryResponse,
+    AppDiscoveryTool,
     AppListQuery,
     AppListResponse,
     AppListRow,
@@ -31,8 +37,9 @@ from core.app.app_config.common.parameters_mapping import get_parameters_from_fe
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
 from models.enums import AppStatus
-from models.model import AppMode
+from models.model import AppMode, AppModelConfig
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
@@ -127,6 +134,198 @@ def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescrib
             input_schema = dict(EMPTY_INPUT_SCHEMA)
 
     return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
+
+
+def _legacy_tool_projection(tool: object) -> AppDiscoveryTool | None:
+    """Return the non-secret identity fields from a legacy Agent tool entry."""
+    if not isinstance(tool, dict):
+        return None
+
+    return AppDiscoveryTool(
+        provider_id=tool.get("provider_id") or tool.get("provider_name"),
+        provider_type=tool.get("provider_type"),
+        plugin_id=tool.get("plugin_unique_identifier"),
+        tool_name=tool.get("tool_name"),
+        enabled=bool(tool.get("enabled", True)),
+    )
+
+
+def _agent_soul_projection(
+    snapshot: AgentConfigSnapshot | None,
+) -> tuple[AppDiscoveryModel | None, list[AppDiscoveryTool]]:
+    """Project a published Agent Soul without exposing credential references.
+
+    Agent Soul snapshots are the source of truth for Agent V2. Their model and
+    tool entries include credential references and runtime parameters, so this
+    projection intentionally selects only stable identifiers needed by external
+    observability systems.
+    """
+    if snapshot is None:
+        return None, []
+
+    soul = snapshot.config_snapshot_dict
+    raw_model = soul.get("model")
+    model = None
+    if isinstance(raw_model, dict):
+        model = AppDiscoveryModel(
+            provider=raw_model.get("model_provider"),
+            name=raw_model.get("model"),
+            plugin_id=raw_model.get("plugin_id"),
+        )
+
+    raw_tools = soul.get("tools")
+    raw_dify_tools = raw_tools.get("dify_tools") if isinstance(raw_tools, dict) else []
+    tools: list[AppDiscoveryTool] = []
+    if isinstance(raw_dify_tools, list):
+        for tool in raw_dify_tools:
+            if not isinstance(tool, dict):
+                continue
+            tools.append(
+                AppDiscoveryTool(
+                    provider_id=tool.get("provider_id"),
+                    provider_type=tool.get("provider_type"),
+                    plugin_id=tool.get("plugin_id"),
+                    provider=tool.get("provider"),
+                    tool_name=tool.get("tool_name"),
+                    enabled=bool(tool.get("enabled", True)),
+                )
+            )
+    return model, tools
+
+
+def _load_discovery_configuration(
+    apps: list[App], *, tenant_id: str
+) -> tuple[dict[str, AppModelConfig], dict[str, AgentConfigSnapshot]]:
+    """Batch-load legacy configs and published Agent Soul snapshots for one page.
+
+    Discovery is read-only and paginated. Loading both configuration stores in
+    batches keeps a page of Agent Apps from triggering a per-app query pattern.
+    """
+    app_model_config_ids = [str(app.app_model_config_id) for app in apps if app.app_model_config_id]
+    legacy_configs = db.session.scalars(
+        select(AppModelConfig).where(AppModelConfig.id.in_(app_model_config_ids))
+    ).all() if app_model_config_ids else []
+    configs_by_id = {str(config.id): config for config in legacy_configs}
+
+    app_ids = [app.id for app in apps]
+    agents = db.session.scalars(
+        select(Agent).where(
+            Agent.tenant_id == tenant_id,
+            Agent.app_id.in_(app_ids),
+            Agent.scope == AgentScope.ROSTER,
+            Agent.source == AgentSource.AGENT_APP,
+            Agent.status == AgentStatus.ACTIVE,
+            Agent.active_config_snapshot_id.is_not(None),
+        )
+    ).all() if app_ids else []
+    snapshot_ids = [str(agent.active_config_snapshot_id) for agent in agents if agent.active_config_snapshot_id]
+    snapshots = db.session.scalars(
+        select(AgentConfigSnapshot).where(
+            AgentConfigSnapshot.tenant_id == tenant_id,
+            AgentConfigSnapshot.id.in_(snapshot_ids),
+        )
+    ).all() if snapshot_ids else []
+    snapshots_by_id = {str(snapshot.id): snapshot for snapshot in snapshots}
+    snapshots_by_app_id = {
+        str(agent.app_id): snapshots_by_id[str(agent.active_config_snapshot_id)]
+        for agent in agents
+        if agent.app_id and agent.active_config_snapshot_id and str(agent.active_config_snapshot_id) in snapshots_by_id
+    }
+    return configs_by_id, snapshots_by_app_id
+
+
+def build_app_discovery_item(
+    app: App,
+    *,
+    legacy_config: AppModelConfig | None,
+    agent_snapshot: AgentConfigSnapshot | None,
+) -> AppDiscoveryItem:
+    """Build the safe configuration projection for a legacy app or Agent V2 app."""
+    model: AppDiscoveryModel | None = None
+    tools: list[AppDiscoveryTool] = []
+    agent_strategy: str | None = None
+
+    if app.mode == AppMode.AGENT:
+        model, tools = _agent_soul_projection(agent_snapshot)
+    elif legacy_config is not None:
+        raw_model = legacy_config.model_dict
+        model = AppDiscoveryModel(provider=raw_model.get("provider"), name=raw_model.get("name"))
+        agent_mode = legacy_config.agent_mode_dict
+        agent_strategy = agent_mode.get("strategy")
+        for tool in agent_mode.get("tools") or []:
+            projection = _legacy_tool_projection(tool)
+            if projection is not None:
+                tools.append(projection)
+
+    return AppDiscoveryItem(
+        id=app.id,
+        name=app.name,
+        description=app.description,
+        mode=app.mode,
+        icon=app.icon,
+        icon_background=app.icon_background,
+        updated_at=app.updated_at.isoformat() if app.updated_at else None,
+        model=model,
+        agent_strategy=agent_strategy,
+        tools=tools,
+    )
+
+
+@openapi_ns.route("/apps/discovery")
+class AppDiscoveryApi(Resource):
+    """List workspace apps with their safe runtime identities.
+
+    Unlike ``GET /apps``, discovery is an account-authenticated management
+    surface. It includes API-disabled apps because observability integrations
+    must be able to correlate every workspace app, not only apps that expose a
+    Service API key. RBAC is applied before pagination just like the ordinary
+    app list.
+    """
+
+    @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, AppDiscoveryResponse, description="App runtime discovery")
+    @accepts(query=AppDiscoveryQuery)
+    def get(self, *, auth_data: AuthData, query: AppDiscoveryQuery):
+        workspace_id = query.workspace_id
+        if auth_data.account_id is None:
+            raise NotFound("account not found")
+
+        apply_rbac_filter = dify_config.RBAC_ENABLED and auth_data.caller_kind != CallerKind.END_USER
+        access_filter = AppAccessFilter.unrestricted()
+        if apply_rbac_filter:
+            access_filter = resolve_app_access_filter(workspace_id, str(auth_data.account_id))
+
+        params = AppListParams(
+            page=query.page,
+            limit=query.limit,
+            mode="discovery",
+            status=AppStatus.NORMAL,
+        )
+        if apply_rbac_filter:
+            access_filter.apply_to_params(params)
+
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session())
+        if pagination is None:
+            return AppDiscoveryResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
+
+        apps = list(pagination.items)
+        configs_by_id, snapshots_by_app_id = _load_discovery_configuration(apps, tenant_id=workspace_id)
+        items = [
+            build_app_discovery_item(
+                app,
+                legacy_config=configs_by_id.get(str(app.app_model_config_id)),
+                agent_snapshot=snapshots_by_app_id.get(str(app.id)),
+            )
+            for app in apps
+        ]
+        total = pagination.total
+        return AppDiscoveryResponse(
+            page=query.page,
+            limit=query.limit,
+            total=total,
+            has_more=query.page * query.limit < total,
+            data=items,
+        )
 
 
 @openapi_ns.route("/apps/<string:app_id>")
