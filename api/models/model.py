@@ -18,6 +18,7 @@ from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, e
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
@@ -1144,9 +1145,9 @@ class Conversation(Base):
     read_at = mapped_column(sa.DateTime)
     read_account_id = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, default=naive_utc_now)
     updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
@@ -1491,9 +1492,9 @@ class Message(Base):
     )
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
@@ -2116,9 +2117,9 @@ class EndUser(Base, UserMixin):
         self._is_anonymous = value
 
     session_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, default=naive_utc_now)
     updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
     )
 
 
